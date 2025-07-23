@@ -140,7 +140,7 @@ perms-table:
 	@go run internal/website/permstable/permstable.go
 
 .PHONY: gen
-gen: cleangen proto api cli perms-table fmt copywrite
+gen: cleangen proto api cli perms-table fmt copywrite #db-schema
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -318,6 +318,10 @@ test-database-down:
 .PHONY: generate-database-dumps
 generate-database-dumps:
 	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
+
+.PHONY: db-schema
+db-schema:
+	sh -c "'$(CURDIR)/scripts/dump_db_schema.sh'"
 
 .PHONY: test-sql
 test-sql:

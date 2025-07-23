@@ -14,17 +14,6 @@ type Repository struct {
 	reader db.Reader
 }
 
-// Table "public.wh_credential_group"
-// Column |    Type    | Collation | Nullable |   Default
-// --------+------------+-----------+----------+--------------
-// key    | wh_dim_key |           | not null | wh_dim_key()
-// Indexes:
-//    "wh_credential_group_pkey" PRIMARY KEY, btree (key)
-// Referenced by:
-//    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
-//    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
-//    TABLE "wh_credential_group_membership" CONSTRAINT "wh_credential_group_membership_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
-
 func NewRepository(ctx context.Context, r db.Reader) (*Repository, error) {
 	const op = "warehouse.NewRepository"
 	switch {
@@ -37,28 +26,45 @@ func NewRepository(ctx context.Context, r db.Reader) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) GetWarehouseSchemas(ctx context.Context) ([]string, error) {
-	const op = "warehouse.Repository.GetWarehouseSchemas"
+func (r *Repository) RunSQLQuery(ctx context.Context, query string) ([]any, error) {
+	const op = "warehouse.Repository.RunSQLQuery"
 
-	query := getWarehouseSchemasQuery // TODO: Dump schema to file & read from that instead of the database
+	if query == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty query")
+	}
+
 	rows, err := r.reader.Query(ctx, query, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var schemas []string
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get columns"))
+	}
+
+	results := make([]any, 0)
 	for rows.Next() {
-		var schema string
-		if err := rows.Scan(&schema); err != nil {
-			return nil, err
+		columnValues := make([]any, len(columns))
+		columnPointers := make([]any, len(columns))
+
+		for i := range columnValues {
+			columnPointers[i] = &columnValues[i]
 		}
-		schemas = append(schemas, schema)
-	}
 
+		if err := rows.Scan(columnPointers...); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		rowMap := make(map[string]any)
+		for i, colName := range columns {
+			rowMap[colName] = columnValues[i]
+		}
+		results = append(results, rowMap)
+	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error iterating over rows"))
 	}
-
-	return schemas, nil
+	return results, nil
 }

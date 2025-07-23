@@ -1,0 +1,460 @@
+                                                           Table "public.wh_auth_token_accumulating_fact"
+                   Column                    |     Type     | Collation | Nullable |                                    Default                                     
+---------------------------------------------+--------------+-----------+----------+--------------------------------------------------------------------------------
+ auth_token_id                               | wt_public_id |           | not null | 
+ user_id                                     | wh_user_id   |           | not null | 
+ user_key                                    | wh_dim_key   |           | not null | 
+ auth_token_issued_date_key                  | integer      |           | not null | 
+ auth_token_issued_time_key                  | integer      |           | not null | 
+ auth_token_issued_time                      | wh_timestamp |           |          | 
+ auth_token_deleted_date_key                 | integer      |           | not null | '-1'::integer
+ auth_token_deleted_time_key                 | integer      |           | not null | '-1'::integer
+ auth_token_deleted_time                     | wh_timestamp |           |          | 'infinity'::timestamp with time zone
+ auth_token_approximate_last_access_date_key | integer      |           | not null | '-1'::integer
+ auth_token_approximate_last_access_time_key | integer      |           | not null | '-1'::integer
+ auth_token_approximate_last_access_time     | wh_timestamp |           |          | 
+ auth_token_approximate_active_time_range    | tstzrange    |           | not null | tstzrange(CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '[]'::text)
+ auth_token_valid_time_range                 | tstzrange    |           | not null | tstzrange(CURRENT_TIMESTAMP, 'infinity'::timestamp with time zone, '[]'::text)
+ auth_token_count                            | smallint     |           | not null | 1
+Indexes:
+    "wh_auth_token_accumulating_fact_pkey" PRIMARY KEY, btree (auth_token_id)
+Check constraints:
+    "active_time_contained_by_valid_time" CHECK (auth_token_approximate_active_time_range <@ auth_token_valid_time_range)
+    "active_time_lower_eq_issued_time" CHECK (lower(auth_token_approximate_active_time_range) = auth_token_issued_time::timestamp with time zone)
+    "active_time_upper_eq_last_accessed_time" CHECK (upper(auth_token_approximate_active_time_range) = auth_token_approximate_last_access_time::timestamp with time zone)
+    "auth_token_count_must_be_1" CHECK (auth_token_count = 1)
+    "last_accessed_time_lte_deleted_time" CHECK (auth_token_approximate_last_access_time::timestamp with time zone <= auth_token_deleted_time::timestamp with time zone)
+    "valid_time_lower_eq_issued" CHECK (lower(auth_token_valid_time_range) = auth_token_issued_time::timestamp with time zone)
+    "valid_time_upper_eq_deleted" CHECK (upper(auth_token_valid_time_range) = auth_token_deleted_time::timestamp with time zone)
+Foreign-key constraints:
+    "wh_auth_token_accumulating_f_auth_token_approximate_last__fkey1" FOREIGN KEY (auth_token_approximate_last_access_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fa_auth_token_approximate_last__fkey" FOREIGN KEY (auth_token_approximate_last_access_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fac_auth_token_deleted_date_key_fkey" FOREIGN KEY (auth_token_deleted_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fac_auth_token_deleted_time_key_fkey" FOREIGN KEY (auth_token_deleted_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fact_auth_token_issued_date_key_fkey" FOREIGN KEY (auth_token_issued_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fact_auth_token_issued_time_key_fkey" FOREIGN KEY (auth_token_issued_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_auth_token_accumulating_fact_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+Triggers:
+    immutable_columns BEFORE UPDATE ON wh_auth_token_accumulating_fact FOR EACH ROW EXECUTE FUNCTION immutable_columns('user_id', 'user_key', 'auth_token_issued_time', 'auth_token_issued_time_key', 'auth_token_issued_date_key')
+    wh_insert_auth_token BEFORE INSERT ON wh_auth_token_accumulating_fact FOR EACH ROW EXECUTE FUNCTION wh_insert_auth_token()
+
+ Index "public.wh_auth_token_accumulating_fact_pkey"
+    Column     |     Type     | Key? |  Definition   
+---------------+--------------+------+---------------
+ auth_token_id | wt_public_id | yes  | auth_token_id
+primary key, btree, for table "public.wh_auth_token_accumulating_fact"
+
+         Index "public.wh_credential_dim_current_constraint"
+        Column         |     Type     | Key? |      Definition       
+-----------------------+--------------+------+-----------------------
+ credential_library_id | wh_public_id | yes  | credential_library_id
+ credential_store_id   | wh_public_id | yes  | credential_store_id
+ target_id             | wh_public_id | yes  | target_id
+ credential_purpose    | wh_dim_text  | yes  | credential_purpose
+unique, btree, for table "public.wh_credential_dimension", predicate (current_row_indicator::text = 'Current'::text)
+
+                             Table "public.wh_credential_dimension"
+                   Column                   |     Type     | Collation | Nullable |   Default    
+--------------------------------------------+--------------+-----------+----------+--------------
+ key                                        | wh_dim_key   |           | not null | wh_dim_key()
+ credential_purpose                         | wh_dim_text  |           |          | 
+ credential_library_id                      | wh_public_id |           | not null | 
+ credential_library_type                    | wh_dim_text  |           |          | 
+ credential_library_name                    | wh_dim_text  |           |          | 
+ credential_library_description             | wh_dim_text  |           |          | 
+ credential_library_vault_path              | wh_dim_text  |           |          | 
+ credential_library_vault_http_method       | wh_dim_text  |           |          | 
+ credential_library_vault_http_request_body | wh_dim_text  |           |          | 
+ credential_store_id                        | wh_public_id |           | not null | 
+ credential_store_type                      | wh_dim_text  |           |          | 
+ credential_store_name                      | wh_dim_text  |           |          | 
+ credential_store_description               | wh_dim_text  |           |          | 
+ credential_store_vault_namespace           | wh_dim_text  |           |          | 
+ credential_store_vault_address             | wh_dim_text  |           |          | 
+ target_id                                  | wh_public_id |           | not null | 
+ target_type                                | wh_dim_text  |           |          | 
+ target_name                                | wh_dim_text  |           |          | 
+ target_description                         | wh_dim_text  |           |          | 
+ target_default_port_number                 | integer      |           | not null | 
+ target_session_max_seconds                 | integer      |           | not null | 
+ target_session_connection_limit            | integer      |           | not null | 
+ project_id                                 | wt_scope_id  |           | not null | 
+ project_name                               | wh_dim_text  |           |          | 
+ project_description                        | wh_dim_text  |           |          | 
+ organization_id                            | wt_scope_id  |           | not null | 
+ organization_name                          | wh_dim_text  |           |          | 
+ organization_description                   | wh_dim_text  |           |          | 
+ current_row_indicator                      | wh_dim_text  |           |          | 
+ row_effective_time                         | wh_timestamp |           |          | 
+ row_expiration_time                        | wh_timestamp |           |          | 
+ credential_library_username                | wh_dim_text  |           |          | 
+ credential_library_key_type_and_bits       | wh_dim_text  |           |          | 
+Indexes:
+    "wh_credential_dimension_pkey" PRIMARY KEY, btree (key)
+    "wh_credential_dim_current_constraint" UNIQUE, btree (credential_library_id, credential_store_id, target_id, credential_purpose) WHERE current_row_indicator::text = 'Current'::text
+Referenced by:
+    TABLE "wh_credential_group_membership" CONSTRAINT "wh_credential_dimension_credential_key_fkey" FOREIGN KEY (credential_key) REFERENCES wh_credential_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+Index "public.wh_credential_dimension_pkey"
+ Column |    Type    | Key? | Definition 
+--------+------------+------+------------
+ key    | wh_dim_key | yes  | key
+primary key, btree, for table "public.wh_credential_dimension"
+
+            Table "public.wh_credential_group"
+ Column |    Type    | Collation | Nullable |   Default    
+--------+------------+-----------+----------+--------------
+ key    | wh_dim_key |           | not null | wh_dim_key()
+Indexes:
+    "wh_credential_group_pkey" PRIMARY KEY, btree (key)
+Referenced by:
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_credential_group_membership" CONSTRAINT "wh_credential_group_membership_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+           Table "public.wh_credential_group_membership"
+        Column        |    Type    | Collation | Nullable | Default 
+----------------------+------------+-----------+----------+---------
+ credential_group_key | wh_dim_key |           | not null | 
+ credential_key       | wh_dim_key |           | not null | 
+Indexes:
+    "wh_credential_group_membership_pkey" PRIMARY KEY, btree (credential_group_key, credential_key)
+Foreign-key constraints:
+    "wh_credential_dimension_credential_key_fkey" FOREIGN KEY (credential_key) REFERENCES wh_credential_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_credential_group_membership_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+       Index "public.wh_credential_group_membership_pkey"
+        Column        |    Type    | Key? |      Definition      
+----------------------+------------+------+----------------------
+ credential_group_key | wh_dim_key | yes  | credential_group_key
+ credential_key       | wh_dim_key | yes  | credential_key
+primary key, btree, for table "public.wh_credential_group_membership"
+
+ Index "public.wh_credential_group_pkey"
+ Column |    Type    | Key? | Definition 
+--------+------------+------+------------
+ key    | wh_dim_key | yes  | key
+primary key, btree, for table "public.wh_credential_group"
+
+                       Table "public.wh_date_dimension"
+            Column             |    Type     | Collation | Nullable | Default 
+-------------------------------+-------------+-----------+----------+---------
+ key                           | integer     |           | not null | 
+ date                          | date        |           | not null | 
+ calendar_quarter              | wh_dim_text |           |          | 
+ calendar_month                | wh_dim_text |           |          | 
+ calendar_year                 | smallint    |           | not null | 
+ day_of_week                   | wh_dim_text |           |          | 
+ day_of_week_number            | smallint    |           | not null | 
+ day_of_week_number_iso        | smallint    |           | not null | 
+ day_of_week_number_zero_based | smallint    |           | not null | 
+ day_number_in_calendar_month  | smallint    |           | not null | 
+ day_number_in_calendar_year   | smallint    |           | not null | 
+ weekday_indicator             | wh_dim_text |           |          | 
+Indexes:
+    "wh_date_dimension_pkey" PRIMARY KEY, btree (key)
+Referenced by:
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fa_auth_token_approximate_last__fkey" FOREIGN KEY (auth_token_approximate_last_access_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fac_auth_token_deleted_date_key_fkey" FOREIGN KEY (auth_token_deleted_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fact_auth_token_issued_date_key_fkey" FOREIGN KEY (auth_token_issued_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_date_dimension_connection_authorized_date_key_fkey" FOREIGN KEY (connection_authorized_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_date_dimension_connection_closed_date_key_fkey" FOREIGN KEY (connection_closed_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_date_dimension_connection_connected_date_key_fkey" FOREIGN KEY (connection_connected_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_date_dimension_session_active_date_key_fkey" FOREIGN KEY (session_active_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_date_dimension_session_canceling_date_key_fkey" FOREIGN KEY (session_canceling_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_date_dimension_session_pending_date_key_fkey" FOREIGN KEY (session_pending_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_date_dimension_session_terminated_date_key_fkey" FOREIGN KEY (session_terminated_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+Index "public.wh_date_dimension_pkey"
+ Column |  Type   | Key? | Definition 
+--------+---------+------+------------
+ id     | integer | yes  | key
+primary key, btree, for table "public.wh_date_dimension"
+
+  Index "public.wh_host_dim_current_constraint"
+   Column    |     Type     | Key? | Definition  
+-------------+--------------+------+-------------
+ target_id   | wh_public_id | yes  | target_id
+ host_set_id | wh_public_id | yes  | host_set_id
+ host_id     | wh_public_id | yes  | host_id
+unique, btree, for table "public.wh_host_dimension", predicate (current_row_indicator::text = 'Current'::text)
+
+                           Table "public.wh_host_dimension"
+             Column              |     Type     | Collation | Nullable |   Default    
+---------------------------------+--------------+-----------+----------+--------------
+ key                             | wh_dim_key   |           | not null | wh_dim_key()
+ host_id                         | wh_public_id |           | not null | 
+ host_type                       | wh_dim_text  |           |          | 
+ host_name                       | wh_dim_text  |           |          | 
+ host_description                | wh_dim_text  |           |          | 
+ host_set_id                     | wh_public_id |           | not null | 
+ host_set_type                   | wh_dim_text  |           |          | 
+ host_set_name                   | wh_dim_text  |           |          | 
+ host_set_description            | wh_dim_text  |           |          | 
+ host_catalog_id                 | wh_public_id |           | not null | 
+ host_catalog_type               | wh_dim_text  |           |          | 
+ host_catalog_name               | wh_dim_text  |           |          | 
+ host_catalog_description        | wh_dim_text  |           |          | 
+ target_id                       | wh_public_id |           | not null | 
+ target_type                     | wh_dim_text  |           |          | 
+ target_name                     | wh_dim_text  |           |          | 
+ target_description              | wh_dim_text  |           |          | 
+ target_default_port_number      | integer      |           | not null | 
+ target_session_max_seconds      | integer      |           | not null | 
+ target_session_connection_limit | integer      |           | not null | 
+ project_id                      | wt_scope_id  |           | not null | 
+ project_name                    | wh_dim_text  |           |          | 
+ project_description             | wh_dim_text  |           |          | 
+ organization_id                 | wt_scope_id  |           | not null | 
+ organization_name               | wh_dim_text  |           |          | 
+ organization_description        | wh_dim_text  |           |          | 
+ current_row_indicator           | wh_dim_text  |           |          | 
+ row_effective_time              | wh_timestamp |           |          | 
+ row_expiration_time             | wh_timestamp |           |          | 
+ network_address_group_key       | wh_dim_key   |           | not null | 
+Indexes:
+    "wh_host_dimension_pkey" PRIMARY KEY, btree (key)
+    "wh_host_dim_current_constraint" UNIQUE, btree (target_id, host_set_id, host_id) WHERE current_row_indicator::text = 'Current'::text
+Foreign-key constraints:
+    "wh_network_address_group_fkey" FOREIGN KEY (network_address_group_key) REFERENCES wh_network_address_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+Referenced by:
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_host_dimension_host_key_fkey" FOREIGN KEY (host_key) REFERENCES wh_host_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_host_dimension_host_key_fkey" FOREIGN KEY (host_key) REFERENCES wh_host_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+  Index "public.wh_host_dimension_pkey"
+ Column |    Type    | Key? | Definition 
+--------+------------+------+------------
+ id     | wh_dim_key | yes  | key
+primary key, btree, for table "public.wh_host_dimension"
+
+                 Table "public.wh_network_address_dimension"
+            Column            |    Type     | Collation | Nullable | Default 
+------------------------------+-------------+-----------+----------+---------
+ address                      | wh_dim_text |           | not null | 
+ address_type                 | wh_dim_text |           |          | 
+ ip_address_family            | wh_dim_text |           |          | 
+ private_ip_address_indicator | wh_dim_text |           |          | 
+ dns_name                     | wh_dim_text |           |          | 
+ ip4_address                  | wh_dim_text |           |          | 
+ ip6_address                  | wh_dim_text |           |          | 
+Indexes:
+    "wh_network_address_dimension_pkey" PRIMARY KEY, btree (address)
+Referenced by:
+    TABLE "wh_network_address_group_membership" CONSTRAINT "wh_network_address_dimension_fkey" FOREIGN KEY (network_address) REFERENCES wh_network_address_dimension(address) ON UPDATE CASCADE ON DELETE RESTRICT
+
+Index "public.wh_network_address_dimension_pkey"
+ Column  |    Type     | Key? | Definition 
+---------+-------------+------+------------
+ address | wh_dim_text | yes  | address
+primary key, btree, for table "public.wh_network_address_dimension"
+
+          Table "public.wh_network_address_group"
+ Column |    Type    | Collation | Nullable |   Default    
+--------+------------+-----------+----------+--------------
+ key    | wh_dim_key |           | not null | wh_dim_key()
+Indexes:
+    "wh_network_address_group_pkey" PRIMARY KEY, btree (key)
+Referenced by:
+    TABLE "wh_network_address_group_membership" CONSTRAINT "wh_network_address_group_fkey" FOREIGN KEY (network_address_group_key) REFERENCES wh_network_address_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_host_dimension" CONSTRAINT "wh_network_address_group_fkey" FOREIGN KEY (network_address_group_key) REFERENCES wh_network_address_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+            Table "public.wh_network_address_group_membership"
+          Column           |    Type     | Collation | Nullable | Default 
+---------------------------+-------------+-----------+----------+---------
+ network_address_group_key | wh_dim_key  |           | not null | 
+ network_address           | wh_dim_text |           | not null | 
+Indexes:
+    "wh_network_address_group_membership_pkey" PRIMARY KEY, btree (network_address_group_key, network_address)
+Foreign-key constraints:
+    "wh_network_address_dimension_fkey" FOREIGN KEY (network_address) REFERENCES wh_network_address_dimension(address) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_network_address_group_fkey" FOREIGN KEY (network_address_group_key) REFERENCES wh_network_address_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+          Index "public.wh_network_address_group_membership_pkey"
+          Column           |    Type     | Key? |        Definition         
+---------------------------+-------------+------+---------------------------
+ network_address_group_key | wh_dim_key  | yes  | network_address_group_key
+ network_address           | wh_dim_text | yes  | network_address
+primary key, btree, for table "public.wh_network_address_group_membership"
+
+Index "public.wh_network_address_group_pkey"
+ Column |    Type    | Key? | Definition 
+--------+------------+------+------------
+ key    | wh_dim_key | yes  | key
+primary key, btree, for table "public.wh_network_address_group"
+
+                                   Table "public.wh_session_accumulating_fact"
+           Column            |         Type         | Collation | Nullable |               Default                
+-----------------------------+----------------------+-----------+----------+--------------------------------------
+ session_id                  | wt_public_id         |           | not null | 
+ auth_token_id               | wt_public_id         |           | not null | 
+ host_key                    | wh_dim_key           |           | not null | 
+ user_key                    | wh_dim_key           |           | not null | 
+ session_pending_date_key    | integer              |           | not null | 
+ session_pending_time_key    | integer              |           | not null | 
+ session_pending_time        | wh_timestamp         |           |          | 
+ session_active_date_key     | integer              |           | not null | '-1'::integer
+ session_active_time_key     | integer              |           | not null | '-1'::integer
+ session_active_time         | wh_timestamp         |           |          | 'infinity'::timestamp with time zone
+ session_canceling_date_key  | integer              |           | not null | '-1'::integer
+ session_canceling_time_key  | integer              |           | not null | '-1'::integer
+ session_canceling_time      | wh_timestamp         |           |          | 'infinity'::timestamp with time zone
+ session_terminated_date_key | integer              |           | not null | '-1'::integer
+ session_terminated_time_key | integer              |           | not null | '-1'::integer
+ session_terminated_time     | wh_timestamp         |           |          | 'infinity'::timestamp with time zone
+ total_connection_count      | bigint               |           |          | 
+ total_bytes_up              | wh_bytes_transmitted |           |          | 
+ total_bytes_down            | wh_bytes_transmitted |           |          | 
+ credential_group_key        | wh_dim_key           |           | not null | 
+Indexes:
+    "wh_session_accumulating_fact_pkey" PRIMARY KEY, btree (session_id)
+    "wh_session_accumulating_fact_session_pending_time_idx" btree (session_pending_time)
+Foreign-key constraints:
+    "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_session_active_date_key_fkey" FOREIGN KEY (session_active_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_session_canceling_date_key_fkey" FOREIGN KEY (session_canceling_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_session_pending_date_key_fkey" FOREIGN KEY (session_pending_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_session_terminated_date_key_fkey" FOREIGN KEY (session_terminated_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_host_dimension_host_key_fkey" FOREIGN KEY (host_key) REFERENCES wh_host_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_session_active_time_key_fkey" FOREIGN KEY (session_active_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_session_canceling_time_key_fkey" FOREIGN KEY (session_canceling_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_session_pending_time_key_fkey" FOREIGN KEY (session_pending_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_session_terminated_time_key_fkey" FOREIGN KEY (session_terminated_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_user_dimension_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+Referenced by:
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_session_accumulating_fact_session_id_fkey" FOREIGN KEY (session_id) REFERENCES wh_session_accumulating_fact(session_id) ON UPDATE CASCADE ON DELETE CASCADE
+
+Index "public.wh_session_accumulating_fact_pkey"
+   Column   |     Type     | Key? | Definition 
+------------+--------------+------+------------
+ session_id | wt_public_id | yes  | session_id
+primary key, btree, for table "public.wh_session_accumulating_fact"
+
+Index "public.wh_session_accumulating_fact_session_pending_time_idx"
+        Column        |     Type     | Key? |      Definition      
+----------------------+--------------+------+----------------------
+ session_pending_time | wh_timestamp | yes  | session_pending_time
+btree, for table "public.wh_session_accumulating_fact"
+
+                               Table "public.wh_session_connection_accumulating_fact"
+             Column             |         Type         | Collation | Nullable |               Default                
+--------------------------------+----------------------+-----------+----------+--------------------------------------
+ connection_id                  | wt_public_id         |           | not null | 
+ session_id                     | wt_public_id         |           | not null | 
+ host_key                       | wh_dim_key           |           | not null | 
+ user_key                       | wh_dim_key           |           | not null | 
+ connection_authorized_date_key | integer              |           | not null | 
+ connection_authorized_time_key | integer              |           | not null | 
+ connection_authorized_time     | wh_timestamp         |           |          | 
+ connection_connected_date_key  | integer              |           | not null | '-1'::integer
+ connection_connected_time_key  | integer              |           | not null | '-1'::integer
+ connection_connected_time      | wh_timestamp         |           |          | 'infinity'::timestamp with time zone
+ connection_closed_date_key     | integer              |           | not null | '-1'::integer
+ connection_closed_time_key     | integer              |           | not null | '-1'::integer
+ connection_closed_time         | wh_timestamp         |           |          | 'infinity'::timestamp with time zone
+ client_tcp_address             | inet                 |           |          | 
+ client_tcp_port_number         | wh_inet_port         |           |          | 
+ endpoint_tcp_address           | inet                 |           |          | 
+ endpoint_tcp_port_number       | wh_inet_port         |           |          | 
+ connection_count               | smallint             |           | not null | 1
+ bytes_up                       | wh_bytes_transmitted |           |          | 
+ bytes_down                     | wh_bytes_transmitted |           |          | 
+ credential_group_key           | wh_dim_key           |           | not null | 
+Indexes:
+    "wh_session_connection_accumulating_fact_pkey" PRIMARY KEY, btree (connection_id)
+    "wh_session_connection_accumulating_fact_session_id_idx" btree (session_id)
+Check constraints:
+    "connection_count_must_be_1" CHECK (connection_count = 1)
+Foreign-key constraints:
+    "wh_credential_group_credential_group_key_fkey" FOREIGN KEY (credential_group_key) REFERENCES wh_credential_group(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_connection_authorized_date_key_fkey" FOREIGN KEY (connection_authorized_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_connection_closed_date_key_fkey" FOREIGN KEY (connection_closed_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_date_dimension_connection_connected_date_key_fkey" FOREIGN KEY (connection_connected_date_key) REFERENCES wh_date_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_host_dimension_host_key_fkey" FOREIGN KEY (host_key) REFERENCES wh_host_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_session_accumulating_fact_session_id_fkey" FOREIGN KEY (session_id) REFERENCES wh_session_accumulating_fact(session_id) ON UPDATE CASCADE ON DELETE CASCADE
+    "wh_time_of_day_dimension_connection_authorized_time_key_fkey" FOREIGN KEY (connection_authorized_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_connection_closed_time_key_fkey" FOREIGN KEY (connection_closed_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_time_of_day_dimension_connection_connected_time_key_fkey" FOREIGN KEY (connection_connected_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    "wh_user_dimension_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+Index "public.wh_session_connection_accumulating_fact_pkey"
+    Column     |     Type     | Key? |  Definition   
+---------------+--------------+------+---------------
+ connection_id | wt_public_id | yes  | connection_id
+primary key, btree, for table "public.wh_session_connection_accumulating_fact"
+
+Index "public.wh_session_connection_accumulating_fact_session_id_idx"
+   Column   |     Type     | Key? | Definition 
+------------+--------------+------+------------
+ session_id | wt_public_id | yes  | session_id
+btree, for table "public.wh_session_connection_accumulating_fact"
+
+                   Table "public.wh_time_of_day_dimension"
+       Column       |          Type          | Collation | Nullable | Default 
+--------------------+------------------------+-----------+----------+---------
+ key                | integer                |           | not null | 
+ time_no_zone       | time without time zone |           | not null | 
+ time_at_utc        | time with time zone    |           | not null | 
+ hour_of_day        | smallint               |           | not null | 
+ minute_of_hour     | smallint               |           | not null | 
+ second_of_minute   | smallint               |           | not null | 
+ display_time_24    | wh_dim_text            |           |          | 
+ display_time_12    | wh_dim_text            |           |          | 
+ meridiem_indicator | wh_dim_text            |           |          | 
+Indexes:
+    "wh_time_of_day_dimension_pkey" PRIMARY KEY, btree (key)
+Referenced by:
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_f_auth_token_approximate_last__fkey1" FOREIGN KEY (auth_token_approximate_last_access_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fac_auth_token_deleted_time_key_fkey" FOREIGN KEY (auth_token_deleted_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fact_auth_token_issued_time_key_fkey" FOREIGN KEY (auth_token_issued_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_connection_authorized_time_key_fkey" FOREIGN KEY (connection_authorized_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_connection_closed_time_key_fkey" FOREIGN KEY (connection_closed_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_connection_connected_time_key_fkey" FOREIGN KEY (connection_connected_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_session_active_time_key_fkey" FOREIGN KEY (session_active_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_session_canceling_time_key_fkey" FOREIGN KEY (session_canceling_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_session_pending_time_key_fkey" FOREIGN KEY (session_pending_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_time_of_day_dimension_session_terminated_time_key_fkey" FOREIGN KEY (session_terminated_time_key) REFERENCES wh_time_of_day_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+Index "public.wh_time_of_day_dimension_pkey"
+ Column |  Type   | Key? | Definition 
+--------+---------+------+------------
+ id     | integer | yes  | key
+primary key, btree, for table "public.wh_time_of_day_dimension"
+
+                          Table "public.wh_user_dimension"
+            Column             |     Type     | Collation | Nullable |   Default    
+-------------------------------+--------------+-----------+----------+--------------
+ key                           | wh_dim_key   |           | not null | wh_dim_key()
+ user_id                       | wt_user_id   |           | not null | 
+ user_name                     | wh_dim_text  |           |          | 
+ user_description              | wh_dim_text  |           |          | 
+ auth_account_id               | wh_public_id |           | not null | 
+ auth_account_type             | wh_dim_text  |           |          | 
+ auth_account_name             | wh_dim_text  |           |          | 
+ auth_account_description      | wh_dim_text  |           |          | 
+ auth_method_id                | wh_public_id |           | not null | 
+ auth_method_type              | wh_dim_text  |           |          | 
+ auth_method_name              | wh_dim_text  |           |          | 
+ auth_method_description       | wh_dim_text  |           |          | 
+ user_organization_id          | wt_scope_id  |           | not null | 
+ user_organization_name        | wh_dim_text  |           |          | 
+ user_organization_description | wh_dim_text  |           |          | 
+ current_row_indicator         | wh_dim_text  |           |          | 
+ row_effective_time            | wh_timestamp |           |          | 
+ row_expiration_time           | wh_timestamp |           |          | 
+ auth_method_external_id       | wh_dim_text  |           |          | 
+ auth_account_external_id      | wh_dim_text  |           |          | 
+ auth_account_full_name        | wh_dim_text  |           |          | 
+ auth_account_email            | wh_dim_text  |           |          | 
+Indexes:
+    "wh_user_dimension_pkey" PRIMARY KEY, btree (key)
+Referenced by:
+    TABLE "wh_auth_token_accumulating_fact" CONSTRAINT "wh_auth_token_accumulating_fact_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_accumulating_fact" CONSTRAINT "wh_user_dimension_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE "wh_session_connection_accumulating_fact" CONSTRAINT "wh_user_dimension_user_key_fkey" FOREIGN KEY (user_key) REFERENCES wh_user_dimension(key) ON UPDATE CASCADE ON DELETE RESTRICT
+
+  Index "public.wh_user_dimension_pkey"
+ Column |    Type    | Key? | Definition 
+--------+------------+------+------------
+ id     | wh_dim_key | yes  | key
+primary key, btree, for table "public.wh_user_dimension"
+
