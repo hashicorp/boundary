@@ -410,7 +410,7 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 }
 
 // setupCassandraAuthAndUser enables authentication on a Cassandra container and creates a user with permissions.
-func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config CassandraConfig) error {
+func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *CassandraConfig) error {
 	t.Helper()
 	t.Log("Configuring Cassandra authentication and user permissions...")
 
@@ -426,7 +426,6 @@ func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool
 		return fmt.Errorf("cassandra did not become ready: %w", err)
 	}
 
-	// Create keyspace
 	t.Logf("Initializing Cassandra keyspace: %s...", config.Keyspace)
 	createKeyspaceCmd := fmt.Sprintf(
 		"CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};",
