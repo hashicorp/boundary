@@ -477,6 +477,14 @@ func (c *Command) Run(args []string) (retCode int) {
 		// connecting directly to the port and address we report to them here.
 
 		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
+		if proxyAddr == "" {
+			if err := proxyError.Load(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error starting proxy: %w", err))
+				return base.CommandCliError
+			}
+			c.PrintCliError(fmt.Errorf("Error starting proxy: no address returned"))
+			return base.CommandCliError
+		}
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
 		if err != nil && !errors.Is(err, util.ErrMissingPort) {
