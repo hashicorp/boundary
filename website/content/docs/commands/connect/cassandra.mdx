@@ -8,9 +8,10 @@ description: >-
 # connect cassandra
 
 Command: `boundary connect cassandra`
-
 The `connect cassandra` command authorizes a session against a target and invokes a Cassandra client for the connection.
 The command fills in the local address and port.
+
+> **Note:** Currently, only configurations using `PasswordAuthenticator` are supported.
 
 @include 'cmd-connect-env-vars.mdx'
 
