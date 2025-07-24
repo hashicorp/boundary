@@ -387,6 +387,18 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	})
 	require.NoError(t, err)
 
+	// Cassandra container takes a while to start due to the gossip protocol needing to settle and establish connections.
+	// This relies on the pool's extended maxWait time to ensure the container is healthy.
+	err = pool.Retry(func() error {
+		cmd := exec.Command("docker", "exec", config.NetworkAlias, "cqlsh", "-e", "SELECT now() FROM system.local;")
+		output, cmdErr := cmd.CombinedOutput()
+		if cmdErr != nil {
+			return fmt.Errorf("failed to connect to Cassandra container '%s': %v\nOutput: %s", config.NetworkAlias, cmdErr, string(output))
+		}
+		return nil
+	})
+	require.NoError(t, err, "Cassandra container did not start in time or is not healthy")
+
 	err = setupCassandraAuthAndUser(t, resource, pool, &config)
 	require.NoError(t, err)
 
@@ -413,17 +425,6 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *CassandraConfig) error {
 	t.Helper()
 	t.Log("Configuring Cassandra authentication and user permissions...")
-
-	if err := pool.Retry(func() error {
-		cmd := exec.Command("docker", "exec", config.NetworkAlias, "cqlsh", "-e", "SELECT now() FROM system.local;")
-		output, cmdErr := cmd.CombinedOutput()
-		if cmdErr != nil {
-			return fmt.Errorf("failed to connect to Cassandra container '%s': %v\nOutput: %s", config.NetworkAlias, cmdErr, string(output))
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("cassandra did not become ready: %w", err)
-	}
 
 	t.Logf("Initializing Cassandra keyspace: %s...", config.Keyspace)
 	createKeyspaceCmd := fmt.Sprintf(
