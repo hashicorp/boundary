@@ -1285,7 +1285,7 @@ func (*Credential_JsonAttributes) isCredential_Attrs() {}
 type UsernamePasswordCredentialAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: class:"sensitive"
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: class:"public"
 	// The hmac value of the password.
 	PasswordHmac  string `protobuf:"bytes,2,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields

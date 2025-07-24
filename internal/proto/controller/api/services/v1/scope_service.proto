@@ -20,8 +20,8 @@ service ScopeService {
       "It creates a hierarchical structure that lets you organize your resources and manage access control within Boundary. "
       "The scope service provides endpoints to let you manage scopes in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes";
-      description: "Read about scopes in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes"
+      description: "Read about scopes in the Boundary domain model"
     }
   };
 

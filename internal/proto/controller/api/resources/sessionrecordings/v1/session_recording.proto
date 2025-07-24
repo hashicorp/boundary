@@ -314,7 +314,7 @@ message Credential {
 // The attributes of a UsernamePassword Credential.
 message UsernamePasswordCredentialAttributes {
   // The username associated with the credential.
-  string username = 1; // @gotags: class:"sensitive"
+  string username = 1; // @gotags: class:"public"
 
   // The hmac value of the password.
   string password_hmac = 2; // @gotags: class:"public"
