@@ -38,6 +38,7 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
+	require.NoError(t, err)
 
 	// Connect to target with client port 3333
 	const ListenPort = "3333"
@@ -99,6 +100,7 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 		target.WithDefaultClientPort(DefaultClientPort),
 	)
+	require.NoError(t, err)
 
 	// Connect to target with DefaultClientPort set
 	ctxCancel, cancel := context.WithCancel(ctx)
