@@ -408,7 +408,7 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     You may have redundant grant scopes if you applied a grant to a scope and the scope also inherited the grant from the <code>this</code>, <code>children</code>, or <code>descendants</code> options. Redundant grant scopes could cause performance issues. As of Boundary version 0.19.3, redundant grant scopes are no longer permitted.
     <br /><br />
-    When you run the <code>boundary database migrate</code> command to upgrade a Boundary Enterprise or Community edition cluster to version 0.19.3 or higher, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
+    When you run the <code>boundary database migrate</code> command to upgrade a Boundary Enterprise or Community edition cluster to version 0.19.3 or later, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
     <br /><br />
     <code>boundary database migrate -repair=oss:97001</code>
     <br /><br />
