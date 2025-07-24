@@ -387,7 +387,7 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	})
 	require.NoError(t, err)
 
-	err = setupCassandraAuthAndUser(t, resource, pool, config)
+	err = setupCassandraAuthAndUser(t, resource, pool, &config)
 	require.NoError(t, err)
 
 	return &Container{
@@ -414,7 +414,6 @@ func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool
 	t.Helper()
 	t.Log("Configuring Cassandra authentication and user permissions...")
 
-	// Wait for Cassandra to be up
 	if err := pool.Retry(func() error {
 		cmd := exec.Command("docker", "exec", config.NetworkAlias, "cqlsh", "-e", "SELECT now() FROM system.local;")
 		output, cmdErr := cmd.CombinedOutput()
@@ -435,7 +434,7 @@ func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool
 		return err
 	}
 
-	// Enable authentication and authorization
+	// Commands to enable authentication and authorization by editing cassandra.yaml
 	sedCmd := []string{
 		"sed", "-i",
 		"-e", "s/^authenticator:.*/authenticator: PasswordAuthenticator/",
@@ -447,7 +446,6 @@ func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool
 		return err
 	}
 
-	// Restart container to apply changes
 	if err := pool.Client.RestartContainer(resource.Container.ID, uint(pool.MaxWait.Seconds())); err != nil {
 		return err
 	}
