@@ -79,7 +79,7 @@ func (m *cassandraFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.C
 		if c.flagDbname != "" {
 			args = append(args, "-k", c.flagDbname)
 		} else {
-			c.UI.Warn("Credentials are being brokered but no -keystore parameter provided. cqlsh may misinterpret another parameter as the keystore name.")
+			c.UI.Warn("Credentials are being brokered but no -keyspace parameter provided. cqlsh may misinterpret another parameter as the keyspace name.")
 		}
 
 		if password != "" {
