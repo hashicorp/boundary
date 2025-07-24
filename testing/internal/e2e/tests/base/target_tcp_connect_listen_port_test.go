@@ -5,7 +5,6 @@ package base_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,14 +38,6 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
-	require.NoError(t, err)
-	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
-	require.NoError(t, err)
-	credentialId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
-	require.NoError(t, err)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
-	require.NoError(t, err)
-	t.Log("Successfully attached brokered credentials")
 
 	// Connect to target with client port 3333
 	const ListenPort = "3333"
@@ -67,7 +58,7 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
-	t.Log(fmt.Sprintf("Successfully connected to target with listen port %s", ListenPort))
+	t.Logf("Successfully connected to target with listen port %s", ListenPort)
 
 	t.Logf("Starting new connection to target with same listen port %s", ListenPort)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -78,9 +69,9 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 		),
 	)
 
-	const commandCliError = 2
+	require.Error(t, output.Err, "Expected error when connecting to target with same listen port")
 	require.Contains(t, string(output.Stderr), "address already in use")
-	require.Equal(t, commandCliError, output.ExitCode)
+	require.Equal(t, 2, output.ExitCode)
 }
 
 // TestCliTcpTargetConnectDefaultClientPort uses the boundary cli to create a target and
@@ -108,14 +99,6 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 		target.WithDefaultClientPort(DefaultClientPort),
 	)
-	require.NoError(t, err)
-	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
-	require.NoError(t, err)
-	credentialId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
-	require.NoError(t, err)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
-	require.NoError(t, err)
-	t.Log("Successfully attached brokered credentials")
 
 	// Connect to target with DefaultClientPort set
 	ctxCancel, cancel := context.WithCancel(ctx)
@@ -133,7 +116,7 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
-	t.Log(fmt.Sprintf("Successfully connected to target with client port %d", DefaultClientPort))
+	t.Logf("Successfully connected to target with client port %d", DefaultClientPort)
 
 	t.Logf("Starting new connection to target on client port %d", DefaultClientPort)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -143,7 +126,7 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 		),
 	)
 
-	const commandCliError = 2
+	require.Error(t, output.Err, "Expected error when connecting to target with same listen port")
 	require.Contains(t, string(output.Stderr), "address already in use")
-	require.Equal(t, commandCliError, output.ExitCode)
+	require.Equal(t, 2, output.ExitCode)
 }
