@@ -86,9 +86,11 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     You may have redundant grant scopes if you applied a grant to a scope and the scope also inherited the grant from the <code>this</code>, <code>children</code>, or <code>descendants</code> options. As of Boundary version 0.19.3, redundant grant scopes are no longer permitted.
     <br /><br />
-    When you upgrade a cluster to Boundary version 0.19.3, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides a command that automatically removes any redundant grant scopes so that you can proceed with the upgrade.
+    When you upgrade a Boundary Enterprise or Community edition cluster to version 0.19.3 or later, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides a command that automatically removes any redundant grant scopes so that you can proceed with the upgrade.
     <br /><br />
-    Learn more about removing redundant grant scopes and upgrading to version 0.19.3:&nbsp; <a href="#redundant-grants">Known issues and breaking changes </a>
+    For HCP Boundary users, the redundant grant scopes are automatically removed as part of the migration process.
+    <br /><br />
+    Learn more about removing redundant grant scopes and upgrading to version 0.19.3 or later:&nbsp; <a href="#redundant-grants">Known issues and breaking changes </a>
     </td>
   </tr>
 
@@ -406,11 +408,13 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     You may have redundant grant scopes if you applied a grant to a scope and the scope also inherited the grant from the <code>this</code>, <code>children</code>, or <code>descendants</code> options. Redundant grant scopes could cause performance issues. As of Boundary version 0.19.3, redundant grant scopes are no longer permitted.
     <br /><br />
-    When you run the <code>boundary database migrate</code> command to upgrade a cluster to Boundary version 0.19.3, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
+    When you run the <code>boundary database migrate</code> command to upgrade a Boundary Enterprise or Community edition cluster to version 0.19.3 or later, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
     <br /><br />
     <code>boundary database migrate -repair=oss:97001</code>
     <br /><br />
     Run the command to remove any redundant grant scopes from roles. Any individually granted scopes that are already covered by <code>descendants</code> or <code>children</code> grants are considered invalid and removed. When the migration is complete, the migration tool produces a message that details any changes.
+    <br /><br />
+    HCP Boundary automatically removes the redudant grant scopes as part of the upgrade process. No further action is required.
     <br /><br />
     Learn more:
       <ul>
