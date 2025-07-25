@@ -11,7 +11,7 @@ Command: `boundary connect cassandra`
 The `connect cassandra` command authorizes a session against a target and invokes a Cassandra client for the connection.
 The command fills in the local address and port.
 
-> **Note:** Currently, only configurations using `PasswordAuthenticator` are supported.
+> **Note:** Currently, only configurations using Cassandra's `PasswordAuthenticator` are supported.
 
 @include 'cmd-connect-env-vars.mdx'
 
@@ -20,7 +20,7 @@ The command fills in the local address and port.
 
 The following example shows how to connect to a target with the ID `ttcp_eTcZMueUYv` using a Cassandra helper:
 
-``shell-session
+```shell-session
 $ boundary connect cassandra -target-id=ttcp_eTcZMueUYv \
     -keyspace=mykeyspace \
     -username=superuser

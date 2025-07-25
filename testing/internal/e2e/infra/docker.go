@@ -27,8 +27,8 @@ type Container struct {
 	UriNetwork   string
 }
 
-// CassandraConfig stores configuration details for the Cassandra container
-type CassandraConfig struct {
+// cassandraConfig stores configuration details for the Cassandra container
+type cassandraConfig struct {
 	User         string
 	Password     string
 	Keyspace     string
@@ -367,7 +367,7 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	}, docker.AuthConfiguration{})
 	require.NoError(t, err)
 
-	config := CassandraConfig{
+	config := cassandraConfig{
 		User:         "e2eboundary",
 		Password:     "e2eboundary",
 		Keyspace:     "e2eboundarykeyspace",
@@ -422,7 +422,7 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 }
 
 // setupCassandraAuthAndUser enables authentication on a Cassandra container and creates a user with permissions.
-func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *CassandraConfig) error {
+func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *cassandraConfig) error {
 	t.Helper()
 	t.Log("Configuring Cassandra authentication and user permissions...")
 

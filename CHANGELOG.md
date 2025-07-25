@@ -15,7 +15,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
   This new helper command allows users to authorize sessions against Cassandra 
   targets and automatically invoke a Cassandra client with the appropriate 
-  connection parameters and credentials. Currently only supports `PasswordAuthenticator`.
+  connection parameters and credentials. Currently only username/password credentials are automatically attached.
 
 ### Deprecations/Changes
 
