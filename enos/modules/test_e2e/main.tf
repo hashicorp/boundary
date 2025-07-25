@@ -156,6 +156,46 @@ variable "boundary_license" {
   type    = string
   default = ""
 }
+variable "target_rdp_user" {
+  description = "RDP username for target"
+  type        = string
+  default     = "Administrator"
+}
+variable "target_rdp_password" {
+  description = "RDP password for target"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_address" {
+  description = "Address of target for RDP"
+  type        = string
+  default     = ""
+}
+variable "client_ip_public" {
+  description = "Public IP of the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_username" {
+  description = "Username for the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_password" {
+  description = "Password for the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_ssh_key" {
+  description = "SSH key for the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_test_dir" {
+  description = "Directory on the client machine where tests will be run"
+  type        = string
+  default     = ""
+}
 
 variable "ip_version" {
   description = "ip version used to setup boundary instance, should be 4, 6, or dual"
@@ -207,6 +247,14 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_WORKER_ADDRESS            = var.worker_address
     E2E_MAX_PAGE_SIZE             = var.max_page_size
     E2E_IP_VERSION                = var.ip_version
+    E2E_TARGET_RDP_USER           = var.target_rdp_user
+    E2E_TARGET_RDP_PASSWORD       = var.target_rdp_password
+    E2E_TARGET_RDP_ADDRESS        = var.target_rdp_address
+    E2E_CLIENT_IP_PUBLIC          = var.client_ip_public
+    E2E_CLIENT_USERNAME           = var.client_username
+    E2E_CLIENT_PASSWORD           = var.client_password
+    E2E_CLIENT_SSH_KEY            = var.client_ssh_key
+    E2E_CLIENT_TEST_DIR           = var.client_test_dir
   }
 
   inline = var.debug_no_run ? [""] : [

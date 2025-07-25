@@ -119,6 +119,10 @@ module "aws_target" {
   enos_user    = var.enos_user
 }
 
+module "aws_client_windows" {
+  source = "./modules/aws_client_windows"
+}
+
 module "vault" {
   source = "./modules/aws_vault"
 
