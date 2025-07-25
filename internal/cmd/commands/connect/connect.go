@@ -434,6 +434,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
 		return base.CommandCliError
 	}
+
 	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
@@ -458,7 +459,10 @@ func (c *Command) Run(args []string) (retCode int) {
 	proxyError := new(atomic.Error)
 	go func() {
 		defer close(clientProxyCloseCh)
-		proxyError.Store(clientProxy.Start())
+		if err = clientProxy.Start(); err != nil {
+			c.proxyCancel()
+			proxyError.Store(err)
+		}
 	}()
 	go func() {
 		defer close(connCountCloseCh)
@@ -482,7 +486,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		proxyAddr := clientProxy.ListenerAddress(context.Background())
+		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
+		if proxyAddr == "" {
+			if err := proxyError.Load(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error starting proxy: %w", err))
+				return base.CommandCliError
+			}
+			c.PrintCliError(fmt.Errorf("Error starting proxy: no address returned"))
+			return base.CommandCliError
+		}
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
 		if err != nil && !errors.Is(err, util.ErrMissingPort) {
