@@ -1,0 +1,69 @@
+---
+layout: docs
+page_title: connect cassandra - Command
+description: >-
+  The "connect cassandra" command performs a target authorization or consumes an existing authorization token, and then launches a proxied Cassandra (CQL) connection.
+---
+
+# connect cassandra
+
+Command: `boundary connect cassandra`
+The `connect cassandra` command authorizes a session against a target and invokes a Cassandra client for the connection.
+The command fills in the local address and port.
+
+> **Note:** Currently, only configurations using Cassandra's `PasswordAuthenticator` are supported.
+
+@include 'cmd-connect-env-vars.mdx'
+
+
+## Examples
+
+The following example shows how to connect to a target with the ID `ttcp_eTcZMueUYv` using a Cassandra helper:
+
+```shell-session
+$ boundary connect cassandra -target-id=ttcp_eTcZMueUYv \
+    -keyspace=mykeyspace \
+    -username=superuser
+```
+
+When prompted, you must enter the password for the user, "superuser":
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Password:
+Connected to example-cluster at localhost:9042
+[cqlsh 6.2.0 | Cassandra 5.0.4 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+superuser@cqlsh:mykeyspace>
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect cassandra [options] [args]
+```
+
+</CodeBlockConfig>
+
+@include 'cmd-connect-command-options.mdx'
+
+### Cassandra options:
+
+- `-keyspace` `(string: "")` - The keyspace name you want to pass through to the client.
+You can also specify the keyspace name using the **BOUNDARY_CONNECT_KEYSPACE** environment variable.
+
+- `-style`  `(string: "")` - How the CLI attempts to invoke a Cassandra client.
+This value also sets a suitable default for `-exec`, if you did not specify a value.
+The default and currently-understood value is `cqlsh`.
+You can also specify how the CLI attempts to invoke a Cassandra client using the **BOUNDARY_CONNECT_CASSANDRA_STYLE** environment variable.
+
+- `-username`  `(string: "")` - The username you want to pass through to the client.
+This value may be overridden by credentials sourced from a credential store.
+You can also specify a username using the **BOUNDARY_CONNECT_USERNAME** environment variable.
+
+@include 'cmd-option-note.mdx' 
