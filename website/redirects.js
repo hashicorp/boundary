@@ -18,8 +18,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/use-cases',
-    destination: '/boundary/docs/overview/use-cases',
+    source: '/boundary/docs/concepts/index',
+    destination: '/boundary/docs/what-is-boundary',
     permanent: true,
   },
   {
@@ -28,13 +28,38 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/overview/vs/bastion-hosts',
-    destination: '/boundary/docs/overview/bastion-hosts',
+    source: '/boundary/docs/oss',
+    destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/community',
+    destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/use-cases',
+    destination: '/boundary/docs/overview/use-cases',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/other-software',
     destination: '/boundary/docs/overview/use-cases',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/zero-trust',
+    destination: '/boundary/dos/overview/zero-trust',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/bastion-hosts',
+    destination: '/boundary/docs/overview/bastion-hosts',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/vpn',
+    destination: '/boundary/docs/overview/vpn',
     permanent: true,
   },
   {
@@ -53,27 +78,77 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/overview/vs/vpn',
-    destination: '/boundary/docs/overview/vpn',
+    source: '/boundary/docs/troubleshoot/faq',
+    destination: '/boundary/docs/overview/faq',
     permanent: true,
   },
   {
-    source: '/boundary/docs/overview/vs/zero-trust',
-    destination: '/boundary/dos/overview/zero-trust',
+    source: '/boundary/docs/getting-started/installing',
+    destination: '/boundary/docs/getting-started',
     permanent: true,
   },
   {
-    source: '/boundary/docs/getting-started/connect-to-target',
-    destination: '/boundary/docs/hcp/get-started/connect-to-target',
+    source: '/boundary/docs/getting-started/installing/production',
+    destination: '/boundary/docs/getting-started',
     permanent: true,
   },
   {
-    source: '/boundary/docs/getting-started/deploy-and-login',
-    destination: '/boundary/docs/hcp/get-started/deploy-and-login',
+    source: '/boundary/docs/oss/installing/dev-mode',
+    destination: '/boundary/docs/getting-started/dev-mode/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/run-and-login',
+    destination: '/boundary/docs/getting-started/dev-mode/run-and-login',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/connect-to-dev-target',
+    destination: '/boundary/docs/getting-started/dev-mode/connect-to-dev-target',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/architecture/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/postgres',
+    destination: '/boundary/docs/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/postgres',
+    destination: '/boundary/docs/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/architecture/recommended-architecture',
+    destination: '/boundary/docs/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/reference-architectures',
+    destination: '/boundary/docs/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/recommended-architecture',
+    destination: '/boundary/docs/architecture/recommended-architecture',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/architecture/fault-tolerance',
+    destination: '/boundary/docs/architecture/fault-tolerance',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/fault-tolerance',
     destination: '/boundary/docs/architecture/fault-tolerance',
     permanent: true,
   },
@@ -83,13 +158,18 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/install-boundary/architecture/recommended-architecture',
-    destination: '/boundary/docs/architecture/recommended-architecture',
+    source: '/boundary/docs/oss/installing/high-availability',
+    destination: '/boundary/docs/architecture/high-availability',
     permanent: true,
   },
   {
-    source: '/boundary/docs/install-boundary/architecture/system-requirements',
-    destination: '/boundary/docs/architecture/system-requirements',
+    source: '/boundary/docs/install-boundary/high-availability',
+    destination: '/boundary/docs/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary',
+    destination: '/boundary/docs/deploy/self-managed',
     permanent: true,
   },
   {
@@ -100,6 +180,21 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/self-managed/index',
     destination: '/boundary/docs/deploy/self-managed/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/install',
+    destination: '/boundary/docs/deploy/self-managed/install',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/deploy',
+    destination: '/boundary/docs/deploy/self-managed/install',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
   },
   {
@@ -123,16 +218,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/install-boundary/deploy',
-    destination: '/boundary/docs/deploy/self-managed/install',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/self-managed/deploy',
-    destination: '/boundary/docs/deploy/self-managed/install',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/install-boundary/initialize',
     destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
@@ -140,6 +225,16 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/self-managed/initialize',
     destination: '/boundary/docs/deploy/self-manaaged/initialize',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/no-gen-resources',
+    destination: '/boundary/docs/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
   },
   {
@@ -160,6 +255,26 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/self-managed/systemd',
     destination: '/boundary/docs/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/systemd',
+    destination: '/boundary/docs/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing',
+    destination: '/boundary/docs/deploy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/getting-started/connect-to-target',
+    destination: '/boundary/docs/hcp/get-started/connect-to-target',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/getting-started/deploy-and-login',
+    destination: '/boundary/docs/hcp/get-started/deploy-and-login',
     permanent: true,
   },
   {
@@ -208,16 +323,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/getting-started/installing',
-    destination: '/boundary/docs/getting-started',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/getting-started/installing/production',
-    destination: '/boundary/docs/getting-started',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/oss/developing/building',
     destination: '/boundary/docs/developing/building',
     permanent: true,
@@ -233,24 +338,28 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/oss/installing/connect-to-dev-target',
-    destination:
-      '/boundary/docs/getting-started/dev-mode/connect-to-dev-target',
+    source: '/boundary/docs/concepts/security/data-encryption',
+    destination: '/boundary/docs/secure/encryption/data-encryption',
     permanent: true,
   },
   {
-    source: '/boundary/docs/oss/installing/dev-mode',
-    destination: '/boundary/docs/getting-started/dev-mode/index',
+    source: '/boundary/docs/concepts/security',
+    destination: '/boundary/docs/secure/encryption/data-encryption',
     permanent: true,
   },
   {
-    source: '/boundary/docs/oss/installing/run-and-login',
-    destination: '/boundary/docs/getting-started/dev-mode/run-and-login',
+    source: '/boundary/docs/security/encryption/data-encryption',
+    destination: '/boundary/docs/secure/encryption/data-encryption',
     permanent: true,
   },
   {
-    source: '/boundary/docs/oss/operations/health',
-    destination: '/boundary/docs/monitor/health',
+    source: '/boundary/docs/concepts/security/connections-tls',
+    destination: '/boundary/docs/secure/encryption/connections-tls',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/encryption/connections-tls',
+    destination: '/boundary/docs/secure/encryption/connections-tls',
     permanent: true,
   },
   {
@@ -259,127 +368,28 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/oss/operations/metrics',
-    destination: '/boundary/docs/monitor/metrics',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/install',
-    destination: '/boundary/docs/deploy/self-managed/install',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/fault-tolerance',
-    destination: '/boundary/docs/architecture/fault-tolerance',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing/high-availability',
-    destination: '/boundary/docs/architecture/high-availability',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/high-availability',
-    destination: '/boundary/docs/architecture/high-availability',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing',
-    destination: '/boundary/docs/deploy',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing/no-gen-resources',
-    destination: '/boundary/docs/deploy/self-managed/initialize',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/no-gen-resources',
-    destination: '/boundary/docs/deploy/self-managed/initialize',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing/postgres',
-    destination: '/boundary/docs/architecture/system-requirements',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/postgres',
-    destination: '/boundary/docs/architecture/system-requirements',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/system-requirements',
-    destination: '/boundary/docs/architecture/system-requirements',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing/reference-architectures',
-    destination: '/boundary/docs/architecture/recommended-architecture',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/recommended-architecture',
-    destination: '/boundary/docs/architecture/recommended-architecture',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss/installing/systemd',
-    destination: '/boundary/docs/deploy/self-managed/systemd',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/oss',
-    destination: '/boundary/docs/what-is-boundary',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/community',
-    destination: '/boundary/docs/what-is-boundary',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/data-encryption',
-    destination: '/boundary/docs/secure/encrypt/data-encryption',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/connections-tls',
-    destination: '/boundary/docs/secure/encrypt/connections-tls',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/filtering/worker-tags',
-    destination: '/boundary/docs/workers/worker-tags',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/security/encryption/connections-tls',
-    destination: '/boundary/docs/secure/encrypt/connections-tls',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/security/encryption/data-encryption',
-    destination: '/boundary/docs/secure/encrypt/data-encryption',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/security/worker-tags',
-    destination: '/boundary/docs/workers/worker-tags',
-  },
-  {
-    source: '/boundary/docs/concepts/service-discovery',
-    destination: '/boundary/docs/hosts',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/operations',
     destination: '/boundary/docs/monitor',
     permanent: true,
   },
   {
-    source: '/boundary/docs/operations/manage-recorded-sessions',
-    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
+    source: '/boundary/docs/configuration/listener',
+    destination: '/boundary/docs/monitor/listeners',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/listener/tcp',
+    destination: '/boundary/docs/monitor/listeners/tcp',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/listener/unix',
+    destination: '/boundary/docs/monitor/listeners/unix',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/operations/metrics',
+    destination: '/boundary/docs/monitor/metrics',
     permanent: true,
   },
   {
@@ -393,9 +403,43 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
-    destination:
-      '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
+    source: '/boundary/docs/oss/operations/health',
+    destination: '/boundary/docs/monitor/health',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events',
+    destination: '/boundary/docs/monitor/events/events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/events',
+    destination: '/boundary/docs/monitor/events/filter-events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events/common',
+    destination: '/boundary/docs/monitor/events/common',
+    permanent: true,
+  },
+  {
+    source: '/boundayr/docs/configuration/events/file',
+    destination: '/boundary/docs/monitor/events/file',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events/stderr',
+    destination: '/boundary/docs/monitor/events/stderr',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/release-notes/index',
+    destination: '/boundary/docs',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/release-notes',
+    destination: '/boundary/docs',
     permanent: true,
   },
   {
@@ -414,23 +458,28 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/configuration/events',
-    destination: '/boundary/docs/monitor/events',
+    source: '/boundary/docs/concepts/filtering/worker-tags',
+    destination: '/boundary/docs/workers/worker-tags',
     permanent: true,
   },
   {
-    source: '/boundary/docs/configuration/events/common',
-    destination: '/boundary/docs/monitor/events/common',
+    source: '/boundary/docs/security/worker-tags',
+    destination: '/boundary/docs/workers/worker-tags',
+  },
+  {
+    source: '/boundary/docs/concepts/service-discovery',
+    destination: '/boundary/docs/hosts',
     permanent: true,
   },
   {
-    source: '/boundayr/docs/configuration/events/file',
-    destination: '/boundary/docs/monitor/events/file',
+    source: '/boundary/docs/operations/manage-recorded-sessions',
+    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
     permanent: true,
   },
   {
-    source: '/boundary/docs/configuration/events/stderr',
-    destination: '/boundary/docs/monitor/events/stderr',
+    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
+    destination:
+      '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
     permanent: true,
   },
   {
@@ -714,11 +763,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/index',
-    destination: '/boundary/docs/what-is-boundary',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,
@@ -736,21 +780,6 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/worker/pki-worker',
     destination: '/boundary/docs/configuration/worker/worker-configuration',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/configuration/listener',
-    destination: '/boundary/docs/monitor/listeners',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/configuration/listener/tcp',
-    destination: '/boundary/docs/monitor/listeners/tcp',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/configuration/listener/unix',
-    destination: '/boundary/docs/monitor/listeners/unix',
     permanent: true,
   },
   {
@@ -780,7 +809,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/security/permissions',
-    destination: '/boundary/docs/configuration/identity-access-management',
+    destination: '/boundary/docs/rbac',
     permanent: true,
   },
   {
@@ -894,11 +923,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/troubleshoot/faq',
-    destination: '/boundary/docs/overview/faq',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/troubleshoot/troubleshoot-recorded-sessions',
     destination: '/boundary/docs/session-recording/configuration/troubleshoot-recorded-sessions',
     permanent: true,
@@ -906,11 +930,6 @@ module.exports = [
   {
     source: '/boundary/docs/troubleshoot/common-errors',
     destination: '/boundary/docs/errors/index',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security',
-    destination: '/boundary/docs/secure/encrypt/data-encryption',
     permanent: true,
   },
   {
@@ -924,23 +943,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/filtering/events',
-    destination: '/boundary/docs/monitor/events/filter-events',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/concepts/filtering/resource-listing',
     destination: '/boundary/docs/filtering',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/release-notes/index',
-    destination: '/boundary/docs',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/release-notes',
-    destination: '/boundary/docs',
     permanent: true,
   },
 ]
