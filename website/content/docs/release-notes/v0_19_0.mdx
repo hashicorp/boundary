@@ -427,5 +427,32 @@ description: >-
     </td>
   </tr>
 
+  <tr id="redundant-grants">
+    <td style={{verticalAlign: 'middle'}}>
+    Client Agent 0.1.4 - 0.19.5
+    <br /><br />
+    (Fixed in Client Agent version 0.19.6)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Transparent session connection and DNS resolution issues
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Two known issues that affected transparent sessions were resolved with the release of the Client Agent version 0.19.6:
+    <ul>
+      <li>If you established an SSH transparent session and then canceled the connection, you may have had trouble reconnecting.</li>
+      <li>If you switched network interfaces while the Client Agent was running, you may have lost connectivity to some applications.</li>
+    </ul>
+    These issues have been resolved in Client Agent version 0.19.6, install the new version to ensure that you do not experience these connection issues.
+    <br /><br />
+    Learn more:
+      <ul>
+      <li><a href="/boundary/docs/concepts/transparent-sessions">Transparent sessions</a></li>
+      <li><a href="/boundary/docs/install-boundary/install-clients">Install Boundary clients</a></li>
+      </ul>
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+
   </tbody>
 </table>
