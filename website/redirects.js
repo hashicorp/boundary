@@ -453,8 +453,28 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/configuration/worker-configuration',
+    destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/worker/worker-configuration',
     destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/worker/kms-worker',
+    destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/worker/pki-worker',
+    destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/multi-hop',
+    destination: '/boundary/docs/workers/multi-hop',
     permanent: true,
   },
   {
@@ -463,23 +483,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/security/worker-tags',
-    destination: '/boundary/docs/workers/worker-tags',
-  },
-  {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/hosts',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/operations/manage-recorded-sessions',
-    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
-    destination:
-      '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
     permanent: true,
   },
   {
@@ -508,11 +513,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/configuration/worker-configuration',
-    destination: '/boundary/docs/workers/registration',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/configuration/target-aliases',
     destination: '/boundary/docs/targets/configuration',
     permanent: true,
@@ -530,6 +530,11 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/target-aliases/create-target-alias',
     destination: '/boundary/docs/targets/configuration/create-target-alias',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/target-aliases/transparent-sessions',
+    destination: '/boundary/docs/targets/configuration/configure-transparent-sessions',
     permanent: true,
   },
   {
@@ -553,13 +558,9 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/connection-workflows/multi-hop',
-    destination: '/boundary/docs/workers/multi-hop',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/connection-workflows/multi-hop',
-    destination: '/boundary/docs/workers/multi-hop/index',
+    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
+    destination:
+      '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
     permanent: true,
   },
   {
@@ -608,28 +609,28 @@ module.exports = [
     permanent: true
   },
   {
+    source: '/boundary/docs/operations/session-recordings',
+    destination: '/boundary/docs/session-recording',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/operations/session-recordings/index',
+    destination: '/boundary/docs/session-recording/index',
+    permanent: true
+  },
+  {
     source: '/boundary/docs/configuration/session-recording/configure-worker-storage',
     destination: '/boundary/docs/session-recording/configuration/configure-worker-storage',
     permanent: true
   },
   {
-    source: '/boundary/docs/configuration/session-recording/create-storage-bucket',
-    destination: '/boundary/docs/session-recording/configuration/create-storage-bucket',
-    permanent: true
-  },
-  {
-    source: '/boundary/docs/configuration/session-recording/enable-session-recording',
-    destination: '/boundary/docs/session-recording/configuration/enable-session-recording',
-    permanent: true
-  },
-  {
-    source: '/boundary/docs/monitor/session-recordings/manage-recorded-sessions',
-    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
-    permanent: true
-  },
-  {
     source: '/boundary/docs/configuration/session-recording/storage-providers',
     destination: '/boundary/docs/session-recording/configuration/storage-providers',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/storage-providers/configure-s3',
+    destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-s3',
     permanent: true
   },
   {
@@ -643,9 +644,24 @@ module.exports = [
     permanent: true
   },
   {
-    source: '/boundary/docs/configuration/session-recording/storage-providers/configure-s3',
-    destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-s3',
+    source: '/boundary/docs/configuration/session-recording/create-storage-bucket',
+    destination: '/boundary/docs/session-recording/configuration/create-storage-bucket',
     permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/enable-session-recording',
+    destination: '/boundary/docs/session-recording/configuration/enable-session-recording',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/operations/session-recordings/manage-recorded-sessions',
+    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/troubleshoot/troubleshoot-recorded-sessions',
+    destination: '/boundary/docs/session-recording/configuration/troubleshoot-recorded-sessions',
+    permanent: true,
   },
   {
     source: '/boundary/docs/configuration/session-recording/configure-storage-policy',
@@ -658,23 +674,18 @@ module.exports = [
     permanent: true
   },
   {
-    source: '/boundary/docs/monitor/session-recordings',
-    destination: '/boundary/docs/session-recording',
-    permanent: true
-  },
-  {
-    source: '/boundary/docs/monitor/session-recordings/index',
-    destination: '/boundary/docs/session-recording/index',
-    permanent: true
-  },
-  {
-    source: '/boundary/docs/monitor/session-recordings/validate-data-store',
+    source: '/boundary/docs/operations/session-recordings/validate-data-store',
     destination: '/boundary/docs/session-recording/compliance/validate-data-store',
     permanent: true
   },
   {
-    source: '/boundary/docs/monitor/session-recordings/validate-session-recordings',
+    source: '/boundary/docs/operations/session-recordings/validate-session-recordings',
     destination: '/boundary/docs/session-recording/compliance/validate-session-recordings',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/identity-access-management',
+    destination: '/boundary/docs/rbac',
     permanent: true
   },
   {
@@ -683,9 +694,24 @@ module.exports = [
     permanent: true
   },
   {
+    source: '/boundary/docs/concepts/security/permissions',
+    destination: '/boundary/docs/rbac',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
+    destination: '/boundary/docs/rbac/assignable-permisisons',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/identity-access-management/assignable-permissions',
     destination: '/boundary/docs/rbac/assignable-permissions',
     permanent: true
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
+    destination: '/boundary/docs/rbac/permission-grant-formats',
+    permanent: true,
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
@@ -698,6 +724,11 @@ module.exports = [
     permanent: true
   },
   {
+    source: '/boundary/docs/concepts/security/permissions/resource-table',
+    destination: '/boundary/docs/rbac/resource-table',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/identity-access-management/resource-table',
     destination: '/boundary/docs/rbac/resource-table',
     permanent: true
@@ -708,8 +739,23 @@ module.exports = [
     permanent: true
   },
   {
+    source: '/boundary/docs/concepts/filtering/oidc-managed-groups',
+    destination: '/boundary/docs/rbac/users/managed-groups',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/managed-groups',
     destination: '/boundary/docs/rbac/users/managed-groups',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/integrations',
+    destination: '/boundary/docs',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/integrations/index',
+    destination: '/boundary/docs',
     permanent: true
   },
   {
@@ -724,17 +770,17 @@ module.exports = [
   },
   {
     source: '/boundary/docs/api-clients/go-sdk',
-    destination: '/boundary/docs/go-sdk/index',
+    destination: '/boundary/docs/go-sdk',
     permanent: true
   },
   {
     source: '/boundary/docs/api-clients/client-agent',
-    destination: '/boundary/docs/client-agent/index',
+    destination: '/boundary/docs/client-agent',
     permanent: true
   },
   {
     source: '/boundary/docs/api-clients/client-cache',
-    destination: '/boundary/docs/api/client-cache',
+    destination: '/boundary/docs/client-cache',
     permanent: true
   },
   {
@@ -760,56 +806,6 @@ module.exports = [
   {
     source: '/boundary/docs/api-clients/cli',
     destination: '/boundary/docs/commands/',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/service-discovery',
-    destination: '/boundary/docs/concepts/host-discovery',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/filtering/oidc-managed-groups',
-    destination: '/boundary/docs/concepts/filtering/managed-groups',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/configuration/worker/kms-worker',
-    destination: '/boundary/docs/configuration/worker/worker-configuration',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/configuration/worker/pki-worker',
-    destination: '/boundary/docs/configuration/worker/worker-configuration',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/permissions/resource-table',
-    destination: '/boundary/docs/configuration/identity-access-management/resource-table',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
-    destination: '/boundary/docs/configuration/identity-access-management/assignable-permisisons',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
-    destination: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/target-aliases/transparent-sessions',
-    destination: '/boundary/docs/targets/connections/transparent-sessions',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/target-aliases/interoperability-matrix',
-    destination: '/boundary/docs/interoperability-matrix/index',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/security/permissions',
-    destination: '/boundary/docs/rbac',
     permanent: true,
   },
   {
@@ -923,16 +919,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/troubleshoot/troubleshoot-recorded-sessions',
-    destination: '/boundary/docs/session-recording/configuration/troubleshoot-recorded-sessions',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/troubleshoot/common-errors',
-    destination: '/boundary/docs/errors/index',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/concepts/filtering',
     destination: '/boundary/docs/filtering',
     permanent: true,
@@ -945,6 +931,16 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/filtering/resource-listing',
     destination: '/boundary/docs/filtering',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/troubleshoot/common-errors',
+    destination: '/boundary/docs/errors',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/target-aliases/interoperability-matrix',
+    destination: '/boundary/docs/interoperability-matrix/index',
     permanent: true,
   },
 ]
