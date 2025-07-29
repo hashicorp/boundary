@@ -34,7 +34,7 @@ variable "prefix" {
 }
 
 # =================================================================
-#
+# Paths for source code
 # =================================================================
 variable "boundary_cli_zip_path" {
   description = "Path to the boundary cli zip file (windows, amd64)"

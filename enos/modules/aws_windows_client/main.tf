@@ -151,7 +151,6 @@ resource "aws_instance" "client" {
 
   user_data_replace_on_change = true
 
-  # https://stackoverflow.com/questions/67841440/can-we-ssh-to-windows-ec2-instance-in-aws/75009915#75009915
   user_data = <<EOF
                 <powershell>
                   # Set up SSH so we can remotely manage the instance
@@ -286,7 +285,7 @@ resource "archive_file" "boundary_src_zip" {
   type        = "zip"
   source_dir  = var.boundary_src_path
   output_path = "${path.root}/.terraform/tmp/boundary-src.zip"
-  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz"]
+  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**"]
 }
 
 resource "enos_local_exec" "add_boundary_src" {

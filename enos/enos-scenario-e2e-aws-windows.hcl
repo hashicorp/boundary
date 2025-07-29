@@ -11,7 +11,7 @@ scenario "e2e_aws_windows" {
   matrix {
     builder    = ["local", "crt"]
     client     = ["win10", "win11"]
-    rdp_server = ["2022", "2025"]
+    rdp_server = ["2016","2019", "2022", "2025"]
   }
 
   locals {
@@ -69,7 +69,7 @@ scenario "e2e_aws_windows" {
     module = module.random_stringifier
   }
 
-  step "build_boundary" {
+  step "build_boundary_linux" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
@@ -82,7 +82,7 @@ scenario "e2e_aws_windows" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     depends_on = [
-      step.build_boundary
+      step.build_boundary_linux
     ]
 
     variables {
@@ -109,10 +109,11 @@ scenario "e2e_aws_windows" {
   }
 
   step "create_windows_client" {
-    module = module.aws_client_windows
+    module = module.aws_windows_client
 
     depends_on = [
       step.create_base_infra,
+      step.build_boundary_windows,
     ]
 
     variables {
@@ -155,7 +156,7 @@ scenario "e2e_aws_windows" {
       step.create_base_infra,
       step.create_windows_client,
       step.create_db_password,
-      step.build_boundary,
+      step.build_boundary_linux,
       step.create_vault_cluster,
       step.read_boundary_license
     ]
@@ -169,7 +170,7 @@ scenario "e2e_aws_windows" {
       controller_count            = var.controller_count
       db_pass                     = step.create_db_password.string
       kms_key_arn                 = step.create_base_infra.kms_key_arn
-      local_artifact_path         = step.build_boundary.artifact_path
+      local_artifact_path         = step.build_boundary_linux.artifact_path
       ubuntu_ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_id                      = step.create_base_infra.vpc_id
       worker_count                = var.worker_count
@@ -238,8 +239,8 @@ scenario "e2e_aws_windows" {
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base"
-      debug_no_run             = var.e2e_debug_no_run
+      test_package             = ""
+      debug_no_run             = true
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
