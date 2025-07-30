@@ -34,8 +34,10 @@ scenario "e2e_aws_base_with_vault" {
 
     variables {
       instance_type = [
+        var.controller_instance_type,
         var.worker_instance_type,
-        var.controller_instance_type
+        var.target_instance_type,
+        var.vault_instance_type
       ]
     }
   }

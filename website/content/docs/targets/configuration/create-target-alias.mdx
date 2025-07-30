@@ -76,6 +76,22 @@ Complete the following steps to create a new alias and associate it with a targe
    - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy to create target alias `example.bar.foo.boundary` for an existing target `foo_target` and host `bar_host`:
+
+```hcl
+resource "boundary_alias_target" "example_alias_target" {
+  name                      = "example_alias_target"
+  description               = "Example alias to target foo using host boundary_host_static.bar_host"
+  scope_id                  = "global"
+  value                     = "example.bar.foo.boundary"
+  destination_id            = boundary_target.foo_target.id
+  authorize_session_host_id = boundary_host_static.bar_host.id
+}
+```
+
+</Tab>
 </Tabs>
 
 ## Create an alias during target creation
@@ -159,6 +175,67 @@ A value of `-1` means the connections are unlimited.
      The example command in this section creates an SSH target.
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy to create the following:
+
+- A static host catalog `test_catalog` in `boundary_scope.project` (not shown) containing static host set `test_set`.
+- A host `foo` belonging to `test_set`.
+- A host `bar` belonging to `test_set`.
+- A target `foo_target` using `foo_set` as its host source.
+- A target alias `example.bar.foo.boundary` for `foo_target` that always uses `bar_host` to connect.
+
+```hcl
+resource "boundary_host_catalog_static" "foo_catalog" {
+  name        = "foo_catalog"
+  description = "test catalog"
+  scope_id    = boundary_scope.project.id
+}
+
+resource "boundary_host_static" "foo_host" {
+  name            = "foo_host"
+  host_catalog_id = boundary_host_catalog_static.foo.id
+  address         = "10.0.0.1"
+}
+
+resource "boundary_host_static" "bar_host" {
+  name            = "bar_host"
+  host_catalog_id = boundary_host_catalog_static.foo.id
+  address         = "127.0.0.1"
+}
+
+resource "boundary_host_set_static" "foo_set" {
+  name            = "foo_set"
+  host_catalog_id = boundary_host_catalog_static.foo_catalog.id
+
+  host_ids = [
+    boundary_host_static.foo_host.id,
+    boundary_host_static.bar_host.id,
+  ]
+}
+
+resource "boundary_target" "foo_target" {
+  name         = "foo"
+  description  = "Foo target"
+  type         = "tcp"
+  default_port = "22"
+  scope_id     = boundary_scope.project.id
+  host_source_ids = [
+    boundary_host_set_static.foo_set.id,
+  ]
+}
+
+resource "boundary_alias_target" "example_alias_target" {
+  name                      = "example_alias_target"
+  description               = "Example alias to target foo using host boundary_host_static.bar_host"
+  scope_id                  = "global"
+  value                     = "example.bar.foo.boundary"
+  destination_id            = boundary_target.foo_target.id
+  authorize_session_host_id = boundary_host_static.bar_host.id
+}
+```
+
+</Tab>
 </Tabs>
 
 ## Associate an existing alias with a target
@@ -211,6 +288,22 @@ If you [created an alias](#create-an-alias-for-an-existing-target) without assoc
    - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+If you created a `boundary_alias_target` resource without setting a `destination_id` attribute, update the `destination_id` and reapply the following policy:
+
+```hcl
+resource "boundary_alias_target" "example_alias_target" {
+  name                      = "example_alias_target"
+  description               = "Example alias to target foo using host boundary_host_static.bar_host"
+  scope_id                  = "global"
+  value                     = "example.bar.foo.boundary"
+  destination_id            = boundary_target.foo_target.id
+  authorize_session_host_id = boundary_host_static.bar_host.id
+}
+```
+
+</Tab>
 </Tabs>
 
 ## Create multiple aliases for a single target
@@ -252,7 +345,7 @@ And the following host set and hosts exist:
 - Host: `dev-040`, ID `hst_7wGXkF8e0Q`
 - Host: `dev-041`, ID `hst_zlRwMMPKwp`
 
-Because the `linux-dev-servers` hosts are functionally equivalent, you can create a single target for the  host set, and create an alias for the target.
+Because the `linux-dev-servers` hosts are functionally equivalent, you can create a single target for the host set, and create an alias for the target.
 
 We recommend creating DNS-like aliases to ensure consistent naming conventions. In this example, an alias pattern might be:
 
@@ -363,6 +456,30 @@ $ boundary targets add-host-sources -id tssh_lhH5pa425G -host-sourchsst_56oiL0Wa
 ```
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+<Note>
+
+  In the following examples, Terraform resources are named with underscores instead of dashes, such as `linux_dev_servers`. The target alias values use dashes, such as `dev-041.linux-dev.app-servers.eng`. You do not need to follow these naming conventions. 
+
+</Note>
+
+Create the `linux_dev_servers` SSH target, with `scope_id` set to `app_servers` and the host source `linux_dev_servers` (these resources are not shown):
+
+```hcl
+resource "boundary_target" "linux_dev_servers" {
+  name         = "linux_dev_servers"
+  description  = "linux_dev_servers target"
+  type         = "ssh"
+  default_port = "22"
+  scope_id     = boundary_scope.app_servers.id
+  host_source_ids = [
+    boundary_host_set_static.linux_dev_servers.id,
+  ]
+}
+```
+
+</Tab>
 </Tabs>
 
 Next, create two more aliases for the target.
@@ -445,6 +562,20 @@ Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
   </CodeBlockConfig>
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_alias_target" "dev_040" {
+  name                      = "dev_040"
+  description               = "Example alias for target linux_dev_servers using host dev_040"
+  scope_id                  = "global"
+  value                     = "dev-040.linux-dev.app-servers.eng"
+  destination_id            = boundary_target.linux_dev_servers.id
+  authorize_session_host_id = boundary_host_static.dev_040.id
+}
+```
+
+</Tab>
 </Tabs>
 
 Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`.
@@ -523,6 +654,20 @@ Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`
   ```
 
   </CodeBlockConfig>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_alias_target" "dev_041" {
+  name                      = "dev_040"
+  description               = "Example alias for target linux_dev_servers using host dev_040"
+  scope_id                  = "global"
+  value                     = "dev-041.linux-dev.app-servers.eng"
+  destination_id            = boundary_target.linux_dev_servers.id
+  authorize_session_host_id = boundary_host_static.dev_041.id
+}
+```
 
 </Tab>
 </Tabs>

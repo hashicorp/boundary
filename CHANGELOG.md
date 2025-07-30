@@ -6,6 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli: Added `boundary connect mysql` command for connecting to MySQL targets.
+  This new helper command allows users to authorize sessions against MySQL 
+  targets and automatically invoke a MySQL client with the appropriate 
+  connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 

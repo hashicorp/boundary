@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFetchActionSetForId(t *testing.T) {
+func TestFetchActionSetForId_orgRole(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -73,7 +73,116 @@ func TestFetchActionSetForId(t *testing.T) {
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=ttcp_foo;actions=read,update")
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=ttcp_bar;actions=read,update,delete,authorize-session")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=role;actions=add-grants,remove-grants")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=policy;actions=add-grants,remove-grants")
+
+	cases := []struct {
+		name         string
+		id           string
+		avail        action.ActionSet
+		allowed      action.ActionSet
+		typeOverride resource.Type
+	}{
+		{
+			name: "base",
+		},
+		{
+			name:  "no match",
+			id:    "zip",
+			avail: action.NewActionSet(action.Read, action.Update),
+		},
+		{
+			name:    "disjoint match",
+			id:      "ttcp_bar",
+			avail:   action.NewActionSet(action.Delete, action.AddGrants, action.Read, action.RemoveHostSets),
+			allowed: action.NewActionSet(action.Delete, action.Read),
+		},
+		{
+			name:         "different type",
+			id:           "anything",
+			typeOverride: resource.Scope,
+		},
+		{
+			name:         "type match",
+			id:           "anything",
+			typeOverride: resource.Policy,
+			avail:        action.NewActionSet(action.Read, action.AddGrants),
+			allowed:      action.NewActionSet(action.AddGrants),
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			req := require.New(t)
+			ctx := auth.NewVerifierContext(
+				context.Background(),
+				iamRepoFn,
+				authTokenRepoFn,
+				serversRepoFn,
+				tc.Kms(),
+				&authpb.RequestInfo{
+					PublicId:       token.Id,
+					EncryptedToken: strings.Split(token.Token, "_")[2],
+					TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+				})
+			typ := resource.Role
+			if tt.typeOverride != resource.Unknown {
+				typ = tt.typeOverride
+			}
+			res := auth.Verify(ctx, typ, []auth.Option{
+				auth.WithId("ttcp_foo"),
+				auth.WithAction(action.Read),
+				auth.WithScopeId(org.PublicId),
+			}...)
+			req.NoError(res.Error)
+			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
+		})
+	}
+}
+
+func TestFetchActionSetForId_projRole(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	conn := tc.DbConn()
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	// Delete the global default role so it doesn't interfere with the
+	// permissions we're testing here
+	rolesClient := roles.NewClient(tc.Client())
+	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
+	require.NoError(t, err)
+	require.NotNil(t, rolesResp)
+	assert.Len(t, rolesResp.GetItems(), 3)
+	var adminRoleId string
+	for _, item := range rolesResp.GetItems() {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(t, err)
+		} else {
+			adminRoleId = item.Id
+		}
+	}
+	_, err = rolesClient.Delete(tc.Context(), adminRoleId)
+	require.NoError(t, err)
+
+	projRole := iam.TestRole(t, conn, proj.GetPublicId())
+	iam.TestUserRole(t, conn, projRole.PublicId, token.UserId)
+	iam.TestRoleGrant(t, conn, projRole.PublicId, "ids=ttcp_foo;actions=read,update")
+	iam.TestRoleGrant(t, conn, projRole.PublicId, "ids=ttcp_bar;actions=read,update,delete,authorize-session")
+	iam.TestRoleGrant(t, conn, projRole.PublicId, "ids=*;type=role;actions=add-grants,remove-grants")
 
 	cases := []struct {
 		name         string
@@ -127,11 +236,10 @@ func TestFetchActionSetForId(t *testing.T) {
 			if tt.typeOverride != resource.Unknown {
 				typ = tt.typeOverride
 			}
-			res := auth.Verify(ctx, []auth.Option{
+			res := auth.Verify(ctx, typ, []auth.Option{
 				auth.WithId("ttcp_foo"),
 				auth.WithAction(action.Read),
-				auth.WithScopeId(org.PublicId),
-				auth.WithType(typ),
+				auth.WithScopeId(proj.PublicId),
 			}...)
 			req.NoError(res.Error)
 			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))

@@ -184,6 +184,28 @@ func TestRepository_UpdateControllerStatus(t *testing.T) {
 				require.Equal(t, 1, c)
 			},
 		},
+		"valid-ipv4-controller-remove-description": {
+			originalController: NewController("test", WithAddress("127.0.0.1"), WithDescription("short name description")),
+			updatedController:  NewController("test", WithAddress("127.0.0.2")),
+			wantCount:          1,
+			cleanUpFunc: func(t *testing.T, rw *db.Db, privateId string) {
+				t.Helper()
+				c, err := rw.Exec(ctx, removeControllerSql, []any{privateId})
+				require.NoError(t, err)
+				require.Equal(t, 1, c)
+			},
+		},
+		"valid-ipv4-controller-no-description": {
+			originalController: NewController("test", WithAddress("127.0.0.1")),
+			updatedController:  NewController("test", WithAddress("127.0.0.2")),
+			wantCount:          1,
+			cleanUpFunc: func(t *testing.T, rw *db.Db, privateId string) {
+				t.Helper()
+				c, err := rw.Exec(ctx, removeControllerSql, []any{privateId})
+				require.NoError(t, err)
+				require.Equal(t, 1, c)
+			},
+		},
 	}
 
 	for name, tt := range tests {

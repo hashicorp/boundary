@@ -77,6 +77,9 @@ type Command struct {
 	// Postgres
 	postgresFlags
 
+	// MySQL
+	mysqlFlags
+
 	// RDP
 	rdpFlags
 
@@ -103,6 +106,8 @@ func (c *Command) Synopsis() string {
 		return httpSynopsis
 	case "postgres":
 		return postgresSynopsis
+	case "mysql":
+		return mysqlSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -222,6 +227,9 @@ func (c *Command) Flags() *base.FlagSets {
 	case "postgres":
 		postgresOptions(c, set)
 
+	case "mysql":
+		mysqlOptions(c, set)
+
 	case "rdp":
 		rdpOptions(c, set)
 
@@ -309,6 +317,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.sshFlags.defaultExec()
 		case "postgres":
 			c.flagExec = c.postgresFlags.defaultExec()
+		case "mysql":
+			c.flagExec = c.mysqlFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
@@ -424,6 +434,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
 		return base.CommandCliError
 	}
+
 	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
@@ -448,7 +459,10 @@ func (c *Command) Run(args []string) (retCode int) {
 	proxyError := new(atomic.Error)
 	go func() {
 		defer close(clientProxyCloseCh)
-		proxyError.Store(clientProxy.Start())
+		if err = clientProxy.Start(); err != nil {
+			c.proxyCancel()
+			proxyError.Store(err)
+		}
 	}()
 	go func() {
 		defer close(connCountCloseCh)
@@ -472,7 +486,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		proxyAddr := clientProxy.ListenerAddress(context.Background())
+		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
+		if proxyAddr == "" {
+			if err := proxyError.Load(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error starting proxy: %w", err))
+				return base.CommandCliError
+			}
+			c.PrintCliError(fmt.Errorf("Error starting proxy: no address returned"))
+			return base.CommandCliError
+		}
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
 		if err != nil && !errors.Is(err, util.ErrMissingPort) {
@@ -640,6 +662,16 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, pgArgs...)
 		envs = append(envs, pgEnvs...)
 		creds = pgCreds
+
+	case "mysql":
+		mysqlArgs, mysqlEnvs, mysqlCreds, mysqlErr := c.mysqlFlags.buildArgs(c, port, host, addr, creds)
+		if mysqlErr != nil {
+			argsErr = mysqlErr
+			break
+		}
+		args = append(args, mysqlArgs...)
+		envs = append(envs, mysqlEnvs...)
+		creds = mysqlCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"sync"
@@ -32,6 +33,8 @@ type driver interface {
 	StartRun(context.Context) error
 	// CommitRun commits a transaction, if there is an error it should rollback the transaction.
 	CommitRun(context.Context) error
+	// RollbackRun rolls back a transaction. If no transaction is active, it should return nil.
+	RollbackRun(context.Context) error
 	// CheckHook is a hook that runs prior to a migration's statements.
 	// It should run in the same transaction a corresponding Run call.
 	CheckHook(context.Context, migration.CheckFunc) (migration.Problems, error)
@@ -240,38 +243,32 @@ func (b *Manager) ApplyMigrations(ctx context.Context) ([]RepairLog, error) {
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit. Cancellation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]RepairLog, error) {
+func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) (logEntries []RepairLog, retErr error) {
 	const op = "schema.(Manager).runMigrations"
 
-	var logEntries []RepairLog
-	var err error
-
 	if startErr := b.driver.StartRun(ctx); startErr != nil {
-		err = errors.Wrap(ctx, startErr, op)
-		return nil, err
+		return nil, errors.Wrap(ctx, startErr, op)
 	}
 
 	defer func() {
-		if commitErr := b.driver.CommitRun(ctx); commitErr != nil {
-			err = errors.Wrap(ctx, commitErr, op)
+		// rolling back a committed run is a no-op, so we can safely call this every time
+		if err := b.driver.RollbackRun(ctx); err != nil {
+			retErr = stderrors.Join(retErr, err)
 		}
 	}()
 
 	if ensureErr := b.driver.EnsureVersionTable(ctx); ensureErr != nil {
-		err = errors.Wrap(ctx, ensureErr, op)
-		return nil, err
+		return nil, errors.Wrap(ctx, ensureErr, op)
 	}
 
 	if ensureErr := b.driver.EnsureMigrationLogTable(ctx); ensureErr != nil {
-		err = errors.Wrap(ctx, ensureErr, op)
-		return nil, err
+		return nil, errors.Wrap(ctx, ensureErr, op)
 	}
 
 	for p.Next() {
 		select {
 		case <-ctx.Done():
-			err = errors.Wrap(ctx, ctx.Err(), op)
-			return nil, err
+			return nil, errors.Wrap(ctx, ctx.Err(), op)
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
@@ -304,9 +301,12 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 			}
 		}
 		if runErr := b.driver.Run(ctx, bytes.NewReader(p.Statements()), p.Version(), p.Edition()); runErr != nil {
-			err = errors.Wrap(ctx, runErr, op)
-			return nil, err
+			return nil, errors.Wrap(ctx, runErr, op)
 		}
+	}
+
+	if err := b.driver.CommitRun(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return logEntries, nil
