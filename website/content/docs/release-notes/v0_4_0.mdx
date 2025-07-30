@@ -14,7 +14,7 @@ Lastly, for instructions on how to upgrade an existing Boundary deployment to v0
 ## Boundary v0.4.0 highlights
 
 **Session Credential Brokering:** Boundary 0.4, adds a Vault integration for the brokering of [Vault](https://www.vaultproject.io/) secrets to Boundary clients (both command line and desktop clients) for use
-in Boundary sessions. Brokering of Vault secrets is the foundation of Boundary’s larger credential-management story for seamless single sign-on to infrastructure targets. This feature introduces new Boundary resources - [credential stores](/boundary/docs/concepts/domain-model/credential-stores), [credential libraries](/boundary/docs/concepts/domain-model/credential-libraries), and [credentials](/boundary/docs/concepts/domain-model/credentials) -
+in Boundary sessions. Brokering of Vault secrets is the foundation of Boundary’s larger credential-management story for seamless single sign-on to infrastructure targets. This feature introduces new Boundary resources - [credential stores](/boundary/docs/domain-model/credential-stores), [credential libraries](/boundary/docs/domain-model/credential-libraries), and [credentials](/boundary/docs/domain-model/credentials) -
 to support binding credentials with user sessions, as well as surfacing those credentials during session initialization on the command line and in Boundary Desktop.
 
 **`boundary connect` Credential Brokering Integration:** Additionally, we have started integration into the [boundary connect helpers](/boundary/docs/getting-started/connect-to-target), starting in this release with the Postgres helper; if the credential contains a username/password and boundary connect postgres is the helper being used, the command will automatically pass the credentials to the psql process.

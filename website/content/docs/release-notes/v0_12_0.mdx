@@ -46,21 +46,21 @@ Vault is the only supported CA in Boundary version 0.12.0.
 SSH certificates let you specify how long they are valid for, who can gain access to a target, how users can log in, and what commands can be used on the target machine.
 SSH certificates are short-lived and self-destructive unlinke SSH key pairs.
 
-For more information, refer to the [Vault SSH certificate credential library attributes](/boundary/docs/concepts/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributeshcp-only) documentation.
+For more information, refer to the [Vault SSH certificate credential library attributes](/boundary/docs/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributeshcp-only) documentation.
 
 **Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
 But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
 
 Version 0.12.0 introduces a quick way to set up a target.
-Previously, you would need to define [hosts](/boundary/docs/concepts/domain-model/hosts) within a [host set](/boundary/docs/concepts/domain-model/host-sets), and then assign that to a [target](/boundary/docs/concepts/domain-model/targets).
+Previously, you would need to define [hosts](/boundary/docs/domain-model/hosts) within a [host set](/boundary/docs/domain-model/host-sets), and then assign that to a [target](/boundary/docs/domain-model/targets).
 The hosts contain the hostname or IP address of the computing resources, and the target definition contains various connection parameters for those hosts.
 Starting with version 0.12.0 the hostname or IP address can be specified directly within the target definition, without having to create hosts, host sets, or a host catalog.
 
 This functionality allows you to get started with Boundary quickly while still maintaining the same flexibility for more complex and production-like scenarios.
 
-For more information, refer to the [Target and Host Resources](/boundary/docs/concepts/domain-model#target-and-host-resources) documentation.
+For more information, refer to the [Target and Host Resources](/boundary/docs/domain-model#target-and-host-resources) documentation.
 
-**Authentication improvements**: In previous versions, authenticating through the CLI required you to provide an [**Auth Method ID**](/boundary/docs/concepts/domain-model/auth-methods).
+**Authentication improvements**: In previous versions, authenticating through the CLI required you to provide an [**Auth Method ID**](/boundary/docs/domain-model/auth-methods).
 This value could be difficult to find if you did not previously save it.
 Starting in version 0.12.0 the Boundary CLI no longer requires an **Auth Method ID**, and will use the default **Auth Method ID** if none is provided.
 The built-in password auth method is now marked as **Primary** when an HCP Boundary cluster is deployed.
@@ -69,7 +69,7 @@ The built-in password auth method is now marked as **Primary** when an HCP Bound
 In version 0.12.0, we are releasing a new type of credential to the static credential store.
 You can now create and broker JSON blobs to authorized users at session establishment time.
 
-For more information, refer to the [JSON credentials](/boundary/docs/concepts/domain-model/credentials#json) documentation.
+For more information, refer to the [JSON credentials](/boundary/docs/domain-model/credentials#json) documentation.
 
 **Job run table maintenance**: A new job was added to automatically clean up completed runs from the `job_run` table.
 It deletes any existing completed jobs on a regular interval to help manage the size of your Boundary database.

@@ -1,0 +1,13 @@
+Boundary supports defining custom HTTP response headers for all requests on any Boundary controller.
+Headers are defined based on the returned status code. For example, you can define a list of
+custom response headers for the `200` status code, and another list of custom response headers for
+the `307` status code, and so on. You can also define headers based on the hundred-level status
+code. For example, a list of headers applied to the `4xx` code will be applied to 400, 401, 404, and
+all other 400-level status codes. The more specific the status, the higher priority it has.
+Default headers are overwritten by hundred-level headers, which are overwritten by status-specific
+headers.
+
+There are two different config parameters that define headers: `custom_api_response_headers` and
+`custom_ui_response_headers`. API headers apply to API endpoints, currently all paths starting
+with `/v1/`. UI headers apply to all other paths. This allows for configuring headers specifically
+for serving content to a web browser, such as CSP headers.

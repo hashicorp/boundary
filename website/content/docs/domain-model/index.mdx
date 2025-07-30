@@ -1,0 +1,224 @@
+---
+layout: docs
+page_title: Domain model overview
+description: >-
+  Learn about using the domain model to organize identity and access management and target resources for secure access. Understand how resources work together.
+---
+
+# Boundary domain model overview
+
+HashiCorp Boundary has an extensible domain model that allows administrators to organize IAM (Identity and Access Management) and target resources in a way that best compliments how their organization manages its computing infrastructure. This concept page is a high-level look at scopes, how they work, and their role in the domain model. We will also explore how Boundary approaches IAM and granting access to Targets. For more information about Boundary’s resource types, see the subpages of the Domain Model section.
+
+## Scopes
+
+When conducting threat modeling exercises, it is common practice to mitigate  identified risks by reducing their potential blast radius and attack surface. Boundary uses the concept of scopes to help security operators achieve this type of mitigation.  A [scope](/boundary/docs/domain-model/scopes) can be considered as a container for resources and permissions. Each scope has a permissions boundary that is isolated from other scopes on the same level, creating a defined blast radius.
+The diagram below illustrates the relationship between the different levels of scopes.
+
+
+![](/img/boundary-domain-model-overview.jpg)
+
+The highest-level  scope is the [global scope](/boundary/docs/domain-model/scopes#global). Boundary administrators operate on this level to configure and manage Boundary for the entire business. Boundary administrators  can also manage child scopes, auth methods, users, groups, roles, and grants.
+
+The intermediate scope level is  [organizations](/boundary/docs/domain-model/scopes#organizations), also referred to as orgs, which are a child scope of global.  Though the implementation may be flexible for organization scopes, we recommend scoping by business units in this case. Scoping by business unit provides a clear separation of concerns for each business unit. Creating organizations for the development, operations, and support teams would be an example.
+
+The lowest scope level is the [project](/boundary/docs/domain-model/scopes#projects). An organization’s scope may have as many projects as required based on its business workflows. To expand on the example used earlier, the development team’s organization can also have project scopes for their different products.
+
+For example, they could have the following project scopes:
+
+- Product 1
+- Product 2
+- Product 3
+
+## Identity and access management
+
+As mentioned earlier, IAM  is handled at the organization and global scope levels. Here, operators can create and manage principals. Principals are entities in Boundary that are either [users](/boundary/docs/domain-model/users) or [groups](/boundary/docs/domain-model/groups) that may be assigned capabilities.
+
+Users are associated with either the global or an organization’s scope. For better access control management, users may be positioned into groups to ease access control demands. Groups can also contain users from different organizations or global scopes without creating multiple users for a single entity, making permissioning less complicated to implement.
+
+An [auth method](/boundary/docs/domain-model/auth-methods) is the mechanism in Boundary used for authentication. An organization may use numerous authentication methods. Boundary supports Open ID Connect (OIDC) auth methods to delegate authentication to an external identity provider (IDP) - such as Azure Active Directory, Okta, and other OIDC providers - as well as a Boundary-native password auth method. Within an auth method, [accounts](/boundary/docs/domain-model/accounts) may be created and associated with users.  Once associated with a user, the principal may authenticate in Boundary using the method specified by their auth method. An account for the password auth method consists of a login name and password. A user may be associated with accounts from different auth methods, where they can have both an Azure Active Directory account and an Okta account, for example. In such cases, the user could authenticate with either provider.
+
+## Access management
+
+Boundary’s method of access management starts at the lowest level with Actions. Actions are capabilities that can be performed against Boundary resources. Boundary supports generic Actions such as, Create, Read, Update, Delete, and List. However, there are many more that are resource-type-specific actions that can be used in grants.
+
+The next level of access management is a [grant](/boundary/docs/rbac#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
+
+For example, a grant can specify the List Action against a specific resource. Grants can specify resource types or resource IDs and may also be implemented as a rule.
+
+The highest-level in Boundary utilizes the concepts of [roles](/boundary/docs/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. The diagram below illustrates the relationship between the different IAM components within Boundary.
+
+![](/img/component-relationship.png)
+
+## Target and host resources
+
+Boundary exposes endpoints to users as [targets](/boundary/docs/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single session. A target may contain references to [host](/boundary/docs/domain-model/hosts) sources or an address, and [credential](/boundary/docs/domain-model/credentials) sources. Users who access a target create an authorized session to its address or one of its host sources with returned credentials from the target’s credential source.
+
+A target exposes two distinct and mutually exclusive configuration paths for its
+representation of a networked service:
+
+- Target with an address
+- Target with host sources
+
+A target with an address represents a target that is set up with a single IP
+address or DNS name directly on the target resource. This mechanism provides
+benefits for new Boundary users and users who do not need the flexibility
+provided by hosts, host sets, and host catalogs. It is well suited for cases
+where there are stand-alone hosts that should not be grouped together and
+treated as equal from an access control point of view. Because of its
+simplicity, using targets with an address is not recommended when there are a
+either a large number of hosts and/or dynamic hosts.
+
+A target with host sources represents a target that has one or more [host
+sets][] associated with it. It trades off the simplicity of directly setting an
+address on a target with the flexibility and scalability of Hosts, Host Sets and
+Host Catalogs for discovering and categorizing networked resources. We recommend
+using targets with host sources for setting up Boundary in environments where a
+significant number of resources exist.
+
+### Summary of resources
+
+- **[Account][]** :
+  A resource
+  that represents a unique set of credentials
+  issued from a configured [authentication method][]
+  which can be used to establish the identity of a [user][].
+
+- **[Alias][]** :
+  A resource
+  that represents a globally unique, DNS-like string that is
+  associated with a destination resource, such as a [target][].
+
+- **[Authentication method][]** :
+  A resource
+  that provides a mechanism
+  for [users][] to authenticate to Boundary.
+
+- **[Credential][]** :
+  A data structure containing one or more secrets
+  that binds an identity to a set of permissions or capabilities
+  on a [host][] for a [session][].
+
+- **[Credential library][]** :
+  A resource
+  that provides [credentials][]
+  of the same type and same access level
+  from a single [credential store][].
+
+- **[Credential store][]** :
+  A resource
+  that can retrieve, store, and potentially generate [credentials][]
+  of differing types and differing access levels.
+  It may also contain [credential libraries][].
+
+- **[Group][]** :
+  A resource
+  that represents a collection of [users][]
+  which can be treated equally
+  for the purposes of access control.
+
+- **[Host][]** :
+  A resource
+  that represents a computing element with a network address
+  reachable from Boundary.
+
+- **[Host catalog][]** :
+  A resource
+  that contains [hosts][] and [host sets][].
+
+- **[Host set][]** :
+  A resource
+  that represents a collection of [hosts][]
+  which are considered equivalent
+  for the purposes of access control.
+
+- **[Managed group][]** :
+  A resource that groups [accounts][] based on criteria
+  established by a third-party service backing the [authentication method][]. It
+  can be used as a principal in [roles][].
+
+- **[Role][]** :
+  A resource
+  that contains a collection of [permissions][]
+  which are granted to any principal assigned to the role.
+
+- **[Session][]** :
+  A set of related connections between a [user][] and a [host][].
+  A session may include a set of [credentials][]
+  which define the permissions granted to the [user][] on the [host][] for the duration
+  of the session.
+
+- **[Session recordings][]** :
+  A session recording represents a directory structure of files in an external object store that together are the recording of a single [session][] between a [user][] and a [target][].
+
+- **[Scope][]** :
+  A [permission][] boundary modeled as a container.
+
+- **[Storage bucket][]** :
+  A storage bucket is used to store [session recordings][].
+  The storage bucket represents a bucket in an external object store.
+
+- **[Storage policy][]** :
+  A storage policy defines the rules for storing
+  [session recordings][] in a [storage bucket][].
+  The storage policy may specify the retention period for the recordings.
+
+- **[Target][]** :
+  A resource
+  that represents a networked service
+  with an associated set of permissions
+  a [user][] can connect to
+  and interact with
+  through Boundary
+  by way of a [session][].
+
+- **[User][]** :
+  A resource
+  that represents an individual person or entity
+  for the purposes of access control.
+
+## Next steps
+
+When getting started with Boundary,
+the first resource to look at should be [scopes][].
+Every other resources is either contained within a scope,
+or contained within another resource
+that is itself contained within a scope.
+Refer to the [scopes] section to help you understand the structure of resources within Boundary.
+
+[iam]: https://en.wikipedia.org/wiki/Identity_management
+[account]: /boundary/docs/domain-model/accounts
+[accounts]: /boundary/docs/domain-model/accounts
+[alias]: /boundary/docs/concepts/domain-model/aliases
+[authentication method]: /boundary/docs/domain-model/auth-methods
+[authentication methods]: /boundary/docs/domain-model/auth-methods
+[credential library]: /boundary/docs/domain-model/credential-libraries
+[credential libraries]: /boundary/docs/domain-model/credential-libraries
+[credential store]: /boundary/docs/domain-model/credential-stores
+[credential stores]: /boundary/docs/domain-model/credential-stores
+[credential]: /boundary/docs/domain-model/credentials
+[credentials]: /boundary/docs/domain-model/credentials
+[group]: /boundary/docs/domain-model/groups
+[groups]: /boundary/docs/domain-model/groups
+[host catalog]: /boundary/docs/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[host set]: /boundary/docs/domain-model/host-sets
+[host sets]: /boundary/docs/domain-model/host-sets
+[host]: /boundary/docs/domain-model/hosts
+[hosts]: /boundary/docs/domain-model/hosts
+[managed group]: /boundary/docs/domain-model/managed-groups
+[role]: /boundary/docs/domain-model/roles
+[roles]: /boundary/docs/domain-model/roles
+[scope]: /boundary/docs/domain-model/scopes
+[scopes]: /boundary/docs/domain-model/scopes
+[project]: /boundary/docs/domain-model/scopes#projects
+[session]: /boundary/docs/domain-model/sessions
+[session recordings]: /boundary/docs/domain-model/session-recordings
+[sessions]: /boundary/docs/domain-model/sessions
+[storage bucket]: /boundary/docs/domain-model/storage-buckets
+[storage policy]: /boundary/docs/concepts/domain-model/storage-policy
+[target]: /boundary/docs/domain-model/targets
+[targets]: /boundary/docs/domain-model/targets
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+[permission]: /boundary/docs/rbac
+[permissions]: /boundary/docs/rbac

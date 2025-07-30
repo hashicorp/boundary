@@ -1,0 +1,31 @@
+---
+layout: docs
+page_title: Read a BSR file
+description: >-
+  Learn how to read the data in Boundary's proprietary BSR file that stores session recording data.
+---
+
+# Read a BSR file
+
+BSR data files are where all the data transmitted during a session is stored. BSR data files
+have the file suffix `.data` and are binary files written in network byte or big-endian order. The first eight bytes of a
+BSR data file always contains the following signature, which identifies the file as a BSR file: `"\x89BSR\r\n\x1a\n"`.
+
+Following the BSR signature, a BSR file contains “chunks” of data. Each chunk contains the same basic metadata information:
+length, protocol, chunk type, direction, and a timestamp. The chunk type indicates the expected data payload. The first
+chunk in a BSR file is the header chunk, and the last chunk in a BSR file is the EOF chunk. The remaining
+chunks in the file depend on the protocol identified in the BSR header.
+
+The only protocol currently supported for session recording is SSH. Data files for SSH are prefixed with either `messages-`
+or `requests-`, and suffixed with either `inbound` or `outbound` to indicate the direction the data came from. Message
+files contain raw data from an SSH session and contain a header chunk, data chunks, and an EOF chunk. Request files
+contain a header chunk, SSH request message chunks, and an EOF chunk.
+
+SSH request message chunks follow the SSH connection and channel request definitions. Boundary populates these chunks
+using a protobuf definition provided here: [SSH Chunks](https://github.com/hashicorp/boundary/blob/main/internal/bsr/proto/ssh/v1/ssh_chunks.proto).
+
+Boundary session recording playback generates an asciinema from a session channel’s `messages-outbound.data` file. For more
+information on finding and viewing BSR data using the asciinema, refer to [Find and view recorded sessions](/boundary/docs/session-recording/configuration/manage-recorded-sessions).
+
+While Boundary does not currently provide tooling to read other BSR .data files, the BSR definition is available in our
+[community repository](https://github.com/hashicorp/boundary/tree/main/internal/bsr), and you can use it to develop external tooling.

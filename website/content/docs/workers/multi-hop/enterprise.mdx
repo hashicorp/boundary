@@ -1,0 +1,30 @@
+---
+layout: docs
+page_title: Create multi-hop sessions for Boundary Enterprise
+description: >-
+  Configure multi-hop sessions for Boundary Enterprise. Chain together two or more workers across multiple networks to reach a target without exposing private networks.
+---
+
+# Configure multi-hop sessions for Boundary Enterprise
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of multi-hop worker capabilities.
+
+Note that "ingress," "intermediary," and "egress" are general ways to describe how the respective worker interacts with resources.
+A worker can serve more than one of those roles at a time.
+Refer to [Multi-hop sessions](/boundary/docs/workers/multi-hop) for more information.
+
+Complete the steps below to configure ingress, intermediate, and egress workers for Boundary Enterprise.
+
+## Ingress worker configuration
+
+@include '/workers/ingress-worker-config.mdx'
+
+## Intermediate worker configuration
+
+@include '/workers/intermediate-worker-config.mdx'
+
+## Egress worker configuration
+
+@include '/workers/egress-worker-config.mdx'

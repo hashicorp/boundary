@@ -1,0 +1,131 @@
+---
+layout: docs
+page_title: Configure Amazon S3 storage
+description: >-
+  Configure Amazon S3 as a storage provider for recorded sessions. Understand session recording and AWS requirements. View an example configuration.
+---
+
+# Configure Amazon S3 as a storage provider
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+This page describes how to configure Amazon S3 as a storage provider for session recording with Boundary.
+
+## Requirements
+
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements.
+
+Session recording requires specific configuration for both the external storage provider and the Boundary worker.
+
+Refer to [Configure workers for session recording](/boundary/docs/session-recording/configuration/configure-worker-storage) to learn about configuring self-managed workers for session recording.
+
+When you determine storage requirements for the external bucket, you should consider:
+
+- [BSR storage considerations](/boundary/docs/session-recording#storage-considerations)
+- [Storage bucket retention policies](/boundary/docs/session-recording/compliance/configure-storage-policy)
+
+### AWS requirements
+
+- An Amazon S3 storage bucket
+
+   You must associate the Boundary storage bucket with an Amazon S3 storage bucket. A Boundary Amazon S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket.
+
+   The Amazon S3 storage bucket can use static or dynamic credentials.
+   You can configure static credentials using an access key and secret key or dynamic credentials using the AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole).
+
+- An AWS IAM role policy with the following statement:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject",
+             "s3:ListBucket"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::session_recording_storage*",
+           "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
+        },
+        {
+          "Action": [
+            "iam:DeleteAccessKey",
+            "iam:GetUser",
+            "iam:CreateAccessKey"
+          ],
+          "Effect": "Allow",
+          "Resource": "arn:aws:iam::123456789012:user/JohnDoe"
+        }
+     ]
+   }
+   ```
+
+- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
+
+   ```json
+   {
+     "Action": [
+       "kms:Decrypt",
+       "kms:GenerateDataKey",
+       "kms:DescribeKey"
+     ],
+     "Effect": "Allow",
+     "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+   }
+   ```
+
+   The following is an example working policy with KMS encryption configured on the S3 bucket:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+         {
+            "Sid": "S3Permissions",
+            "Effect": "Allow",
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject",
+              "s3:GetObjectAttributes",
+              "s3:DeleteObject",
+              "s3:ListBucket"
+            ],
+            "Resource": [
+              "arn:aws:s3:::test-session-recording-bucket/*"
+            ]
+         },
+         {
+            "Sid": "UserPermissions",
+            "Effect": "Allow",
+            "Action": [
+              "iam:DeleteAccessKey",
+              "iam:GetUser",
+              "iam:CreateAccessKey"
+            ],
+            "Resource": [
+               "arn:aws:iam::1234567890:user/test-boundary"
+            ]
+         },
+         {
+            "Sid": "KMSPermissions",
+            "Effect": "Allow",
+            "Action": [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ],
+            "Resource": [
+              "arn:aws:kms:us-east-2:1234567890:key  4b887395-c376-4936-8f37-80c592ea582c"
+            ]
+         }
+      ]
+    }
+    ```
+
+## Next steps
+
+After you configure the external storage provider, you can [create the storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket) in Boundary.

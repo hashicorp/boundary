@@ -1,0 +1,117 @@
+---
+layout: docs
+page_title: Session recording resource
+description: >-
+  Learn about using the session recording resource to audit user sessions. Understand how storage policy retention periods help you meet your compliance needs.
+---
+
+# Session recordings
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A session recording represents a directory structure of
+files in an external object store that together are the
+recording of a single [session][] between a [user][] and a [target][].
+
+The lifecycle of a session recording does not affect the
+lifecycle of any files stored in the external object store.
+
+A session recording belongs to one and only one [storage bucket][].
+It is deleted when you delete the storage bucket it belongs to.
+
+A session recording is associated with the
+target that the recorded session was against.
+However, the lifecycle of a session recording is not tied to
+the lifecycle of the target it is associated with.
+If the target associated wtih a session recording is deleted,
+the association to the target is deleted, not the session recording itself.
+
+Deleting a session recording does not delete or modify
+any of the files in the external object store that the session recording represents.
+
+The session recording captures all interactions that take place during
+the session, including metadata about the user, target and any
+[hosts][], [host sets][], [host catalogs][], or [credentials][] used.
+
+A session recording represents [connections][] as separate
+entities within the recording. Each recorded connection may also contain a recorded channel. This represents a single channel
+in which the user interacted with the target in protocols that
+multiplex user interactions over single connections. For example,
+the SSH protocol multiplexes user interactions in a single
+connection, so a user's interactions over SSH are recorded
+in a channel.
+
+A session recording belongs to the scope of the storage bucket
+it is stored in. The scope can be either the global scope or an [organization][]
+scope.
+
+## Resultant set of policy calculation
+
+[Storage policies][] codify how long session recordings must be kept and when they should be deleted.
+The resultant set of policy (RSoP) refers to the set of policy attributes that apply to a resource.
+When you apply policies on multiple levels, the results can conflict.
+Boundary evaluates each storage policy attribute individually, starting at the global scope and then evaluating any storage policies assigned to org scopes.
+
+In accordance with the RSoP, Boundary considers the following principles in order:
+
+1. Retention wins over deletion. The retention duration parameter guarantees that a session recording is retained for at least that duration. Before the retention duration has transpired, manual deletes will fail and Boundary will not attempt to automatically delete any session recordings.
+2. Longest retention wins. When Boundary evaluates multiple storage policies, the longer retention duration parameter applies to the session recording.
+3. The shortest deletion wins. When Boundary evaluates multiple storage policies, the shorter delete after duration parameter applies to the session recording.
+
+Each storage policy attribute also indicates whether the attribute can be overridden or not.
+If the attribute cannot be overridden, Boundary stops evaluating the RSoP for that attribute at lower scopes.
+
+Changing the policy assigned to a scope or changing an attribute of a storage policy can impact the RSoP.
+Such a change only affects future session recordings created in that scope or using that storage policy.
+If a session recording is not in compliance with the current RSoP, the session recording API indicates that it is out of compliance with the current policy.
+
+### Examples
+
+In the following examples, Boundary determines the resultant set of policies using the `retain_for_days_overridable` and `delete_after_days_overridable` attributes.
+A value of `true` indicates the number of days can be overridden, while a value of `false` indicates that it cannot be overridden.
+
+#### Example 1
+In this case, the retention value is derived from the org policy and the deletion value is derived from the global policy.
+
+|               | Global policy | Org policy    | Result policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain for days (Overridable)                                 | 10 (True)                   | 20 (True)             | 20                         |
+| Delete after days (Overridable)                               | 30 (True)                   | 40 (True)             | 30                         |
+
+#### Example 2
+In this case, Boundary ignores the org policy values because the global policy values are not overridable.
+
+|               | Global policy | Org policy    | Result policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain for days (Overridable)                                 | 10 (False)                  | 20 (True)             | 10                         |
+| Delete after days (Overridable)                               | 30 (False)                  | 40 (True)             | 30                         |
+
+#### Example 3
+In this case, the longest retention value is 30, and the shortest deletion value is 20.
+However, the `delete_after_days` value cannot be less than the `retain_for_days` value.
+Therefore, Boundary sets the deletion value to the retention value.
+
+|               | Global policy | Org policy    | Result policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain for days (Overridable)                                 | 30 (True)                   | 20 (True)             | 30                         |
+| Delete after days (Overridable)                               | 50 (True)                   | 20 (True)             | 30                         |
+
+For more information, refer to the [storage policy attributes](/boundary/docs/domain-model/storage-policy#attributes) documentation.
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Session recording service](/boundary/api-docs/session-recording-service)
+
+[connections]: /boundary/docs/domain-model/session-connections
+[credentials]: /boundary/docs/domain-model/credentials
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[host sets]: /boundary/docs/domain-model/host-sets
+[hosts]: /boundary/docs/domain-model/hosts
+[target]: /boundary/docs/domain-model/targets
+[user]: /boundary/docs/domain-model/users
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[session]: /boundary/docs/domain-model/sessions
+[storage bucket]: /boundary/docs/domain-model/storage-buckets
+[storage policies]: /boundary/docs/domain-model/storage-policy

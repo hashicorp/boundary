@@ -1,0 +1,17 @@
+This example shows Boundary listening on a private interface, as well as localhost.
+
+```hcl
+listener "tcp" {
+  purpose = "api"
+  address = "127.0.0.1:9200"
+}
+
+listener "tcp" {
+  purpose = "cluster"
+  address = "10.0.0.5:9201"
+}
+```
+
+[golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
+[api-addr]: /boundary/docs/configuration#api_addr
+[cluster-addr]: /boundary/docs/configuration#cluster_addr

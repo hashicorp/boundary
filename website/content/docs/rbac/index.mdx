@@ -1,0 +1,85 @@
+---
+layout: docs
+page_title: Permissions index
+description: >-
+  Learn about Boundary's RBAC (Role-based access control), allow-only permissions model. Understand how permissions are configured using grant strings and roles.
+---
+
+# Permissions in Boundary
+
+Boundary's permissions model is a composable, role-based access control (RBAC), allow-only model that
+attempts to marry flexibility with usability.
+The following pages discuss the permission model's fundamental concepts, provide examples of the specific forms of allowed grants, and contain a table that acts as a cheat sheet to help you craft roles.
+
+Boundary's [domain model](/boundary/docs/domain-model) is based on resource
+types. You can implement resource types directly, such as with targets, or they can be
+abstract types that you implement using concrete types within the system. As an
+example of the latter, a host catalog is an abstract type and a static host
+catalog is a concrete type.
+
+From a permissions standpoint, all actions take place against directly
+implemented or abstract types. There may be actions that are only implemented by
+some concrete types, for example, not all `auth-method` implementations support a
+`change-password` action. But the permissions model still defines these
+capabilities at the abstract type level.
+
+At a very high level, permissions within Boundary are declared via grant strings
+and mapped to users via roles.
+
+## Grant strings
+
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
+
+A grant string has a form similar to:
+
+`ids=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
+
+Selectors are used to indicate the resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors.
+
+You can supply grant strings using a human-friendly string syntax or using JSON.
+
+### Assigned permissions
+
+You can grant users permissions to any Boundary resources that are identified by ID or Type selectors.
+There are two types of assigned permissions:
+
+- An `actions` field indicating which actions to allow the client to perform on
+  the resources matched by `id` and `type`
+
+- An `output_fields` field indicating which top-level fields to return in the
+  response.
+
+## Roles
+
+Roles map grant strings to principals, which are users, groups, and managed groups.
+Every role assigns grants within a scope, as determined by the role's grant scope IDs.
+
+You can assign roles to multiple scopes to grant permissions to users who need access to resources across multiple scopes.
+Child scopes can inherit roles from parents.
+For example, the global scope could have multiple child scopes called "orgs".
+When you create a role in the global scope, you can configure it to apply to those children org scopes.
+
+When a user makes a request, the client may provide the scope or Boundary may look it up using the resource's ID.
+This scope ID, along with the user's ID and the IDs of the groups the user belongs to, control which roles Boundary fetches to provide grants for the request.
+
+A role provides grants for a request if the grant scope ID matches the request's
+scope ID and one or more of the following are true:
+
+- The user's ID is contained in the principal IDs set on the role
+- A group the user belongs to is contained in the principal IDs set on the role
+- The user is logged in and the `u_auth` user is contained in the principal IDs
+  set on the role
+- The role contains the `u_anon` user in the in the principal IDs set on the
+  role
+
+Roles are composable; a user's final set of grants will be composed of grants
+that originate from all matching roles.
+
+## Next steps
+
+1. Refer to [Assignable permissions](/boundary/docs/rbac/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
+1. Refer to [Permission grant formats](/boundary/docs/rbac/permission-grant-formats) for more information about grant strings and example formats.
+1. Refer to [Manage access with roles](/boundary/docs/rbac/manage-roles) for instructions to configure roles and grant scopes for principals.
+1. Refer to the [Resource tables](/boundary/docs/rbac/resource-table) for a cheat sheet to help you manage your permissions.

@@ -1,0 +1,74 @@
+---
+layout: docs
+page_title: Manage the Client Agent
+description: >-
+  Learn how to manage the Boundary Client Agent to intercept DNS requests, allowing Boundary to proxy connections transparently.
+---
+
+# Manage the Client Agent
+
+Refer to the following sections for more information about managing the Client Agent.
+You can monitor the Client Agent's status and retrieve information about any transparent sessions.
+If you want to temporarily defer DNS resolution to any previously configured DNS resolvers, you can pause the Client Agent.
+You can also disable the Client Agent, if you no longer want to use it for DNS resolution.
+
+## Monitor status and sessions
+
+You can check the status of the Client Agent to ensure it is running.
+Use the following command to check the Client Agent's status:
+
+```shell-session
+$ boundary client-agent status
+```
+
+You can retrieve information about the sessions that the Client Agent is managing.
+Use the following command to list any sessions currently being managed by the Client Agent, as well as any brokered credentials for those sessions:
+
+```shell-session
+$ boundary client-agent sessions
+```
+
+Note that this command does not list sessions that are not managed by the Client Agent. Use `boundary sessions list -recursive` to see all sessions.
+
+## Pause the Client Agent
+
+You can temporarily disable the Boundary Client Agent by pausing it with the following command:
+
+```shell-session
+$ boundary client-agent pause
+```
+
+When the Client Agent is paused, it does not intercept any DNS requests, and you are unable to use transparent sessions.
+
+To resume the Client Agent, use the following command:
+
+```shell-session
+$ boundary client-agent resume
+```
+
+## Disable the Client Agent
+
+If you want to disable the Boundary Client Agent, you can stop it with the following commands:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+```shell-session
+$ sudo launchctl unload -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
+```
+
+Unloading the Boundary Client Agent removes its launch daemon configuration. To restart the Client Agent, use:
+
+```shell-session
+$ sudo launchctl load -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+```shell-session
+net stop BoundaryClientAgent
+```
+
+</Tab>
+</Tabs>

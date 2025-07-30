@@ -1,0 +1,18 @@
+- `default` `(key-value-map: {})` - A map of string header names to an array of
+  string values. The default headers are set on all endpoints regardless of
+  the status code value. For an example, refer to the
+  [Listeners custom http response headers](#listener-s-custom-response-headers)
+  section.
+
+- `<collective status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the response status
+  code falls under the collective status code.
+  For example, `"2xx" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`, `"204"`, etc. This overrides
+  headers defined at the `default` level.
+
+- `<specific status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the specific status
+  code is returned. For example, `"200" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`. This overrides headers defined at
+  the `default` and `collective status code` level.

@@ -1,0 +1,78 @@
+---
+layout: docs
+page_title: Connection workflows
+description: >-
+  Learn how transparent sessions, connect helpers, the `-exec` flag, SSH ProxyCommand, and multi-hop sessions can help facilitate connections to targets.
+---
+
+# Connection workflows
+
+This topic provides an overview of the possible workflows you may use to connect to targets with Boundary.
+
+## Boundary connect
+
+When you run the `boundary connect` command against a target, Boundary establishes a local authenticated proxy to the address on the target's default port.
+The `boundary connect` command has a number of useful options, such as `-listen-port` which lets you choose the port on which the command listens for an incoming connection.
+Refer to the [`boundary connect`](/boundary/docs/commands/connect) documentation for a list of the available options and usage examples.
+
+To practice using the `boundary connect` command in a development environment, refer to the **Connect to your first target** tutorial for either [HCP Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-connect) or the [self-managed versions](/boundary/tutorials/get-started-community/community-get-started-connect) of Boundary.
+
+## Transparent sessions
+
+@include 'alerts/enterprise-only.mdx'
+
+Transparent sessions shift Boundary from an active connection model to a passive connection model.
+Instead of interacting with the Boundary CLI or Desktop client and having to remember specific IDs or ephemeral ports to connect to targets, Boundary operates in the background.
+If a user is authenticated and authorized, Boundary intercepts DNS calls and routes traffic through a session automatically.
+
+Refer to the [transparent sessions](/boundary/docs/concepts/transparent-sessions) documentation for more information.
+
+## Connect helpers
+
+Boundary features connect helpers that assist with making connections to targets using certain protocols.
+Connect helpers automatically accept key prompts for you.
+They are supported for the following connection types:
+
+- HTTP
+- Kubernetes
+- PostgreSQL
+- RDP
+- SSH
+
+Refer to the [Connect helpers](/boundary/docs/targets/connections/connect-helpers) documentation for more information.
+
+## Exec flag
+
+In addition to the built-in connect helpers, `boundary connect` can accommodate executing clients even when there is no built-in support for a specific client using the `-exec` flag.
+The `-exec` flag lets you wrap Boundary TCP sessions in your preferred client.
+You can use this flag to create an authenticated proxy to almost anything.
+
+Refer to the [Exec flag](/boundary/docs/targets/connections/exec-flag) documentation for more information.
+
+## SSH ProxyCommand
+
+The most common pattern for using Boundary to SSH is with the built-in `boundary connect ssh` command.
+However, there are more idiomatic approaches that can be employed to make Boundary transparent to users, and at the same time simplify common developer and operator workflows.
+Using `ProxyCommand` to execute a proxy when invoking the SSH client is a common practice.
+
+SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file that you create.
+You can configure the file to connect to the target ID or the target domain.
+
+Refer to the [SSH ProxyCommand](/boundary/docs/targets/connections/workflow-ssh-proxycommand) documentation for more information.
+
+## Multi-hop sessions
+
+@include 'alerts/enterprise-only.mdx'
+
+Most organizations want to provide access to infrastructure without exposing private networks.
+Many organizations also have complex network topologies requiring inbound traffic to route through multiple network enclaves to reach the target system.
+Multi-hop sessions allow you to chain together two or more workers across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
+
+You can deploy multi-hop workers in scenarios where inbound network traffic is
+not allowed.
+A worker in a private network can send outbound communication to its upstream worker, and create a reverse proxy to establish a session.
+
+You can configure target worker filters with multi-hop workers to allow for fine-grained control on which workers handle ingress and egress for session traffic to a target.
+Ingress worker filters determine which workers you connect with to initiate a session, and egress worker filters determine which workers are used to access targets.
+
+Refer to the [Multi-hop sessions](/boundary/docs/workers/multi-hop) documentation for more information.

@@ -1,0 +1,106 @@
+---
+layout: docs
+page_title: API overview
+description: >-
+  Learn about Boundary's HTTP API standards, status codes, path layout, methods, and headers. Understand how rate limiting helps manage system resources.
+---
+
+# Boundary API overview
+
+Boundary's API is a JSON-based HTTP API that adheres to a set of standards that are rigidly followed. At its core, it is a standards-compliant JSON API for both input and output.
+
+Before reading this page, it is useful to understand Boundary's [domain model](/boundary/docs/domain-model) to be aware of the terminology used here.
+
+Boundary's API is also described via OpenAPI v2; the version corresponding to any tag of Boundary's source code can be found in Boundary's [GitHub repository](https://github.com/hashicorp/boundary/blob/main/internal/gen/controller.swagger.json).
+
+-> **NOTE:** A rendered version of this generated API definition can be found on the [API page](/boundary/api-docs).
+
+Boundary's current API version is 1; all API paths begin with `/v1/`.
+
+## Status codes
+
+- `2XX`: Boundary returns a code between `200` and `299` on success. Generally this is `200`, but implementations should be prepared to accept any `2XX` status code as indicating success. If a call returns a `2XX` code that is not `200`, it will follow well-understood semantics for those status codes. Any `delete` actions return `204` on success.
+- `400`: Boundary returns `400` when a command cannot be completed due to invalid user input, except for a properly-formatted identifier that does not map to an existing resource, which will return a `404` as discussed below.
+- `401`: Boundary returns `401` if no authentication token is provided or if the provided token is invalid. A valid token that simply does not have permission for a resource will return a `403` instead. A token that is invalid or missing, but where the anonymous user (`u_anon`) is able to successfully perform the action, will not return a `401` but instead will return the result of the action.
+- `403`: Boundary returns `403` if a provided token was valid but does not have the grants required to perform the requested action.
+- `404`: Boundary returns `404` if a resource cannot be found. Note that this happens _prior_ to authentication/authorization checking in nearly all cases as the resource information (such as its scope, available actions, etc.) is a required part of that check. As a result, an action against a resource that does not exist will return a `404` instead of a `401` or `403`. While this could be considered an information leak, since IDs are randomly generated and this only discloses whether an ID is valid, it's tolerable as it allows for far simpler and more robust client implementation.
+- `405`: Boundary returns a `405` to indicate that the method (HTTP verb or custom action) is not implemented for the given resource.
+- `429`: Boundary returns a `429` if any of the API rate limit quotas have been exhausted for the resource and action. It includes the `Retry-After` header so that the client knows how long to wait before making a new request.
+- `500`: Boundary returns `500` if an error occurred that is not (directly) tied to invalid user input. If a `500` is generated, information about the error will be logged to Boundary's server log but is not generally provided to the client.
+- `503`: Boundary returns a `503` if it is unable to store a quota due to the API rate limit being exceeded. It includes the `Retry-After` header so that the client knows how long to wait before making a new request.
+
+## Path layout
+
+Boundary follows a predictable path layout. There are two fundamental types of URL paths, each supporting a different set of operations.
+
+### Collections
+
+Collections of resources are top level paths with plural English names for the resource, e.g. `/roles` and `/hosts`. Collections support the following operations:
+
+- Creation of new resources within that collection
+- Listing of resources within that collection
+
+All collection operations require supplying the enclosing resource. Depending on the collection type, this will be one of the following:
+
+- A scope, indicating the scope in which an operation should take place. For instance, a POST to `/roles` would need to indicate whether the role should be created within the `global` scope or an org-level scope like `o_1234567890`.
+- A parent resource of the appropriate type. For instance, hosts and host sets are child resources of host catalogs. When creating a new host set within a host catalog, a POST to `/host-sets` would need to indicate the host catalog ID with which the host-set should be associated.
+
+### Resources
+
+Resources themselves are defined by ID specifiers within a collection path, e.g. `/roles/r_1234567890`. Resources support the following operations:
+
+- Reading a resource's properties
+- Updating a resource's properties
+- Deleting a resource
+- Custom methods specific to a resource type
+
+Depending on the resource type, various parameters may be available. Some are common across all resource types (e.g. `name` and `description`); others are available only for specific types. Further, some concrete-types of abstract resources include an opaque `attributes` JSON object with type-specific values.
+
+For instance, an auth method is an abstract type; a `password` auth method is a concrete implementation of that type. When creating such an auth method, a `type` parameter will indicate that it should be the `password` type, while values specific to the `password` type auth method, such as minimum password length, will be contained within an `attributes` object.
+
+## Methods
+
+The following method conventions are used within Boundary's API:
+
+### GET
+
+`GET` is used for reading a resource or listing resources in a collection. The behavior depends on whether the `GET` is issued against a collection (`/roles`) or a singular resource (`/roles/r_1234567890`). In the former case it lists resources within the collection; in the latter it performs a read on that particular resource.
+
+### POST
+
+`POST` is used for creating a resource or performing custom actions against a resource. When creating a resource, `POST` is used against a collection (`/roles`). When performing a custom action, `POST` is used against a particular resource (`/roles/r_1234567890:set-principals`).
+
+### PATCH
+
+`PATCH` is used to update a resource's parameters. The following are behaviors to be aware of when using `PATCH`:
+
+- In nearly all cases, a `version` parameter is required. This is used for check-and-set, to ensure that the update operation is being performed against a known resource. The version parameter is returned from a `GET` operation on the resource so the current version, along with the resource's other current values, can be looked up at any time.
+- Passing a JSON `null` for a parameter has the effect of reverting that parameter to its default. For some parameters (e.g. `name`) this will simply clear the value (as the default `name` for a resource is empty); for other parameters this will revert to the current defaults within Boundary.
+- All parameters specified as part of a `PATCH` operation will be considered to be parameters that should be updated.
+
+### DELETE
+
+`DELETE` is used for deleting a specific resource, and is only used against a particular resource path.
+
+## HTTP headers
+
+Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
+Responses may contain the following headers:
+
+- `RateLimit` - Provides the current limit, number of remaining requests, and the time at which the quota will reset for the limit that is closest to being exhausted for the requested resource and action.
+- `RateLimit-Policy` - Describes the limits for the requested resource and action.
+- `X-Correlation-ID` - Identifies a transaction over a series of requests and responses.
+The `X-Correlation-ID` header is a universally unique identifier (UUIDv4).
+If you provide an `X-Correlation-ID` header in an HTTP request, Boundary logs that value for all audit events related to the request.
+It then uses that value as the header when it makes related requests to an external system, such as Vault, so that you can correlate the event between the product logs.
+If you do not provide an `X-Correlation-ID` header, Boundary generates a unique value for each incoming request.
+
+## Manage system resources
+
+If your controllers try to process every API request, they may either run out of resources or overwhelm the database server.
+Boundary features API rate limiting to help prevent system resources from being overwhlemed by too many simultaneous requests.
+For more information, refer to [API rate limiting](/boundary/docs/api/rate-limiting).
+
+When you search for Boundary resources using the `list` operation, you could potentially receive a very large number of results.
+Boundary uses an API pagination feature to enable you to search and filter large lists of search results without overwhelming your system resources.
+Refer to [API list pagination](/boundary/docs/api/pagination) for more information about pagination and using the local cache for searches.

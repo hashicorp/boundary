@@ -1,0 +1,60 @@
+---
+layout: docs
+page_title: User resource
+description: >-
+  Learn how the user resource identifies a person or entity for access control purposes. Understand how to assign groups and roles so users inherit permissions.
+---
+
+# Users
+
+A user is a resource
+that represents an individual person or entity
+for the purposes of access control.
+A user can be associated with zero or more [accounts][].
+A user authenticates to Boundary through an associated account
+and must be associated with at least one account before they can access Boundary.
+
+A user is also a principal
+which allows it to be assigned to [roles][].
+A user receives all the [permissions][]
+of the roles assigned directly to the user
+and all the permissions of roles assigned to [groups][] the user is in.
+
+Users can be defined at either a [global][] or [organization][] [scope][].
+A user can only be associated with accounts from an [auth method][]
+configured in the same scope.
+
+## Attributes
+
+A user has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the user's immediate parent scope.
+
+- `description` - (optional)
+
+## Referenced by
+
+- [Account][]
+- [Global][]
+- [Group][]
+- [Organization][]
+- [Role][]
+
+[account]: /boundary/docs/domain-model/accounts
+[accounts]: /boundary/docs/domain-model/accounts
+[auth method]: /boundary/docs/domain-model/auth-methods
+[global]: /boundary/docs/domain-model/scopes#global
+[group]: /boundary/docs/domain-model/groups
+[groups]: /boundary/docs/domain-model/groups
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[permissions]: /boundary/docs/rbac
+[role]: /boundary/docs/domain-model/roles
+[roles]: /boundary/docs/domain-model/roles
+[scope]: /boundary/docs/domain-model/scopes
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [User service](/boundary/api-docs/user-service)

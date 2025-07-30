@@ -1,0 +1,83 @@
+---
+layout: docs
+page_title: What is Boundary?
+description: >-
+  HashiCorp Boundary is a secure remote access solution that you can use to configure least-privileged, just-in-time access to systems, services, and applications.
+---
+
+# What is Boundary?
+
+HashiCorp Boundary is an identity-aware proxy aimed at simplifying and securing least-privileged access to cloud infrastructure
+
+With Boundary you can:
+- Enable single sign-on to target services and applications via external identity providers
+- Provide just-in-time network access to private resources
+- Enable passwordless access with dynamic credentials via [HashiCorp Vault](https://www.vaultproject.io/)
+- Automate discovery of new target systems
+- Record and manage privileged sessions
+- Standardize your team's access workflow with a consistent experience for any type of infrastructure across any provider
+
+## How does Boundary work?
+
+Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing the organization's private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs.
+
+The video below provides an overview of the Boundary architecture, components, and deployment models.
+It also gives a brief walkthrough of the end user's experience.
+
+<video controls>
+  <source src="https://www.datocms-assets.com/2885/1694719896-how-boundary-works-v3.mp4" type="video/mp4" />
+</video>
+
+The illustration below displays Boundary's core workflow.
+
+![Boundary core workflow](/img/boundary-core-workflow_light.png#light-theme-only)
+![Boundary core workflow](/img/boundary-core-workflow_dark.png#dark-theme-only)
+
+The core Boundary workflow consists of four stages:
+
+- **User Authentication:** The user logs in with a trusted identity (based on the rules and policies) with a trust identity platform such as Azure Active Directory, Okta, Ping, or any other trust identity platforms supporting OpenID Connect.
+- **Granular Authorization:** Boundary authenticates and authorizes users based on their roles and logical services, and tightly controls access and actions performed against systems.
+- **User-selected dynamic catalogs**: The user selects their application or host from dynamic host catalogs.
+- **Access:** Boundary streamlines connection to hosts by automating discovery and access configuration as workloads are deployed or changed.
+
+## Which edition of Boundary is right for me?
+
+- **HCP Boundary**: a managed Boundary offering with commercial features. HashiCorp hosts Boundary's control plane and you have the option of running private workers within your environment.
+- **Boundary Enterprise**: a self-managed Boundary offering with full feature parity to HCP Boundary.
+- **Boundary Community Edition**: a free, self-managed version of Boundary.
+
+
+If you're not sure which edition is right for you, we recommend [**HCP Boundary**](https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started) because it eliminates deployment operations.
+
+Regardless of which server edition of Boundary you use, all editions require the same Desktop and CLI clients, which you can download from the [Install Boundary downloads](https://developer.hashicorp.com/boundary/downloads) page.
+
+| Feature| Community | HCP | HCP | Enterprise |
+|---|:-:|:-:|:-:|:-:|
+|   | | Standard  | Plus  |  Plus |
+| Just-in-time credential access via HashiCorp Vault  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Just-in-time network access for TCP, SSH, HTTPS, RDS, K8s, database, etc | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Single sign-on access via OIDC and LDAP  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Identity provider managed groups  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Terraform support for fully automated deployment and configuration  | &#10003; | &#10003;  | &#10003;  | &#10003;  |
+| Credential brokering  | &#10003;   | &#10003;   | &#10003;   | &#10003;  |
+| Automated target discovery  | &#10003;   | &#10003;  | &#10003;  | &#10003;  |
+| Audit logs / Streaming | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Transparent sessions  |   | &#10003;  | &#10003;  | &#10003;  |
+| Multi-hop sessions  |   | &#10003;  | &#10003;  | &#10003;  |
+| Credential injection  |   | &#10003;  | &#10003;  | &#10003;  |
+| Automatic updates  |   | &#10003;  | &#10003;  |   |
+| Disaster recovery  |   | &#10003;  | &#10003;  |   |
+| Push button deployment  |   | &#10003;  | &#10003;  |   |
+| Session recording  |   |   | &#10003;  | &#10003;  |
+| Session recording lifecycle management  |   |   | &#10003;  | &#10003;  |
+## Get started
+
+Refer to the [Boundary tutorials](/boundary/tutorials) to learn how to set up, configure, and administer Boundary.
+
+## Community
+
+We welcome questions, suggestions, and contributions from the community.
+
+- Ask questions in [HashiCorp Discuss](https://discuss.hashicorp.com/c/boundary/50).
+- Read our [contributing guide](https://github.com/hashicorp/boundary/blob/main/CONTRIBUTING.md).
+- [Submit an issue](https://github.com/hashicorp/boundary/issues) for bugs and feature requests.

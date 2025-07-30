@@ -1,0 +1,108 @@
+---
+layout: docs
+page_title: Session resource
+description: >-
+  Learn how the session resource is a set of connections between users and hosts that may include credentials. Understand how sessions are created and terminated.
+---
+
+# Sessions
+
+A session is
+a set of related [connections][]
+between a [user][] and a [host][].
+A session may include a set of [credentials][]
+which define the permissions granted to the [user][] on the [host][] for the duration
+of the session.
+
+A user initiates a session
+by requesting access to a [target][].
+If a user has the proper [permissions][],
+a session is created
+and the [expiration time][] and [connection limit][]
+are set based on the [target's attributes][].
+If the target is associated with [credential libraries][],
+credentials are retrieved and returned from each
+credential library.
+A snapshot of the data
+relevant to authorizing the session
+is also captured and stored in the Boundary data warehouse
+when the session is created.
+
+Sessions are created in the [project][] of the corresponding target.
+Deleting a project will terminate all of the active sessions in the project
+but will not effect any session data in the data warehouse.
+Historical data in the data warehouse is never deleted.
+
+## Termination
+
+A session is forcefully terminated when one of the following occurs:
+
+- The session reaches the time limit and expires.
+
+- An authorized user manually cancels the session.
+
+- Any resource associated with the session is deleted
+  or removed from the target.
+  This includes: the host, the [host set][], the [host catalog][],
+  a credential, a credential library, a [credential store][],
+  the target itself, the project, the [organization][],
+  the user, the user's [account][], or the account's [authentication method][].
+
+In addition to the above,
+a session terminates non-forcefully
+when the user closes all connections
+and no additional connections are allowed
+because of a connection limit.
+
+Any credentials associated with the session are revoked when the session is
+terminated.
+
+Permissions are only evaluated at session establishment.
+Changes to a user's permissions do not effect existing sessions.
+
+## Referenced by
+
+- [Project][]
+- [Credential][]
+- [Host set][]
+- [Target][]
+
+[expiration time]: /boundary/docs/domain-model/targets#session_max_seconds
+[connection limit]: /boundary/docs/domain-model/targets#session_connection_limit
+[target's attributes]: /boundary/docs/domain-model/targets#tcp-target-attributes
+[account]: /boundary/docs/domain-model/accounts
+[accounts]: /boundary/docs/domain-model/accounts
+[authentication method]: /boundary/docs/domain-model/auth-methods
+[authentication methods]: /boundary/docs/domain-model/auth-methods
+[connections]: /boundary/docs/domain-model/session-connections
+[credential library]: /boundary/docs/domain-model/credential-libraries
+[credential libraries]: /boundary/docs/domain-model/credential-libraries
+[credential store]: /boundary/docs/domain-model/credential-stores
+[credential stores]: /boundary/docs/domain-model/credential-stores
+[credential]: /boundary/docs/domain-model/credentials
+[credentials]: /boundary/docs/domain-model/credentials
+[host catalog]: /boundary/docs/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[host set]: /boundary/docs/domain-model/host-sets
+[host sets]: /boundary/docs/domain-model/host-sets
+[host]: /boundary/docs/domain-model/hosts
+[hosts]: /boundary/docs/domain-model/hosts
+[target]: /boundary/docs/domain-model/targets
+[targets]: /boundary/docs/domain-model/targets
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[organizations]: /boundary/docs/domain-model/scopes#organizations
+[project]: /boundary/docs/domain-model/scopes#projects
+[projects]: /boundary/docs/domain-model/scopes#projects
+[permissions]: /boundary/docs/rbac
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Session service](/boundary/api-docs/session-service)
+
+## Tutorial
+
+Refer to the [Manage Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-sessions) tutorial to learn how to start, view, and cancel a session.

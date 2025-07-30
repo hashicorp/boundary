@@ -1,0 +1,65 @@
+---
+layout: docs
+page_title: Host set resource
+description: >-
+  Learn about using the host set resource to organize and manage hosts that have the same level of access control and belong to the same host catalog.
+---
+
+# Host sets
+
+A host set is a resource
+that represents a collection of [hosts][]
+which are considered equivalent
+for the purposes of access control.
+A host set can only include hosts
+from the same [host catalog][] as the host set.
+A [target][] can reference host sets from host catalogs
+which belong to the same [project][] as the target.
+
+## Attributes
+
+A host set has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the host set's parent host catalog.
+
+- `description` - (optional)
+
+- `preferred_endpoints` - (optional)
+  A list of selector strings in the format of either `cidr:<valid IPv4/6 CIDR>`
+  or `dns:<globbed name>` used to select the addresses of hosts when
+  establishing a [session][] with a target.
+
+### Plugin host set attributes
+
+- `attributes` - (optional)
+  A collection of fields which the plugin uses to lookup which hosts should be
+  members of this host set.  Often this includes a type of filter using a
+  syntax which is usable by the backing service.
+
+- `sync_interval_seconds` - (optional)
+  The number of seconds between the time boundary syncs the hosts in this
+  set using this host set's plugin. Defaults to `600` seconds, or 10 minutes.
+
+## Referenced by
+
+- [Host][]
+- [Host catalog][]
+- [Target][]
+
+[host catalog]: /boundary/docs/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[host]: /boundary/docs/domain-model/hosts
+[hosts]: /boundary/docs/domain-model/hosts
+[project]: /boundary/docs/domain-model/scopes#projects
+[projects]: /boundary/docs/domain-model/scopes#projects
+[session]: /boundary/docs/domain-model/sessions
+[sessions]: /boundary/docs/domain-model/sessions
+[target]: /boundary/docs/domain-model/targets
+[targets]: /boundary/docs/domain-model/targets
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Host set service](/boundary/api-docs/host-set-service)

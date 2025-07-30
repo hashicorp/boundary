@@ -1,0 +1,164 @@
+---
+layout: docs
+page_title: Session recording
+description: >-
+  Discover resources to help you learn more about using session recording to audit user sessions and meet compliance standards for auditing.
+---
+
+# Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides auditing capabilities using a feature called session recording.
+
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+All sessions have a fixed time limit, and all connections are proxied through a worker.
+
+When you enable session recording on a target, a worker records any sessions that access the target.
+No session data is routed through controllers during the recording stage.
+The worker stores the recording on local disk during the recording phase, and then it moves the recording to an external object store when the session is terminated.
+
+Session recordings are stored in the BSR (Boundary Session Recording) format.
+Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
+Administrators can view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
+
+You view session recordings with a session player that runs in a web browser.
+The session player is an aggregation of web components that work together to present the different parts of a session recording as a logical whole.
+A controller retrieves the contents of a recording from a worker with access to the external object store.
+The controller decodes the contents of the recording into a format that is usable by the player.
+The player then retrieves the data from the controller.
+
+In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
+If no worker can access the storage backend, the session is canceled and an error is returned.
+
+## Storage buckets
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A resource known as a [storage bucket](/boundary/docs/domain-model/storage-buckets) is used to store the recorded sessions.
+The storage bucket represents a bucket in an external object store.
+You can configure storage buckets on Amazon S3, MinIO, and some S3-compliant cloud vendors.
+
+Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
+You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+
+Before you can use a storage bucket to record sessions, you must configure a worker with local storage to act as a cache.
+The entire recording is written to the local storage cache before it is uploaded.
+Once the session is complete, the files are automatically synced with the external storage bucket and deleted from the worker's local storage.
+
+A storage bucket exists in either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
+Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
+The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
+Any session recording metadata that is attached to the storage bucket is deleted when the storage bucket is deleted.
+
+### Storage considerations
+
+The BSR captures all the data transmitted between a user and a target during a single session. As a result, the size of a BSR is dependent on user activity. At a minimum, a BSR for a session with one connection requires 8KB of space for its file for BSR keys, checksums, and metadata.
+
+Determining how much storage you need to allocate on workers and the external storage provider for recordings depends on user activity, but the following two examples are provided to help with storage estimates:
+
+- For one minute of simple shell activity, a BSR can be around 20KB in size. The storage requirements for 1,000 such sessions would be 20MB.
+
+- Sending 50MB of data results in a BSR around 50.1MB in size. The storage requirements for 1,000 such sessions would be 50.1 GB.
+
+When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker. Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
+
+When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
+
+<Warning>
+
+Boundary supports recorded session files up to 5 GB in size.
+If a recorded session file is over 5 GB, the session details show the recording state as `Failed` and you may not be able to play back the session.
+Be careful when you use Secure File Copy (SCP) to transfer large files during a recorded session because it can result in large recorded session files.
+
+</Warning>
+
+## asciicast
+
+When you view recorded sessions using the CLI or Admin UI, Boundary can convert the recording into other formats for playback.
+Currently Boundary supports converting the recording of an individual SSH channel into an [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format to play back an interactive SSH session.
+
+### Limitations
+
+The asciicast format is well suited for the playback of interactive shell activity.
+However, some aspects of the recording cannot be translated into asciicast.
+For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
+The output of the command may be displayed, though.
+
+If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
+In all cases, the SSH session is still recorded in the BSR file and you can view the BSR file in the external storage bucket.
+
+### Security
+
+When a worker converts an SSH recording into the BSR file, it iterates through each of the requests in the recording and displays some of them to the user.
+If you use an environment request to set the shell variable, the request is included in the asciicast header.
+You should be aware of the following security concerns that could result from this behavior:
+
+- asciicast only includes the last value that you send in the header, any previous values are overwritten.
+An attacker may be able to use a malicious shell value at the beginning of a session, and then switch to `shell=/bin/bash` at the end of the session to conceal the malicious activity.
+
+- asciicast does not display other variables such as `path` in the header, but they can cause drastic changes to code execution during the SSH session.
+An attacker could change the `path` variable to point to a malicious program or change the beahvior of a normal program so that it performs a malicious action.
+
+- asciicast silently ignores any requests that do not have an explicit handler, even though they may cause signficant changes to code execution during the SSH session.
+An attacker could execute malicious code using a request without an explicit handler.
+
+## Session recording audit events
+
+Boundary emits audit events for actions performed by users. Here are **some** of the possible event field types that are emitted:
+
+- `timestamp` - The timestamp of the event
+- `auth` - Authentication information about the user who performed the action.
+- `response.details.item.connection_recordings.`
+   - `id` - Session recording ID.
+   - `channel_recordings.id` - Session recording channel ID.
+   - `start_time.seconds` - Start time of session recording.
+   - `end_time.seconds` - End time of session recording.
+   - `bytes_up` - Upload bytes during session.
+   - `bytes_down` - Download bytes during session.
+   - `channel_recordings.duration.seconds`- Length of time a session took, recorded in seconds.
+- `request_info.client_ip` - The client IP address used by the user.
+- `response.details.item.create_time_values.`
+   - `target.name` - The name of the targets.
+   - `target.id` - The ID of the target accessed during the recording.
+   - `target.type` - The type of protocol used.
+   - `target.scope.name` - Name of the scope the target accessed belongs to.
+   - `target.scope.parent_scope_id` - Parent ID of the scope the target accessed belongs to.
+- `response.details.item.Attrs.SshTargetAttributes.`
+   - `storage_bucket_id.value` - Storage bucket ID attached to a target that is used for storing session recordings.
+   - `enable_session_recording.value` - Determines if session recording is enabled on a target.
+
+## Next steps
+
+To enable session recording, you must:
+
+1. [Configure workers for local storage](/boundary/docs/session-recording/configuration/configure-worker-storage)
+1. Configure an external storage provider:
+   - [Amazon S3](/boundary/docs/session-recording/configuration/storage-providers/configure-s3)
+   - [MinIO](/boundary/docs/session-recording/configuration/storage-providers/configure-minio)
+   - [S3-compliant](/boundary/docs/session-recording/configuration/storage-providers/configure-s3-compliant)
+1. [Create a storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket)
+1. [Enable session recording on a target](/boundary/docs/session-recording/configuration/enable-session-recording)
+
+Once you enable session recording, you can [Find and view recorded sessions](/boundary/docs/session-recording/configuration/manage-recorded-sessions).
+
+### Implement session recording compliance standards
+
+After enabling session recording, you can configure retention policies for recorded sessions or validate the recorded data:
+
+- [Configure storage policies](/boundary/docs/session-recording/compliance/configure-storage-policy)
+- [Update storage policies](/boundary/docs/session-recording/compliance/update-storage-policy)
+- [Validate recorded sessions](/boundary/docs/session-recording/compliance/validate-session-recordings)
+- [Validate external data store](/boundary/docs/session-recording/compliance/validate-data-store)
+
+### Work with BSR data files
+
+For more information about working with BSR files, refer to the following topics:
+
+- [BSR file data structure](/boundary/docs/session-recording/data/bsr-file-structure)
+- [Read a BSR file](/boundary/docs/session-recording/data/read-bsr-file)

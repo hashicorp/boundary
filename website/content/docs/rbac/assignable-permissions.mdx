@@ -1,0 +1,104 @@
+---
+layout: docs
+page_title: Assignable permissions
+description: >-
+  Learn about using actions and output fields to grant users permissions to any resources that are identified by ID or Type.
+---
+
+# Assignable permissions
+
+You can grant users permissions to any Boundary resources that are identified by ID or Type selectors.
+There are two types of assigned permissions:
+
+- An `actions` field indicating which actions to allow the client to perform on
+  the resources matched by `id` and `type`
+- An `output_fields` field indicating which top-level fields to return in the
+  response.
+
+## Actions
+
+Actions convey the ability to perform some operation against a resource or
+collection.
+They include common CRUD operations (`create`, `read`, `update`,
+`delete`), but some resources also have actions that are specific to their type.
+
+For example, a `target` has an `authorize-session` action that allows you to request
+making a connection to that target.
+The `auth-method` resources have an `authenticate` action that allows you to authenticate to Boundary.
+Most actions represent common operations, however there are some special cases to note.
+
+### Subactions
+
+Some subactions are also supported. Subactions have a format
+`top_level_action:subaction`, such as `read:self`.
+When you grant a top level action to a principal, they also inherit all subactions.
+
+For example, if a grant conveys `read`, it also matches the API actions `read` and `read:self`.
+However, if a grant conveys `read:self`, it does not grant the top-level action `read`.
+
+### The `no-op` action and listing visibility
+
+Boundary contains a `no-op` action that is not used for any real operations.
+However, you can use the `no-op` action for listing visibility.
+
+When a user runs a `list` operation, Boundary only shows the resources for which a user has been granted at least one action.
+Without the `no-op` action, you would have to grant the user another action such as `read` to ensure they could view the resource.
+Granting additional actions to users could result in exposing more information to the user than intended.
+This is especially true for listing scopes and authentication methods, such as when users perform the initial authentication to Boundary.
+
+Instead, you can grant the `no-op` action to users to ensure that they can view the output of a list command, without granting them other unnecessary actions.
+
+### Anonymous user restrictions
+
+There are limits to the actions that you can assign to the anonymous user `u_anon`.
+The limitations are meant to prevent you from accidentally adding the anonymous user to a role that provides more privileges than you would intend to grant to an unauthenticated user.
+
+For anonymous users, actions are restricted to listing scopes and auth methods,
+and authentication to auth methods.
+You can also grant the `no-op` action for listing visibility.
+
+Boundary does not return a special error message when access is denied to an action because it is not allowed for an anonymous user.
+You can still assign grants to a role on which the anonymous user is a principal, but they can never match the anonymous user.
+
+## Output fields
+
+Grant strings can contain an `output_fields` value. This setting gives you fine-grained
+control over the visibility of data returned to users.
+
+The `output_fields` reference the field names of the JSON object reponse.
+They are composed just like other parts of the RBAC model, and are action-specific.
+For example, the following grant:
+
+`ids=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
+
+results in the three identified output fields (scope ID, name, and description) applying to any `list` and `no-op` actions for all auth methods in the scope.
+If a user performed a `list` operation under this example grant, each item returned would only have the three fields populated: `scope_id`, `name`, and `description`.
+Any other actions, such as `read` or `update`, would be unaffected and would return the default information.
+
+This grant:
+
+`ids=*;type=auth-methods;output_fields=id`
+
+means that only the `id` will be returned for any action performed against auth methods in this scope.
+
+Grants are composable.
+Therefore, if both of the example grants above are added, the final set of output fields would be `id`, `scope_id`, `name`, and `description` for the `list` and `no-op` actions.
+For all other actions, the output field would be `id`.
+
+### Default output fields
+
+If none of the grants applicable to the resource or action for a given request contain `output_fields` definitions, Boundary uses the default settings.
+The default settings vary based on whether the user is anonymous:
+
+- If the user is anonymous, Boundary returns a restricted set of fields.
+They include `id`, `scope_id`, `scope`, `name`, and `description`.
+- If the user is authenticated, Boundary returns the full set of fields.
+
+## More information
+
+1. Refer to [Permission grant formats](/boundary/docs/rbac/permission-grant-formats) for more information about grant strings and example formats.
+1. Refer to the [Resource tables](/boundary/docs/rbac/resource-table) for a cheat sheet to help you manage your permissions.
+
+## Next steps
+
+Refer to [Manage access with roles](/boundary/docs/rbac/manage-roles) for instructions to configure roles and grant scopes for principals.

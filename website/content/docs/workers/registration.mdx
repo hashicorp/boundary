@@ -1,0 +1,197 @@
+---
+layout: docs
+page_title: Register workers
+description: >-
+  Learn about authorizing workers to the controller. View a worker configuration example.
+---
+
+# Register workers
+
+Workers authenticate to Boundary using an activation token. They require an
+accessible directory defined by `auth_storage_path` for credential storage and
+rotation. Transport level communication between the worker & Controller is secured through PKI.
+
+Example (not safe for production!):
+
+```hcl
+worker {
+  auth_storage_path="/var/lib/boundary"
+  initial_upstreams = ["10.0.0.1"]
+}
+```
+
+## Authorization methods
+
+There are three mechanisms that can be used to initially register a worker to the cluster, Controller-Led, Worker-Led, and registration through an external KMS.
+
+### Controller-led authorization flow
+
+In this flow, the operator fetches an activation token from the controller's
+`workers:create:controller-led` action (on the CLI, this is via `boundary
+workers create controller-led`). That activation token is given to the worker
+via the `controller_generated_activation_token` parameter. This can be done
+either directly or via an env var or file by using `env://` or `file://` syntax:
+
+```hcl
+worker {
+  auth_storage_path="/var/lib/boundary"
+  initial_upstreams = ["10.0.0.1"]
+  controller_generated_activation_token = "neslat_........."
+  # controller_generated_activation_token = "env://ACT_TOKEN"
+  # controller_generated_activation_token = "file:///tmp/worker_act_token"
+}
+```
+
+Once the worker starts, it reads this token and uses it to authorize to the
+cluster. Note that this token is one-time-use; it is safe to keep it here even
+after the worker has successfully authorized and authenticated, as it will be
+unusable at that point.
+
+Note: If this value is not present at worker startup time and the worker is not
+authorized, it will print and write out suitable information for the worker-led
+flow, described below. If the worker-led flow has not been used to
+authorize the worker, and the controller-generated activation token is provided
+and the worker restarted, it will make use of it.
+
+### Worker-led authorization flow
+
+In this flow, the worker prints out an authorization request token to two
+places: the startup information printed to stdout, and a file called
+`auth_request_token` in the base of the configured `auth_storage_path`. This
+token can be submitted to a controller at the `workers:create:worker-led` path;
+on the CLI this would be via `boundary workers create worker-led
+-worker-generated-auth-token`. No values are needed in the configuration file.
+
+### KMS-led authorization & authentication flow
+
+In this flow, the worker authenticates upstream, either to a controller or worker, using a shared KMS provided by the customer. This mechanism auto-registers the worker in addition to authenticating it, and does not require on-disk storage for credentials since each time it connects, it re-authenticates using the trusted KMS.
+
+Optionally with the Multi-Hop workers feature, trusted Workers can authenticate downstream nodes using a separate KMS.
+
+Workers using KMS-led authorization require a `name` field. This specifies a unique name of this worker
+within the Boundary cluster and _must be unique across workers_. The `name`
+value can be:
+- a direct name string (must be all lowercase)
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
+
+Workers using KMS-led authorization accept an optional `description` field. The `description` value can
+be:
+- a direct description string
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
+
+```hcl
+worker {
+  name = "example-worker"
+  description = "An example worker"
+  public_addr = "5.1.23.198"
+}
+```
+
+Workers using the KMS authorization flow also require a KMS block designated for `worker-auth`. This is the KMS configuration for authentication between the workers and controllers and must be present. Example (not safe for production!):
+
+```hcl
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
+	key_id = "global_worker-auth"
+}
+```
+
+The upstream controller or worker must have a `kms` block that references the
+same key and purpose. If both a controller and worker are running as the same
+server process, only one stanza is needed.
+
+For Multi-Hop workers, It is also possible to specify a `kms` block with the `downstream-worker-auth` purpose. If specified, this will be a separate KMS that can be used for authenticating new downstream nodes. Blocks with this purpose can be specified multiple times. This allows a single upstream node to authenticate with one key to its own upstream (via the `worker-auth` purpose) and then serve as an authenticating upstream to nodes
+across various networks, each with their own separate KMS system or key:
+
+```hcl
+kms "aead" {
+	purpose = "downstream-worker-auth"
+	aead_type = "aes-gcm"
+	key = "XthZVtFtBD1Bw1XwAWhZKVrIwRhR7HcZ"
+	key_id = "iot-nodes-auth"
+}
+
+kms "aead" {
+	purpose = "downstream-worker-auth"
+	aead_type = "aes-gcm"
+	key = "OLFhJNbEb3umRjdhY15QKNEmNXokY1Iq"
+	key_id = "production-nodes-auth"
+}
+```
+
+In the examples above we are encoding key bytes directly in the configuration
+file. This is because we are using the `aead` method where you directly supply a
+key; in production you'd want to use a KMS such as AWS KMS, GCP CKMS, Azure
+KeyVault, or HashiCorp Vault. For a complete guide to all available KMS types,
+refer to [Data encryption in Boundary](/boundary/docs/secure/encryption/data-encryption).
+
+## Complete configuration example
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	address = "127.0.0.1"
+}
+
+worker {
+  # Name attr must be unique across workers
+  name = "demo-worker-1"
+  description = "A default worker created for demonstration"
+
+  # Workers must be able to reach upstreams on :9201
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+
+  public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+
+# must be same key as used on controller config
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
+	key_id = "global_worker-auth"
+}
+```
+
+[`initial_upstreams`](/boundary/docs/configuration/workers#initial_upstreams)
+are used to connect to upstream Boundary clusters.
+
+## Resources
+
+For more on how `tags{}` in the above configuration are used to facilitate
+routing to the correct target, refer to [Route traffic through a worker](/boundary/docs/workers/worker-tags).
+
+
+## KMS configuration
+
+When using Controller or Worker-led Authentication, a worker’s generated activation token is stored in clear-text on disk. Using an external KMS, a Workers' credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
+
+Example (not safe for production!):
+```hcl
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
+	key_id = "worker-auth-storage"
+}
+```
+
+<Note>
+
+The `name` and `description` fields are not valid configuration fields for workers that use worker-led or controller-led authorization. You can only set these fields through the API and they are only valid for workers that use the [KMS authorization method](/boundary/docs/workers/registration#kms-led-authorization-authentication-flow).
+
+</Note>

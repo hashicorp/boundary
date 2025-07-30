@@ -1,0 +1,395 @@
+---
+layout: docs
+page_title: Route traffic through a worker
+description: >-
+  Learn about using worker tags to designate worker roles. Examples include serving specific regions or functions, such as credential stores or storage buckets.
+---
+
+# Route traffic through a worker
+
+This page describes how to use worker tags and filters to control which workers
+are allowed to handle a given resource. You can use filters to control traffic
+locally. As an example, you can use filters to ensure that traffic going into a
+public cloud is only handled by workers running within that same cloud.
+Tags can also be used determine which worker should perform session recording duties.
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+You can configure worker tags using the worker config file, the Admin UI, the CLI, or the API. Select a tag below to view examples.
+
+<Tip>
+
+  Terraform users should consider tagging workers using the worker config file in conjunction with the Boundary Terraform provider [worker resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/worker) to register workers.
+
+</Tip>
+
+<Tabs>
+<Tab heading="Worker config file" group="file">
+
+You can tag workers with a set of key/value tags in their configuration file. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    region = ["us-east-1"]
+    type   = ["prod", "webservers"]
+  }
+}
+```
+
+As HCL is JSON-compatible, this turns into an input JSON value of:
+
+```json
+{
+  "worker": {
+    "name": "web-prod-us-east-1",
+    "tags": {
+      "region": ["us-east-1"],
+      "type": ["prod", "webservers"]
+    }
+  }
+}
+```
+
+This is the canonical format, and maps closely to the filter structure.
+For compatibility with some other systems, you can specify the tags in a pure key=value style:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags = ["region=us-east-1", "type=prod", "type=webservers"]
+}
+```
+
+In this format you cannot have an equal sign as part of the key.
+
+The entire `tags` block or the keys' values can also point to an environment variable or filepath in the system, through the `env://` and `file://` URLs:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags = "env://BOUNDARY_ALL_WORKER_TAGS"
+}
+```
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    type   = "env://BOUNDARY_WORKER_TYPE_TAGS"
+    region = "file://config/worker/region_tags"
+    usage  = ["admin"]
+  }
+}
+```
+
+Notice that the syntax within the environment variable or file changes
+depending on how the configuration file is set:
+
+- For setting the entire `tags` block, you must specify both the keys and values in JSON or HCL format:
+
+  ```json
+  {
+    "region": ["us-east-1"],
+    "type": ["prod", "webservers"]
+  }
+  ```
+
+  ```hcl
+  region = ["us-east-1"]
+  type   = ["prod", "webservers"]
+  ```
+
+- For setting the keys' values within the `tags` block, only a JSON
+array with the tags intended for the particular key is required:
+
+  ```json
+  ["prod", "webservers"]
+  ```
+
+</Tab>
+<Tab heading="UI" group="ui">
+
+You can tag workers with a set of key/value API tags in the Boundary Admin UI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+
+![Worker Config Tags in Boundary Admin UI](/img/ui/worker-tags-config_light.png#light-theme-only)
+![Worker Config Tags in Boundary Admin UI](/img/ui/worker-tags-config_dark.png#dark-theme-only)
+
+In the image above, the tag type is `config`, which means the tags were defined in the worker config file. Config tags cannot be modified within the UI, you must update them in the config file itself.
+
+Below is an example of this tag definition in a worker's `config.hcl` file:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    type   = ["s3", "worker"]
+  }
+}
+```
+
+As HCL is JSON-compatible, this turns into an input JSON value of:
+
+```json
+{
+  "worker": {
+    "name": "web-prod-us-east-1",
+    "tags": {
+      "type": ["s3", "worker"]
+    }
+  }
+}
+```
+
+You can add API tags in the Admin UI. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
+
+To add an API tag:
+
+1. Navigate to the worker's **Tags** tab.
+1. Click the **Manage** dropdown and then **Create New Tags**.
+1. Enter in the tag **Key** and **Value**, then click **Add**.
+1. Repeat this process for any additional tags. When finished, click **Save**.
+
+A tag key can have multiple values associated with it. In the image below, the `type` key has three values. The `type=s3` and `type=worker` tags are both config tags, and the `type=aws` tag is an API tag.
+
+![Worker API in Boundary Admin UI](/img/ui/worker-tags-api_light.png#light-theme-only)
+![Worker API in Boundary Admin UI](/img/ui/worker-tags-api_dark.png#dark-theme-only)
+
+You can remove API tags using the Admin UI, CLI, or API.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+You can tag workers with a set of key/value API tags using the CLI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+
+```shell-session
+$ boundary workers read -id w_0BNbXUyy8D
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   openssh-server:9202
+  Created Time:              Tue, 16 Jul 2024 09:39:13 MDT
+  ID:                        w_0BNbXUyy8D
+  Last Status Time:          2024-07-19 23:37:33.331817 +0000 UTC
+  Local Storage State:       available
+  Name:                      web-prod-us-east-1
+  Release Version:           Boundary v0.16.2
+  Type:                      pki
+  Updated Time:              Fri, 19 Jul 2024 17:37:33 MDT
+  Version:                   2
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["s3" "worker"]
+    Canonical:
+      type: ["s3" "worker"]
+
+  Authorized Actions:
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+    no-op
+```
+
+In the output above, the tags listed as `Configuration`, were defined in the worker config file. Config tags cannot be modified using the CLI, you must update them in the config file itself.
+
+Below is an example of this tag definition:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    type   = ["s3", "worker"]
+  }
+}
+```
+
+The `Canonical` tags in the output show all tags associated with a worker, including configuration tags and API tags.
+
+You can add API tags using the Admin UI, CLI, or API. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
+
+You can add API tags using the [boundary workers add-worker-tags](/boundary/docs/commands/workers/add-worker-tags) CLI command:
+
+```shell-session
+$ boundary workers add-worker-tags -id w_0BNbXUyy8D -tag "region=useast1"
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   openssh-server:9202
+  Created Time:              Tue, 16 Jul 2024 09:39:13 MDT
+  ID:                        w_0BNbXUyy8D
+  Last Status Time:          2024-07-19 23:37:33.331817 +0000 UTC
+  Local Storage State:       available
+  Name:                      web-prod-us-east-1
+  Release Version:           Boundary v0.16.2
+  Type:                      pki
+  Updated Time:              Mon, 22 Jul 2024 14:12:45 MDT
+  Version:                   3
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["s3" "worker"]
+    Api:
+      region: ["useast1"]
+    Canonical:
+      region: ["useast1"]
+      type: ["s3" "worker"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+Notice the worker now has both `Configuration` and `API` tags listed, and the summation of both sets is listed under the `Canonical` tags.
+
+A tag key can have multiple values associated with it. To update existing API tags using the CLI, you must use the [boundary workers set-worker-tags](/boundary/docs/commands/workers/set-worker-tags) command.
+
+In the example above, the `type` key has two values, `s3` and `worker`. The `type=s3` and `type=worker` tags are both config tags, and the `region=useast1` tag is an API tag.
+
+To add an updated API tag with a key of type, all the tags must be set:
+
+```shell-session
+$ boundary workers set-worker-tags -id w_0BNbXUyy8D -tag "type=aws" -tag "region=useast1"
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   openssh-server:9202
+  Created Time:              Tue, 16 Jul 2024 09:39:13 MDT
+  ID:                        w_0BNbXUyy8D
+  Last Status Time:          2024-07-19 23:37:33.331817 +0000 UTC
+  Local Storage State:       available
+  Name:                      web-prod-us-east-1
+  Release Version:           Boundary v0.16.2
+  Type:                      pki
+  Updated Time:              Mon, 22 Jul 2024 14:12:45 MDT
+  Version:                   3
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["s3" "worker"]
+    Api:
+      region: ["useast1"]
+      type: ["aws"]
+    Canonical:
+      region: ["useast1"]
+      type: ["aws" "s3" "worker"]
+
+  Authorized Actions:
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+    no-op
+```
+
+Now the worker includes both config tags and API tags with a `type` key. The updated `Canonical` tags in the output show all tags associated with a worker, including configuration tags and API tags.
+
+You can remove API tags using the Admin UI, CLI, or API. To remove an API tag using [boundary workers remove-worker-tags](/boundary/docs/commands/workers/remove-worker-tags):
+
+```shell-session
+$ boundary workers remove-worker-tags -id w_0BNbXUyy8D -tag "region=useast1"
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   openssh-server:9202
+  Created Time:              Tue, 16 Jul 2024 09:39:13 MDT
+  ID:                        w_0BNbXUyy8D
+  Last Status Time:          2024-07-19 23:37:33.331817 +0000 UTC
+  Local Storage State:       available
+  Name:                      web-prod-us-east-1
+  Release Version:           Boundary v0.16.2
+  Type:                      pki
+  Updated Time:              Mon, 22 Jul 2024 14:12:45 MDT
+  Version:                   3
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["s3" "worker"]
+    Api:
+      type: ["aws"]
+    Canonical:
+      type: ["aws" "s3" "worker"]
+
+  Authorized Actions:
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+    no-op
+```
+
+</Tab>
+</Tabs>
+
+## Filter workers using tags
+
+As filters operate on JSON Pointer selectors, the values that are input into the
+filter come from the JSON representation of the values in the configuration file
+nested under `tags` and include a `name` value:
+
+```json
+{
+  "name": "web-prod-us-east-1",
+  "tags": {
+    "region": ["us-east-1"],
+    "type": ["production", "webservers"]
+  }
+}
+```
+
+<Warning>
+
+  If an expression fails due to a key not being found within the input data,
+the worker is not included in the final set. You should ensure that all workers that should match a given filter are populated with tags referenced in the filter string. It is not possible to distinguish between a worker that is not included due to the expression itself and a worker that did not have correct tags.
+
+</Warning>
+
+## Filter examples
+
+Following are some examples of using these values in filters that can be applied to targets, Vault credential stores, or storage buckets:
+
+- Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
+  match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
+
+- Region: `"us-east-1" in "/tags/region"`.
+
+- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
+
+Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+
+## Next steps
+
+You can [configure a worker filter](/boundary/docs/workers/filters) to control which workers are allowed to manage a given session, act as a Vault credential store, or store session recordings.

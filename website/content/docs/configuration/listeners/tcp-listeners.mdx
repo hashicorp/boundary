@@ -1,0 +1,55 @@
+---
+layout: docs
+page_title: TCP listeners - configuration reference
+description: >-
+  Learn about using the TCP listener on a TCP address and port, and view configurable parameters. Understand custom response headers. View example configurations.
+---
+
+# `tcp` listener
+
+@include '/configuration-reference/listeners/tcp-intro.mdx'
+
+## Listener's custom response headers
+
+@include '/configuration-reference/listeners/tcp-custom-response-headers.mdx'
+
+## `tcp` listener parameters
+
+Refer to the following sections for `tcp` listener parameters.
+
+### General
+
+@include '/configuration-reference/listeners/tcp-general-parameters.mdx'
+
+### `custom_api_response_headers` parameters
+
+@include '/configuration-reference/listeners/tcp-custom-api-response-headers.mdx'
+
+### `custom_ui_response_headers` parameters
+
+@include '/configuration-reference/listeners/tcp-custom-ui-response-headers.mdx'
+
+### TLS
+
+@include '/configuration-reference/listeners/tcp-tls.mdx'
+
+<!-- Not enabled yet
+### `telemetry` parameters
+
+@include '/configuration-reference/listeners/tcp-telemetry.mdx' !-->
+
+## `tcp` listener examples
+
+Refer to the following sections for examples of `tcp` listeners.
+
+### Configure TLS
+
+@include '/configuration-reference/listeners/tcp-configure-tls.mdx'
+
+### Configure custom http response headers
+
+@include '/configuration-reference/listeners/tcp-configure-custom-http-response-headers.mdx'
+
+### Listen on mulitple interfaces
+
+@include '/configuration-reference/listeners/tcp-listen-on-mulitple-interfaces.mdx'

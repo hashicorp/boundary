@@ -1,0 +1,12 @@
+The TCP listener configures Boundary to listen on a TCP address/port.
+
+```hcl
+listener "tcp" {
+  purpose = "api"
+  address = "127.0.0.1:9200"
+}
+```
+
+The `listener` stanza may be specified more than once to make Boundary listen on
+multiple interfaces; however, only one listener marked for `cluster` purpose is
+allowed.
