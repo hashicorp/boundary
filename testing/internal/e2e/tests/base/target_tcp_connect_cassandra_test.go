@@ -118,7 +118,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	_, _ = io.Copy(&buf, f)
 
 	output := buf.String()
-	t.Logf("MySQL session output: %s", output)
+	t.Logf("Cassandra session output: %s", output)
 
 	require.Contains(t, output, "keyspace_name")
 	require.Contains(t, output, keyspace)
