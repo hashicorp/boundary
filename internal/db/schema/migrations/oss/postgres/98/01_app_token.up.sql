@@ -127,7 +127,7 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on app_token
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+    for each row execute procedure immutable_columns('public_id', 'created_time', 'scope_id');
 
   -- App token deleted tracking table
   create table app_token_deleted (
@@ -223,7 +223,7 @@ begin;
         references app_token_global_grant_scope_enm(name)
         on delete restrict
         on update cascade,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     constraint app_token_permissions_global_grant_scope_public_id_uq
       unique(grant_scope, public_id)
   );
@@ -235,7 +235,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_scope', 'grant_this_role_scope', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_scope', 'grant_this_role_scope', 'created_time');
 
   create table app_token_permissions_global_individual_org_grant_scope (
     app_token_permission_id wt_public_id
@@ -263,7 +263,7 @@ begin;
       references app_token_permissions_global(public_id, grant_scope)
       on delete cascade
       on update cascade,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     primary key(app_token_permission_id, scope_id)
   );
   comment on table app_token_permissions_global_individual_org_grant_scope is
@@ -274,7 +274,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global_individual_org_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
 
   create table app_token_permissions_global_individual_project_grant_scope (
     app_token_permission_id wt_public_id
@@ -305,7 +305,7 @@ begin;
       references app_token_permissions_global(public_id, grant_scope)
       on delete cascade
       on update cascade,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     primary key(app_token_permission_id, scope_id)
   );
   comment on table app_token_permissions_global_individual_project_grant_scope is
@@ -316,7 +316,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global_individual_project_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
 
   -- App token permissions org table
   create table app_token_permissions_org (
@@ -338,7 +338,7 @@ begin;
         on delete restrict
         on update cascade,
     version wt_version,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     constraint app_token_permissions_org_grant_scope_public_id_uq
       unique(grant_scope, public_id)
   );
@@ -356,7 +356,7 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on app_token_permissions_org
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_this_role_scope', 'grant_scope', 'version', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_this_role_scope', 'grant_scope', 'version', 'created_time');
 
   create table app_token_permissions_org_individual_grant_scope (
     app_token_permission_id wt_public_id
@@ -384,7 +384,7 @@ begin;
       references app_token_permissions_org(public_id, grant_scope)
         on delete cascade
         on update cascade,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     primary key(app_token_permission_id, scope_id)
   );
   comment on table app_token_permissions_org_individual_grant_scope is
@@ -395,7 +395,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_org_individual_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
 
   -- App token permissions project table
   create table app_token_permissions_project (
@@ -411,7 +411,7 @@ begin;
         on update cascade,
     label text,
     grant_this_role_scope boolean not null default false,
-    create_time wt_timestamp,
+    created_time wt_timestamp,
     constraint app_token_permissions_project_label_scope_id_uq
         unique(label, scope_id)
   );
@@ -423,7 +423,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_project
-    for each row execute procedure immutable_columns('scope_id', 'label', 'grant_this_role_scope', 'create_time');
+    for each row execute procedure immutable_columns('scope_id', 'label', 'grant_this_role_scope', 'created_time');
 
 
 
