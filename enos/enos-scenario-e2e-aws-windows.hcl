@@ -11,7 +11,7 @@ scenario "e2e_aws_windows" {
   matrix {
     builder    = ["local", "crt"]
     client     = ["win10", "win11"]
-    rdp_server = ["2016","2019", "2022", "2025"]
+    rdp_server = ["2016", "2019", "2022", "2025"]
   }
 
   locals {
