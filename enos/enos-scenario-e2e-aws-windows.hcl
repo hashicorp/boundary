@@ -20,7 +20,6 @@ scenario "e2e_aws_windows" {
     boundary_install_dir      = abspath(var.boundary_install_dir)
     local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir    = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
-    local_boundary_ui_src_dir = var.local_boundary_ui_src_dir != null ? abspath(var.local_boundary_ui_src_dir) : null
     boundary_license_path     = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
  
     build_path = {
@@ -111,7 +110,6 @@ scenario "e2e_aws_windows" {
       vpc_id                = step.create_base_infra.vpc_id
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
-      boundary_ui_src_path  = local.local_boundary_ui_src_dir
       boundary_src_path     = local.local_boundary_src_dir
     }
   }
