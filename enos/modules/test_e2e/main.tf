@@ -186,11 +186,6 @@ variable "client_password" {
   type        = string
   default     = ""
 }
-variable "client_ssh_key" {
-  description = "SSH key for the client machine"
-  type        = string
-  default     = ""
-}
 variable "client_test_dir" {
   description = "Directory on the client machine where tests will be run"
   type        = string
@@ -253,7 +248,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_CLIENT_IP_PUBLIC          = var.client_ip_public
     E2E_CLIENT_USERNAME           = var.client_username
     E2E_CLIENT_PASSWORD           = var.client_password
-    E2E_CLIENT_SSH_KEY            = var.client_ssh_key
     E2E_CLIENT_TEST_DIR           = var.client_test_dir
   }
 

@@ -25,7 +25,7 @@ scenario "e2e_aws_windows" {
  
     build_path = {
       "local" = "/tmp",
-      "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
+      "crt"   = var.crt_bundle_path_windows == null ? null : abspath(var.crt_bundle_path_windows)
     }
 
     tags = merge({
@@ -120,7 +120,6 @@ scenario "e2e_aws_windows" {
     module = module.vault
     depends_on = [
       step.create_base_infra,
-      step.read_vault_license
     ]
 
     variables {
@@ -132,7 +131,6 @@ scenario "e2e_aws_windows" {
       storage_backend = "raft"
       unseal_method   = "shamir"
       ip_version      = "dual"
-      vault_license   = step.read_vault_license.license
       vault_release = {
         version = var.vault_version
         edition = "oss"
@@ -249,7 +247,6 @@ scenario "e2e_aws_windows" {
       client_ip_public         = step.create_windows_client.public_ip
       client_username          = step.create_windows_client.test_username
       client_password          = step.create_windows_client.test_password
-      client_ssh_key           = step.create_windows_client.private_key
       client_test_dir          = step.create_windows_client.test_dir
     }
   }
@@ -284,10 +281,6 @@ scenario "e2e_aws_windows" {
 
   output "windows_client_private_ip" {
     value = step.create_windows_client.private_ip
-  }
-
-  output "windows_client_ssh_key" {
-    value = step.create_windows_client.private_key
   }
 
   output "windows_client_password" {

@@ -115,6 +115,12 @@ variable "crt_bundle_path" {
   default     = null
 }
 
+variable crt_bundle_path_windows {
+  description = "Path to CRT generated boundary bundle for windows"
+  type = string
+  default = null
+}
+
 variable "boundary_install_dir" {
   description = "Path boundary binaries will be installed to on remote instances"
   type        = string
