@@ -42,12 +42,6 @@ variable "boundary_cli_zip_path" {
   default     = ""
 }
 
-variable "boundary_ui_src_path" {
-  description = "Path to the boundary UI source code"
-  type        = string
-  default     = ""
-}
-
 variable "boundary_src_path" {
   description = "Path to the boundary source code"
   type        = string

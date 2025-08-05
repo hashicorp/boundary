@@ -109,12 +109,6 @@ variable "local_boundary_ui_src_dir" {
   default     = null
 }
 
-variable "boundary_zip_windows" {
-  description = "Path to the boundary cli zip file (windows, amd64)"
-  type        = string
-  default     = null
-}
-
 variable "crt_bundle_path" {
   description = "Path to CRT generated boundary bundle"
   type        = string

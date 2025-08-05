@@ -1,4 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_aws_windows" {
   terraform_cli = terraform_cli.default
@@ -20,10 +21,8 @@ scenario "e2e_aws_windows" {
     local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir    = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     local_boundary_ui_src_dir = var.local_boundary_ui_src_dir != null ? abspath(var.local_boundary_ui_src_dir) : null
-    boundary_zip_windows      = abspath(var.boundary_zip_windows)
     boundary_license_path     = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    vault_license_path        = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
-
+ 
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -54,14 +53,6 @@ scenario "e2e_aws_windows" {
 
     variables {
       license_path = local.boundary_license_path
-    }
-  }
-
-  step "read_vault_license" {
-    module = module.read_license
-
-    variables {
-      license_path = local.vault_license_path
     }
   }
 
@@ -144,7 +135,7 @@ scenario "e2e_aws_windows" {
       vault_license   = step.read_vault_license.license
       vault_release = {
         version = var.vault_version
-        edition = "ent"
+        edition = "oss"
       }
       vpc_id = step.create_base_infra.vpc_id
     }
@@ -280,7 +271,7 @@ scenario "e2e_aws_windows" {
   }
 
   output "rdp_target_public_dns_address" {
-    value = step.create_rdp_server.public-dns-address
+    value = step.create_rdp_server.public_dns_address
   }
 
   output "rdp_target_private_ip" {

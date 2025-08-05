@@ -108,6 +108,110 @@ resource "aws_security_group" "rdp_ingress" {
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
     ])
   }
+
+  ingress {
+    from_port = 53
+    to_port   = 53
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 53
+    to_port   = 53
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 445
+    to_port   = 445
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 445
+    to_port   = 445
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 5985
+    to_port   = 5985
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 5985
+    to_port   = 5985
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 389
+    to_port   = 389
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  ingress {
+    from_port = 389
+    to_port   = 389
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
 }
 
 // Create an AWS security group to allow all traffic originating from the default vpc
@@ -162,9 +266,10 @@ resource "aws_instance" "rdp_target" {
 
   user_data = <<EOF
                 <powershell>
+                  # Set up a domain with this instance as the domain controller
                   $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
-                  Install-ADDSForest -CreateDnsDelegation:$false -DomainMode Win2012R2 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode Win2012R2 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
+                  Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode 7 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>
               EOF
 

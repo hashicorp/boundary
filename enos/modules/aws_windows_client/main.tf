@@ -193,19 +193,6 @@ resource "aws_instance" "client" {
                   Set-ItemProperty -Path $regPath -Name "DefaultUsername" -Value $Username -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultPassword" -Value "${local.test_password}" -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultDomainName" -Value "$env:COMPUTERNAME" -Type String
-
-                  # Set all active networks to Private, which disables the
-                  # "allow PC to be discoverable" notification. Otherwise, the
-                  # notification will interfere with the automation)
-                  # todo: None of these worked... ended up needing to start the
-                  # python script with an Esc to dismiss the notification
-                  Get-NetConnectionProfile | Where-Object {$_.NetworkCategory -ne "Private"} | Set-NetConnectionProfile -NetworkCategory Private
-
-                  netsh advfirewall firewall set rule group="Network Discovery" new enable=No
-
-                  New-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Network" -Name "NewNetworkWindowOff" -PropertyType DWord -Value 1 -Force
-                  New-ItemProperty -Path "HKLM:\\System\\CurrentControlSet\\Control\\Network" -Name "NewNetworkWindowOff" -PropertyType DWord -Value 1 -Force
-                  Restart-Service -Name NlaSvc -Force
                 </powershell>
               EOF
 
@@ -262,24 +249,6 @@ resource "enos_local_exec" "add_boundary_cli" {
   inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.boundary_cli_zip_path} Administrator@${aws_instance.client.public_ip}:${local.test_dir}"]
 }
 
-resource "archive_file" "boundary_ui_src_zip" {
-  count       = var.boundary_ui_src_path != "" ? 1 : 0
-  type        = "zip"
-  source_dir  = var.boundary_ui_src_path
-  output_path = "${path.root}/.terraform/tmp/boundary-ui-src.zip"
-  excludes    = ["**/node_modules/**", "bin/**", "**/out/**"]
-}
-
-resource "enos_local_exec" "add_boundary_ui_src" {
-  count = var.boundary_ui_src_path != "" ? 1 : 0
-  depends_on = [
-    enos_local_exec.make_dir,
-    archive_file.boundary_ui_src_zip
-  ]
-
-  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${archive_file.boundary_ui_src_zip[0].output_path} Administrator@${aws_instance.client.public_ip}:${local.test_dir}"]
-}
-
 resource "archive_file" "boundary_src_zip" {
   count       = var.boundary_src_path != "" ? 1 : 0
   type        = "zip"
@@ -303,11 +272,10 @@ resource "enos_local_exec" "add_boundary_src" {
 resource "local_file" "powershell_script" {
   count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
-    archive_file.boundary_ui_src_zip
+    archive_file.boundary_src_zip
   ]
   content = templatefile("${path.module}/scripts/setup.ps1", {
     boundary_cli_zip_path    = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
-    boundary_ui_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_ui_src_zip[0].output_path)}"
     boundary_src_zip_path    = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
   })
   filename = "${path.root}/.terraform/tmp/setup_boundary.ps1"
@@ -330,7 +298,6 @@ resource "enos_local_exec" "run_powershell_script" {
   depends_on = [
     enos_local_exec.add_boundary_cli,
     enos_local_exec.add_powershell_script,
-    enos_local_exec.add_boundary_ui_src,
     enos_local_exec.wait_for_ssh,
   ]
 
