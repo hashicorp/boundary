@@ -40,7 +40,7 @@ variable "root_block_device_size" {
 variable "active_directory_domain" {
   type        = string
   description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
-  default     = "mydomain.com"
+  default     = "mydomain.local"
 }
 
 variable "active_directory_netbios_name" {
