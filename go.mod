@@ -80,7 +80,7 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/pires/go-proxyproto v0.8.1
 	github.com/posener/complete v1.2.3
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.10.0
@@ -191,9 +191,9 @@ require (
 	github.com/opencontainers/runc v1.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.65.0 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
