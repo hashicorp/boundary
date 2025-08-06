@@ -275,8 +275,8 @@ resource "local_file" "powershell_script" {
     archive_file.boundary_src_zip
   ]
   content = templatefile("${path.module}/scripts/setup.ps1", {
-    boundary_cli_zip_path    = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
-    boundary_src_zip_path    = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
+    boundary_cli_zip_path = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
+    boundary_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
   })
   filename = "${path.root}/.terraform/tmp/setup_boundary.ps1"
 }

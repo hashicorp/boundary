@@ -16,12 +16,12 @@ scenario "e2e_aws_windows" {
   }
 
   locals {
-    aws_ssh_private_key_path  = abspath(var.aws_ssh_private_key_path)
-    boundary_install_dir      = abspath(var.boundary_install_dir)
-    local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_src_dir    = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
-    boundary_license_path     = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
- 
+    aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
+    boundary_install_dir     = abspath(var.boundary_install_dir)
+    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
+    boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+
     build_path_linux = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -297,5 +297,9 @@ scenario "e2e_aws_windows" {
 
   output "windows_client_test_password" {
     value = step.create_windows_client.test_password
+  }
+
+  output "windows_client_ssh_key" {
+    value = step.create_windows_client.ssh_private_key
   }
 }

@@ -26,7 +26,7 @@ output "admin_username" {
 // This is the decrypted administrator password for the EC2 instance
 output "admin_password" {
   description = "The password for the administrator account"
-  value = nonsensitive(local.admin_password)
+  value       = nonsensitive(local.admin_password)
 }
 
 output "test_username" {
@@ -41,4 +41,9 @@ output "test_password" {
 output "test_dir" {
   description = "The directory where the test files are stored"
   value       = local.test_dir
+}
+
+output "ssh_private_key" {
+  description = "Private key to ssh into the windows client"
+  value       = abspath(local_sensitive_file.private_key.filename)
 }

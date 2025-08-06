@@ -117,8 +117,8 @@ variable "crt_bundle_path" {
 
 variable crt_bundle_path_windows {
   description = "Path to CRT generated boundary bundle for windows"
-  type = string
-  default = null
+  type        = string
+  default     = null
 }
 
 variable "boundary_install_dir" {

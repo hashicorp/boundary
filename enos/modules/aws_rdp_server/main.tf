@@ -108,6 +108,7 @@ resource "aws_security_group" "rdp_ingress" {
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
     ])
   }
+}
 
 // Create an AWS security group to allow all traffic originating from the default vpc
 resource "aws_security_group" "allow_all_internal" {
