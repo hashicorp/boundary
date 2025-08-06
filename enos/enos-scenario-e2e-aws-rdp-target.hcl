@@ -67,7 +67,7 @@ scenario "e2e_aws_rdp_target" {
   }
 
   output "rdp_target_public_dns_address" {
-    value = step.create_rdp_server.public-dns-address
+    value = step.create_rdp_server.public_dns_address
   }
 
   output "rdp_target_public_ip" {

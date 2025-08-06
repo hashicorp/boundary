@@ -1,7 +1,7 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-output "public-dns-address" {
+output "public_dns_address" {
   value = aws_instance.rdp_target.public_dns
 }
 
