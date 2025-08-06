@@ -210,8 +210,8 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "create_rdp_server" {
-    module = module.aws_rdp_server
+  step "create_rdp_domain_controller" {
+    module = module.aws_rdp_domain_controller
     depends_on = [
       step.create_base_infra,
     ]
@@ -222,36 +222,61 @@ scenario "e2e_aws_windows" {
     }
   }
 
+  step "create_rdp_member_server" {
+    module = module.aws_rdp_member_server
+    depends_on = [
+      step.create_base_infra,
+      step.create_rdp_domain_controller,
+    ]
+
+    variables {
+      vpc_id                              = step.create_base_infra.vpc_id
+      server_version                      = matrix.rdp_server
+      active_directory_domain             = step.create_rdp_domain_controller.domain_name
+      domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
+      domain_controller_ip                = step.create_rdp_domain_controller.private_ip
+      domain_admin_password               = step.create_rdp_domain_controller.password
+      domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
+      domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e
     depends_on = [
       step.create_boundary_cluster,
-      step.create_rdp_server,
+      step.create_rdp_domain_controller,
+      step.create_rdp_member_server,
       step.create_bucket
     ]
 
     variables {
-      test_package             = ""
-      debug_no_run             = true
-      alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
-      auth_method_id           = step.create_boundary_cluster.auth_method_id
-      auth_login_name          = step.create_boundary_cluster.auth_login_name
-      auth_password            = step.create_boundary_cluster.auth_password
-      local_boundary_dir       = local.local_boundary_dir
-      aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_user              = "ubuntu"
-      target_port              = "22"
-      aws_bucket_name          = step.create_bucket.bucket_name
-      aws_region               = var.aws_region
-      max_page_size            = step.create_boundary_cluster.max_page_size
-      worker_tag_collocated    = local.collocated_tag
-      target_rdp_address       = step.create_rdp_server.private_ip
-      target_rdp_user          = step.create_rdp_server.admin_username
-      target_rdp_password      = step.create_rdp_server.password
-      client_ip_public         = step.create_windows_client.public_ip
-      client_username          = step.create_windows_client.test_username
-      client_password          = step.create_windows_client.test_password
-      client_test_dir          = step.create_windows_client.test_dir
+      test_package                             = ""
+      debug_no_run                             = true
+      alb_boundary_api_addr                    = step.create_boundary_cluster.alb_boundary_api_addr
+      auth_method_id                           = step.create_boundary_cluster.auth_method_id
+      auth_login_name                          = step.create_boundary_cluster.auth_login_name
+      auth_password                            = step.create_boundary_cluster.auth_password
+      local_boundary_dir                       = local.local_boundary_dir
+      aws_ssh_private_key_path                 = local.aws_ssh_private_key_path
+      target_user                              = "ubuntu"
+      target_port                              = "22"
+      aws_bucket_name                          = step.create_bucket.bucket_name
+      aws_region                               = var.aws_region
+      max_page_size                            = step.create_boundary_cluster.max_page_size
+      worker_tag_collocated                    = local.collocated_tag
+      target_rdp_domain_controller_addr        = step.create_rdp_domain_controller.private_ip
+      target_rdp_domain_controller_user        = step.create_rdp_domain_controller.admin_username
+      target_rdp_domain_controller_password    = step.create_rdp_domain_controller.password
+      target_rdp_member_server_addr            = step.create_rdp_member_server.private_ip
+      target_rdp_member_server_domain_hostname = step.create_rdp_member_server.domain_hostname
+      target_rdp_member_server_user            = step.create_rdp_member_server.admin_username
+      target_rdp_member_server_password        = step.create_rdp_member_server.password
+      target_rdp_domain_name                   = step.create_rdp_domain_controller.domain_name
+      client_ip_public                         = step.create_windows_client.public_ip
+      client_username                          = step.create_windows_client.test_username
+      client_password                          = step.create_windows_client.test_password
+      client_test_dir                          = step.create_windows_client.test_dir
     }
   }
 
@@ -263,31 +288,51 @@ scenario "e2e_aws_windows" {
     value = step.create_boundary_cluster.worker_ips
   }
 
-  output "rdp_target_admin_username" {
-    value = step.create_rdp_server.admin_username
+  output "rdp_domain_ssh_key" {
+    value = step.create_rdp_domain_controller.ssh_private_key
   }
 
-  output "rdp_target_admin_password" {
-    value = step.create_rdp_server.password
+  output "rdp_domain_controller_public_ip" {
+    value = step.create_rdp_domain_controller.public_ip
   }
 
-  output "rdp_target_public_dns_address" {
-    value = step.create_rdp_server.public_dns_address
+  output "rdp_domain_controller_private_ip" {
+    value = step.create_rdp_domain_controller.private_ip
   }
 
-  output "rdp_target_private_ip" {
-    value = step.create_rdp_server.private_ip
+  output "rdp_domain_controller_admin_username" {
+    value = step.create_rdp_domain_controller.admin_username
+  }
+
+  output "rdp_domain_controller_admin_password" {
+    value = step.create_rdp_domain_controller.password
+  }
+
+  output "rdp_domain" {
+    value = step.create_rdp_domain_controller.domain_name
+  }
+
+  output "rdp_member_server_public_ip" {
+    value = step.create_rdp_member_server.public_ip
+  }
+
+  output "rdp_member_server_private_ip" {
+    value = step.create_rdp_member_server.private_ip
+  }
+
+  output "rdp_member_server_domain_hostname" {
+    value = step.create_rdp_member_server.domain_hostname
+  }
+
+  output "rdp_member_server_admin_password" {
+    value = step.create_rdp_member_server.password
   }
 
   output "windows_client_public_ip" {
     value = step.create_windows_client.public_ip
   }
 
-  output "windows_client_private_ip" {
-    value = step.create_windows_client.private_ip
-  }
-
-  output "windows_client_password" {
+  output "windows_client_admin_password" {
     value = step.create_windows_client.admin_password
   }
 
