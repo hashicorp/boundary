@@ -141,6 +141,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = [aws_security_group.windows_client.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -178,6 +179,9 @@ resource "aws_instance" "client" {
                   Set-Service -Name ssh-agent -StartupType "Automatic"
                   Restart-Service -Name ssh-agent
 
+                  ## Open the firewall for SSH connections
+                  New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+                
                   # Create a non-admin user to be used for RDP connection. This
                   # is needed since the scheduled task that runs pyautogui
                   # doesn't work in an Administrator context.
