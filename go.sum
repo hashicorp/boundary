@@ -188,8 +188,8 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDa
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vbp88Yd8NsDy6rZz+RcrMPxvld8=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 h1:X5VWvz21y3gzm9Nw/kaUeku/1+uBhcekkmy4IkffJww=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1/go.mod h1:Zanoh4+gvIgluNqcfMVTJueD4wSS5hT7zTt4Mrutd90=
-github.com/hashicorp/cap v0.9.0 h1:B5IZT7VL1ruSCtVBXSIyWDpkAFiEZt4bQFk1e2WwCb0=
-github.com/hashicorp/cap v0.9.0/go.mod h1:J00roe8PFFYXfedm3WcO6sGVaKeYElmNOuqfi8Uero4=
+github.com/hashicorp/cap v0.10.0 h1:OJM3JQTwVO1DigRIPNTxM387oqXlokKhttZHotU0b1s=
+github.com/hashicorp/cap v0.10.0/go.mod h1:HKbv27kfps+wONFNyNTHpAQmU/DCjjDuB5HF6mFsqPQ=
 github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744 h1:6cU01ORaCUxRXRS0YYnmm4tMfAvFRjamhjgMrgmoWZs=
 github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744/go.mod h1:SOJuo/OFD0qKQ7d8qOy+a2B9Tw0/97oHIo+qXxs7HZE=
 github.com/hashicorp/cli v1.1.7 h1:/fZJ+hNdwfTSfsxMBa9WWMlfjUZbX8/LnUxgAd7lCVU=
