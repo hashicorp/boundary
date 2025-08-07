@@ -55,6 +55,9 @@ service StoragePluginService {
   // GetObject is a hook that retrieves objects.
   rpc GetObject(GetObjectRequest) returns (stream GetObjectResponse);
 
+  // ListObjects is a hook that retrieves list of objects
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);
+
   // PutObject is a hook that reads a file stored on local disk and
   // stores it to an external object store.
   rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
@@ -150,6 +153,27 @@ message GetObjectRequest {
 
   // Optional. The maximum size of the stream response message. Defaults to 64KiB.
   uint32 chunk_size = 30;
+}
+
+message ListObjectsRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // The key prefix used to scope the object search.
+  string key_prefix = 20;
+}
+
+message Object {
+  // The object key defined within the object storage
+  string key = 10;
+
+  // Informs whether or not the object is a directory
+  bool is_dir = 20;
+}
+
+message ListObjectsResponse {
+  // A list of objects found under a provided prefix.
+  repeated Object objects = 10;
 }
 
 message GetObjectResponse {

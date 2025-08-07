@@ -724,6 +724,159 @@ func (x *GetObjectRequest) GetChunkSize() uint32 {
 	return 0
 }
 
+type ListObjectsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The existing state of the storage bucket.
+	Bucket *storagebuckets.StorageBucket `protobuf:"bytes,10,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// The key prefix used to scope the object search.
+	KeyPrefix     string `protobuf:"bytes,20,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListObjectsRequest) Reset() {
+	*x = ListObjectsRequest{}
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListObjectsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListObjectsRequest) ProtoMessage() {}
+
+func (x *ListObjectsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListObjectsRequest.ProtoReflect.Descriptor instead.
+func (*ListObjectsRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListObjectsRequest) GetBucket() *storagebuckets.StorageBucket {
+	if x != nil {
+		return x.Bucket
+	}
+	return nil
+}
+
+func (x *ListObjectsRequest) GetKeyPrefix() string {
+	if x != nil {
+		return x.KeyPrefix
+	}
+	return ""
+}
+
+type Object struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The object key defined within the object storage
+	Key string `protobuf:"bytes,10,opt,name=key,proto3" json:"key,omitempty"`
+	// Informs whether or not the object is a directory
+	IsDir         bool `protobuf:"varint,20,opt,name=is_dir,json=isDir,proto3" json:"is_dir,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Object) Reset() {
+	*x = Object{}
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Object) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Object) ProtoMessage() {}
+
+func (x *Object) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Object.ProtoReflect.Descriptor instead.
+func (*Object) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *Object) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *Object) GetIsDir() bool {
+	if x != nil {
+		return x.IsDir
+	}
+	return false
+}
+
+type ListObjectsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A list of objects found under a provided prefix.
+	Objects       []*Object `protobuf:"bytes,10,rep,name=objects,proto3" json:"objects,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListObjectsResponse) Reset() {
+	*x = ListObjectsResponse{}
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListObjectsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListObjectsResponse) ProtoMessage() {}
+
+func (x *ListObjectsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListObjectsResponse.ProtoReflect.Descriptor instead.
+func (*ListObjectsResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListObjectsResponse) GetObjects() []*Object {
+	if x != nil {
+		return x.Objects
+	}
+	return nil
+}
+
 type GetObjectResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Object data.
@@ -734,7 +887,7 @@ type GetObjectResponse struct {
 
 func (x *GetObjectResponse) Reset() {
 	*x = GetObjectResponse{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[13]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +899,7 @@ func (x *GetObjectResponse) String() string {
 func (*GetObjectResponse) ProtoMessage() {}
 
 func (x *GetObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[13]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +912,7 @@ func (x *GetObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{13}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetObjectResponse) GetFileChunk() []byte {
@@ -783,7 +936,7 @@ type PutObjectRequest struct {
 
 func (x *PutObjectRequest) Reset() {
 	*x = PutObjectRequest{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[14]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +948,7 @@ func (x *PutObjectRequest) String() string {
 func (*PutObjectRequest) ProtoMessage() {}
 
 func (x *PutObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[14]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +961,7 @@ func (x *PutObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutObjectRequest.ProtoReflect.Descriptor instead.
 func (*PutObjectRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{14}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PutObjectRequest) GetBucket() *storagebuckets.StorageBucket {
@@ -842,7 +995,7 @@ type PutObjectResponse struct {
 
 func (x *PutObjectResponse) Reset() {
 	*x = PutObjectResponse{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[15]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +1007,7 @@ func (x *PutObjectResponse) String() string {
 func (*PutObjectResponse) ProtoMessage() {}
 
 func (x *PutObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[15]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1020,7 @@ func (x *PutObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutObjectResponse.ProtoReflect.Descriptor instead.
 func (*PutObjectResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{15}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PutObjectResponse) GetChecksumSha_256() []byte {
@@ -901,7 +1054,7 @@ type DeleteObjectsRequest struct {
 
 func (x *DeleteObjectsRequest) Reset() {
 	*x = DeleteObjectsRequest{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[16]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -913,7 +1066,7 @@ func (x *DeleteObjectsRequest) String() string {
 func (*DeleteObjectsRequest) ProtoMessage() {}
 
 func (x *DeleteObjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[16]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -926,7 +1079,7 @@ func (x *DeleteObjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObjectsRequest.ProtoReflect.Descriptor instead.
 func (*DeleteObjectsRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{16}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DeleteObjectsRequest) GetBucket() *storagebuckets.StorageBucket {
@@ -964,7 +1117,7 @@ type DeleteObjectsResponse struct {
 
 func (x *DeleteObjectsResponse) Reset() {
 	*x = DeleteObjectsResponse{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[17]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -976,7 +1129,7 @@ func (x *DeleteObjectsResponse) String() string {
 func (*DeleteObjectsResponse) ProtoMessage() {}
 
 func (x *DeleteObjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[17]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -989,7 +1142,7 @@ func (x *DeleteObjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObjectsResponse.ProtoReflect.Descriptor instead.
 func (*DeleteObjectsResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{17}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeleteObjectsResponse) GetObjectsDeleted() uint32 {
@@ -1013,7 +1166,7 @@ type Permission struct {
 
 func (x *Permission) Reset() {
 	*x = Permission{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[18]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1025,7 +1178,7 @@ func (x *Permission) String() string {
 func (*Permission) ProtoMessage() {}
 
 func (x *Permission) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[18]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1038,7 +1191,7 @@ func (x *Permission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Permission.ProtoReflect.Descriptor instead.
 func (*Permission) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{18}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Permission) GetState() StateType {
@@ -1076,7 +1229,7 @@ type Permissions struct {
 
 func (x *Permissions) Reset() {
 	*x = Permissions{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[19]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1088,7 +1241,7 @@ func (x *Permissions) String() string {
 func (*Permissions) ProtoMessage() {}
 
 func (x *Permissions) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[19]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1101,7 +1254,7 @@ func (x *Permissions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Permissions.ProtoReflect.Descriptor instead.
 func (*Permissions) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{19}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Permissions) GetWrite() *Permission {
@@ -1137,7 +1290,7 @@ type StorageBucketCredentialState struct {
 
 func (x *StorageBucketCredentialState) Reset() {
 	*x = StorageBucketCredentialState{}
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[20]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1149,7 +1302,7 @@ func (x *StorageBucketCredentialState) String() string {
 func (*StorageBucketCredentialState) ProtoMessage() {}
 
 func (x *StorageBucketCredentialState) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[20]
+	mi := &file_plugin_v1_storage_plugin_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1162,7 +1315,7 @@ func (x *StorageBucketCredentialState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageBucketCredentialState.ProtoReflect.Descriptor instead.
 func (*StorageBucketCredentialState) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{20}
+	return file_plugin_v1_storage_plugin_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *StorageBucketCredentialState) GetState() *Permissions {
@@ -1232,7 +1385,19 @@ const file_plugin_v1_storage_plugin_service_proto_rawDesc = "" +
 	" \x01(\v29.controller.api.resources.storagebuckets.v1.StorageBucketR\x06bucket\x12\x10\n" +
 	"\x03key\x18\x14 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
-	"chunk_size\x18\x1e \x01(\rR\tchunkSize\"2\n" +
+	"chunk_size\x18\x1e \x01(\rR\tchunkSize\"\x86\x01\n" +
+	"\x12ListObjectsRequest\x12Q\n" +
+	"\x06bucket\x18\n" +
+	" \x01(\v29.controller.api.resources.storagebuckets.v1.StorageBucketR\x06bucket\x12\x1d\n" +
+	"\n" +
+	"key_prefix\x18\x14 \x01(\tR\tkeyPrefix\"1\n" +
+	"\x06Object\x12\x10\n" +
+	"\x03key\x18\n" +
+	" \x01(\tR\x03key\x12\x15\n" +
+	"\x06is_dir\x18\x14 \x01(\bR\x05isDir\"B\n" +
+	"\x13ListObjectsResponse\x12+\n" +
+	"\aobjects\x18\n" +
+	" \x03(\v2\x11.plugin.v1.ObjectR\aobjects\"2\n" +
 	"\x11GetObjectResponse\x12\x1d\n" +
 	"\n" +
 	"file_chunk\x18\n" +
@@ -1274,7 +1439,7 @@ const file_plugin_v1_storage_plugin_service_proto_rawDesc = "" +
 	"\x16STATE_TYPE_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATE_TYPE_OK\x10\x01\x12\x14\n" +
 	"\x10STATE_TYPE_ERROR\x10\x02\x12\x16\n" +
-	"\x12STATE_TYPE_UNKNOWN\x10\x032\xec\x06\n" +
+	"\x12STATE_TYPE_UNKNOWN\x10\x032\xba\a\n" +
 	"\x14StoragePluginService\x12y\n" +
 	"\x1aNormalizeStorageBucketData\x12,.plugin.v1.NormalizeStorageBucketDataRequest\x1a-.plugin.v1.NormalizeStorageBucketDataResponse\x12j\n" +
 	"\x15OnCreateStorageBucket\x12'.plugin.v1.OnCreateStorageBucketRequest\x1a(.plugin.v1.OnCreateStorageBucketResponse\x12j\n" +
@@ -1283,7 +1448,8 @@ const file_plugin_v1_storage_plugin_service_proto_rawDesc = "" +
 	"\x13ValidatePermissions\x12%.plugin.v1.ValidatePermissionsRequest\x1a&.plugin.v1.ValidatePermissionsResponse\x12I\n" +
 	"\n" +
 	"HeadObject\x12\x1c.plugin.v1.HeadObjectRequest\x1a\x1d.plugin.v1.HeadObjectResponse\x12H\n" +
-	"\tGetObject\x12\x1b.plugin.v1.GetObjectRequest\x1a\x1c.plugin.v1.GetObjectResponse0\x01\x12F\n" +
+	"\tGetObject\x12\x1b.plugin.v1.GetObjectRequest\x1a\x1c.plugin.v1.GetObjectResponse0\x01\x12L\n" +
+	"\vListObjects\x12\x1d.plugin.v1.ListObjectsRequest\x1a\x1e.plugin.v1.ListObjectsResponse\x12F\n" +
 	"\tPutObject\x12\x1b.plugin.v1.PutObjectRequest\x1a\x1c.plugin.v1.PutObjectResponse\x12R\n" +
 	"\rDeleteObjects\x12\x1f.plugin.v1.DeleteObjectsRequest\x1a .plugin.v1.DeleteObjectsResponseB5Z3github.com/hashicorp/boundary/sdk/pbs/plugin;pluginb\x06proto3"
 
@@ -1300,7 +1466,7 @@ func file_plugin_v1_storage_plugin_service_proto_rawDescGZIP() []byte {
 }
 
 var file_plugin_v1_storage_plugin_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_plugin_v1_storage_plugin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_plugin_v1_storage_plugin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_plugin_v1_storage_plugin_service_proto_goTypes = []any{
 	(StateType)(0), // 0: plugin.v1.StateType
 	(*NormalizeStorageBucketDataRequest)(nil),     // 1: plugin.v1.NormalizeStorageBucketDataRequest
@@ -1316,67 +1482,74 @@ var file_plugin_v1_storage_plugin_service_proto_goTypes = []any{
 	(*HeadObjectRequest)(nil),                     // 11: plugin.v1.HeadObjectRequest
 	(*HeadObjectResponse)(nil),                    // 12: plugin.v1.HeadObjectResponse
 	(*GetObjectRequest)(nil),                      // 13: plugin.v1.GetObjectRequest
-	(*GetObjectResponse)(nil),                     // 14: plugin.v1.GetObjectResponse
-	(*PutObjectRequest)(nil),                      // 15: plugin.v1.PutObjectRequest
-	(*PutObjectResponse)(nil),                     // 16: plugin.v1.PutObjectResponse
-	(*DeleteObjectsRequest)(nil),                  // 17: plugin.v1.DeleteObjectsRequest
-	(*DeleteObjectsResponse)(nil),                 // 18: plugin.v1.DeleteObjectsResponse
-	(*Permission)(nil),                            // 19: plugin.v1.Permission
-	(*Permissions)(nil),                           // 20: plugin.v1.Permissions
-	(*StorageBucketCredentialState)(nil),          // 21: plugin.v1.StorageBucketCredentialState
-	(*structpb.Struct)(nil),                       // 22: google.protobuf.Struct
-	(*plugins.PluginInfo)(nil),                    // 23: controller.api.resources.plugins.v1.PluginInfo
-	(*storagebuckets.StorageBucket)(nil),          // 24: controller.api.resources.storagebuckets.v1.StorageBucket
-	(*storagebuckets.StorageBucketPersisted)(nil), // 25: controller.api.resources.storagebuckets.v1.StorageBucketPersisted
-	(*timestamppb.Timestamp)(nil),                 // 26: google.protobuf.Timestamp
+	(*ListObjectsRequest)(nil),                    // 14: plugin.v1.ListObjectsRequest
+	(*Object)(nil),                                // 15: plugin.v1.Object
+	(*ListObjectsResponse)(nil),                   // 16: plugin.v1.ListObjectsResponse
+	(*GetObjectResponse)(nil),                     // 17: plugin.v1.GetObjectResponse
+	(*PutObjectRequest)(nil),                      // 18: plugin.v1.PutObjectRequest
+	(*PutObjectResponse)(nil),                     // 19: plugin.v1.PutObjectResponse
+	(*DeleteObjectsRequest)(nil),                  // 20: plugin.v1.DeleteObjectsRequest
+	(*DeleteObjectsResponse)(nil),                 // 21: plugin.v1.DeleteObjectsResponse
+	(*Permission)(nil),                            // 22: plugin.v1.Permission
+	(*Permissions)(nil),                           // 23: plugin.v1.Permissions
+	(*StorageBucketCredentialState)(nil),          // 24: plugin.v1.StorageBucketCredentialState
+	(*structpb.Struct)(nil),                       // 25: google.protobuf.Struct
+	(*plugins.PluginInfo)(nil),                    // 26: controller.api.resources.plugins.v1.PluginInfo
+	(*storagebuckets.StorageBucket)(nil),          // 27: controller.api.resources.storagebuckets.v1.StorageBucket
+	(*storagebuckets.StorageBucketPersisted)(nil), // 28: controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	(*timestamppb.Timestamp)(nil),                 // 29: google.protobuf.Timestamp
 }
 var file_plugin_v1_storage_plugin_service_proto_depIdxs = []int32{
-	22, // 0: plugin.v1.NormalizeStorageBucketDataRequest.attributes:type_name -> google.protobuf.Struct
-	23, // 1: plugin.v1.NormalizeStorageBucketDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
-	22, // 2: plugin.v1.NormalizeStorageBucketDataResponse.attributes:type_name -> google.protobuf.Struct
-	24, // 3: plugin.v1.OnCreateStorageBucketRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	25, // 4: plugin.v1.OnCreateStorageBucketResponse.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
-	24, // 5: plugin.v1.OnUpdateStorageBucketRequest.current_bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	24, // 6: plugin.v1.OnUpdateStorageBucketRequest.new_bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	25, // 7: plugin.v1.OnUpdateStorageBucketRequest.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
-	25, // 8: plugin.v1.OnUpdateStorageBucketResponse.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
-	24, // 9: plugin.v1.OnDeleteStorageBucketRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	25, // 10: plugin.v1.OnDeleteStorageBucketRequest.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
-	24, // 11: plugin.v1.ValidatePermissionsRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	24, // 12: plugin.v1.HeadObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	26, // 13: plugin.v1.HeadObjectResponse.last_modified:type_name -> google.protobuf.Timestamp
-	24, // 14: plugin.v1.GetObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	24, // 15: plugin.v1.PutObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	24, // 16: plugin.v1.DeleteObjectsRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
-	0,  // 17: plugin.v1.Permission.state:type_name -> plugin.v1.StateType
-	26, // 18: plugin.v1.Permission.checked_at:type_name -> google.protobuf.Timestamp
-	19, // 19: plugin.v1.Permissions.write:type_name -> plugin.v1.Permission
-	19, // 20: plugin.v1.Permissions.read:type_name -> plugin.v1.Permission
-	19, // 21: plugin.v1.Permissions.delete:type_name -> plugin.v1.Permission
-	20, // 22: plugin.v1.StorageBucketCredentialState.state:type_name -> plugin.v1.Permissions
-	1,  // 23: plugin.v1.StoragePluginService.NormalizeStorageBucketData:input_type -> plugin.v1.NormalizeStorageBucketDataRequest
-	3,  // 24: plugin.v1.StoragePluginService.OnCreateStorageBucket:input_type -> plugin.v1.OnCreateStorageBucketRequest
-	5,  // 25: plugin.v1.StoragePluginService.OnUpdateStorageBucket:input_type -> plugin.v1.OnUpdateStorageBucketRequest
-	7,  // 26: plugin.v1.StoragePluginService.OnDeleteStorageBucket:input_type -> plugin.v1.OnDeleteStorageBucketRequest
-	9,  // 27: plugin.v1.StoragePluginService.ValidatePermissions:input_type -> plugin.v1.ValidatePermissionsRequest
-	11, // 28: plugin.v1.StoragePluginService.HeadObject:input_type -> plugin.v1.HeadObjectRequest
-	13, // 29: plugin.v1.StoragePluginService.GetObject:input_type -> plugin.v1.GetObjectRequest
-	15, // 30: plugin.v1.StoragePluginService.PutObject:input_type -> plugin.v1.PutObjectRequest
-	17, // 31: plugin.v1.StoragePluginService.DeleteObjects:input_type -> plugin.v1.DeleteObjectsRequest
-	2,  // 32: plugin.v1.StoragePluginService.NormalizeStorageBucketData:output_type -> plugin.v1.NormalizeStorageBucketDataResponse
-	4,  // 33: plugin.v1.StoragePluginService.OnCreateStorageBucket:output_type -> plugin.v1.OnCreateStorageBucketResponse
-	6,  // 34: plugin.v1.StoragePluginService.OnUpdateStorageBucket:output_type -> plugin.v1.OnUpdateStorageBucketResponse
-	8,  // 35: plugin.v1.StoragePluginService.OnDeleteStorageBucket:output_type -> plugin.v1.OnDeleteStorageBucketResponse
-	10, // 36: plugin.v1.StoragePluginService.ValidatePermissions:output_type -> plugin.v1.ValidatePermissionsResponse
-	12, // 37: plugin.v1.StoragePluginService.HeadObject:output_type -> plugin.v1.HeadObjectResponse
-	14, // 38: plugin.v1.StoragePluginService.GetObject:output_type -> plugin.v1.GetObjectResponse
-	16, // 39: plugin.v1.StoragePluginService.PutObject:output_type -> plugin.v1.PutObjectResponse
-	18, // 40: plugin.v1.StoragePluginService.DeleteObjects:output_type -> plugin.v1.DeleteObjectsResponse
-	32, // [32:41] is the sub-list for method output_type
-	23, // [23:32] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	25, // 0: plugin.v1.NormalizeStorageBucketDataRequest.attributes:type_name -> google.protobuf.Struct
+	26, // 1: plugin.v1.NormalizeStorageBucketDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
+	25, // 2: plugin.v1.NormalizeStorageBucketDataResponse.attributes:type_name -> google.protobuf.Struct
+	27, // 3: plugin.v1.OnCreateStorageBucketRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	28, // 4: plugin.v1.OnCreateStorageBucketResponse.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	27, // 5: plugin.v1.OnUpdateStorageBucketRequest.current_bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	27, // 6: plugin.v1.OnUpdateStorageBucketRequest.new_bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	28, // 7: plugin.v1.OnUpdateStorageBucketRequest.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	28, // 8: plugin.v1.OnUpdateStorageBucketResponse.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	27, // 9: plugin.v1.OnDeleteStorageBucketRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	28, // 10: plugin.v1.OnDeleteStorageBucketRequest.persisted:type_name -> controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	27, // 11: plugin.v1.ValidatePermissionsRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	27, // 12: plugin.v1.HeadObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	29, // 13: plugin.v1.HeadObjectResponse.last_modified:type_name -> google.protobuf.Timestamp
+	27, // 14: plugin.v1.GetObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	27, // 15: plugin.v1.ListObjectsRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	15, // 16: plugin.v1.ListObjectsResponse.objects:type_name -> plugin.v1.Object
+	27, // 17: plugin.v1.PutObjectRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	27, // 18: plugin.v1.DeleteObjectsRequest.bucket:type_name -> controller.api.resources.storagebuckets.v1.StorageBucket
+	0,  // 19: plugin.v1.Permission.state:type_name -> plugin.v1.StateType
+	29, // 20: plugin.v1.Permission.checked_at:type_name -> google.protobuf.Timestamp
+	22, // 21: plugin.v1.Permissions.write:type_name -> plugin.v1.Permission
+	22, // 22: plugin.v1.Permissions.read:type_name -> plugin.v1.Permission
+	22, // 23: plugin.v1.Permissions.delete:type_name -> plugin.v1.Permission
+	23, // 24: plugin.v1.StorageBucketCredentialState.state:type_name -> plugin.v1.Permissions
+	1,  // 25: plugin.v1.StoragePluginService.NormalizeStorageBucketData:input_type -> plugin.v1.NormalizeStorageBucketDataRequest
+	3,  // 26: plugin.v1.StoragePluginService.OnCreateStorageBucket:input_type -> plugin.v1.OnCreateStorageBucketRequest
+	5,  // 27: plugin.v1.StoragePluginService.OnUpdateStorageBucket:input_type -> plugin.v1.OnUpdateStorageBucketRequest
+	7,  // 28: plugin.v1.StoragePluginService.OnDeleteStorageBucket:input_type -> plugin.v1.OnDeleteStorageBucketRequest
+	9,  // 29: plugin.v1.StoragePluginService.ValidatePermissions:input_type -> plugin.v1.ValidatePermissionsRequest
+	11, // 30: plugin.v1.StoragePluginService.HeadObject:input_type -> plugin.v1.HeadObjectRequest
+	13, // 31: plugin.v1.StoragePluginService.GetObject:input_type -> plugin.v1.GetObjectRequest
+	14, // 32: plugin.v1.StoragePluginService.ListObjects:input_type -> plugin.v1.ListObjectsRequest
+	18, // 33: plugin.v1.StoragePluginService.PutObject:input_type -> plugin.v1.PutObjectRequest
+	20, // 34: plugin.v1.StoragePluginService.DeleteObjects:input_type -> plugin.v1.DeleteObjectsRequest
+	2,  // 35: plugin.v1.StoragePluginService.NormalizeStorageBucketData:output_type -> plugin.v1.NormalizeStorageBucketDataResponse
+	4,  // 36: plugin.v1.StoragePluginService.OnCreateStorageBucket:output_type -> plugin.v1.OnCreateStorageBucketResponse
+	6,  // 37: plugin.v1.StoragePluginService.OnUpdateStorageBucket:output_type -> plugin.v1.OnUpdateStorageBucketResponse
+	8,  // 38: plugin.v1.StoragePluginService.OnDeleteStorageBucket:output_type -> plugin.v1.OnDeleteStorageBucketResponse
+	10, // 39: plugin.v1.StoragePluginService.ValidatePermissions:output_type -> plugin.v1.ValidatePermissionsResponse
+	12, // 40: plugin.v1.StoragePluginService.HeadObject:output_type -> plugin.v1.HeadObjectResponse
+	17, // 41: plugin.v1.StoragePluginService.GetObject:output_type -> plugin.v1.GetObjectResponse
+	16, // 42: plugin.v1.StoragePluginService.ListObjects:output_type -> plugin.v1.ListObjectsResponse
+	19, // 43: plugin.v1.StoragePluginService.PutObject:output_type -> plugin.v1.PutObjectResponse
+	21, // 44: plugin.v1.StoragePluginService.DeleteObjects:output_type -> plugin.v1.DeleteObjectsResponse
+	35, // [35:45] is the sub-list for method output_type
+	25, // [25:35] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_storage_plugin_service_proto_init() }
@@ -1390,7 +1563,7 @@ func file_plugin_v1_storage_plugin_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_storage_plugin_service_proto_rawDesc), len(file_plugin_v1_storage_plugin_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   21,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
