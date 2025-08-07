@@ -178,6 +178,17 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 			},
 		}
 
+	case *credstatic.UsernamePasswordDomainCredential:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_UsernamePasswordDomain{
+				UsernamePasswordDomain: &serverpb.UsernamePasswordDomain{
+					Username: c.GetUsername(),
+					Password: string(c.GetPassword()),
+					Domain:   c.GetDomain(),
+				},
+			},
+		}
+
 	case *credstatic.SshPrivateKeyCredential:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{

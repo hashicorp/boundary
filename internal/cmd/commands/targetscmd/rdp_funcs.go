@@ -89,7 +89,7 @@ func extraRdpFlagsFuncImpl(c *RdpCommand, set *base.FlagSets, f *base.FlagSet) {
 			fs.StringVar(&base.StringVar{
 				Name:   "default-port",
 				Target: &c.flagDefaultPort,
-				Usage:  "Optionally, the default port to set on the target. If not specified, it will be set to 22.",
+				Usage:  "Optionally, the default port to set on the target. If not specified, it will be set to 3389.",
 			})
 		case "default-client-port":
 			fs.StringVar(&base.StringVar{
