@@ -1,0 +1,56 @@
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "${worker_public_ip}"
+  name = "win-worker-0"
+  initial_upstreams = ["[${controller_ip}]:9201"]
+  tags {
+    type = ["worker", "egress"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "egress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+kms "awskms" {
+  purpose    = "worker-auth"
+  region     = "${aws_region}"
+  kms_key_id = "${aws_kms_key}"
+}
