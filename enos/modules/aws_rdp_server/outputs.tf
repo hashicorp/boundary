@@ -26,3 +26,13 @@ output "password" {
 output "ipv6" {
   value = flatten(aws_instance.rdp_target.*.ipv6_addresses)
 }
+
+output "active_directory_domain" {
+  description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
+  value       = var.active_directory_domain
+}
+
+output "active_directory_netbios_name" {
+  description = "Ostensibly the short-hand for the name of the domain."
+  value       = var.active_directory_netbios_name
+}

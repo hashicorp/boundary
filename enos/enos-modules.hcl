@@ -123,6 +123,10 @@ module "aws_windows_client" {
   source = "./modules/aws_windows_client"
 }
 
+module "aws_windows_worker" {
+  source = "./modules/aws_windows_worker"
+}
+
 module "vault" {
   source = "./modules/aws_vault"
 
