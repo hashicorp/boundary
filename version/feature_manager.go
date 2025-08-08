@@ -100,9 +100,8 @@ func init() {
 	}
 
 	// Worker supports RDP session proxy
-	// TODO: update this to the release version when RDP goes out
 	featureMap[RDPSessionProxy] = MetadataConstraint{
-		Constraints: mustNewConstraints(">= 0.19.0"),
+		Constraints: mustNewConstraints(">= 0.20.0"),
 	}
 }
 
