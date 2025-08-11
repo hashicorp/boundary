@@ -74,12 +74,16 @@ description will be read.
     [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method.
 
 - `public_cluster_addr` - Specifies the public host or IP address (and
-  optionally port) at which the controller can be reached _by workers_. This will
-  be used by workers after initial connection to controllers via the worker's
-  `initial_upstreams` block. This defaults to the address of the listener marked for
-  `cluster` purpose. It is used if there is a load balancer in front of multiple Boundary controllers. This is also especially useful for cloud environments that do not
+  optionally port) at which the controller can be reached **by workers**. Workers use this value after making the initial connection to controllers via the worker's
+  `initial_upstreams` block. The default value is the address of the listener marked for the
+  `cluster` purpose.
+
+  You can use this attribute if you want to put a load balancer in front of multiple Boundary controllers to ensure that the workers know the addresses of the controllers to perform client-side load balancing.
+  This setting is also especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
-  EIP. This value can be a direct address string, can refer to a file on disk (file://)
+  EIP.
+
+  This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
   address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
   Note that the address should not include the protocol prefixes like `http://` or `https://`.
