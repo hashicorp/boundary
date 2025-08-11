@@ -21,25 +21,16 @@ variable "binary_name" {
   default = "boundary"
 }
 
-variable "artifact_name" {
-  default = "boundary"
-}
-
 variable "edition" {
   default = "oss"
 }
 
-variable "goos" {
-  default = "linux"
-}
-
 resource "enos_local_exec" "build" {
   environment = {
-    "GOOS"          = var.goos,
+    "GOOS"          = "linux",
     "GOARCH"        = "amd64",
     "CGO_ENABLED"   = 0,
     "ARTIFACT_PATH" = var.path
-    "ARTIFACT_NAME" = var.artifact_name
     "BINARY_NAME"   = var.binary_name
     "BUILD_TARGET"  = var.build_target
     "EDITION"       = var.edition
@@ -48,5 +39,5 @@ resource "enos_local_exec" "build" {
 }
 
 output "artifact_path" {
-  value = "${var.path}/${var.artifact_name}.zip"
+  value = "${var.path}/boundary.zip"
 }

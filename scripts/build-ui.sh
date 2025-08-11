@@ -58,8 +58,8 @@ if which gh &> /dev/null;  then
     fi
 fi
 
-if ! which pnpm &> /dev/null; then
-    echo "Pnpm must be installed to build ui assets from a git clone.\nPlease ensure Node v20+ and Pnpm v10+ are installed."
+if ! which yarn &> /dev/null; then
+    echo "Yarn must be installed to build ui assets from a git clone.\nPlease ensure Node v14+ and Yarn v1.22.10+ are installed."
     exit 1
 fi
 
@@ -81,6 +81,6 @@ git checkout "${UI_COMMITISH}"
 git pull --ff-only origin "${UI_COMMITISH}"
 git reset --hard "${UI_COMMITISH}"
 
-pnpm install
-EDITION=${UI_EDITION} pnpm build
+yarn install
+EDITION=${UI_EDITION} yarn build
 popd

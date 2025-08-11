@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"path"
 	"slices"
@@ -33,7 +34,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -1295,7 +1295,7 @@ func TestCreate(t *testing.T) {
 	r := iam.TestRole(t, conn, "global")
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
-	_ = iam.TestRoleGrantScope(t, conn, r, globals.GrantScopeDescendants)
+	_ = iam.TestRoleGrantScope(t, conn, r.GetPublicId(), globals.GrantScopeDescendants)
 
 	// Ensure we are using the OSS worker filter function. This prevents us from
 	// running tests in parallel.
@@ -1453,7 +1453,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errStr: "PermissionDenied",
+			errStr: "unable to create target alias",
 		},
 		{
 			name: "Create a target with duplicate aliasses",
@@ -1595,82 +1595,6 @@ func TestCreate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
-		{
-			name: "Invalid address ipv6 missing segment",
-			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				ScopeId:     proj.GetPublicId(),
-				Name:        wrapperspb.String("name1"),
-				Description: wrapperspb.String("desc"),
-				Type:        tcp.Subtype.String(),
-				Attrs: &pb.Target_TcpTargetAttributes{
-					TcpTargetAttributes: &pb.TcpTargetAttributes{
-						DefaultPort:       wrapperspb.UInt32(2),
-						DefaultClientPort: wrapperspb.UInt32(3),
-					},
-				},
-				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
-				Address:            wrapperspb.String("2001:BEEF:0:0:1:0:0001"),
-			}},
-			res:    nil,
-			errStr: "Error parsing address: host contains an invalid IPv6 literal.",
-		},
-		{
-			name: "Invalid address ipv6 has brackets",
-			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				ScopeId:     proj.GetPublicId(),
-				Name:        wrapperspb.String("name2"),
-				Description: wrapperspb.String("desc"),
-				Type:        tcp.Subtype.String(),
-				Attrs: &pb.Target_TcpTargetAttributes{
-					TcpTargetAttributes: &pb.TcpTargetAttributes{
-						DefaultPort:       wrapperspb.UInt32(2),
-						DefaultClientPort: wrapperspb.UInt32(3),
-					},
-				},
-				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
-				Address:            wrapperspb.String("[2001:BEEF:0:0:0:1:0:0001]"),
-			}},
-			res:    nil,
-			errStr: "Error parsing address: address cannot be encapsulated by brackets",
-		},
-		{
-			name: "Create a valid target with ipv6 address",
-			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				ScopeId:     proj.GetPublicId(),
-				Name:        wrapperspb.String("valid ipv6"),
-				Description: wrapperspb.String("desc"),
-				Type:        tcp.Subtype.String(),
-				Attrs: &pb.Target_TcpTargetAttributes{
-					TcpTargetAttributes: &pb.TcpTargetAttributes{
-						DefaultPort:       wrapperspb.UInt32(2),
-						DefaultClientPort: wrapperspb.UInt32(3),
-					},
-				},
-				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
-				Address:            wrapperspb.String("2001:BEEF:0:0:0:1:0:0001"),
-			}},
-			res: &pbs.CreateTargetResponse{
-				Uri: fmt.Sprintf("targets/%s_", globals.TcpTargetPrefix),
-				Item: &pb.Target{
-					ScopeId:     proj.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:        wrapperspb.String("valid ipv6"),
-					Description: wrapperspb.String("desc"),
-					Type:        tcp.Subtype.String(),
-					Attrs: &pb.Target_TcpTargetAttributes{
-						TcpTargetAttributes: &pb.TcpTargetAttributes{
-							DefaultPort:       wrapperspb.UInt32(2),
-							DefaultClientPort: wrapperspb.UInt32(3),
-						},
-					},
-					SessionMaxSeconds:      wrapperspb.UInt32(28800),
-					SessionConnectionLimit: wrapperspb.Int32(-1),
-					AuthorizedActions:      testAuthorizedActions,
-					EgressWorkerFilter:     wrapperspb.String(`type == "bar"`),
-					Address:                wrapperspb.String("2001:beef::1:0:1"),
-				},
-			},
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1694,7 +1618,7 @@ func TestCreate(t *testing.T) {
 					assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 				}
 				if tc.errStr != "" {
-					assert.ErrorContains(gErr, tc.errStr, "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+					assert.ErrorContains(gErr, tc.errStr)
 				}
 			} else {
 				assert.Nil(gErr, "Unexpected err: %v", gErr)
@@ -2232,6 +2156,45 @@ func TestUpdate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Invalid address length",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("ab"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address w/ port",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("8.8.8.8:80"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address not parsable",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("aaa.8bc.8.8:80:abc"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2255,226 +2218,6 @@ func TestUpdate(t *testing.T) {
 				assert.True(errors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
 				return
 			}
-			require.NoError(gErr)
-
-			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
-				// Verify it is a set updated after it was created
-				// TODO: This is currently failing.
-				assert.True(gotUpdateTime.After(hCreated), "Updated target should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
-
-				// Clear all values which are hard to compare against.
-				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
-			}
-			if tc.res != nil {
-				tc.res.Item.Version = tc.req.Item.Version + 1
-			}
-			assert.Empty(cmp.Diff(
-				got,
-				tc.res,
-				protocmp.Transform(),
-				cmpopts.SortSlices(func(a, b string) bool {
-					return a < b
-				}),
-			), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
-		})
-	}
-	// Reset worker filter funcs
-	targets.ValidateIngressWorkerFilterFn = validateIngressFn
-}
-
-func TestUpdateAddress(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	rw := db.New(conn)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
-	}
-	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
-	}
-
-	org, proj := iam.TestScopes(t, iamRepo)
-	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	r := iam.TestRole(t, conn, proj.GetPublicId())
-	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
-
-	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(ctx, rw, rw, kms)
-	}
-	repo, err := repoFn()
-	require.NoError(t, err, "Couldn't create new target repo.")
-
-	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(),
-		target.WithName("default"),
-		target.WithDescription("default"),
-		target.WithSessionMaxSeconds(1),
-		target.WithSessionConnectionLimit(1),
-		target.WithDefaultPort(2),
-		target.WithDefaultClientPort(3),
-		target.WithAddress("8.8.8.8"),
-	)
-	require.NoError(t, err)
-	tar, err := repo.CreateTarget(context.Background(), ttar)
-	require.NoError(t, err)
-
-	resetTarget := func() {
-		itar, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
-		require.NoError(t, err)
-
-		tar, _, err = repo.UpdateTarget(context.Background(), tar, itar.GetVersion(),
-			[]string{"Name", "Description", "SessionMaxSeconds", "SessionConnectionLimit", "DefaultPort", "DefaultClientPort"})
-		require.NoError(t, err, "Failed to reset target.")
-	}
-
-	hCreated := tar.GetCreateTime().GetTimestamp().AsTime()
-	toMerge := &pbs.UpdateTargetRequest{
-		Id: tar.GetPublicId(),
-	}
-
-	tested, err := testService(t, context.Background(), conn, kms, wrapper)
-	require.NoError(t, err, "Failed to create a new host set service.")
-
-	// Ensure we are using the OSS worker filter functions. This prevents us
-	// from running tests in parallel.
-	server.TestUseCommunityFilterWorkersFn(t)
-	validateIngressFn := targets.ValidateIngressWorkerFilterFn
-	targets.ValidateIngressWorkerFilterFn = targets.IngressWorkerFilterUnsupported
-
-	cases := []struct {
-		name string
-		req  *pbs.UpdateTargetRequest
-		res  *pbs.UpdateTargetResponse
-		err  string
-	}{
-		{
-			name: "Invalid address length",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("ab"),
-				},
-			},
-			res: nil,
-			err: "Address length must be between 3 and 255 characters",
-		},
-		{
-			name: "Invalid address w/ port",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("8.8.8.8:80"),
-				},
-			},
-			res: nil,
-			err: "Address does not support a port",
-		},
-		{
-			name: "Invalid address not parsable",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("aaa.8bc.8.8:80:abc"),
-				},
-			},
-			res: nil,
-			err: "Error parsing address: failed to parse address.",
-		},
-		{
-			name: "Update address valid ipv6",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("2001:BEEF:0:0:0:1:0:0001"),
-				},
-			},
-			res: &pbs.UpdateTargetResponse{
-				Item: &pb.Target{
-					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetProjectId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:        wrapperspb.String("default"),
-					Description: wrapperspb.String("default"),
-					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Attrs: &pb.Target_TcpTargetAttributes{
-						TcpTargetAttributes: &pb.TcpTargetAttributes{
-							DefaultPort:       wrapperspb.UInt32(2),
-							DefaultClientPort: wrapperspb.UInt32(3),
-						},
-					},
-					Type:                   tcp.Subtype.String(),
-					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
-					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
-					AuthorizedActions:      testAuthorizedActions,
-					Address:                wrapperspb.String("2001:beef::1:0:1"),
-				},
-			},
-		},
-		{
-			name: "Update address invalid ipv6 with brackets",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("[2001:BEEF:0:0:0:1:0:0001]"),
-				},
-			},
-			err: "Error parsing address: address cannot be encapsulated by brackets.",
-		},
-		{
-			name: "Update address invalid ipv6 missing segment",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
-				},
-				Item: &pb.Target{
-					Address: wrapperspb.String("2001:BEEF:0:0:1:0:0001"),
-				},
-			},
-			err: "Error parsing address: host contains an invalid IPv6 literal.",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			defer resetTarget()
-			assert, require := assert.New(t), require.New(t)
-			tc.req.Item.Version = tar.GetVersion()
-
-			req := proto.Clone(toMerge).(*pbs.UpdateTargetRequest)
-			proto.Merge(req, tc.req)
-
-			requestInfo := authpb.RequestInfo{
-				TokenFormat: uint32(auth.AuthTokenTypeBearer),
-				PublicId:    at.GetPublicId(),
-				Token:       at.GetToken(),
-			}
-			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
-			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
-			got, gErr := tested.UpdateTarget(ctx, req)
-			if tc.err != "" {
-				require.Error(gErr)
-				assert.ErrorContainsf(gErr, tc.err, "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
-				return
-			}
-
 			require.NoError(gErr)
 
 			if got != nil {

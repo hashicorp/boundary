@@ -202,27 +202,6 @@ func (p *Postgres) CommitRun(ctx context.Context) error {
 	return nil
 }
 
-// RollbackRun rolls back a transaction. If no transaction is active, it will return nil.
-func (p *Postgres) RollbackRun(ctx context.Context) error {
-	const op = "postgres.(Postgres).RollbackRun"
-	defer func() {
-		p.tx = nil
-	}()
-
-	// p.tx is set to nil after the commit so if p.tx == nil, we assume that the transaction has
-	// already been committed and do nothing
-	if p.tx == nil {
-		return nil
-	}
-	if err := p.tx.Rollback(); err != nil {
-		if errors.Is(err, sql.ErrTxDone) {
-			return nil
-		}
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
-}
-
 // Run will apply a migration. The io.Reader should provide the SQL
 // statements to execute, and the int is the version for that set of
 // statements. This should always be wrapped by StartRun and CommitRun.
@@ -496,7 +475,7 @@ func (p *Postgres) GetMigrationLog(ctx context.Context, opt ...log.Option) ([]*l
 		entries = append(entries, e)
 	}
 	if rows.Err() != nil {
-		return nil, errors.Wrap(ctx, rows.Err(), op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	opts := log.GetOpts(opt...)
 	if opts.WithDeleteLog {

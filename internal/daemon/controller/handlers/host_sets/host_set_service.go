@@ -68,6 +68,8 @@ var (
 	)
 )
 
+const domain = "host"
+
 func init() {
 	var err error
 	if maskManager[static.Subtype], err = handlers.NewMaskManager(
@@ -124,7 +126,7 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -304,7 +306,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -346,7 +348,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -391,7 +393,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -431,7 +433,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -449,7 +451,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHosts, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -488,7 +490,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHosts, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -526,7 +528,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHosts, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -854,7 +856,7 @@ func (s Service) removeInRepo(ctx context.Context, projectId, setId string, host
 	return out, hl, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (host.Catalog, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (host.Catalog, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 
 	staticRepo, err := s.staticRepoFn()
@@ -869,7 +871,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithType(resource.HostSet), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -929,7 +931,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		cat = pc
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
-	return cat, auth.Verify(ctx, resource.HostSet, opts...)
+	return cat, auth.Verify(ctx, opts...)
 }
 
 func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {

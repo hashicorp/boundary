@@ -593,7 +593,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	host, port, err := util.SplitHostPort(c.flagHostAddress)
-	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
 		return base.CommandUserError
 	}
@@ -721,8 +721,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
-
-	base.StartPprof(c.Context)
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey

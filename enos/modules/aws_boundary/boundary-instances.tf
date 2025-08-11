@@ -23,7 +23,6 @@ resource "aws_instance" "controller" {
     volume_type = var.controller_ebs_type
     throughput  = var.controller_ebs_throughput
     tags        = local.common_tags
-    encrypted   = true
   }
 
   tags = merge(local.common_tags,
@@ -51,7 +50,6 @@ resource "aws_instance" "worker" {
     volume_type = var.worker_ebs_type
     throughput  = var.worker_ebs_throughput
     tags        = local.common_tags
-    encrypted   = true
   }
 
   tags = merge(local.common_tags,
@@ -96,9 +94,8 @@ resource "enos_remote_exec" "update_path_controller" {
 }
 
 locals {
-  audit_log_directory    = "/var/log/boundary"
-  auth_storage_directory = "/var/lib/boundary"
-  service_user           = "boundary"
+  audit_log_directory = "/var/log/boundary"
+  service_user        = "boundary"
 }
 
 resource "enos_file" "controller_config" {
@@ -177,11 +174,11 @@ resource "enos_remote_exec" "create_controller_audit_log_dir" {
   for_each = toset([for idx in range(var.controller_count) : tostring(idx)])
 
   environment = {
-    NEW_DIR      = local.audit_log_directory
+    LOG_DIR      = local.audit_log_directory
     SERVICE_USER = local.service_user
   }
 
-  scripts = [abspath("${path.module}/scripts/create-dir.sh")]
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
 
   transport = {
     ssh = {
@@ -236,7 +233,6 @@ resource "enos_file" "worker_config" {
     region                  = var.aws_region
     type                    = jsonencode(var.worker_type_tags)
     recording_storage_path  = var.recording_storage_path
-    auth_storage_path       = local.auth_storage_directory
     audit_log_dir           = local.audit_log_directory
     hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
     vault_address           = local.network_stack[var.ip_version].vault_address
@@ -275,31 +271,11 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
   for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
 
   environment = {
-    NEW_DIR      = local.audit_log_directory
+    LOG_DIR      = local.audit_log_directory
     SERVICE_USER = local.service_user
   }
 
-  scripts = [abspath("${path.module}/scripts/create-dir.sh")]
-
-  transport = {
-    ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-    }
-  }
-}
-
-resource "enos_remote_exec" "create_worker_auth_storage_dir" {
-  depends_on = [
-    enos_boundary_start.worker_start,
-  ]
-  for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
-
-  environment = {
-    NEW_DIR      = local.auth_storage_directory
-    SERVICE_USER = local.service_user
-  }
-
-  scripts = [abspath("${path.module}/scripts/create-dir.sh")]
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
 
   transport = {
     ssh = {

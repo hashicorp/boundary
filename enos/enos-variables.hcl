@@ -115,12 +115,6 @@ variable "crt_bundle_path" {
   default     = null
 }
 
-variable crt_bundle_path_windows {
-  description = "Path to CRT generated boundary bundle for windows"
-  type        = string
-  default     = null
-}
-
 variable "boundary_install_dir" {
   description = "Path boundary binaries will be installed to on remote instances"
   type        = string
@@ -177,12 +171,6 @@ variable "boundary_edition" {
 
 variable "boundary_license_path" {
   description = "Boundary license path"
-  type        = string
-  default     = null
-}
-
-variable "boundary_license" {
-  description = "Boundary license"
   type        = string
   default     = null
 }
@@ -270,10 +258,4 @@ variable "gcp_client_email" {
   type        = string
   sensitive   = true
   default     = null
-}
-
-variable "windows_instance_type" {
-  description = "Instance type for Windows client nodes"
-  type        = string
-  default     = "m7i-flex.xlarge"
 }

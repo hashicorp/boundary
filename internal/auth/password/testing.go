@@ -8,10 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,16 +69,6 @@ func TestMultipleAccounts(t testing.TB, conn *db.DB, authMethodId string, count 
 		auts = append(auts, TestAccount(t, conn, authMethodId, fmt.Sprintf("name%d", i)))
 	}
 	return auts
-}
-
-// TestAuthMethodWithAccount creates an authMethod and an account within that authmethod
-// returing both the AM and the account
-func TestAuthMethodWithAccount(t *testing.T, conn *db.DB) (auth.AuthMethod, auth.Account) {
-	authMethod := TestAuthMethod(t, conn, globals.GlobalPrefix)
-	loginName, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	acct := TestAccount(t, conn, authMethod.GetPublicId(), loginName)
-	return authMethod, acct
 }
 
 // TestAccount creates a password account to the provided DB with the provided

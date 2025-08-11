@@ -49,7 +49,7 @@ type Cloneable interface {
 type ResourceWithScope interface {
 	GetPublicId() string
 	GetScopeId() string
-	getResourceType() resource.Type
+	validScopeTypes() []scope.Type
 }
 
 // LookupScope looks up the resource's  scope
@@ -98,11 +98,7 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 			return errors.Wrap(ctx, err, op)
 		}
 		validScopeType := false
-		validScopes, err := scope.AllowedIn(ctx, resource.getResourceType())
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		for _, t := range validScopes {
+		for _, t := range resource.validScopeTypes() {
 			if ps.Type == t.String() {
 				validScopeType = true
 			}

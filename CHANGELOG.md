@@ -4,66 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### New and Improved
-
-* cli: Added `boundary connect mysql` command for connecting to MySQL targets.
-  This new helper command allows users to authorize sessions against MySQL 
-  targets and automatically invoke a MySQL client with the appropriate 
-  connection parameters and credentials.
-* Adds support to parse User-Agent headers and emit them in telemetry events
-  ([PR](https://github.com/hashicorp/boundary/pull/5645)).
-* cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
-  This new helper command allows users to authorize sessions against Cassandra 
-  targets and automatically invoke a Cassandra client with the appropriate 
-  connection parameters and credentials. Currently only username/password credentials are automatically attached.
-
-### Deprecations/Changes
-
-* Modified parsing logic for various IP/host/address fields across Boundary.
-  Notably, for some fields, Boundary previously required bracket-enclosed 
-  IPv6 addresses (eg: `[::1]`). With this change, if the provided address is
-  just an IPv6 literal, enclosing the address in brackets is not valid.
-  Additionally, an input address containing an IPv6 literal may be modified by
-  Boundary to conform with RFC 5952.
-  ([PR](https://github.com/hashicorp/boundary/pull/5599))
-
-## 0.19.2 (2025/05/08)
-### New and Improved
-
-* ui: Populate subject for OIDC account name displays.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2757)).
-* ui: Improved performance when initially fetching large sets of resources.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2752)).
-* ui: Improved search & filtering behavior when using search field.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2735)).
-
-### Bug fixes
-
-* Fixed an issue in the worker where closing an SSH channel failed to exit a
-  loop, which would cause a massive spike in CPU usage over time. This change
-  only affects Enterprise.
-* ui: Fix an issue where the user could not change the key_type of a
-  Vault SSH Certificate credential library.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2790)).
-
-## 0.19.1 (2025/03/04)
-### New and Improved
-
-* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
-  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
-
 ## 0.19.0 (2025/02/10)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
-* GCP dynamic host catalog: Add dynamic host catalog support for
+* GCP dynamic host catalog: Add dynamic host catalog support for 
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
-* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
 maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
 * Adds support for dual-stack networking for AWS operations.
-  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52))
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
   * **Note**: As a consequence of updating AWS SDK dependencies to enable
     dual-stack support, this Boundary release may consume more memory. From our
     testing, the increase seems to be around 1.6x, however this
@@ -110,47 +62,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Go Cryptography dependency update to address CVE-2024-45337
     ([PR](https://github.com/hashicorp/boundary/pull/5354)).
 
-## 0.18.3 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
-
-## 0.17.4 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
-
 ## 0.18.2 (2024/12/12)
-### Bug fixes
-
-* Fixed an issue where session recordings would fail when large numbers of
-  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
-* Fixed an issue where the controller would incorrectly handle HTTP requests
-  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
-
-## 0.17.3 (2024/12/12)
 ### Bug fixes
 
 * Fixed an issue where session recordings would fail when large numbers of
@@ -296,7 +208,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * curl (enterprise): The curl binary is no longer included in the published
   Docker container images for Boundary Enterprise to address the CVE-2024-7264
   vulnerability.
-  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)
+  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
 
 ## 0.17.0 (2024/07/17)
 
@@ -312,7 +224,7 @@ object store. There are two SBC types, managed secret and environmental.
   for a worker to perform a specific action using the storage bucket. SBC
   permission types (write, read, & delete) represent an action that is required
   for the storage bucket to do as a routine task on an external object store.
-  Each permission type has a permission state (ok, error, unknown).
+  Each permission type has a permission state (ok, error, unknown). 
   * SBC Worker Filtering: For protocol aware workers that require interaction
   with an external storage service, the workers will be filtered by the SBC
   state depending on the action and permission required.

@@ -27,7 +27,6 @@ scenario "e2e_database" {
 
     variables {
       license_path = local.license_path
-      license      = var.boundary_license
     }
   }
 
@@ -36,7 +35,8 @@ scenario "e2e_database" {
 
     variables {
       instance_type = [
-        var.target_instance_type
+        var.worker_instance_type,
+        var.controller_instance_type
       ]
     }
   }

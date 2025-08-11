@@ -411,18 +411,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "postgres",
 			}
 		}),
-		"connect mysql": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "mysql",
-			}
-		}),
-		"connect cassandra": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "cassandra",
-			}
-		}),
 		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),

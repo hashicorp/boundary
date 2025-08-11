@@ -45,7 +45,6 @@ const (
 	// * The Test_AnonRestrictions test: update the following line to include the last resource:
 	//      for i := resource.Type(1); i <= resource.<Resource>; i++ {
 	// * The prefixes and mappings in globals/prefixes.go
-	// * The AllowedIn function & its test in the scope package
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {
@@ -143,8 +142,8 @@ var Map = map[string]Type{
 
 // Parent returns the parent type for a given type; if there is no parent, it
 // returns the incoming type
-func (r Type) Parent() Type {
-	switch r {
+func Parent(in Type) Type {
+	switch in {
 	case Account, ManagedGroup:
 		return AuthMethod
 	case HostSet, Host:
@@ -152,13 +151,13 @@ func (r Type) Parent() Type {
 	case CredentialLibrary, Credential:
 		return CredentialStore
 	}
-	return r
+	return in
 }
 
 // HasChildTypes indicates whether this is a type that has child resource types;
 // it's essentially the inverse of Parent
-func (r Type) HasChildTypes() bool {
-	switch r {
+func HasChildTypes(in Type) bool {
+	switch in {
 	case AuthMethod, HostCatalog, CredentialStore:
 		return true
 	}
@@ -167,8 +166,8 @@ func (r Type) HasChildTypes() bool {
 
 // TopLevelType indicates whether this is a type that supports collection
 // actions, e.g. Create/List
-func (r Type) TopLevelType() bool {
-	switch r {
+func TopLevelType(typ Type) bool {
+	switch typ {
 	case AuthMethod,
 		AuthToken,
 		CredentialStore,

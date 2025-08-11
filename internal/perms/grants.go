@@ -603,13 +603,13 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 					}
 				case resource.All:
 					// Verify that the ID is a type that has child types
-					if !idType.HasChildTypes() {
+					if !resource.HasChildTypes(idType) {
 						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id that does not support child types", grant.CanonicalString()))
 					}
 				default:
 					// Specified resource type, verify it's a child
-					if grant.typ.Parent() != idType {
-						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), grant.typ.Parent()))
+					if resource.Parent(grant.typ) != idType {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), idType.String()))
 					}
 				}
 			default: // no specified id
@@ -681,7 +681,7 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 						Type:          grant.typ,
 						ParentScopeId: parentScopeId,
 					}
-					if !grant.typ.TopLevelType() {
+					if !resource.TopLevelType(grant.typ) {
 						r.Pin = grantIds[i]
 					}
 					for k := range grant.actions {

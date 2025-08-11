@@ -124,7 +124,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -202,7 +202,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -286,7 +286,7 @@ func (s Service) CreateControllerLed(ctx context.Context, req *pbs.CreateControl
 func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Type, opt ...server.Option) (*pb.Worker, error) {
 	const op = "workers.(Service).createCommon"
 
-	authResults := s.authResult(ctx, in.GetScopeId(), act, false)
+	authResults := s.authResult(ctx, in.GetScopeId(), act)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -323,7 +323,7 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -351,7 +351,7 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -425,7 +425,7 @@ func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsReques
 	if err := validateAddTagsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddWorkerTags, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddWorkerTags)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -462,7 +462,7 @@ func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsReques
 	if err := validateSetTagsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetWorkerTags, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetWorkerTags)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -499,7 +499,7 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 	if err := validateRemoveTagsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveWorkerTags, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveWorkerTags)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -536,7 +536,7 @@ func (s Service) ReadCertificateAuthority(ctx context.Context, req *pbs.ReadCert
 		return nil, err
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.ReadCertificateAuthority, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ReadCertificateAuthority)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -557,7 +557,7 @@ func (s Service) ReinitializeCertificateAuthority(ctx context.Context, req *pbs.
 		return nil, err
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.ReinitializeCertificateAuthority, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ReinitializeCertificateAuthority)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -751,7 +751,7 @@ func (s Service) removeTagsInRepo(ctx context.Context, workerId string, workerVe
 	return w, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -760,7 +760,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
 	switch a {
 	case action.List, action.CreateWorkerLed, action.CreateControllerLed, action.ReadCertificateAuthority, action.ReinitializeCertificateAuthority:
 		parentId = id
@@ -778,7 +778,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, resource.Worker, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func (s Service) listCertificateAuthorityFromRepo(ctx context.Context) (*types.RootCertificates, error) {

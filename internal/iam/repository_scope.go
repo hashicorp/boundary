@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -90,7 +89,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 	var adminRolePublicId string
 	var adminRoleMetadata oplog.Metadata
-	var adminRole Resource
+	var adminRole *Role
 	var adminRoleRaw any
 	switch {
 	case userId == "",
@@ -108,45 +107,17 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		_ = adminRole
 
 	default:
+		adminRole, err = NewRole(ctx, scopePublicId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new admin role"))
+		}
 		adminRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
 		}
-		switch s.Type {
-		case scope.Global.String():
-			adminRole = &globalRole{
-				GlobalRole: &store.GlobalRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
-		case scope.Org.String():
-			adminRole = &orgRole{
-				OrgRole: &store.OrgRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
-		case scope.Project.String():
-			adminRole = &projectRole{
-				ProjectRole: &store.ProjectRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					GrantThisRoleScope: true,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-				},
-			}
-		}
-
+		adminRole.PublicId = adminRolePublicId
+		adminRole.Name = "Administration"
+		adminRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
 		adminRoleRaw = adminRole
 		adminRoleMetadata = oplog.Metadata{
 			"resource-public-id": []string{adminRolePublicId},
@@ -159,46 +130,25 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 	var defaultRolePublicId string
 	var defaultRoleMetadata oplog.Metadata
-	var defaultRole Resource
+	var defaultRole *Role
 	var defaultRoleRaw any
 	if !opts.withSkipDefaultRoleCreation {
+		defaultRole, err = NewRole(ctx, scopePublicId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+		}
 		defaultRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
 		}
+		defaultRole.PublicId = defaultRolePublicId
 		switch s.Type {
-		case scope.Global.String():
-			defaultRole = &globalRole{
-				GlobalRole: &store.GlobalRole{
-					PublicId:           defaultRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Login and Default Grants",
-					Description:        fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
-		case scope.Org.String():
-			defaultRole = &orgRole{
-				OrgRole: &store.OrgRole{
-					PublicId:           defaultRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Login and Default Grants",
-					Description:        fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
 		case scope.Project.String():
-			defaultRole = &projectRole{
-				ProjectRole: &store.ProjectRole{
-					PublicId:           defaultRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Default Grants",
-					GrantThisRoleScope: true,
-					Description:        fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId),
-				},
-			}
+			defaultRole.Name = "Default Grants"
+			defaultRole.Description = fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId)
+		default:
+			defaultRole.Name = "Login and Default Grants"
+			defaultRole.Description = fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId)
 		}
 		defaultRoleRaw = defaultRole
 		defaultRoleMetadata = oplog.Metadata{
@@ -257,18 +207,8 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
 				}
 
-				var adminRoleVersion uint32
-				switch s.Type {
-				case scope.Global.String():
-					adminRoleVersion = adminRoleRaw.(*globalRole).GetVersion()
-					adminRole = adminRoleRaw.(*globalRole)
-				case scope.Org.String():
-					adminRoleVersion = adminRoleRaw.(*orgRole).GetVersion()
-					adminRole = adminRoleRaw.(*orgRole)
-				case scope.Project.String():
-					adminRoleVersion = adminRoleRaw.(*projectRole).GetVersion()
-					adminRole = adminRoleRaw.(*projectRole)
-				}
+				adminRole = adminRoleRaw.(*Role)
+
 				msgs := make([]*oplog.Message, 0, 4)
 				roleTicket, err := w.GetTicket(ctx, adminRole)
 				if err != nil {
@@ -277,7 +217,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
-				rowsUpdated, err := w.Update(ctx, adminRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&adminRoleVersion))
+				rowsUpdated, err := w.Update(ctx, adminRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&adminRole.Version))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
@@ -297,6 +237,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 
+				roleGrantScope, err := NewRoleGrantScope(ctx, adminRolePublicId, globals.GrantScopeThis)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []*RoleGrantScope{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
+
 				rolePrincipal, err := NewUserRole(ctx, adminRolePublicId, userId)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
@@ -311,7 +261,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"scope-id":           []string{s.PublicId},
 					"scope-type":         []string{s.Type},
-					"resource-public-id": []string{adminRole.GetPublicId()},
+					"resource-public-id": []string{adminRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
@@ -330,15 +280,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
 				}
 
-				var defaultRoleVersion uint32
-				switch s.Type {
-				case scope.Global.String():
-					defaultRoleVersion = defaultRoleRaw.(*globalRole).GetVersion()
-				case scope.Org.String():
-					defaultRoleVersion = defaultRoleRaw.(*orgRole).GetVersion()
-				case scope.Project.String():
-					defaultRoleVersion = defaultRoleRaw.(*projectRole).GetVersion()
-				}
+				defaultRole = defaultRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 7)
 				roleTicket, err := w.GetTicket(ctx, defaultRole)
@@ -348,7 +290,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
-				rowsUpdated, err := w.Update(ctx, defaultRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&defaultRoleVersion))
+				rowsUpdated, err := w.Update(ctx, defaultRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&defaultRole.Version))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
@@ -428,11 +370,21 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					msgs = append(msgs, roleUserOplogMsgs...)
 				}
 
+				roleGrantScope, err := NewRoleGrantScope(ctx, defaultRolePublicId, globals.GrantScopeThis)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []*RoleGrantScope{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
+
 				metadata := oplog.Metadata{
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"scope-id":           []string{s.PublicId},
 					"scope-type":         []string{s.Type},
-					"resource-public-id": []string{defaultRole.GetPublicId()},
+					"resource-public-id": []string{defaultRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
@@ -442,6 +394,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))

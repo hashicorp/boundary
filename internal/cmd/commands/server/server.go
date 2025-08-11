@@ -217,7 +217,6 @@ func (c *Command) Run(args []string) int {
 	c.WorkerAuthDebuggingEnabled.Store(c.Config.EnableWorkerAuthDebugging)
 
 	base.StartMemProfiler(c.Context)
-	base.StartPprof(c.Context)
 
 	// Note: the checks directly after this must remain where they are because
 	// they rely on the state of configured KMSes.
@@ -359,7 +358,7 @@ func (c *Command) Run(args []string) int {
 		}
 		for _, upstream := range c.Config.Worker.InitialUpstreams {
 			host, _, err := util.SplitHostPort(upstream)
-			if err != nil && !errors.Is(err, util.ErrMissingPort) {
+			if err != nil {
 				c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
 				return base.CommandUserError
 			}
@@ -413,7 +412,7 @@ func (c *Command) Run(args []string) int {
 					continue
 				}
 				host, _, err := util.SplitHostPort(ln.Address)
-				if err != nil && !errors.Is(err, util.ErrMissingPort) {
+				if err != nil {
 					c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
 					return base.CommandUserError
 				}

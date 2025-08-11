@@ -170,28 +170,15 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NotNil(t, wrk)
 
 	if len(opts.withWorkerTags) > 0 {
-		switch opts.withTestUseInputTagsAsApiTags {
-		case true:
-			var tags []*store.ApiTag
-			for _, t := range opts.withWorkerTags {
-				tags = append(tags, &store.ApiTag{
-					WorkerId: wrk.GetPublicId(),
-					Key:      t.Key,
-					Value:    t.Value,
-				})
-			}
-			require.NoError(t, rw.CreateItems(ctx, tags))
-		default:
-			var tags []*store.ConfigTag
-			for _, t := range opts.withWorkerTags {
-				tags = append(tags, &store.ConfigTag{
-					WorkerId: wrk.GetPublicId(),
-					Key:      t.Key,
-					Value:    t.Value,
-				})
-			}
-			require.NoError(t, rw.CreateItems(ctx, tags))
+		var tags []*store.ConfigTag
+		for _, t := range opts.withWorkerTags {
+			tags = append(tags, &store.ConfigTag{
+				WorkerId: wrk.GetPublicId(),
+				Key:      t.Key,
+				Value:    t.Value,
+			})
 		}
+		require.NoError(t, rw.CreateItems(ctx, tags))
 	}
 	if opts.withTestPkiWorkerAuthorized {
 		err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))

@@ -117,23 +117,6 @@ var (
 			resource.Target:  targets.CollectionActions,
 		},
 	}
-	additionalResourceGrants = []resource.Type{
-		resource.Alias,
-		resource.AuthMethod,
-		resource.AuthToken,
-		resource.StorageBucket,
-		resource.Group,
-		resource.Role,
-		resource.Scope,
-		resource.User,
-		resource.SessionRecording,
-		resource.Policy,
-		resource.CredentialStore,
-		resource.HostCatalog,
-		resource.Worker,
-		resource.Session,
-		resource.Target,
-	}
 )
 
 func init() {
@@ -185,10 +168,7 @@ func (s *Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-
-	// Hard-coding 'isRecursive' to true because list scope returns child scopes which requires
-	// additional grants for those child-scopes (recursive) to calculate authorized_actions on the returned scope
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, true)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -334,7 +314,7 @@ func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -386,7 +366,7 @@ func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) 
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -438,7 +418,7 @@ func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) 
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -488,7 +468,7 @@ func (s *Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) 
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -507,7 +487,7 @@ func (s *Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.
 	if err := validateListKeysRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ListScopeKeys, false)
+	authResults := s.authResult(ctx, req.GetId(), action.ListScopeKeys)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -553,7 +533,7 @@ func (s *Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*
 	if err := validateRotateKeysRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.RotateScopeKeys, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.RotateScopeKeys)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -573,7 +553,7 @@ func (s *Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.Li
 	if err := validateListKeyVersionDestructionJobsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.ListScopeKeyVersionDestructionJobs, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ListScopeKeyVersionDestructionJobs)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -615,7 +595,7 @@ func (s *Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVers
 	if err := validateDestroyKeyVersionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.DestroyScopeKeyVersion, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.DestroyScopeKeyVersion)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -787,7 +767,7 @@ func sortKeys(keys []*pb.Key) {
 	}
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -796,7 +776,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive), auth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
+	opts := []auth.Option{auth.WithType(resource.Scope), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs, action.DestroyScopeKeyVersion:
 		parentId = id
@@ -823,7 +803,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, resource.Scope, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Scope, error) {
