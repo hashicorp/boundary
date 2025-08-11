@@ -46,7 +46,7 @@ type ProxyConnFn func()
 // be nil. If there is no error ProxyConnFn must be set.  When Handler has
 // returned, it is expected that the initial connection to the endpoint has been
 // established.
-type Handler func(controlCtx context.Context, dataCtx context.Context, df DecryptFn, c net.Conn, pd *ProxyDialer, connId string, pb *anypb.Any, rm RecordingManager) (ProxyConnFn, error)
+type Handler func(controlCtx context.Context, dataCtx context.Context, df DecryptFn, c net.Conn, pd *ProxyDialer, connId string, pb *anypb.Any, rm RecordingManager, opt ...Option) (ProxyConnFn, error)
 
 func RegisterHandler(protocol string, handler Handler) error {
 	_, loaded := handlers.LoadOrStore(protocol, handler)
