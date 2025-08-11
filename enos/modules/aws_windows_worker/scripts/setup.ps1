@@ -18,10 +18,9 @@ $newPath = $existingPath + ";" + $destination
     [EnvironmentVariableTarget]::Machine
 )
 
-#$trigger = New-JobTrigger -Once -At (Get-Date).AddSeconds(15)
-#Register-ScheduledJob boundary { boundary server -config ${test_dir}worker.hcl } -trigger $trigger
 
-$action = New-ScheduledTaskAction -Execute 'boundary' -Argument 'server -config ${test_dir}worker.hcl';
+New-Item -Path ${test_dir}boundary_script.ps1 -ItemType File -Value 'boundary server -config ${test_dir}worker.hcl';
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NonInteractive -WindowStyle Hidden -File ${test_dir}boundary_script.ps1';
 $trigger = New-ScheduledTaskTrigger -AtStartup;
-Register-ScheduledTask -Action $action -Trigger $trigger -TaskName boundary -User $env:COMPUTERNAME\$env:USERNAME -RunLevel Highest -Force;
-schtasks /run /tn 'boundary';
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName boundary_task -User $env:COMPUTERNAME\$env:USERNAME -RunLevel Highest -Force;
+schtasks /run /tn 'boundary_task';
