@@ -80,7 +80,7 @@ description will be read.
 
   You can use this attribute if you want to put a load balancer in front of multiple Boundary controllers to ensure that the workers know the addresses of the controllers to perform client-side load balancing.
   For example, you could have a TCP load balancer that points to any of your controller's `cluster` listener for the worker's initial ingress.
-  Then the controller gives the worker the `public_cluster_addr` and the worker updates its client-side load balancing configuration to reach out to the set of cluster addresses.
+  Then the controller gives the worker the `public_cluster_addr` and the worker updates its client-side load balancing configuration to connect to the set of cluster addresses.
 
   This setting is also especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
