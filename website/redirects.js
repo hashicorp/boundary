@@ -43,6 +43,11 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10)\\.x)/overview/use-cases",
+    "destination": "/boundary/docs/:version/use-cases",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/overview/vs/other-software',
     destination: '/boundary/docs/overview/use-cases',
     permanent: true,
