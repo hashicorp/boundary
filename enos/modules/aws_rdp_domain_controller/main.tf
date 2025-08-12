@@ -67,7 +67,7 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
-  # Allow traffic to DNS
+  # Allow DNS (Domain Name System) traffic to resolve hostnames
   ingress {
     from_port = 53
     to_port   = 53
@@ -94,8 +94,7 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
-
-  # Allow traffic to Kerberos KDC
+  # Allow Kerberos authentication traffic
   ingress {
     from_port = 88
     to_port   = 88
@@ -122,7 +121,7 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
-  # Allow RPC traffic
+  # Allow RPC (Remote Procedure Calls) traffic
   ingress {
     from_port = 135
     to_port   = 135
@@ -149,7 +148,7 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
-  # Allow LDAP traffic
+  # Allow LDAP (Lightweight Directory Access Protocol) traffic to query Active Directory
   ingress {
     from_port = 389
     to_port   = 389
@@ -167,6 +166,20 @@ resource "aws_security_group" "rdp_ingress" {
     from_port = 389
     to_port   = 389
     protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  # Allow Server Message Block (SMB) traffic
+  ingress {
+    from_port = 445
+    to_port   = 445
+    protocol  = "tcp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
