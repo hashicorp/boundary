@@ -42,7 +42,7 @@ locals {
   domain_tld   = local.domain_parts[1] # top-level domain (example.com --> com)
 }
 
-resource "aws_instance" "member_server" {
+resource "aws_instance" "license_server" {
   ami                    = data.aws_ami.infra.id
   instance_type          = var.instance_type
   vpc_security_group_ids = var.domain_controller_sec_group_id_list
@@ -61,7 +61,9 @@ resource "aws_instance" "member_server" {
 
   user_data = <<EOF
                 <powershell>
-                  %{if var.server_version != "2016"~}
+                  # Install RDP license
+                  Add-WindowsFeature -name RDS-Licensing -IncludeManagementTools
+
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
@@ -130,12 +132,11 @@ resource "aws_instance" "member_server" {
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-                  %{endif~}
 
-                  # Adds member server to the domain
+                  # Add license server to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
-                  Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
-                  $here_string_password = @'
+Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
+$here_string_password = @'
 ${var.domain_admin_password}
 '@
                   $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
@@ -191,10 +192,6 @@ ${var.domain_admin_password}
                   (Get-WmiObject Win32_ComputerSystem).Domain
                   Get-Process -Name *ssh* -ErrorAction SilentlyContinue
 
-                  # Enable audio
-                  Set-Service -Name "Audiosrv" -StartupType Automatic
-                  Start-Service -Name "Audiosrv"
-
                   Restart-Computer -Force
                 </powershell>
               EOF
@@ -206,17 +203,18 @@ ${var.domain_admin_password}
   get_password_data = true
 
   tags = {
-    Name = "${var.prefix}-rdp-member-server-${local.username}"
+    Name = "${var.prefix}-rdp-license-server-${local.username}"
   }
 }
 
 locals {
-  password    = rsadecrypt(aws_instance.member_server.password_data, file(var.domain_controller_private_key))
+  password    = rsadecrypt(aws_instance.license_server.password_data, file(var.domain_controller_private_key))
   private_key = abspath(var.domain_controller_private_key)
+  test_dir    = "C:/Test/" # needs to end in a / to ensure it creates the directory
 }
 
 resource "time_sleep" "wait_2_minutes" {
-  depends_on      = [aws_instance.member_server]
+  depends_on      = [aws_instance.license_server]
   create_duration = "2m"
 }
 
@@ -224,18 +222,49 @@ resource "time_sleep" "wait_2_minutes" {
 # BatchMode=Yes to prevent SSH from prompting for a password to ensure that we
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
-  count      = var.server_version != "2016" ? 1 : 0
-  depends_on = [time_sleep.wait_2_minutes]
-  inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
+  depends_on = [aws_instance.license_server]
+  inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local.private_key)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.license_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
-# Retrieve the domain hostname of the member server, which will be used in
-# Kerberos
-resource "enos_local_exec" "get_hostname" {
-  count = var.server_version != "2016" ? 1 : 0
+resource "enos_local_exec" "make_dir" {
   depends_on = [
     enos_local_exec.wait_for_ssh,
   ]
 
-  inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} '$env:COMPUTERNAME'"]
+  inline = ["ssh -i ${abspath(local.private_key)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.license_server.public_ip} mkdir -Force ${local.test_dir}"]
 }
+
+resource "local_file" "setup_script" {
+  depends_on = [
+    enos_local_exec.make_dir,
+  ]
+  content  = file("${path.module}/scripts/setup.ps1")
+  filename = "${path.root}/.terraform/tmp/setup_license_server.ps1"
+}
+
+resource "enos_local_exec" "add_setup_script" {
+  depends_on = [
+    local_file.setup_script
+  ]
+
+  inline = ["scp -i ${abspath(local.private_key)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.setup_script.filename)} Administrator@${aws_instance.license_server.public_ip}:${local.test_dir}"]
+}
+
+// !! something doesn't work here
+# resource "enos_local_exec" "run_setup_script" {
+#   depends_on = [
+#     enos_local_exec.add_setup_script,
+#     enos_local_exec.wait_for_ssh,
+#   ]
+
+#   inline = ["ssh -i ${abspath(local.private_key)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.license_server.public_ip} ${local.test_dir}/${basename(local_file.setup_script.filename)}"]
+# }
+
+# resource "local_file" "setup_script_output" {
+#   depends_on = [
+#     enos_local_exec.run_setup_script,
+#   ]
+
+#   content = enos_local_exec.run_setup_script.stdout
+#   filename = "${path.root}/.terraform/tmp/setup_license_server_output.txt"
+# }

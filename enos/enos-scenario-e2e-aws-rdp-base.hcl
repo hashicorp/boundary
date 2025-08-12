@@ -275,6 +275,25 @@ scenario "e2e_aws_rdp_base" {
     }
   }
 
+  step "create_rdp_license_server" {
+    module = module.aws_rdp_license_server
+    depends_on = [
+      step.create_base_infra,
+      step.create_rdp_domain_controller
+    ]
+
+    variables {
+      vpc_id                              = step.create_base_infra.vpc_id
+      server_version                      = matrix.rdp_server
+      active_directory_domain             = step.create_rdp_domain_controller.domain_name
+      domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
+      domain_controller_ip                = step.create_rdp_domain_controller.private_ip
+      domain_admin_password               = step.create_rdp_domain_controller.password
+      domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
+      domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e
     depends_on = [
@@ -363,6 +382,14 @@ scenario "e2e_aws_rdp_base" {
 
   output "rdp_member_server_admin_password" {
     value = step.create_rdp_member_server.password
+  }
+
+  output "rdp_license_server_public_ip" {
+    value = step.create_rdp_license_server.public_ip
+  }
+
+  output "rdp_license_server_password" {
+    value = step.create_rdp_license_server.password
   }
 
   output "windows_client_public_ip" {

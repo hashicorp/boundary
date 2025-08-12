@@ -51,6 +51,10 @@ module "aws_rdp_member_server" {
   source = "./modules/aws_rdp_member_server"
 }
 
+module "aws_rdp_license_server" {
+  source = "./modules/aws_rdp_license_server"
+}
+
 module "build_crt" {
   source = "./modules/build_crt"
 }
