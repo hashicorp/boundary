@@ -98,17 +98,32 @@ ${var.domain_admin_password}
 $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
 $username = "${local.domain_sld}\Administrator"
 $credential = New-Object System.Management.Automation.PSCredential($username,$password)
-$server = Resolve-DnsName -Name _ldap._tcp.dc._msdcs.${var.active_directory_domain} -Type SRV | Where-Object {$_.Type -eq "A"} | Select -ExpandProperty Name
-set-item wsman:localhost\client\trustedhosts *.${var.active_directory_domain} -Force
-$s = New-PSSession -ComputerName $server -Credential $credential
-Invoke-Command -Session $s -ScriptBlock { $server = Resolve-DnsName -Name _ldap._tcp.dc._msdcs.${var.active_directory_domain} -Type SRV | Where-Object {$_.Type -eq "A"} | Select -ExpandProperty Name }
-Invoke-Command -Session $s -ScriptBlock { New-ADOrganizationalUnit -Name "RDP Member Servers" -Path "DC=${local.domain_sld},DC=${local.domain_tld}" -Server $server }
-Invoke-Command -Session $s -ScriptBlock { New-GPO -Name "RDP Settings 01" }
-Invoke-Command -Session $s -ScriptBlock { $GPOGuid = Get-gpo -name "RDP Settings 01" | Select -ExpandProperty Id }
-Invoke-Command -Session $s -ScriptBlock { Set-GPRegistryValue -Guid $GPOGuid  -Key "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" -ValueName "fDenyTSConnections" -Value 0 -Type DWord }
-Invoke-Command -Session $s -ScriptBlock { New-GPLink -Guid $GPOGuid -Target "ou=RDP Member Servers,DC=${local.domain_sld},DC=${local.domain_tld}" -LinkEnabled Yes -Enforced Yes }
-Remove-PSSession $s
-Add-Computer -DomainName "${var.active_directory_domain}" -OUPath "ou=RDP Member Servers,DC=${local.domain_sld},DC=${local.domain_tld}" -Credential $credential
+
+# check that domain can be reached
+$timeout = 300
+$interval = 10
+$elapsed = 0
+
+do {
+    try {
+        $result = Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
+        if ($result) {
+            Write-Host "DNS resolved successfully."
+            break
+        }
+    } catch {
+        Write-Host "DNS not resolved yet. Retrying in $interval seconds..."
+        Start-Sleep -Seconds $interval
+        $elapsed += $interval
+    }
+    if ($elapsed -ge $timeout) {
+        Write-Host "DNS resolution failed after 5 minutes. Exiting."
+        exit 1
+    }
+} while ($true)
+
+# add computer to domain
+Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
 
 Restart-Computer -Force
                 </powershell>
@@ -143,6 +158,8 @@ resource "enos_local_exec" "wait_for_ssh" {
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
+# Retrieve the domain hostname of the member server, which will be used in
+# Kerberos
 resource "enos_local_exec" "get_hostname" {
   depends_on = [
     enos_local_exec.wait_for_ssh,
