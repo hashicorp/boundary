@@ -31,7 +31,7 @@ jobs:
           cat ~/.gnupg/gpg.conf
       - name: Set up Bats CLI UI tests dependency cache
         id: dep-cache
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: /tmp/bats-cli-ui-deps
           key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
@@ -73,7 +73,7 @@ jobs:
         run: |
           unzip /tmp/bats-cli-ui-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: ${{ inputs.artifact-name }}
           path: /tmp

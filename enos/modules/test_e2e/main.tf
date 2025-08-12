@@ -71,7 +71,6 @@ variable "vault_addr_public" {
   type        = string
   default     = ""
 }
-
 variable "vault_addr_private" {
   description = "Private address to a vault instance"
   type        = string
@@ -156,18 +155,44 @@ variable "boundary_license" {
   type    = string
   default = ""
 }
-variable "target_rdp_user" {
-  description = "RDP username for target"
-  type        = string
-  default     = "Administrator"
-}
-variable "target_rdp_password" {
-  description = "RDP password for target"
+
+variable "target_rdp_domain_controller_addr" {
+  description = "Address of RDP domain controller"
   type        = string
   default     = ""
 }
-variable "target_rdp_address" {
-  description = "Address of target for RDP"
+variable "target_rdp_domain_controller_user" {
+  description = "Username for RDP domain controller"
+  type        = string
+  default     = "Administrator"
+}
+variable "target_rdp_domain_controller_password" {
+  description = "Password for RDP domain controller"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_addr" {
+  description = "Address of RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_domain_hostname" {
+  description = "Domain Name of RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_user" {
+  description = "Username for RDP member server"
+  type        = string
+  default     = "Administrator"
+}
+variable "target_rdp_member_server_password" {
+  description = "Password for RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_domain_name" {
+  description = "Domain name of RDP targets"
   type        = string
   default     = ""
 }
@@ -212,43 +237,48 @@ locals {
 
 resource "enos_local_exec" "run_e2e_test" {
   environment = {
-    E2E_TESTS                     = "true"
-    BOUNDARY_ADDR                 = var.alb_boundary_api_addr
-    BOUNDARY_LICENSE              = var.boundary_license
-    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id
-    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name
-    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password
-    E2E_TARGET_ADDRESS            = var.target_address
-    E2E_TARGET_PORT               = var.target_port
-    E2E_SSH_USER                  = var.target_user
-    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
-    E2E_SSH_CA_KEY                = ""
-    VAULT_ADDR                    = var.vault_addr_public
-    VAULT_TOKEN                   = var.vault_root_token
-    E2E_VAULT_ADDR_PUBLIC         = var.vault_addr_public
-    E2E_VAULT_ADDR_PRIVATE        = var.vault_addr_private
-    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
-    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
-    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1
-    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
-    E2E_AWS_REGION                = var.aws_region
-    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
-    E2E_AWS_ROLE_ARN              = var.aws_role_arn
-    E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
-    E2E_WORKER_TAG_ISOLATED       = var.worker_tag_isolated
-    E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
-    E2E_WORKER_ADDRESS            = var.worker_address
-    E2E_MAX_PAGE_SIZE             = var.max_page_size
-    E2E_IP_VERSION                = var.ip_version
-    E2E_TARGET_RDP_USER           = var.target_rdp_user
-    E2E_TARGET_RDP_PASSWORD       = var.target_rdp_password
-    E2E_TARGET_RDP_ADDRESS        = var.target_rdp_address
-    E2E_CLIENT_IP_PUBLIC          = var.client_ip_public
-    E2E_CLIENT_USERNAME           = var.client_username
-    E2E_CLIENT_PASSWORD           = var.client_password
-    E2E_CLIENT_TEST_DIR           = var.client_test_dir
+    E2E_TESTS                                    = "true"
+    BOUNDARY_ADDR                                = var.alb_boundary_api_addr
+    BOUNDARY_LICENSE                             = var.boundary_license
+    E2E_PASSWORD_AUTH_METHOD_ID                  = var.auth_method_id
+    E2E_PASSWORD_ADMIN_LOGIN_NAME                = var.auth_login_name
+    E2E_PASSWORD_ADMIN_PASSWORD                  = var.auth_password
+    E2E_TARGET_ADDRESS                           = var.target_address
+    E2E_TARGET_PORT                              = var.target_port
+    E2E_SSH_USER                                 = var.target_user
+    E2E_SSH_KEY_PATH                             = local.aws_ssh_private_key_path
+    E2E_SSH_CA_KEY                               = ""
+    VAULT_ADDR                                   = var.vault_addr_public
+    VAULT_TOKEN                                  = var.vault_root_token
+    E2E_VAULT_ADDR_PUBLIC                        = var.vault_addr_public
+    E2E_VAULT_ADDR_PRIVATE                       = var.vault_addr_private
+    E2E_AWS_ACCESS_KEY_ID                        = var.aws_access_key_id
+    E2E_AWS_SECRET_ACCESS_KEY                    = var.aws_secret_access_key
+    E2E_AWS_HOST_SET_FILTER                      = var.aws_host_set_filter1
+    E2E_AWS_HOST_SET_IPS                         = local.aws_host_set_ips1
+    E2E_AWS_HOST_SET_FILTER2                     = var.aws_host_set_filter2
+    E2E_AWS_HOST_SET_IPS2                        = local.aws_host_set_ips2
+    E2E_AWS_REGION                               = var.aws_region
+    E2E_AWS_BUCKET_NAME                          = var.aws_bucket_name
+    E2E_AWS_ROLE_ARN                             = var.aws_role_arn
+    E2E_WORKER_TAG_INGRESS                       = var.worker_tag_ingress
+    E2E_WORKER_TAG_ISOLATED                      = var.worker_tag_isolated
+    E2E_WORKER_TAG_COLLOCATED                    = var.worker_tag_collocated
+    E2E_WORKER_ADDRESS                           = var.worker_address
+    E2E_MAX_PAGE_SIZE                            = var.max_page_size
+    E2E_IP_VERSION                               = var.ip_version
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR        = var.target_rdp_domain_controller_addr
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_USER        = var.target_rdp_domain_controller_user
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_PASSWORD    = var.target_rdp_domain_controller_password
+    E2E_TARGET_RDP_MEMBER_SERVER_ADDR            = var.target_rdp_member_server_addr
+    E2E_TARGET_RDP_MEMBER_SERVER_DOMAIN_HOSTNAME = var.target_rdp_member_server_domain_hostname
+    E2E_TARGET_RDP_MEMBER_SERVER_USER            = var.target_rdp_member_server_user
+    E2E_TARGET_RDP_MEMBER_SERVER_PASSWORD        = var.target_rdp_member_server_password
+    E2E_TARGET_RDP_DOMAIN_NAME                   = var.target_rdp_domain_name
+    E2E_CLIENT_IP_PUBLIC                         = var.client_ip_public
+    E2E_CLIENT_USERNAME                          = var.client_username
+    E2E_CLIENT_PASSWORD                          = var.client_password
+    E2E_CLIENT_TEST_DIR                          = var.client_test_dir
   }
 
   inline = var.debug_no_run ? [""] : [

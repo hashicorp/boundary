@@ -45,8 +45,8 @@ scenario "e2e_aws_rdp_target" {
     }
   }
 
-  step "create_rdp_server" {
-    module = module.aws_rdp_server
+  step "create_rdp_domain_controller" {
+    module = module.aws_rdp_domain_controller
     depends_on = [
       step.create_base_infra,
     ]
@@ -59,26 +59,26 @@ scenario "e2e_aws_rdp_target" {
   }
 
   output "rdp_target_admin_username" {
-    value = step.create_rdp_server.admin_username
+    value = step.create_rdp_domain_controller.admin_username
   }
 
   output "rdp_target_admin_password" {
-    value = step.create_rdp_server.password
+    value = step.create_rdp_domain_controller.password
   }
 
   output "rdp_target_public_dns_address" {
-    value = step.create_rdp_server.public_dns_address
+    value = step.create_rdp_domain_controller.public_dns_address
   }
 
   output "rdp_target_public_ip" {
-    value = step.create_rdp_server.public_ip
+    value = step.create_rdp_domain_controller.public_ip
   }
 
   output "rdp_target_private_ip" {
-    value = step.create_rdp_server.private_ip
+    value = step.create_rdp_domain_controller.private_ip
   }
 
   output "rdp_target_ipv6" {
-    value = step.create_rdp_server.ipv6
+    value = step.create_rdp_domain_controller.ipv6
   }
 }

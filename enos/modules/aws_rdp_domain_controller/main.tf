@@ -52,63 +52,22 @@ resource "aws_key_pair" "rdp-key" {
 }
 
 // Create an AWS security group to allow RDP traffic in and out to from IP's on the allowlist.
-// We also allow ingress to port 88, where the Kerberos KDC is running.
 resource "aws_security_group" "rdp_ingress" {
   name   = "${var.prefix}-rdp-ingress-${local.username}-${var.vpc_id}"
   vpc_id = var.vpc_id
 
+  # Allow SSH traffic
   ingress {
-    from_port = 3389
-    to_port   = 3389
+    from_port = 22
+    to_port   = 22
     protocol  = "tcp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
-    ])
   }
 
-  ingress {
-    from_port = 3389
-    to_port   = 3389
-    protocol  = "udp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-    ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
-    ])
-  }
-
-  ingress {
-    from_port = 88
-    to_port   = 88
-    protocol  = "tcp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-    ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
-    ])
-  }
-
-  ingress {
-    from_port = 88
-    to_port   = 88
-    protocol  = "udp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-    ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
-    ])
-  }
-
+  # Allow DNS (Domain Name System) traffic to resolve hostnames
   ingress {
     from_port = 53
     to_port   = 53
@@ -135,9 +94,10 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
+  # Allow Kerberos authentication traffic
   ingress {
-    from_port = 445
-    to_port   = 445
+    from_port = 88
+    to_port   = 88
     protocol  = "tcp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
@@ -149,8 +109,8 @@ resource "aws_security_group" "rdp_ingress" {
   }
 
   ingress {
-    from_port = 445
-    to_port   = 445
+    from_port = 88
+    to_port   = 88
     protocol  = "udp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
@@ -161,9 +121,10 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
+  # Allow RPC (Remote Procedure Calls) traffic
   ingress {
-    from_port = 5985
-    to_port   = 5985
+    from_port = 135
+    to_port   = 135
     protocol  = "tcp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
@@ -175,8 +136,8 @@ resource "aws_security_group" "rdp_ingress" {
   }
 
   ingress {
-    from_port = 5985
-    to_port   = 5985
+    from_port = 135
+    to_port   = 135
     protocol  = "udp"
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
@@ -187,6 +148,7 @@ resource "aws_security_group" "rdp_ingress" {
     ])
   }
 
+  # Allow LDAP (Lightweight Directory Access Protocol) traffic to query Active Directory
   ingress {
     from_port = 389
     to_port   = 389
@@ -210,6 +172,47 @@ resource "aws_security_group" "rdp_ingress" {
     ])
     ipv6_cidr_blocks = flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  # Allow Server Message Block (SMB) traffic
+  ingress {
+    from_port = 445
+    to_port   = 445
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
+  }
+
+  # Allow RDP traffic
+  ingress {
+    from_port = 3389
+    to_port   = 3389
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+    ])
+  }
+
+  ingress {
+    from_port = 3389
+    to_port   = 3389
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
     ])
   }
 }
@@ -246,9 +249,9 @@ resource "random_string" "DSRMPassword" {
 }
 
 // Deploy a Windows EC2 instance using the previously created, aws_security_group's, aws_key_pair and use a userdata script to create a set up Active Directory
-resource "aws_instance" "rdp_target" {
+resource "aws_instance" "domain_controller" {
   ami                    = data.aws_ami.infra.id
-  instance_type          = var.rdp_target_instance_type
+  instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.rdp_ingress.id, aws_security_group.allow_all_internal.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
@@ -268,6 +271,8 @@ resource "aws_instance" "rdp_target" {
                 <powershell>
                   $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
+
+                  # causes the instance to reboot
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode 7 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>
               EOF
@@ -279,16 +284,23 @@ resource "aws_instance" "rdp_target" {
   get_password_data = true
 
   tags = {
-    Name = "${var.prefix}-rdp-target-${local.username}"
+    Name = "${var.prefix}-domain-controller-${local.username}"
   }
 }
 
 locals {
-  password = rsadecrypt(aws_instance.rdp_target.password_data, tls_private_key.rsa_4096_key.private_key_pem)
+  password = rsadecrypt(aws_instance.domain_controller.password_data, tls_private_key.rsa_4096_key.private_key_pem)
 }
 
-// This sleep will create a timer of 10 minutes
+resource "local_sensitive_file" "private_key" {
+  depends_on = [tls_private_key.rsa_4096_key]
+
+  content         = tls_private_key.rsa_4096_key.private_key_pem
+  filename        = "${path.root}/.terraform/tmp/key-domain-controller-${timestamp()}"
+  file_permission = "0400"
+}
+
 resource "time_sleep" "wait_10_minutes" {
-  depends_on      = [aws_instance.rdp_target]
+  depends_on      = [aws_instance.domain_controller]
   create_duration = "10m"
 }
