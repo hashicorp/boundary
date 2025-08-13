@@ -52,71 +52,6 @@ locals {
   username = split(":", data.aws_caller_identity.current.user_id)[1]
 }
 
-// We need a keypair to obtain the local administrator credentials to an AWS Windows based EC2 instance. So we generate it locally here
-resource "tls_private_key" "rsa-4096-key" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-// Create an AWS keypair using the keypair we just generated
-resource "aws_key_pair" "rdp-key" {
-  key_name   = "${var.prefix}-windows-worker-${local.username}-${var.vpc_id}"
-  public_key = tls_private_key.rsa-4096-key.public_key_openssh
-}
-
-// Create an AWS security group to allow SSH
-resource "aws_security_group" "windows_worker" {
-  name   = "${var.prefix}-windows-worker-${local.username}-${var.vpc_id}"
-  vpc_id = var.vpc_id
-
-  # Allow SSH from the public IP of the user
-  ingress {
-    from_port = 22
-    to_port   = 22
-    protocol  = "tcp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-  }
-
-  # Allow RDP from the public IP of the user. This is useful for manual testing
-  ingress {
-    from_port = 3389
-    to_port   = 3389
-    protocol  = "tcp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-  }
-
-  ingress {
-    from_port = 3389
-    to_port   = 3389
-    protocol  = "udp"
-    cidr_blocks = flatten([
-      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
-      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-    ])
-  }
-
-  // Allow all traffic originating from the VPC
-  ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 resource "random_string" "DSRMPassword" {
   length           = 8
   override_special = "." # I've set this explicitly so as to avoid characters such as "$" and "'" being used and requiring unneccesary complexity to our user_data scripts
@@ -129,14 +64,17 @@ resource "random_string" "DSRMPassword" {
 locals {
   test_username = "autologinuser"
   test_password = random_string.DSRMPassword.result
+  domain_parts  = split(".", var.active_directory_domain)
+  domain_sld    = local.domain_parts[0] # second-level domain (example.com --> example)
+  domain_tld    = local.domain_parts[1] # top-level domain (example.com --> com)
 }
 
 // Deploy a Windows EC2 instance
 resource "aws_instance" "worker" {
   ami                    = data.aws_ami.infra.id
   instance_type          = var.instance_type
-  vpc_security_group_ids = var.security_group == "" ? [aws_security_group.windows_worker.id] : [aws_security_group.windows_worker.id, var.security_group]
-  key_name               = aws_key_pair.rdp-key.key_name
+  vpc_security_group_ids = flatten([var.security_group, var.domain_controller_sec_group_id_list])
+  key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
   iam_instance_profile   = var.iam_name
 
@@ -189,10 +127,35 @@ resource "aws_instance" "worker" {
 ${var.domain_admin_password}
 '@
                   $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
-                  $username = "${var.active_directory_netbios_name}\Administrator" 
+                  $username = "${local.domain_sld}\Administrator" 
                   $credential = New-Object System.Management.Automation.PSCredential($username,$password)
+
+                  # check that domain can be reached
+                  $timeout = 300
+                  $interval = 10
+                  $elapsed = 0
+                  do {
+                    try {
+                      $result = Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
+                      if ($result) {
+                        Write-Host "DNS resolved successfully."
+                        break
+                        }
+                      } catch {
+                          Write-Host "DNS not resolved yet. Retrying in $interval seconds..."
+                          Start-Sleep -Seconds $interval
+                          $elapsed += $interval
+                      }
+                      if ($elapsed -ge $timeout) {
+                        Write-Host "DNS resolution failed after 5 minutes. Exiting."
+                        exit 1
+                      }
+                  } while ($true)
+
+                  # add computer to domain
                   Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
-                  #Restart-Computer -Force
+
+                  Restart-Computer -Force
                 </powershell>
               EOF
 
@@ -208,22 +171,17 @@ ${var.domain_admin_password}
 }
 
 locals {
-  admin_password        = rsadecrypt(aws_instance.worker.password_data, tls_private_key.rsa-4096-key.private_key_pem)
+  admin_password        = rsadecrypt(aws_instance.worker.password_data, file(var.domain_controller_private_key))
+  private_key           = abspath(var.domain_controller_private_key)
   boundary_cli_zip_path = var.boundary_cli_zip_path != "" ? abspath(var.boundary_cli_zip_path) : ""
   test_dir              = "C:/Test/" # needs to end in a / to ensure it creates the directory
 }
 
-resource "local_sensitive_file" "private_key" {
-  depends_on = [tls_private_key.rsa-4096-key]
 
-  content         = tls_private_key.rsa-4096-key.private_key_pem
-  filename        = "${path.root}/.terraform/tmp/key-client-${timestamp()}"
-  file_permission = "0400"
-}
 
 resource "enos_local_exec" "wait_for_ssh" {
   depends_on = [aws_instance.worker]
-  inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
+  inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
 resource "enos_local_exec" "make_dir" {
@@ -232,18 +190,17 @@ resource "enos_local_exec" "make_dir" {
     enos_local_exec.wait_for_ssh,
   ]
 
-  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} mkdir -Force ${local.test_dir}"]
+  inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} mkdir -Force ${local.test_dir}"]
 }
 
 # copy the boundary cli zip file onto the windows client
 resource "enos_local_exec" "add_boundary_cli" {
   count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
-    local_sensitive_file.private_key,
     enos_local_exec.make_dir,
   ]
 
-  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.boundary_cli_zip_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
+  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.boundary_cli_zip_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
 resource "archive_file" "boundary_src_zip" {
@@ -261,7 +218,7 @@ resource "enos_local_exec" "add_boundary_src" {
     archive_file.boundary_src_zip
   ]
 
-  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${archive_file.boundary_src_zip[0].output_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
+  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${archive_file.boundary_src_zip[0].output_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
 # create a powershell script to unzip the boundary cli zip file and add it to
@@ -301,7 +258,7 @@ resource "enos_local_exec" "add_powershell_script" {
     local_file.powershell_script,
   ]
 
-  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.powershell_script[0].filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
+  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.powershell_script[0].filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
 # copy the worker config script onto the windows client
@@ -312,7 +269,7 @@ resource "enos_local_exec" "add_worker_config" {
     local_file.powershell_script,
   ]
 
-  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.worker_config.filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
+  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.worker_config.filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
 
@@ -326,7 +283,7 @@ resource "enos_local_exec" "run_powershell_script" {
     enos_local_exec.add_worker_config,
   ]
 
-  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
+  inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
 }
 
 # used for debug

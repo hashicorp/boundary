@@ -1,11 +1,6 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-// THIS IS NOT secure but we need the private key to retrieve the administrator password from AWS
-output "private_key" {
-  value = nonsensitive(tls_private_key.rsa-4096-key.private_key_pem)
-}
-
 // This is the public DNS address of our instance
 output "public_dns_address" {
   value = aws_instance.worker.public_dns

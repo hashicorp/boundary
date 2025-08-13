@@ -16,29 +16,25 @@ scenario "e2e_aws_windows" {
   }
 
   locals {
+    tags = merge({
+      "Project Name" : var.project_name,
+      "Project" : "Enos",
+      "Environment" : "ci"
+    }, var.tags)
+
+
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    vault_license_path       = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
 
-    build_path_linux = {
+
+    build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
     }
-
-    build_path_windows = {
-      "local" = "/tmp",
-      "crt"   = var.crt_bundle_path_windows == null ? null : abspath(var.crt_bundle_path_windows)
-    }
-
-    tags = merge({
-      "Project Name" : var.project_name
-      "Project" : "Enos",
-      "Environment" : "ci"
-    }, var.tags)
-
-    collocated_tag = "collocated"
   }
 
   step "find_azs" {
@@ -52,44 +48,6 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "read_boundary_license" {
-    module = module.read_license
-
-    variables {
-      license_path = local.boundary_license_path
-    }
-  }
-
-  step "create_db_password" {
-    module = module.random_stringifier
-  }
-
-  step "build_boundary_linux" {
-    module = matrix.builder == "crt" ? module.build_crt : module.build_local
-
-    variables {
-      path    = local.build_path_linux[matrix.builder]
-      edition = var.boundary_edition
-    }
-  }
-
-  step "build_boundary_windows" {
-    module = matrix.builder == "crt" ? module.build_crt : module.build_local
-
-    depends_on = [
-      step.build_boundary_linux
-    ]
-
-    variables {
-      path          = local.build_path_windows[matrix.builder]
-      edition       = var.boundary_edition
-      goos          = "windows"
-      build_target  = "build"
-      artifact_name = "boundary_windows"
-      binary_name   = "boundary.exe"
-    }
-  }
-
   step "create_base_infra" {
     module = module.aws_vpc_ipv6
 
@@ -100,6 +58,20 @@ scenario "e2e_aws_windows" {
     variables {
       availability_zones = step.find_azs.availability_zones
       common_tags        = local.tags
+    }
+  }
+
+  step "build_boundary_windows" {
+    module = matrix.builder == "crt" ? module.build_crt : module.build_local
+
+
+    variables {
+      path          = local.build_path[matrix.builder]
+      edition       = var.boundary_edition
+      goos          = "windows"
+      build_target  = "build"
+      artifact_name = "boundary_windows"
+      binary_name   = "boundary.exe"
     }
   }
 
@@ -119,10 +91,27 @@ scenario "e2e_aws_windows" {
     }
   }
 
+  step "read_boundary_license" {
+    module = module.read_license
+
+    variables {
+      license_path = local.boundary_license_path
+    }
+  }
+
+  step "read_vault_license" {
+    module = module.read_license
+
+    variables {
+      license_path = local.vault_license_path
+    }
+  }
+
   step "create_vault_cluster" {
     module = module.vault
     depends_on = [
       step.create_base_infra,
+      step.read_vault_license
     ]
 
     variables {
@@ -134,11 +123,37 @@ scenario "e2e_aws_windows" {
       storage_backend = "raft"
       unseal_method   = "shamir"
       ip_version      = "dual"
+      vault_license   = step.read_vault_license.license
       vault_release = {
         version = var.vault_version
-        edition = "oss"
+        edition = "ent"
       }
       vpc_id = step.create_base_infra.vpc_id
+    }
+  }
+
+  step "create_db_password" {
+    module = module.random_stringifier
+  }
+
+  step "build_boundary_linux" {
+    module = matrix.builder == "crt" ? module.build_crt : module.build_local
+
+    variables {
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
+    }
+  }
+
+  step "create_rdp_domain_controller" {
+    module = module.aws_rdp_domain_controller
+    depends_on = [
+      step.create_base_infra,
+    ]
+
+    variables {
+      vpc_id         = step.create_base_infra.vpc_id
+      server_version = matrix.rdp_server
     }
   }
 
@@ -146,7 +161,6 @@ scenario "e2e_aws_windows" {
     module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
-      step.create_windows_client,
       step.create_db_password,
       step.build_boundary_linux,
       step.create_vault_cluster,
@@ -174,7 +188,6 @@ scenario "e2e_aws_windows" {
       aws_region                  = var.aws_region
       ip_version                  = "dual"
       recording_storage_path      = "/recording"
-      alb_sg_additional_ips       = step.create_windows_client.public_ip_list
     }
   }
 
@@ -210,15 +223,31 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "create_rdp_domain_controller" {
-    module = module.aws_rdp_domain_controller
+  step "create_windows_worker" {
+    module = module.aws_windows_worker
     depends_on = [
       step.create_base_infra,
+      step.create_rdp_domain_controller,
+      step.build_boundary_windows,
+      step.create_boundary_cluster,
     ]
 
     variables {
-      vpc_id         = step.create_base_infra.vpc_id
-      server_version = matrix.rdp_server
+      vpc_id                              = step.create_base_infra.vpc_id
+      server_version                      = matrix.rdp_server
+      boundary_cli_zip_path               = step.build_boundary_windows.artifact_path
+      boundary_src_path                   = local.local_boundary_src_dir
+      kms_key_arn                         = step.create_base_infra.kms_key_arn
+      aws_region                          = var.aws_region
+      controller_ip                       = step.create_boundary_cluster.public_controller_addresses[0]
+      iam_name                            = step.create_boundary_cluster.iam_instance_profile_name
+      security_group                      = step.create_boundary_cluster.boundary_sg_id
+      active_directory_domain             = step.create_rdp_domain_controller.domain_name
+      domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
+      domain_controller_ip                = step.create_rdp_domain_controller.private_ip
+      domain_admin_password               = step.create_rdp_domain_controller.password
+      domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
+      domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
     }
   }
 
@@ -347,4 +376,29 @@ scenario "e2e_aws_windows" {
   output "windows_client_ssh_key" {
     value = step.create_windows_client.ssh_private_key
   }
+
+  output "windows_worker_admin_username" {
+    value = step.create_windows_worker.admin_username
+  }
+
+  output "windows_worker_admin_password" {
+    value = step.create_windows_worker.admin_password
+  }
+
+  output "windows_worker_public_dns_address" {
+    value = step.create_windows_worker.public_dns_address
+  }
+
+  output "windows_worker_public_ip" {
+    value = step.create_windows_worker.public_ip
+  }
+
+  output "windows_worker_private_ip" {
+    value = step.create_windows_worker.private_ip
+  }
+
+  output "windows_client_ssh_key" {
+    value = step.create_windows_client.ssh_private_key
+  }
+
 }

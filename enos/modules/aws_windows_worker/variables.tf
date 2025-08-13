@@ -90,17 +90,15 @@ variable "boundary_src_path" {
 # =================================================================
 # Variables for the windows domain
 # =================================================================
+variable "domain_controller_aws_keypair_name" {
+  type        = string
+  description = "The AWS keypair created during creation of the domain controller."
+}
 
 variable "active_directory_domain" {
   type        = string
   description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
   default     = "mydomain.com"
-}
-
-variable "active_directory_netbios_name" {
-  type        = string
-  description = "Ostensibly the short-hand for the name of the domain."
-  default     = "mydomain"
 }
 
 variable "domain_controller_ip" {
@@ -113,4 +111,14 @@ variable "domain_admin_password" {
   type        = string
   description = "Domain admin password for setting up this instance in the domain"
   default     = ""
+}
+
+variable "domain_controller_private_key" {
+  type        = string
+  description = "The file path of the private key generated during creation of the domain controller."
+}
+
+variable "domain_controller_sec_group_id_list" {
+  type        = list(any)
+  description = "ID's of AWS Network Security Groups created during creation of the domain controller."
 }
