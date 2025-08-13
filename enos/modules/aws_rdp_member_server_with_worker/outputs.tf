@@ -28,17 +28,3 @@ output "admin_password" {
   description = "Decrpted admin password for the EC2 instance"
   value       = nonsensitive(local.admin_password)
 }
-
-output "test_username" {
-  description = "The username of the test account"
-  value       = local.test_username
-}
-output "test_password" {
-  description = "The password of the test account"
-  value       = nonsensitive(local.test_password)
-}
-
-output "test_dir" {
-  description = "The directory where the test files are stored"
-  value       = local.test_dir
-}

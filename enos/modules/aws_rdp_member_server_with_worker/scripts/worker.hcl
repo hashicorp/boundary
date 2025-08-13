@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 # disable memory from being swapped to disk
 disable_mlock = true
 
@@ -14,13 +17,13 @@ worker {
   name = "win-worker-0"
   initial_upstreams = ["[${controller_ip}]:9201"]
   tags {
-    type = ["worker", "egress"]
+    type = ["worker", "egress", "windows"]
   }
 }
 
 # Events (logging) configuration. This
 # configures logging for ALL events to both
-# stderr and a file at /var/log/boundary/<boundary_use>.log
+# stderr and a file at ${test_dir}<boundary_use>.log
 events {
   audit_enabled       = true
   sysevents_enabled   = true
@@ -37,7 +40,7 @@ events {
     event_types = ["*"]
     format = "cloudevents-json"
     file {
-      path = "/var/log/boundary"
+      path = "${test_dir}"
       file_name = "egress-worker.log"
     }
     audit_config {

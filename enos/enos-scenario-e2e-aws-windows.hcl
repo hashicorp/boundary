@@ -160,6 +160,7 @@ scenario "e2e_aws_windows" {
       step.create_base_infra,
       step.create_db_password,
       step.build_boundary_linux,
+      step.create_windows_client,
       step.create_vault_cluster,
       step.read_boundary_license
     ]
@@ -185,6 +186,7 @@ scenario "e2e_aws_windows" {
       aws_region                  = var.aws_region
       ip_version                  = "dual"
       recording_storage_path      = "/recording"
+      alb_sg_additional_ips       = step.create_windows_client.public_ip_list
     }
   }
 
@@ -212,6 +214,7 @@ scenario "e2e_aws_windows" {
     module = module.aws_bucket
     depends_on = [
       step.create_boundary_cluster,
+      step.create_windows_client,
     ]
     variables {
       cluster_tag = step.create_boundary_cluster.cluster_tag
@@ -221,7 +224,7 @@ scenario "e2e_aws_windows" {
   }
 
   step "create_windows_worker" {
-    module = module.aws_windows_worker
+    module = module.aws_rdp_member_server_with_worker
     depends_on = [
       step.create_base_infra,
       step.create_rdp_domain_controller,
@@ -233,12 +236,10 @@ scenario "e2e_aws_windows" {
       vpc_id                              = step.create_base_infra.vpc_id
       server_version                      = matrix.rdp_server
       boundary_cli_zip_path               = step.build_boundary_windows.artifact_path
-      boundary_src_path                   = local.local_boundary_src_dir
       kms_key_arn                         = step.create_base_infra.kms_key_arn
-      aws_region                          = var.aws_region
       controller_ip                       = step.create_boundary_cluster.public_controller_addresses[0]
       iam_name                            = step.create_boundary_cluster.iam_instance_profile_name
-      security_group                      = step.create_boundary_cluster.boundary_sg_id
+      boundary_security_group             = step.create_boundary_cluster.boundary_sg_id
       active_directory_domain             = step.create_rdp_domain_controller.domain_name
       domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
       domain_controller_ip                = step.create_rdp_domain_controller.private_ip

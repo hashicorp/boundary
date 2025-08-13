@@ -127,8 +127,8 @@ module "aws_windows_client" {
   source = "./modules/aws_windows_client"
 }
 
-module "aws_windows_worker" {
-  source = "./modules/aws_windows_worker"
+module "aws_rdp_member_server_with_worker" {
+  source = "./modules/aws_rdp_member_server_with_worker"
 }
 
 module "vault" {

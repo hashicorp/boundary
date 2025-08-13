@@ -62,18 +62,16 @@ resource "random_string" "DSRMPassword" {
 }
 
 locals {
-  test_username = "autologinuser"
-  test_password = random_string.DSRMPassword.result
-  domain_parts  = split(".", var.active_directory_domain)
-  domain_sld    = local.domain_parts[0] # second-level domain (example.com --> example)
-  domain_tld    = local.domain_parts[1] # top-level domain (example.com --> com)
+  domain_parts = split(".", var.active_directory_domain)
+  domain_sld   = local.domain_parts[0] # second-level domain (example.com --> example)
+  domain_tld   = local.domain_parts[1] # top-level domain (example.com --> com)
 }
 
 // Deploy a Windows EC2 instance
 resource "aws_instance" "worker" {
   ami                    = data.aws_ami.infra.id
   instance_type          = var.instance_type
-  vpc_security_group_ids = flatten([var.security_group, var.domain_controller_sec_group_id_list])
+  vpc_security_group_ids = flatten([var.boundary_security_group, var.domain_controller_sec_group_id_list])
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
   iam_instance_profile   = var.iam_name
@@ -210,7 +208,7 @@ resource "local_file" "powershell_script" {
     boundary_cli_zip_path = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
     test_dir              = local.test_dir
   })
-  filename = "${path.root}/.terraform/tmp/setup_boundary.ps1"
+  filename = "${path.root}/.terraform/tmp/setup_worker.ps1"
 }
 
 # create a worker config file for boundary
@@ -223,6 +221,7 @@ resource "local_file" "worker_config" {
     aws_kms_key      = data.aws_kms_key.kms_key.id
     aws_region       = var.aws_region
     worker_public_ip = aws_instance.worker.public_ip
+    test_dir         = local.test_dir
   })
   filename = "${path.root}/.terraform/tmp/worker.hcl"
 }
@@ -264,5 +263,5 @@ resource "enos_local_exec" "run_powershell_script" {
 resource "local_file" "powershell_script_output" {
   depends_on = [enos_local_exec.run_powershell_script]
   content    = enos_local_exec.run_powershell_script.stdout
-  filename   = "${path.root}/.terraform/tmp/powershell_script_output.txt"
+  filename   = "${path.root}/.terraform/tmp/setup_worker.txt"
 }

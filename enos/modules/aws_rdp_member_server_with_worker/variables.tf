@@ -60,8 +60,8 @@ variable "iam_name" {
   default     = ""
 }
 
-variable "security_group" {
-  description = "Name of security group to assign to worker"
+variable "boundary_security_group" {
+  description = "Name of security group with boundary related ports"
   type        = string
   default     = ""
 }
@@ -71,18 +71,6 @@ variable "security_group" {
 # =================================================================
 variable "boundary_cli_zip_path" {
   description = "Path to the boundary cli zip file (windows, amd64)"
-  type        = string
-  default     = ""
-}
-
-variable "boundary_ui_src_path" {
-  description = "Path to the boundary UI source code"
-  type        = string
-  default     = ""
-}
-
-variable "boundary_src_path" {
-  description = "Path to the boundary source code"
   type        = string
   default     = ""
 }
