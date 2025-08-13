@@ -178,14 +178,12 @@ locals {
 }
 
 
-
 resource "enos_local_exec" "wait_for_ssh" {
   depends_on = [aws_instance.worker]
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
 resource "enos_local_exec" "make_dir" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
     enos_local_exec.wait_for_ssh,
   ]
@@ -195,7 +193,6 @@ resource "enos_local_exec" "make_dir" {
 
 # copy the boundary cli zip file onto the windows client
 resource "enos_local_exec" "add_boundary_cli" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
     enos_local_exec.make_dir,
   ]
@@ -203,34 +200,14 @@ resource "enos_local_exec" "add_boundary_cli" {
   inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.boundary_cli_zip_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
-resource "archive_file" "boundary_src_zip" {
-  count       = var.boundary_src_path != "" ? 1 : 0
-  type        = "zip"
-  source_dir  = var.boundary_src_path
-  output_path = "${path.root}/.terraform/tmp/boundary-src.zip"
-  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**"]
-}
-
-resource "enos_local_exec" "add_boundary_src" {
-  count = var.boundary_src_path != "" ? 1 : 0
-  depends_on = [
-    enos_local_exec.make_dir,
-    archive_file.boundary_src_zip
-  ]
-
-  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${archive_file.boundary_src_zip[0].output_path} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
-}
-
 # create a powershell script to unzip the boundary cli zip file and add it to
 # the PATH
 resource "local_file" "powershell_script" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
-    archive_file.boundary_src_zip
+    enos_local_exec.add_boundary_cli
   ]
   content = templatefile("${path.module}/scripts/setup.ps1", {
     boundary_cli_zip_path = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
-    boundary_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
     test_dir              = local.test_dir
   })
   filename = "${path.root}/.terraform/tmp/setup_boundary.ps1"
@@ -239,7 +216,7 @@ resource "local_file" "powershell_script" {
 # create a worker config file for boundary
 resource "local_file" "worker_config" {
   depends_on = [
-    archive_file.boundary_src_zip,
+    enos_local_exec.add_boundary_cli,
   ]
   content = templatefile("${path.module}/scripts/worker.hcl", {
     controller_ip    = var.controller_ip
@@ -252,21 +229,19 @@ resource "local_file" "worker_config" {
 
 # copy the powershell script onto the windows client
 resource "enos_local_exec" "add_powershell_script" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
     enos_local_exec.add_boundary_cli,
     local_file.powershell_script,
   ]
 
-  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.powershell_script[0].filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
+  inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.powershell_script.filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
 }
 
 # copy the worker config script onto the windows client
 resource "enos_local_exec" "add_worker_config" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
     enos_local_exec.add_boundary_cli,
-    local_file.powershell_script,
+    local_file.worker_config,
   ]
 
   inline = ["scp -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.worker_config.filename)} Administrator@${aws_instance.worker.public_ip}:${local.test_dir}"]
@@ -275,7 +250,6 @@ resource "enos_local_exec" "add_worker_config" {
 
 # run the powershell script on the windows client
 resource "enos_local_exec" "run_powershell_script" {
-  count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
     enos_local_exec.add_boundary_cli,
     enos_local_exec.add_powershell_script,
@@ -283,13 +257,12 @@ resource "enos_local_exec" "run_powershell_script" {
     enos_local_exec.add_worker_config,
   ]
 
-  inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
+  inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script.filename)}"]
 }
 
 # used for debug
 resource "local_file" "powershell_script_output" {
   depends_on = [enos_local_exec.run_powershell_script]
-  count      = var.boundary_cli_zip_path != "" ? 1 : 0
-  content    = enos_local_exec.run_powershell_script[0].stdout
+  content    = enos_local_exec.run_powershell_script.stdout
   filename   = "${path.root}/.terraform/tmp/powershell_script_output.txt"
 }
