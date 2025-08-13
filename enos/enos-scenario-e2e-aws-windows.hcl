@@ -16,25 +16,29 @@ scenario "e2e_aws_windows" {
   }
 
   locals {
-    tags = merge({
-      "Project Name" : var.project_name,
-      "Project" : "Enos",
-      "Environment" : "ci"
-    }, var.tags)
-
-
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    vault_license_path       = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
 
-
-    build_path = {
+    build_path_linux = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
     }
+
+    build_path_windows = {
+      "local" = "/tmp",
+      "crt"   = var.crt_bundle_path_windows == null ? null : abspath(var.crt_bundle_path_windows)
+    }
+
+    tags = merge({
+      "Project Name" : var.project_name
+      "Project" : "Enos",
+      "Environment" : "ci"
+    }, var.tags)
+
+    collocated_tag = "collocated"
   }
 
   step "find_azs" {
@@ -66,7 +70,7 @@ scenario "e2e_aws_windows" {
 
 
     variables {
-      path          = local.build_path[matrix.builder]
+      path          = local.build_path_windows[matrix.builder]
       edition       = var.boundary_edition
       goos          = "windows"
       build_target  = "build"
@@ -99,19 +103,10 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "read_vault_license" {
-    module = module.read_license
-
-    variables {
-      license_path = local.vault_license_path
-    }
-  }
-
   step "create_vault_cluster" {
     module = module.vault
     depends_on = [
       step.create_base_infra,
-      step.read_vault_license
     ]
 
     variables {
@@ -123,10 +118,9 @@ scenario "e2e_aws_windows" {
       storage_backend = "raft"
       unseal_method   = "shamir"
       ip_version      = "dual"
-      vault_license   = step.read_vault_license.license
       vault_release = {
         version = var.vault_version
-        edition = "ent"
+        edition = "oss"
       }
       vpc_id = step.create_base_infra.vpc_id
     }
@@ -140,7 +134,7 @@ scenario "e2e_aws_windows" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path    = local.build_path[matrix.builder]
+      path    = local.build_path_linux[matrix.builder]
       edition = var.boundary_edition
     }
   }
@@ -395,10 +389,6 @@ scenario "e2e_aws_windows" {
 
   output "windows_worker_private_ip" {
     value = step.create_windows_worker.private_ip
-  }
-
-  output "windows_client_ssh_key" {
-    value = step.create_windows_client.ssh_private_key
   }
 
 }
