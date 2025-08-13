@@ -65,9 +65,21 @@ scenario "e2e_aws_windows" {
     }
   }
 
+  step "build_boundary_linux" {
+    module = matrix.builder == "crt" ? module.build_crt : module.build_local
+
+    variables {
+      path    = local.build_path_linux[matrix.builder]
+      edition = var.boundary_edition
+    }
+  }
+
   step "build_boundary_windows" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
+    depends_on = [
+      step.build_boundary_linux,
+    ]
 
     variables {
       path          = local.build_path_windows[matrix.builder]
@@ -128,15 +140,6 @@ scenario "e2e_aws_windows" {
 
   step "create_db_password" {
     module = module.random_stringifier
-  }
-
-  step "build_boundary_linux" {
-    module = matrix.builder == "crt" ? module.build_crt : module.build_local
-
-    variables {
-      path    = local.build_path_linux[matrix.builder]
-      edition = var.boundary_edition
-    }
   }
 
   step "create_rdp_domain_controller" {
