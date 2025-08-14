@@ -19,4 +19,5 @@ $newPath = $existingPath + ";" + $destination
 )
 
 $trigger = New-JobTrigger -Once -At (Get-Date).AddSeconds(15)
-Register-ScheduledJob boundary { boundary server -config ${test_dir}worker.hcl } -trigger $trigger
+$configPath = Join-path ${test_dir} -ChildPath "worker.hcl"
+Register-ScheduledJob boundary { boundary server -config $configPath } -trigger $trigger

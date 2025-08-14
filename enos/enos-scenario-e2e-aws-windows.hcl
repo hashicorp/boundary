@@ -214,7 +214,6 @@ scenario "e2e_aws_windows" {
     module = module.aws_bucket
     depends_on = [
       step.create_boundary_cluster,
-      step.create_windows_client,
     ]
     variables {
       cluster_tag = step.create_boundary_cluster.cluster_tag
@@ -383,10 +382,6 @@ scenario "e2e_aws_windows" {
     value = step.create_windows_worker.admin_password
   }
 
-  output "windows_worker_public_dns_address" {
-    value = step.create_windows_worker.public_dns_address
-  }
-
   output "windows_worker_public_ip" {
     value = step.create_windows_worker.public_ip
   }
@@ -394,5 +389,4 @@ scenario "e2e_aws_windows" {
   output "windows_worker_private_ip" {
     value = step.create_windows_worker.private_ip
   }
-
 }

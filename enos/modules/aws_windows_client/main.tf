@@ -313,5 +313,5 @@ resource "local_file" "powershell_script_output" {
   depends_on = [enos_local_exec.run_powershell_script]
   count      = var.boundary_cli_zip_path != "" ? 1 : 0
   content    = enos_local_exec.run_powershell_script[0].stdout
-  filename   = "${path.root}/.terraform/tmp/powershell_script_output.txt"
+  filename   = "${path.root}/.terraform/tmp/powershell_script_output.out"
 }

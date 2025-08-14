@@ -90,7 +90,28 @@ resource "aws_instance" "worker" {
                   Start-Sleep -Seconds 60
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                  $timeout = 300
+                  $interval = 10
+                  Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0                  
+                  do {
+                  try {
+                      $result = Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                      if ($result) {
+                          Write-Host "Successfully added openSSH server"
+                          break
+                      }
+                      } catch {
+                          Write-Host "SSH server was not installed, retrying"
+                          Start-Sleep -Seconds $interval
+                          $elapsed += $interval
+                      }
+                      if ($elapsed -ge $timeout) {
+                          Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                          exit 1
+                      }
+                  } while ($true)
+
+
                   Set-Service -Name sshd -StartupType 'Automatic'
                   Start-Service sshd
 
@@ -129,8 +150,6 @@ ${var.domain_admin_password}
                   $credential = New-Object System.Management.Automation.PSCredential($username,$password)
 
                   # check that domain can be reached
-                  $timeout = 300
-                  $interval = 10
                   $elapsed = 0
                   do {
                     try {
@@ -263,5 +282,5 @@ resource "enos_local_exec" "run_powershell_script" {
 resource "local_file" "powershell_script_output" {
   depends_on = [enos_local_exec.run_powershell_script]
   content    = enos_local_exec.run_powershell_script.stdout
-  filename   = "${path.root}/.terraform/tmp/setup_worker.txt"
+  filename   = "${path.root}/.terraform/tmp/setup_worker.out"
 }
