@@ -23,7 +23,7 @@ begin;
                     'hcp_billing_monthly_sessions_last_2_months should return 2 rows each with 0 sessions pending');
 
 
-  set time zone 'NZ';
+  set time zone 'Pacific/Auckland';
 
   with time_series (time) as (
     select date_trunc('month', now(), 'utc') - interval '1 minute'

@@ -21,7 +21,7 @@ begin;
                   'Truncate tables in preparation for testing');
 
   -- generate auth tokens for users simulating the server being configured to use a different time zone.
-  set time zone 'NZ';
+  set time zone 'Pacific/Auckland';
   with
   month_range (date_key, time_key, month) as (
     select wh_date_key(s), wh_time_key(s), s
@@ -98,19 +98,19 @@ begin;
          else results_eq(
            'select * from hcp_billing_monthly_active_users_all',
            $$
-           values (date_trunc('month', now(),                       'nz'), date_trunc('hour',  now(),                       'nz'), 0::bigint),
-                  (date_trunc('month', now() - interval  '1 month', 'nz'), date_trunc('month', now(),                       'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '2 month', 'nz'), date_trunc('month', now() - interval  '1 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '3 month', 'nz'), date_trunc('month', now() - interval  '2 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '4 month', 'nz'), date_trunc('month', now() - interval  '3 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '5 month', 'nz'), date_trunc('month', now() - interval  '4 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '6 month', 'nz'), date_trunc('month', now() - interval  '5 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '7 month', 'nz'), date_trunc('month', now() - interval  '6 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '8 month', 'nz'), date_trunc('month', now() - interval  '7 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval  '9 month', 'nz'), date_trunc('month', now() - interval  '8 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval '10 month', 'nz'), date_trunc('month', now() - interval  '9 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval '11 month', 'nz'), date_trunc('month', now() - interval '10 month', 'nz'), 6::bigint),
-                  (date_trunc('month', now() - interval '12 month', 'nz'), date_trunc('month', now() - interval '11 month', 'nz'), 6::bigint)
+           values (date_trunc('month', now(),                       'Pacific/Auckland'), date_trunc('hour',  now(),                       'Pacific/Auckland'), 0::bigint),
+                  (date_trunc('month', now() - interval  '1 month', 'Pacific/Auckland'), date_trunc('month', now(),                       'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '2 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '1 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '3 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '2 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '4 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '3 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '4 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '6 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '5 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '7 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '6 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '8 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '7 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval  '9 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '8 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval '10 month', 'Pacific/Auckland'), date_trunc('month', now() - interval  '9 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval '11 month', 'Pacific/Auckland'), date_trunc('month', now() - interval '10 month', 'Pacific/Auckland'), 6::bigint),
+                  (date_trunc('month', now() - interval '12 month', 'Pacific/Auckland'), date_trunc('month', now() - interval '11 month', 'Pacific/Auckland'), 6::bigint)
             $$)
          end;
 
