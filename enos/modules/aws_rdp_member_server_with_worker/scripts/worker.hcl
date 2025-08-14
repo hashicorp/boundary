@@ -4,6 +4,9 @@
 # disable memory from being swapped to disk
 disable_mlock = true
 
+# Increase log level for debuggin
+log_level = "debug"
+
 # listener denoting this is a worker proxy
 listener "tcp" {
   address = "0.0.0.0:9202"
@@ -41,7 +44,7 @@ events {
     format = "cloudevents-json"
     file {
       path = "${test_dir}"
-      file_name = "egress-worker.log"
+      file_name = "worker.log"
     }
     audit_config {
       audit_filter_overrides {
