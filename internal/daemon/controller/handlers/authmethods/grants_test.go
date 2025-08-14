@@ -1003,7 +1003,7 @@ func TestGrants_Update(t *testing.T) {
 				})
 				if expectedOutput.wantErr != nil {
 					require.ErrorIs(t, err, expectedOutput.wantErr)
-					return
+					continue
 				}
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, resp.Item, expectedOutput.wantOutfields)
