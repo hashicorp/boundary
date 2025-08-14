@@ -147,8 +147,7 @@ begin;
 
   -- App token permissions table
   create table app_token_permission (
-    public_id wt_public_id primary key,
-    app_token_id wt_public_id not null
+    app_token_id wt_public_id primary key
       references app_token(public_id)
       on delete cascade
       on update cascade,
@@ -185,7 +184,7 @@ begin;
 
   create table app_token_permissions_grant (
     app_token_permission_id wt_public_id
-      references app_token_permission(public_id)
+      references app_token_permission(app_token_id)
       on delete cascade
       on update cascade,
     canonical_grant wt_canonical_grant not null
@@ -206,9 +205,9 @@ begin;
 
   -- App token permissions global table
   create table app_token_permissions_global (
-    public_id wt_public_id primary key
+    app_token_id wt_public_id primary key
       constraint app_token_permission_fkey
-        references app_token_permission(public_id)
+        references app_token_permission(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -225,7 +224,7 @@ begin;
         on update cascade,
     created_time wt_timestamp,
     constraint app_token_permissions_global_grant_scope_public_id_uq
-      unique(grant_scope, public_id)
+      unique(grant_scope, app_token_id)
   );
   comment on table app_token_permissions_global is
     'app_token_permissions_global contains global scope-specific permissions for app tokens.';
@@ -235,12 +234,12 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_scope', 'grant_this_role_scope', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_scope', 'grant_this_role_scope', 'created_time');
 
   create table app_token_permissions_global_individual_org_grant_scope (
-    app_token_permission_id wt_public_id
-      constraint app_token_permissions_global_fkey
-        references app_token_permissions_global(public_id)
+    app_token_id wt_public_id
+      constraint app_token_permission_fkey
+        references app_token_permissions_global(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -259,12 +258,12 @@ begin;
           grant_scope = 'individual'
         ), 
     constraint app_token_permissions_global_grant_scope_fkey
-      foreign key (app_token_permission_id, grant_scope)
-      references app_token_permissions_global(public_id, grant_scope)
+      foreign key (app_token_id, grant_scope)
+      references app_token_permissions_global(app_token_id, grant_scope)
       on delete cascade
       on update cascade,
     created_time wt_timestamp,
-    primary key(app_token_permission_id, scope_id)
+    primary key(app_token_id, scope_id)
   );
   comment on table app_token_permissions_global_individual_org_grant_scope is
     'app_token_permissions_global_individual_org_grant_scope is a list of individually granted org scope to global app token permissions with grant_scope of individual.';
@@ -274,12 +273,12 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global_individual_org_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'grant_scope', 'created_time');
 
   create table app_token_permissions_global_individual_project_grant_scope (
-    app_token_permission_id wt_public_id
-      constraint app_token_permissions_global_fkey
-        references app_token_permissions_global(public_id)
+    app_token_id wt_public_id
+      constraint app_token_permission_fkey
+        references app_token_permissions_global(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -301,12 +300,12 @@ begin;
           grant_scope in ('individual')
         ),
     constraint app_token_permissions_global_grant_scope_fkey
-      foreign key (app_token_permission_id, grant_scope)
-      references app_token_permissions_global(public_id, grant_scope)
+      foreign key (app_token_id, grant_scope)
+      references app_token_permissions_global(app_token_id, grant_scope)
       on delete cascade
       on update cascade,
     created_time wt_timestamp,
-    primary key(app_token_permission_id, scope_id)
+    primary key(app_token_id, scope_id)
   );
   comment on table app_token_permissions_global_individual_project_grant_scope is
     'app_token_permissions_global_individual_project_grant_scope is a list of individually granted project scope table to global app token permissions with grant_scope of individual or children.';
@@ -316,13 +315,13 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_global_individual_project_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'grant_scope', 'created_time');
 
   -- App token permissions org table
   create table app_token_permissions_org (
-    public_id wt_public_id primary key
+    app_token_id wt_public_id primary key
       constraint app_token_permission_fkey
-        references app_token_permission(public_id)
+        references app_token_permission(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -340,7 +339,7 @@ begin;
     version wt_version,
     created_time wt_timestamp,
     constraint app_token_permissions_org_grant_scope_public_id_uq
-      unique(grant_scope, public_id)
+      unique(grant_scope, app_token_id)
   );
   comment on table app_token_permissions_org is
     'app_token_permissions_org is a subtype table of the app_token_permission table. It is used to store permissions that are scoped to an org.';
@@ -356,12 +355,12 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on app_token_permissions_org
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'label', 'grant_this_role_scope', 'grant_scope', 'version', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_role_scope', 'grant_scope', 'version', 'created_time');
 
   create table app_token_permissions_org_individual_grant_scope (
-    app_token_permission_id wt_public_id
+    app_token_id wt_public_id
       constraint app_token_permissions_org_fkey
-        references app_token_permissions_org(public_id)
+        references app_token_permissions_org(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -380,12 +379,12 @@ begin;
             grant_scope = 'individual'
         ),
     constraint app_token_permissions_org_grant_scope_fkey
-      foreign key (app_token_permission_id, grant_scope)
-      references app_token_permissions_org(public_id, grant_scope)
+      foreign key (app_token_id, grant_scope)
+      references app_token_permissions_org(app_token_id, grant_scope)
         on delete cascade
         on update cascade,
     created_time wt_timestamp,
-    primary key(app_token_permission_id, scope_id)
+    primary key(app_token_id, scope_id)
   );
   comment on table app_token_permissions_org_individual_grant_scope is
     'app_token_permissions_org_individual_grant_scope is a list of individually granted project scope to org app token permissions with grant_scope of individual';
@@ -395,13 +394,13 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on app_token_permissions_org_individual_grant_scope
-    for each row execute procedure immutable_columns('app_token_permission_id', 'scope_id', 'grant_scope', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'grant_scope', 'created_time');
 
   -- App token permissions project table
   create table app_token_permissions_project (
-    public_id wt_public_id primary key
+    app_token_id wt_public_id primary key
       constraint app_token_permission_fkey
-        references app_token_permission(public_id)
+        references app_token_permission(app_token_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
@@ -427,6 +426,42 @@ begin;
 
 
 
+  create table app_token_usage_history (
+    app_token_id wt_public_id not null
+      references app_token(public_id)
+      on delete cascade
+      on update cascade,
+    client_tcp_ip text not null,
+    create_time wt_timestamp not null,
+    primary key (app_token_id, create_time)
+  );
+  comment on table app_token_usage_history is
+    'app_token_usage_history records usage events for app tokens, including the client TCP IP and the time of usage.';
+
+  -- Create a function to keep only the last 10 usage records per token
+  create or replace function limit_app_token_usage_rows()
+  returns trigger as $$
+  begin
+    delete 
+      from app_token_usage_history
+     where app_token_id = new.app_token_id
+       and create_time < (
+        select min(create_time)
+          from (
+          select create_time
+            from app_token_usage_history
+           where app_token_id = new.app_token_id
+        order by create_time desc
+           limit 10
+        ) as last_ten
+      );
+    return null;
+  end;
+  $$ language plpgsql;
+
+  -- Add trigger to call the function after insert
+  create trigger app_token_usage_history_trigger after insert on app_token_usage_history
+    for each row execute procedure limit_app_token_usage_rows();
 
   -- Add oplog entries for tracking changes (similar to IAM role tables)
   insert into oplog_ticket (name, version)
