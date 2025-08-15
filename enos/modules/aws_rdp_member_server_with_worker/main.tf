@@ -170,8 +170,6 @@ ${var.domain_admin_password}
 
                   # add computer to domain
                   Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
-
-                  Restart-Computer -Force
                 </powershell>
               EOF
 
@@ -193,16 +191,10 @@ locals {
   test_dir              = "C:/Test/" # needs to end in a / to ensure it creates the directory
 }
 
-resource "time_sleep" "wait_2_minutes" {
-  depends_on      = [aws_instance.worker]
-  create_duration = "2m"
-}
-
 
 resource "enos_local_exec" "wait_for_ssh" {
   depends_on = [
     aws_instance.worker,
-    time_sleep.wait_2_minutes,
   ]
   inline = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
@@ -283,6 +275,11 @@ resource "enos_local_exec" "run_powershell_script" {
   ]
 
   inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script.filename)}"]
+}
+
+resource "time_sleep" "wait_2_minutes" {
+  depends_on      = [enos_local_exec.run_powershell_script]
+  create_duration = "2m"
 }
 
 # used for debug

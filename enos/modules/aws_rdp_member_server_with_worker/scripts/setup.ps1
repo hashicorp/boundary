@@ -18,6 +18,12 @@ $newPath = $existingPath + ";" + $destination
     [EnvironmentVariableTarget]::Machine
 )
 
-$trigger = New-JobTrigger -Once -At (Get-Date).AddSeconds(15)
+# create a trigger that will run boundary at startup
+$trigger = New-JobTrigger -AtStartup
 $configPath = Join-path ${test_dir} -ChildPath "worker.hcl"
-Register-ScheduledJob boundary { boundary server -config $configPath } -trigger $trigger
+$jobLog = Join-path ${test_dir} -ChildPath "worker.out"
+$command = "boundary server -config `"$configPath`" *> $jobLog"
+Register-ScheduledJob boundary -ScriptBlock ([ScriptBlock]::Create($command)) -Trigger $trigger
+
+# Restart the computer to apply changes
+shutdown -r -t 10
