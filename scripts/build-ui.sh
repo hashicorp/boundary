@@ -59,7 +59,7 @@ if which gh &> /dev/null;  then
 fi
 
 if ! which pnpm &> /dev/null; then
-    echo "Pnpm must be installed to build ui assets from a git clone.\nPlease ensure Node v22+ and Pnpm v10+ are installed."
+    echo "Pnpm must be installed to build ui assets from a git clone.\nPlease ensure Node v20+ and Pnpm v10+ are installed."
     exit 1
 fi
 
