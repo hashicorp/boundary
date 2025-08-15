@@ -206,6 +206,20 @@ func (l *listCredentialLibraryResult) toLibrary(ctx context.Context) (credential
 				AdditionalValidPrincipals: l.AdditionalValidPrincipals,
 			},
 		}, nil
+	case "ldap":
+		return &LdapCredentialLibrary{
+			LdapCredentialLibrary: &store.LdapCredentialLibrary{
+				PublicId:       l.PublicId,
+				StoreId:        l.StoreId,
+				Name:           l.Name,
+				Description:    l.Description,
+				CreateTime:     l.CreateTime,
+				UpdateTime:     l.UpdateTime,
+				Version:        uint32(l.Version),
+				VaultPath:      l.VaultPath,
+				CredentialType: l.CredentialType,
+			},
+		}, nil
 	default:
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected vault credential library type %s returned", l.Type))
 	}
