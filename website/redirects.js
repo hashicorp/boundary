@@ -949,19 +949,29 @@ module.exports = [
     permanent: true
   },
   {
-    source: '/boundary/docs/operations/session-recordings',
-    destination: '/boundary/docs/session-recording',
-    permanent: true
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/session-recording",
+    "destination": "/boundary/docs/:version/configuration/session-recording",
+    "permanent": true,
   },
   {
-    source: '/boundary/docs/operations/session-recordings/index',
-    destination: '/boundary/docs/session-recording/index',
+    source: '/boundary/docs/operations/session-recordings',
+    destination: '/boundary/docs/session-recording',
     permanent: true
   },
   {
     source: '/boundary/docs/configuration/session-recording/configure-worker-storage',
     destination: '/boundary/docs/session-recording/configuration/configure-worker-storage',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/session-recording/configure-worker-storage",
+    "destination": "/boundary/docs/:version/configuration/session-recording/configure-worker-storage",
+    "permanent": true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15)\\.x)/session-recording/configure-worker-storage",
+    "destination": "/boundary/docs/:version/configuration/session-recording/create-storage-bucket",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/session-recording/storage-providers',
@@ -974,9 +984,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/session-recording/configuration/storage-providers/configure-s3",
+    "destination": "/boundary/docs/:version/configuration/session-recording/storage-providers/configure-s3",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/configuration/session-recording/storage-providers/configure-minio',
     destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-minio',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/session-recording/configuration/storage-providers/configure-minio",
+    "destination": "/boundary/docs/:version/configuration/session-recording/storage-providers/configure-minio",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant',
@@ -984,9 +1004,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:17|18)\\.x)/session-recording/configuration/storage-providers/configure-s3-compliant",
+    "destination": "/boundary/docs/:version/configuration/session-recording/storage-providers/configure-s3-compliant",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/configuration/session-recording/create-storage-bucket',
     destination: '/boundary/docs/session-recording/configuration/create-storage-bucket',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/session-recording/configuration/create-storage-bucket",
+    "destination": "/boundary/docs/:version/configuration/session-recording/create-storage-bucket",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/session-recording/enable-session-recording',
@@ -994,9 +1024,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/session-recording/configuration/enable-session-recording",
+    "destination": "/boundary/docs/:version/configuration/session-recording/enable-session-recording",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/operations/session-recordings/manage-recorded-sessions',
     destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/session-recording/configuration/manage-recorded-sessions",
+    "destination": "/boundary/docs/:version/operations/session-recordings/manage-recorded-sessions",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/troubleshoot/troubleshoot-recorded-sessions',
@@ -1004,9 +1044,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/session-recording/configuration/troubleshoot-recorded-sessions",
+    "destination": "/boundary/docs/:version/troubleshoot/troubleshoot-recorded-sessions",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/configuration/session-recording/configure-storage-policy',
     destination: '/boundary/docs/session-recording/compliance/configure-storage-policy',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/session-recording/compliance/configure-storage-policy",
+    "destination": "/boundary/docs/:version/configuration/session-recording/configure-storage-policy",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/session-recording/update-storage-policy',
@@ -1014,9 +1064,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/session-recording/compliance/update-storage-policy",
+    "destination": "/boundary/docs/:version/configuration/session-recording/update-storage-policy",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/operations/session-recordings/validate-data-store',
     destination: '/boundary/docs/session-recording/compliance/validate-data-store',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/session-recording/compliance/validate-data-store",
+    "destination": "/boundary/docs/:version/operations/session-recordings/validate-data-store",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/operations/session-recordings/validate-session-recordings',
@@ -1024,14 +1084,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/session-recording/compliance/validate-session-recordings",
+    "destination": "/boundary/docs/:version/operations/session-recordings/validate-session-recordings",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/configuration/identity-access-management',
     destination: '/boundary/docs/rbac',
     permanent: true
   },
   {
-    source: '/boundary/docs/configuration/identity-access-management/index',
-    destination: '/boundary/docs/rbac/index',
-    permanent: true
+    "source": "/boundary/docs/:version(v0\\.(?:17|18)\\.x)/rbac",
+    "destination": "/boundary/docs/:version/configuration/identity-access-management",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/security/permissions',
@@ -1039,9 +1104,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16)\\.x)/rbac",
+    "destination": "/boundary/docs/:version/concepts/security/permissions",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
     destination: '/boundary/docs/rbac/assignable-permisisons',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:8|9|10|11|12|1|14|15|16)\\.x)/rbac/assignable-permissions",
+    "destination": "/boundary/docs/:version/concepts/security/permissions/assignable-permissions",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/assignable-permissions',
@@ -1049,9 +1124,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:17|18)\\.x)/rbac/assignable-permissions",
+    "destination": "/boundary/docs/:version/configuration/identity-access-management/assignable-permissions",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
     destination: '/boundary/docs/rbac/permission-grant-formats',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:8|9|10|11|12|1|14|15|16)\\.x)/rbac/permission-grant-formats",
+    "destination": "/boundary/docs/:version/concepts/security/permissions/permission-grant-formats",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
@@ -1059,9 +1144,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:17|18)\\.x)/rbac/permission-grant-formats",
+    "destination": "/boundary/docs/:version/configuration/identity-access-management/permission-grant-formats",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/common-workflows/manage-roles',
     destination: '/boundary/docs/rbac/manage-roles',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16|17|18)\\.x)/rbac/manage-roles",
+    "destination": "/boundary/docs/:version/common-workflows/manage-roles",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/security/permissions/resource-table',
@@ -1069,9 +1164,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:8|9|10|11|12|1|14|15|16)\\.x)/rbac/resource-table",
+    "destination": "/boundary/docs/:version/concepts/security/permissions/resource-table",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/configuration/identity-access-management/resource-table',
     destination: '/boundary/docs/rbac/resource-table',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:17|18)\\.x)/rbac/resource-table",
+    "destination": "/boundary/docs/:version/configuration/identity-access-management/resource-table",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/common-workflows/manage-users-groups',
@@ -1079,9 +1184,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16|17|18)\\.x)/rbac/users/manage-users-groups",
+    "destination": "/boundary/docs/:version/common-workflows/manage-users-groups",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/oidc-managed-groups',
     destination: '/boundary/docs/rbac/users/managed-groups',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15)\\.x)/rbac/users/managed-groups",
+    "destination": "/boundary/docs/:version/concepts/filtering/oidc-managed-groups",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/filtering/managed-groups',
@@ -1089,12 +1204,12 @@ module.exports = [
     permanent: true
   },
   {
-    source: '/boundary/docs/integrations',
-    destination: '/boundary/docs',
-    permanent: true
+    "source": "/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/rbac/users/managed-groups",
+    "destination": "/boundary/docs/:version/concepts/filtering/managed-groups",
+    "permanent": true,
   },
   {
-    source: '/boundary/docs/integrations/index',
+    source: '/boundary/docs/integrations',
     destination: '/boundary/docs',
     permanent: true
   },
@@ -1104,9 +1219,9 @@ module.exports = [
     permanent: true
   },
   {
-    source: '/boundary/docs/integrations/vault/index',
-    destination: '/boundary/docs/vault/index',
-    permanent: true
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/vault",
+    "destination": "/boundary/docs/:version/integrations/vault",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/api-clients/go-sdk',
@@ -1114,9 +1229,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/go-sdk",
+    "destination": "/boundary/docs/:version/api-clients/go-sdk",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/api-clients/client-agent',
     destination: '/boundary/docs/client-agent',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:18)\\.x)/client-agent",
+    "destination": "/boundary/docs/:version/api-clients/client-agent",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/api-clients/client-cache',
@@ -1124,14 +1249,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/client-cache",
+    "destination": "/boundary/docs/:version/api-clients/client-cache",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/api-clients/api',
     destination: '/boundary/docs/api',
     permanent: true
   },
   {
-    source: '/boundary/docs/api-clients/api/index',
-    destination: '/boundary/docs/api/index',
-    permanent: true
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/api",
+    "destination": "/boundary/docs/:version/api-clients/api",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/api-clients/api/pagination',
@@ -1139,9 +1269,19 @@ module.exports = [
     permanent: true
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/api/pagination",
+    "destination": "/boundary/docs/:version/api-clients/api/pagination",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/api-clients/api/rate-limiting',
     destination: '/boundary/docs/api/rate-limiting',
     permanent: true
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/api/rate-limiting",
+    "destination": "/boundary/docs/:version/api-clients/api/rate-limiting",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/api-clients/cli',
@@ -1149,14 +1289,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12)\\.x)/commands",
+    "destination": "/boundary/docs/:version/api-clients/cli",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model',
     destination: '/boundary/docs/domain-model',
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/domain-model/index',
-    destination: '/boundary/docs/domain-model/index',
-    permanent: true,
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model",
+    "destination": "/boundary/docs/:version/concepts/domain-model",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/accounts',
@@ -1164,9 +1309,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/accounts",
+    "destination": "/boundary/docs/:version/concepts/domain-model/accounts",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/aliases',
     destination: '/boundary/docs/domain-model/aliases',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/domain-model/aliases",
+    "destination": "/boundary/docs/:version/concepts/domain-model/aliases",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/auth-methods',
@@ -1174,14 +1329,9 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/domain-model/credential-libraries',
-    destination: '/boundary/docs/domain-model/credential-libraries',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/domain-model/credential-stores',
-    destination: '/boundary/docs/domain-model/credential-stores',
-    permanent: true,
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/auth-methods",
+    "destination": "/boundary/docs/:version/concepts/domain-model/auth-methods",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/credentials',
@@ -1189,19 +1339,39 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/credentials",
+    "destination": "/boundary/docs/:version/concepts/domain-model/credentials",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/credential-libraries',
+    destination: '/boundary/docs/domain-model/credential-libraries',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/credential-libraries",
+    "destination": "/boundary/docs/:version/concepts/domain-model/credential-libraries",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/credential-stores',
+    destination: '/boundary/docs/domain-model/credential-stores',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/credential-stores",
+    "destination": "/boundary/docs/:version/concepts/domain-model/credential-stores",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/groups',
     destination: '/boundary/docs/domain-model/groups',
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/domain-model/host-catalogs',
-    destination: '/boundary/docs/domain-model/host-catalogs',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/domain-model/host-sets',
-    destination: '/boundary/docs/domain-model/host-sets',
-    permanent: true,
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/groups",
+    "destination": "/boundary/docs/:version/concepts/domain-model/groups",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/hosts',
@@ -1209,9 +1379,39 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/hosts",
+    "destination": "/boundary/docs/:version/concepts/domain-model/hosts",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/host-catalogs',
+    destination: '/boundary/docs/domain-model/host-catalogs',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/host-catalogs",
+    "destination": "/boundary/docs/:version/concepts/domain-model/host-catalogs",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/host-sets',
+    destination: '/boundary/docs/domain-model/host-sets',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/host-sets",
+    "destination": "/boundary/docs/:version/concepts/domain-model/host-sets",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/managed-groups',
     destination: '/boundary/docs/domain-model/managed-groups',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/managed-groups",
+    "destination": "/boundary/docs/:version/concepts/domain-model/managed-groups",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/roles',
@@ -1219,19 +1419,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/roles",
+    "destination": "/boundary/docs/:version/concepts/domain-model/roles",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/scopes',
     destination: '/boundary/docs/domain-model/scopes',
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/domain-model/session-connections',
-    destination: '/boundary/docs/domain-model/session-connections',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/domain-model/session-recordings',
-    destination: '/boundary/docs/domain-model/session-recordings',
-    permanent: true,
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/scopes",
+    "destination": "/boundary/docs/:version/concepts/domain-model/scopes",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/sessions',
@@ -1239,9 +1439,39 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/sessions",
+    "destination": "/boundary/docs/:version/concepts/domain-model/sessions",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/session-connections',
+    destination: '/boundary/docs/domain-model/session-connections',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/session-connections",
+    "destination": "/boundary/docs/:version/concepts/domain-model/session-connections",
+    "permanent": true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/session-recordings',
+    destination: '/boundary/docs/domain-model/session-recordings',
+    permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/domain-model/session-recordings",
+    "destination": "/boundary/docs/:version/concepts/domain-model/session-recordings",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/storage-buckets',
     destination: '/boundary/docs/domain-model/storage-buckets',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/domain-model/storage-buckets",
+    "destination": "/boundary/docs/:version/concepts/domain-model/storage-buckets",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/storage-policy',
@@ -1249,9 +1479,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/domain-model/storage-policy",
+    "destination": "/boundary/docs/:version/concepts/domain-model/storage-policy",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model/targets',
     destination: '/boundary/docs/domain-model/targets',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/targets",
+    "destination": "/boundary/docs/:version/concepts/domain-model/targets",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/domain-model/users',
@@ -1259,14 +1499,19 @@ module.exports = [
     permanent: true,
   },
   {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model/users",
+    "destination": "/boundary/docs/:version/concepts/domain-model/users",
+    "permanent": true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering',
     destination: '/boundary/docs/filtering',
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/filtering/index',
-    destination: '/boundary/docs/filtering/index',
-    permanent: true,
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/filtering",
+    "destination": "/boundary/docs/:version/concepts/filtering",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/concepts/filtering/resource-listing',
@@ -1277,6 +1522,11 @@ module.exports = [
     source: '/boundary/docs/troubleshoot/common-errors',
     destination: '/boundary/docs/errors',
     permanent: true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:12|13|14|15|16|17|18)\\.x)/errors",
+    "destination": "/boundary/docs/:version/troubleshoot/common-errors",
+    "permanent": true,
   },
   {
     source: '/boundary/docs/configuration/target-aliases/interoperability-matrix',
