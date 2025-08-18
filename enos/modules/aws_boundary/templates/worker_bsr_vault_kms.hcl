@@ -1,6 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
+log_level = "debug"
+
 listener "tcp" {
   purpose     = "proxy"
   tls_disable = true
