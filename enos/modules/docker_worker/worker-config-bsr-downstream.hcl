@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
+log_level = "debug"
 
 listener "tcp" {
   # setting to 127.0.0.1 so that it won't be accessible by the local machine

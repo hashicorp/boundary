@@ -1,6 +1,8 @@
 # Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
+log_level = "debug"
+
 listener "tcp" {
   purpose     = "proxy"
   tls_disable = true

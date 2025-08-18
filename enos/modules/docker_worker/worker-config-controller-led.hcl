@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
+log_level = "debug"
 
 listener "tcp" {
   address     = "0.0.0.0:${port}"
