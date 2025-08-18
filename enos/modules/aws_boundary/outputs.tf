@@ -211,6 +211,11 @@ output "public_controller_addresses" {
   value = var.ip_version == "4" ? aws_instance.controller[*].public_ip : aws_instance.controller[*].ipv6_addresses[0]
 }
 
+output "boundary_sg_id" {
+  description = "A secruity group id that covers basic boundary ports and ssh"
+  value       = aws_security_group.boundary_sg.id
+}
+
 output "controller_aux_sg_id" {
   description = "A security group ID that covers the controllers for adding extra rules to"
   value       = aws_security_group.boundary_aux_sg.id

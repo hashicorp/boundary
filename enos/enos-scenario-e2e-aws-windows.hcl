@@ -52,16 +52,17 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "read_boundary_license" {
-    module = module.read_license
+  step "create_base_infra" {
+    module = module.aws_vpc_ipv6
+
+    depends_on = [
+      step.find_azs,
+    ]
 
     variables {
-      license_path = local.boundary_license_path
+      availability_zones = step.find_azs.availability_zones
+      common_tags        = local.tags
     }
-  }
-
-  step "create_db_password" {
-    module = module.random_stringifier
   }
 
   step "build_boundary_linux" {
@@ -77,7 +78,7 @@ scenario "e2e_aws_windows" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     depends_on = [
-      step.build_boundary_linux
+      step.build_boundary_linux,
     ]
 
     variables {
@@ -87,19 +88,6 @@ scenario "e2e_aws_windows" {
       build_target  = "build"
       artifact_name = "boundary_windows"
       binary_name   = "boundary.exe"
-    }
-  }
-
-  step "create_base_infra" {
-    module = module.aws_vpc_ipv6
-
-    depends_on = [
-      step.find_azs,
-    ]
-
-    variables {
-      availability_zones = step.find_azs.availability_zones
-      common_tags        = local.tags
     }
   }
 
@@ -116,6 +104,14 @@ scenario "e2e_aws_windows" {
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
       boundary_src_path     = local.local_boundary_src_dir
+    }
+  }
+
+  step "read_boundary_license" {
+    module = module.read_license
+
+    variables {
+      license_path = local.boundary_license_path
     }
   }
 
@@ -142,13 +138,29 @@ scenario "e2e_aws_windows" {
     }
   }
 
+  step "create_db_password" {
+    module = module.random_stringifier
+  }
+
+  step "create_rdp_domain_controller" {
+    module = module.aws_rdp_domain_controller
+    depends_on = [
+      step.create_base_infra,
+    ]
+
+    variables {
+      vpc_id         = step.create_base_infra.vpc_id
+      server_version = matrix.rdp_server
+    }
+  }
+
   step "create_boundary_cluster" {
     module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
-      step.create_windows_client,
       step.create_db_password,
       step.build_boundary_linux,
+      step.create_windows_client,
       step.create_vault_cluster,
       step.read_boundary_license
     ]
@@ -210,15 +222,29 @@ scenario "e2e_aws_windows" {
     }
   }
 
-  step "create_rdp_domain_controller" {
-    module = module.aws_rdp_domain_controller
+  step "create_windows_worker" {
+    module = module.aws_rdp_member_server_with_worker
     depends_on = [
       step.create_base_infra,
+      step.create_rdp_domain_controller,
+      step.build_boundary_windows,
+      step.create_boundary_cluster,
     ]
 
     variables {
-      vpc_id         = step.create_base_infra.vpc_id
-      server_version = matrix.rdp_server
+      vpc_id                              = step.create_base_infra.vpc_id
+      server_version                      = matrix.rdp_server
+      boundary_cli_zip_path               = step.build_boundary_windows.artifact_path
+      kms_key_arn                         = step.create_base_infra.kms_key_arn
+      controller_ip                       = step.create_boundary_cluster.public_controller_addresses[0]
+      iam_name                            = step.create_boundary_cluster.iam_instance_profile_name
+      boundary_security_group             = step.create_boundary_cluster.boundary_sg_id
+      active_directory_domain             = step.create_rdp_domain_controller.domain_name
+      domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
+      domain_controller_ip                = step.create_rdp_domain_controller.private_ip
+      domain_admin_password               = step.create_rdp_domain_controller.password
+      domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
+      domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
     }
   }
 
@@ -346,5 +372,21 @@ scenario "e2e_aws_windows" {
 
   output "windows_client_ssh_key" {
     value = step.create_windows_client.ssh_private_key
+  }
+
+  output "windows_worker_admin_username" {
+    value = step.create_windows_worker.admin_username
+  }
+
+  output "windows_worker_admin_password" {
+    value = step.create_windows_worker.admin_password
+  }
+
+  output "windows_worker_public_ip" {
+    value = step.create_windows_worker.public_ip
+  }
+
+  output "windows_worker_private_ip" {
+    value = step.create_windows_worker.private_ip
   }
 }
