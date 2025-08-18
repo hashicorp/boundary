@@ -273,7 +273,7 @@ resource "aws_instance" "domain_controller" {
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
 
                   # causes the instance to reboot
-                  Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode 7 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
+                  Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode 7 -InstallDns:$true -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>
               EOF
 
