@@ -837,7 +837,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					got, err := s.CreateManagedGroup(fullGrantAuthCtx, item)
 					if wantErr != nil {
 						require.ErrorIs(t, err, wantErr)
-						return
+						continue
 					}
 					require.NoError(t, err)
 					require.NotNil(t, got)
@@ -982,7 +982,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					got, err := s.CreateManagedGroup(fullGrantAuthCtx, item)
 					if wantErr != nil {
 						require.ErrorIs(t, err, wantErr)
-						return
+						continue
 					}
 					require.NoError(t, err)
 					require.NotNil(t, got)
