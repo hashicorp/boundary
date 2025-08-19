@@ -181,7 +181,7 @@ resource "aws_instance" "client" {
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-                
+
                   # Create a non-admin user to be used for RDP connection. This
                   # is needed since the scheduled task that runs pyautogui
                   # doesn't work in an Administrator context.
@@ -197,6 +197,10 @@ resource "aws_instance" "client" {
                   Set-ItemProperty -Path $regPath -Name "DefaultUsername" -Value $Username -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultPassword" -Value "${local.test_password}" -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultDomainName" -Value "$env:COMPUTERNAME" -Type String
+
+                  # Enable audio
+                  Set-Service -Name "Audiosrv" -StartupType Automatic
+                  Start-Service -Name "Audiosrv"
                 </powershell>
               EOF
 
