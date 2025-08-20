@@ -3,8 +3,9 @@ module github.com/hashicorp/boundary/api
 go 1.24.0
 
 require (
+	github.com/coder/websocket v1.8.13
 	github.com/google/go-cmp v0.7.0
-	github.com/hashicorp/boundary/sdk v0.0.53
+	github.com/hashicorp/boundary/sdk v0.0.54
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.18
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -21,7 +22,6 @@ require (
 	golang.org/x/time v0.12.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
@@ -40,6 +40,6 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

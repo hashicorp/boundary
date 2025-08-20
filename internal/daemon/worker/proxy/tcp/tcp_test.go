@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -22,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"nhooyr.io/websocket"
 )
 
 func TestHandleProxy_Errors(t *testing.T) {

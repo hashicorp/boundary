@@ -9,6 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/coder/websocket v1.8.13
 	github.com/creack/pty v1.1.24
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/fatih/color v1.18.0
@@ -22,7 +23,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/boundary/api v0.0.54
-	github.com/hashicorp/boundary/sdk v0.0.53
+	github.com/hashicorp/boundary/sdk v0.0.54
 	github.com/hashicorp/cap v0.10.0
 	github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744
 	github.com/hashicorp/dawdle v0.5.0
@@ -102,7 +103,6 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/postgres v1.6.0
 	mvdan.cc/gofumpt v0.8.0
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
@@ -124,7 +124,6 @@ require (
 	github.com/briandowns/spinner v1.16.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/coder/websocket v1.8.13 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
