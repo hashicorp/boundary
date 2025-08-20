@@ -87,36 +87,56 @@ resource "aws_instance" "worker" {
 
   user_data = <<EOF
                 <powershell>
+                  # set variables for retry loops
+                  $timeout = 300
+                  $interval = 30
+
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  $timeout = 300
-                  $interval = 10
-                  # Loop to make sure that SSH installs correctly               
+                  # Loop to make sure that SSH installs correctly                       
+                  $elapsed = 0          
                   do {
-                  try {
-                      $result = Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                      Set-Service -Name sshd -StartupType 'Automatic'
+                      Start-Service sshd
+                      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
                       if ($result) {
-                          Write-Host "Successfully added openSSH server"
+                          Write-Host "Successfully added and started openSSH server"
                           break
                       }
-                      } catch {
-                          Write-Host "SSH server was not installed, retrying"
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                          Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                          exit 1
-                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                    }
                   } while ($true)
 
-
-                  Set-Service -Name sshd -StartupType 'Automatic'
-                  Start-Service sshd
-
-                  Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-                  Set-Service -Name ssh-agent -StartupType Automatic
-                  Start-Service ssh-agent
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+                      Set-Service -Name ssh-agent -StartupType Automatic
+                      Start-Service ssh-agent
+                      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
+                      if ($result) {
+                        Write-Host "Successfully added and started openSSH agent"
+                        break
+                      }
+                    } catch {
+                      Write-Host "SSH server was not installed, retrying"
+                      Start-Sleep -Seconds $interval
+                      $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                    }
+                  } while ($true)
 
                   # Set PowerShell as the default SSH shell
                   New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
@@ -152,24 +172,51 @@ ${var.domain_admin_password}
                   $elapsed = 0
                   do {
                     try {
-                      $result = Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
-                      if ($result) {
-                        Write-Host "DNS resolved successfully."
+                      Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
+                      Write-Host "resolved domain successfully."
+                      break
+                    } catch {
+                        Write-Host "Could not resolve domain. Retrying in $interval seconds..."
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "Resolving domain after 5 minutes. Exiting."
+                      exit 1
+                    }
+                  } while ($true) 
+
+                  #logging to troubleshoot domain issues
+                  Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
+                  Get-Service -Name LanmanWorkstation, Netlogon, RpcSs | Select-Object Name, DisplayName, Status
+
+
+                  $timeout = 900
+                  $interval = 30
+                  # Add computer to domain
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                      $result = (Get-WmiObject Win32_ComputerSystem).Domain
+                      if ($result -ne "WORKGROUP") {
+                        Write-Host "Added to domain successfully."
                         break
                         }
-                      } catch {
-                          Write-Host "DNS not resolved yet. Retrying in $interval seconds..."
+                    } catch {
+                          Write-Host "Could not add to domain. Retrying in $interval seconds..."
                           Start-Sleep -Seconds $interval
                           $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                        Write-Host "DNS resolution failed after 5 minutes. Exiting."
-                        exit 1
-                      }
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "Adding to domain after 5 minutes. Exiting."
+                      exit 1
+                    }
                   } while ($true)
 
-                  # add computer to domain
-                  Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                  # Logging to determine domain and ssh state for debugging
+                  (Get-WmiObject Win32_ComputerSystem).Domain
+                  Get-Process -Name *ssh* -ErrorAction SilentlyContinue
                 </powershell>
               EOF
 
