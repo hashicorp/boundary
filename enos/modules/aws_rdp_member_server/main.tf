@@ -91,39 +91,60 @@ resource "aws_instance" "member_server" {
 
                   # Adds member server to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
-Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
-$here_string_password = @'
+                  Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
+                  $here_string_password = @'
 ${var.domain_admin_password}
 '@
-$password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
-$username = "${local.domain_sld}\Administrator"
-$credential = New-Object System.Management.Automation.PSCredential($username,$password)
+                    $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
+                    $username = "${local.domain_sld}\Administrator"
+                    $credential = New-Object System.Management.Automation.PSCredential($username,$password)
 
-# check that domain can be reached
-$timeout = 300
-$interval = 10
-$elapsed = 0
+                  # check that domain can be reached
+                  $timeout = 300
+                  $interval = 10
+                  $elapsed = 0
 
-do {
-    try {
-        $result = Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
-        if ($result) {
-            Write-Host "DNS resolved successfully."
-            break
-        }
-    } catch {
-        Write-Host "DNS not resolved yet. Retrying in $interval seconds..."
-        Start-Sleep -Seconds $interval
-        $elapsed += $interval
-    }
-    if ($elapsed -ge $timeout) {
-        Write-Host "DNS resolution failed after 5 minutes. Exiting."
-        exit 1
-    }
-} while ($true)
+                  # check that domain can be reached
+                  do {
+                    try {
+                      Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
+                      Write-Host "resolved domain successfully."
+                      break
+                      } catch {
+                          Write-Host "Could not resolve domain. Retrying in $interval seconds..."
+                          Start-Sleep -Seconds $interval
+                          $elapsed += $interval
+                      }
+                      if ($elapsed -ge $timeout) {
+                        Write-Host "Resovling domain after 5 minutes. Exiting."
+                        exit 1
+                      }
+                  } while ($true) 
 
-# add computer to domain
-Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                  #logging to troubleshoot domain issues
+                  Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
+                  Get-Service -Name LanmanWorkstation, Netlogon, RpcSs | Select-Object Name, DisplayName, Status
+
+                  # Add computer to domain
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                      $result = (Get-WmiObject Win32_ComputerSystem).Domain
+                    if ($result -ne "WORKGROUP") {
+                        Write-Host "Added to domain successfully."
+                        break
+                        }
+                      } catch {
+                          Write-Host "Could not add to domain. Retrying in $interval seconds..."
+                          Start-Sleep -Seconds $interval
+                          $elapsed += $interval
+                      }
+                      if ($elapsed -ge $timeout) {
+                        Write-Host "Adding to domain after 5 minutes. Exiting."
+                        exit 1
+                      }
+                  } while ($true)
 
 Restart-Computer -Force
                 </powershell>
