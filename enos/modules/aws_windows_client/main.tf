@@ -163,46 +163,46 @@ resource "aws_instance" "client" {
                   # Loop to make sure that SSH installs correctly                       
                   $elapsed = 0          
                   do {
-                  try {
+                    try {
                       Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
                       Set-Service -Name sshd -StartupType 'Automatic'
                       Start-Service sshd
                       $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
                       if ($result) {
-                          Write-Host "Successfully added and started openSSH server"
-                          break
+                        Write-Host "Successfully added and started openSSH server"
+                        break
                       }
-                      } catch {
-                          Write-Host "SSH server was not installed, retrying"
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                          Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                          exit 1
-                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                        exit 1
+                    }
                   } while ($true)
 
                   $elapsed = 0
                   do {
-                  try {
+                    try {
                       Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
                       Set-Service -Name ssh-agent -StartupType Automatic
                       Start-Service ssh-agent
                       $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
                       if ($result) {
-                          Write-Host "Successfully added and started openSSH agent"
-                          break
+                        Write-Host "Successfully added and started openSSH agent"
+                        break
                       }
-                  } catch {
-                      Write-Host "SSH server was not installed, retrying"
-                      Start-Sleep -Seconds $interval
-                      $elapsed += $interval
-                  }
-                  if ($elapsed -ge $timeout) {
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
                       Write-Host "SSH server installation failed after 5 minutes. Exiting."
                       exit 1
-                  }
+                    }
                   } while ($true)
 
                   ## Set PowerShell as the default SSH shell

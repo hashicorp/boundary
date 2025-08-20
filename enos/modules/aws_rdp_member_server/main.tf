@@ -76,8 +76,8 @@ resource "aws_instance" "member_server" {
                       Start-Service sshd
                       $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
                       if ($result) {
-                          Write-Host "Successfully added and started openSSH server"
-                          break
+                        Write-Host "Successfully added and started openSSH server"
+                        break
                       }
                     } catch {
                         Write-Host "SSH server was not installed, retrying"
