@@ -158,7 +158,7 @@ resource "aws_instance" "worker" {
                   New-NetFirewallRule -Name boundary_in -DisplayName 'Boundary inbound' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 9202
                   New-NetFirewallRule -Name boundary_out -DisplayName 'Boundary outbound' -Enabled True -Direction Outbound -Protocol TCP -Action Allow -LocalPort 9202
 
-                  ## Add computer to the domain
+                  # Add computer to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
                   Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
                   $here_string_password = @'

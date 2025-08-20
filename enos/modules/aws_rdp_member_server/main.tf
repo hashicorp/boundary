@@ -61,14 +61,15 @@ resource "aws_instance" "member_server" {
 
   user_data = <<EOF
                 <powershell>
+                  %{ if var.server_version != "2016" ~}
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
 
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  # Loop to make sure that SSH installs correctly                       
-                  $elapsed = 0          
+                  # Loop to make sure that SSH installs correctly
+                  $elapsed = 0
                   do {
                     try {
                       Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
@@ -129,6 +130,7 @@ resource "aws_instance" "member_server" {
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+                  %{ endif ~}
 
                   # Adds member server to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
@@ -160,7 +162,7 @@ ${var.domain_admin_password}
                       Write-Host "Resovling domain after 5 minutes. Exiting."
                       exit 1
                     }
-                  } while ($true) 
+                  } while ($true)
 
                   #logging to troubleshoot domain issues
                   Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
@@ -222,6 +224,7 @@ resource "time_sleep" "wait_2_minutes" {
 # BatchMode=Yes to prevent SSH from prompting for a password to ensure that we
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
+  count = var.server_version != "2016" ? 1 : 0
   depends_on = [time_sleep.wait_2_minutes]
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
@@ -229,6 +232,7 @@ resource "enos_local_exec" "wait_for_ssh" {
 # Retrieve the domain hostname of the member server, which will be used in
 # Kerberos
 resource "enos_local_exec" "get_hostname" {
+  count = var.server_version != "2016" ? 1 : 0
   depends_on = [
     enos_local_exec.wait_for_ssh,
   ]

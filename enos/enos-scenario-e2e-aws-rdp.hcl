@@ -1,7 +1,11 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-scenario "e2e_aws_windows" {
+# This scenario creates a complete end-to-end test environment for Boundary to
+# test RDP functionality. It includes a Windows client, a Boundary controller
+# and worker, a domain controller, a member server, and another member server
+# with a worker running on it.
+scenario "e2e_aws_rdp" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -12,6 +16,9 @@ scenario "e2e_aws_windows" {
   matrix {
     builder    = ["local", "crt"]
     client     = ["win10", "win11"]
+    # Windows Server 2016 does not support OpenSSH, but it's relied on for some
+    # parts of setup. If 2016 is selected, the member server will be created as
+    # 2016, but the domain controller and worker will be 2019.
     rdp_server = ["2016", "2019", "2022", "2025"]
   }
 
@@ -150,7 +157,7 @@ scenario "e2e_aws_windows" {
 
     variables {
       vpc_id         = step.create_base_infra.vpc_id
-      server_version = matrix.rdp_server
+      server_version = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
     }
   }
 
@@ -233,7 +240,7 @@ scenario "e2e_aws_windows" {
 
     variables {
       vpc_id                              = step.create_base_infra.vpc_id
-      server_version                      = matrix.rdp_server
+      server_version                      = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
       boundary_cli_zip_path               = step.build_boundary_windows.artifact_path
       kms_key_arn                         = step.create_base_infra.kms_key_arn
       controller_ip                       = step.create_boundary_cluster.public_controller_addresses[0]

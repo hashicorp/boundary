@@ -30,5 +30,5 @@ output "password" {
 
 output "domain_hostname" {
   description = "The hostname of the domain controller"
-  value       = trimspace(enos_local_exec.get_hostname.stdout)
+  value       = var.server_version != "2016" ? trimspace(enos_local_exec.get_hostname[0].stdout) : ""
 }
