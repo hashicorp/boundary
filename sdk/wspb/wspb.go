@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
-	"nhooyr.io/websocket"
 )
 
 var pool sync.Pool

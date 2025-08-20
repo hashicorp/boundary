@@ -3,6 +3,7 @@ module github.com/hashicorp/boundary/sdk
 go 1.24.0
 
 require (
+	github.com/coder/websocket v1.8.13
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/eventlogger v0.2.11
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
@@ -17,7 +18,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
