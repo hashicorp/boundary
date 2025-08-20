@@ -151,15 +151,15 @@ ${var.domain_admin_password}
                       Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
                       Write-Host "resolved domain successfully."
                       break
-                      } catch {
-                          Write-Host "Could not resolve domain. Retrying in $interval seconds..."
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                        Write-Host "Resovling domain after 5 minutes. Exiting."
-                        exit 1
-                      }
+                    } catch {
+                        Write-Host "Could not resolve domain. Retrying in $interval seconds..."
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "Resovling domain after 5 minutes. Exiting."
+                      exit 1
+                    }
                   } while ($true) 
 
                   #logging to troubleshoot domain issues

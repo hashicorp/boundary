@@ -194,15 +194,15 @@ resource "aws_instance" "client" {
                           Write-Host "Successfully added and started openSSH agent"
                           break
                       }
-                      } catch {
-                          Write-Host "SSH server was not installed, retrying"
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                          Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                          exit 1
-                      }
+                  } catch {
+                      Write-Host "SSH server was not installed, retrying"
+                      Start-Sleep -Seconds $interval
+                      $elapsed += $interval
+                  }
+                  if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                  }
                   } while ($true)
 
                   ## Set PowerShell as the default SSH shell
