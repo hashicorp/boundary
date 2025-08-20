@@ -272,18 +272,6 @@ resource "aws_instance" "domain_controller" {
                   $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
 
-                  # Configure the server to use reliable external NTP sources and mark itself as reliable
-                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
-
-                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
-
-                  # Restart the Windows Time service to apply the new configuration
-                  Stop-Service w32time
-                  Start-Service w32time
-
-                  # Force an immediate time synchronization
-                  w32tm /resync /force
-
                   # causes the instance to reboot
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode 7 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>

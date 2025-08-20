@@ -138,8 +138,6 @@ resource "aws_instance" "worker" {
                       }
                   } while ($true)
 
-                  
-
                   # Set PowerShell as the default SSH shell
                   New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
 
@@ -159,18 +157,6 @@ resource "aws_instance" "worker" {
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
                   New-NetFirewallRule -Name boundary_in -DisplayName 'Boundary inbound' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 9202
                   New-NetFirewallRule -Name boundary_out -DisplayName 'Boundary outbound' -Enabled True -Direction Outbound -Protocol TCP -Action Allow -LocalPort 9202
-
-                  # Configure the server to use reliable external NTP sources and mark itself as reliable
-                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
-
-                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
-
-                  # Restart the Windows Time service to apply the new configuration
-                  Stop-Service w32time
-                  Start-Service w32time
-
-                  # Force an immediate time synchronization
-                  w32tm /resync /force
 
                   ## Add computer to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
@@ -195,7 +181,7 @@ ${var.domain_admin_password}
                           $elapsed += $interval
                       }
                       if ($elapsed -ge $timeout) {
-                        Write-Host "Resovling domain after 5 minutes. Exiting."
+                        Write-Host "Resolving domain after 5 minutes. Exiting."
                         exit 1
                       }
                   } while ($true) 
