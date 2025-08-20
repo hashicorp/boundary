@@ -125,6 +125,10 @@ do {
 # add computer to domain
 Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
 
+# Enable audio
+Set-Service -Name "Audiosrv" -StartupType Automatic
+Start-Service -Name "Audiosrv"
+
 Restart-Computer -Force
                 </powershell>
               EOF
