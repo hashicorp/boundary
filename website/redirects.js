@@ -18,7 +18,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10)\\.x)/what-is-boundary",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/what-is-boundary",
     "destination": "/boundary/docs/:version/overview/what-is-boundary",
     "permanent": true,
   },
@@ -48,7 +48,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10)\\.x)/overview/use-cases",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/use-cases",
     "destination": "/boundary/docs/:version/overview/use-cases",
     "permanent": true,
   },
@@ -63,7 +63,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/zero-trust",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/zero-trust",
     "destination": "/boundary/docs/:version/overview/vs/use-cases",
     "permanent": true,
   },
@@ -73,7 +73,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/bastion-hosts",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/bastion-hosts",
     "destination": "/boundary/docs/:version/overview/vs/bastion-hosts",
     "permanent": true,
   },
@@ -83,7 +83,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/vpn",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/vpn",
     "destination": "/boundary/docs/:version/overview/vs/vpn",
     "permanent": true,
   },
@@ -93,7 +93,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/pam",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/pam",
     "destination": "/boundary/docs/:version/overview/vs/pam",
     "permanent": true,
   },
@@ -103,7 +103,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/sdp",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/sdp",
     "destination": "/boundary/docs/:version/overview/vs/sdp",
     "permanent": true,
   },
@@ -113,7 +113,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10)\\.x)/overview/secrets-management",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/secrets-management",
     "destination": "/boundary/docs/:version/overview/vs/secrets-management",
     "permanent": true,
   },
@@ -123,7 +123,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11)\\.x)/overview/faq",
+    "source": "/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/faq",
     "destination": "/boundary/docs/:version/troubleshoot/faq",
     "permanent": true,
   },
@@ -143,7 +143,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12)\\.x)/getting-started/dev-mode",
+    "source": "/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode",
     "destination": "/boundary/docs/:version/oss/instaling/dev-mode",
     "permanent": true,
   },
@@ -153,7 +153,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12)\\.x)/getting-started/dev-mode/run-and-login",
+    "source": "/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode/run-and-login",
     "destination": "/boundary/docs/:version/oss/instaling/run-and-login",
     "permanent": true,
   },
@@ -163,7 +163,7 @@ module.exports = [
     permanent: true,
   },
   {
-    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12)\\.x)/getting-started/dev-mode/connect-to-dev-target",
+    "source": "/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode/connect-to-dev-target",
     "destination": "/boundary/docs/:version/oss/instaling/connect-to-dev-target",
     "permanent": true,
   },
@@ -278,19 +278,9 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/install-boundary/index',
-    destination: '/boundary/docs/deploy/self-managed/index',
-    permanent: true,
-  },
-  {
-    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/deploy/self-managed/index",
-    "destination": "/boundary/docs/:version/install-boundary/index",
+    "source": "/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/deploy/self-managed",
+    "destination": "/boundary/docs/:version/install-boundary",
     "permanent": true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/self-managed/index',
-    destination: '/boundary/docs/deploy/self-managed/index',
-    permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/install',
@@ -328,11 +318,6 @@ module.exports = [
     "permanent": true,
   },
   {
-    source: '/boundary/docs/install-boundary/self-managed/configure-controllers',
-    destination: '/boundary/docs/deploy/self-managed/configure-controllers',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/install-boundary/configure-workers',
     destination: '/boundary/docs/deploy/self-managed/deploy-workers',
     permanent: true,
@@ -343,11 +328,6 @@ module.exports = [
     "permanent": true,
   },
   {
-    source: '/boundary/docs/install-boundary/self-managed/configure-workers',
-    destination: '/boundary/docs/deploy/self-managed/deploy-workers',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/install-boundary/initialize',
     destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
@@ -356,11 +336,6 @@ module.exports = [
     "source": "/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/self-managed/initialize",
     "destination": "/boundary/docs/:version/install-boundary/initialize",
     "permanent": true,
-  },
-  {
-    source: '/boundary/docs/install-boundary/self-managed/initialize',
-    destination: '/boundary/docs/deploy/self-manaaged/initialize',
-    permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/no-gen-resources',
@@ -424,6 +399,11 @@ module.exports = [
   },
   {
     "source": "/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/hcp/get-started/connect-to-target",
+    "destination": "/boundary/docs/:version/getting-started/connect-to-target",
+    "permanent": true,
+  },
+  {
+    "source": "/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8)\\.x)/targets/connections",
     "destination": "/boundary/docs/:version/getting-started/connect-to-target",
     "permanent": true,
   },
