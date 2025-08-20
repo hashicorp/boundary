@@ -133,6 +133,6 @@ the first place.
 * google.golang.org/protobuf
     * Todd
     * Jeff
-* nhooyr.io/websocket
+* github.com/coder/websocket
     * Jeff
     * Jim

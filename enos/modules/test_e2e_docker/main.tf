@@ -221,7 +221,7 @@ variable "ldap_group_name" {
 }
 variable "test_timeout" {
   type    = string
-  default = "25m"
+  default = "30m"
 }
 variable "gcp_private_key_id" {
   description = "ID of the private key used to authenticate with GCP"

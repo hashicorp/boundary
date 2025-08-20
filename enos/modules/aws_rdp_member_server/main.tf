@@ -189,6 +189,10 @@ ${var.domain_admin_password}
                   # Logging to determine domain and ssh state for debugging
                   (Get-WmiObject Win32_ComputerSystem).Domain
                   Get-Process -Name *ssh* -ErrorAction SilentlyContinue
+
+                  # Enable audio
+                  Set-Service -Name "Audiosrv" -StartupType Automatic
+                  Start-Service -Name "Audiosrv"
                   Restart-Computer -Force
                 </powershell>
               EOF
