@@ -5,7 +5,7 @@
 # test RDP functionality. It includes a Windows client, a Boundary controller
 # and worker, a domain controller, a member server, and another member server
 # with a worker running on it.
-scenario "e2e_aws_rdp" {
+scenario "e2e_aws_rdp_base" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
