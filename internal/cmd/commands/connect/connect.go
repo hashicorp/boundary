@@ -84,6 +84,9 @@ type Command struct {
 	// Cassandra
 	cassandraFlags
 
+	// Redis
+	redisFlags
+
 	// RDP
 	rdpFlags
 
@@ -114,6 +117,8 @@ func (c *Command) Synopsis() string {
 		return mysqlSynopsis
 	case "cassandra":
 		return cassandraSynopsis
+	case "redis":
+		return redisSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -239,6 +244,9 @@ func (c *Command) Flags() *base.FlagSets {
 	case "cassandra":
 		cassandraOptions(c, set)
 
+	case "redis":
+		redisOptions(c, set)
+
 	case "rdp":
 		rdpOptions(c, set)
 
@@ -330,6 +338,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.mysqlFlags.defaultExec()
 		case "cassandra":
 			c.flagExec = c.cassandraFlags.defaultExec()
+		case "redis":
+			c.flagExec = c.redisFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
@@ -713,6 +723,16 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, cassandraArgs...)
 		envs = append(envs, cassandraEnvs...)
 		creds = cassandraCreds
+
+	case "redis":
+		redisArgs, redisEnvs, redisCreds, redisErr := c.redisFlags.buildArgs(c, port, host, addr, creds)
+		if redisErr != nil {
+			argsErr = redisErr
+			break
+		}
+		args = append(args, redisArgs...)
+		envs = append(envs, redisEnvs...)
+		creds = redisCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
