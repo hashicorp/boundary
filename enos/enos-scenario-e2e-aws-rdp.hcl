@@ -252,6 +252,7 @@ scenario "e2e_aws_rdp" {
       domain_admin_password               = step.create_rdp_domain_controller.password
       domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
       domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
+      aws_region                          = var.aws_region
     }
   }
 
