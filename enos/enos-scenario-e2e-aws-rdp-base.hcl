@@ -14,8 +14,8 @@ scenario "e2e_aws_rdp_base" {
   ]
 
   matrix {
-    builder    = ["local", "crt"]
-    client     = ["win10", "win11"]
+    builder = ["local", "crt"]
+    client  = ["win10", "win11"]
     # Windows Server 2016 does not support OpenSSH, but it's relied on for some
     # parts of setup. If 2016 is selected, the member server will be created as
     # 2016, but the domain controller and worker will be 2019.

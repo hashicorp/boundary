@@ -61,7 +61,7 @@ resource "aws_instance" "member_server" {
 
   user_data = <<EOF
                 <powershell>
-                  %{ if var.server_version != "2016" ~}
+                  %{if var.server_version != "2016"~}
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
@@ -130,7 +130,7 @@ resource "aws_instance" "member_server" {
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-                  %{ endif ~}
+                  %{endif~}
 
                   # Adds member server to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
@@ -224,7 +224,7 @@ resource "time_sleep" "wait_2_minutes" {
 # BatchMode=Yes to prevent SSH from prompting for a password to ensure that we
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
-  count = var.server_version != "2016" ? 1 : 0
+  count      = var.server_version != "2016" ? 1 : 0
   depends_on = [time_sleep.wait_2_minutes]
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
