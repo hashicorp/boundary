@@ -158,12 +158,8 @@ scenario "e2e_aws_rdp_base" {
 
     variables {
       vpc_id         = step.create_base_infra.vpc_id
-<<<<<<< HEAD:enos/enos-scenario-e2e-aws-windows.hcl
-      server_version = matrix.rdp_server
       kerberos_only  = matrix.rdp_server == "true" ? true : false
-=======
       server_version = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
->>>>>>> main:enos/enos-scenario-e2e-aws-rdp-base.hcl
     }
   }
 
