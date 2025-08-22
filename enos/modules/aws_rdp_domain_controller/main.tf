@@ -39,7 +39,6 @@ locals {
   username     = split(":", data.aws_caller_identity.current.user_id)[1]
   domain_parts = split(".", var.active_directory_domain)
   domain_sld   = local.domain_parts[0] # second-level domain (example.com --> example)
-  domain_tld   = local.domain_parts[1] # top-level domain (example.com --> com)
 }
 
 // We need a keypair to obtain the local administrator credentials to an AWS Windows based EC2 instance. So we generate it locally here
@@ -274,7 +273,7 @@ resource "aws_instance" "domain_controller" {
                 <powershell>
                   $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
-                  
+
                   # causes the instance to reboot
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${local.domain_sld} -ForestMode 7 -InstallDns:$true -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>

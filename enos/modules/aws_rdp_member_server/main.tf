@@ -193,11 +193,10 @@ ${var.domain_admin_password}
                   Get-Process -Name *ssh* -ErrorAction SilentlyContinue
 
                   # Enable Kerberos only authentication if required
-
                   %{if var.kerberos_only~}
-                    Set-ItemProperty  -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"  -Name RestrictSendingNTLMTraffic -Value 2 
-                    Set-ItemProperty  -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"  -Name RestrictReceivingNTLMTraffic -Value 2 
-                  %{endif~}   
+                    Set-ItemProperty  -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"  -Name RestrictSendingNTLMTraffic -Value 2
+                    Set-ItemProperty  -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"  -Name RestrictReceivingNTLMTraffic -Value 2
+                  %{endif~}
 
                   # Enable audio
                   Set-Service -Name "Audiosrv" -StartupType Automatic
