@@ -14,8 +14,9 @@ scenario "e2e_aws_rdp_base" {
   ]
 
   matrix {
-    builder = ["local", "crt"]
-    client  = ["win10", "win11"]
+    builder       = ["local", "crt"]
+    client        = ["win10", "win11"]
+    kerberos_only = ["true", "false"]
     # Windows Server 2016 does not support OpenSSH, but it's relied on for some
     # parts of setup. If 2016 is selected, the member server will be created as
     # 2016, but the domain controller and worker will be 2019.
@@ -266,6 +267,7 @@ scenario "e2e_aws_rdp_base" {
     variables {
       vpc_id                              = step.create_base_infra.vpc_id
       server_version                      = matrix.rdp_server
+      kerberos_only                       = matrix.kerberos_only == "true" ? true : false
       active_directory_domain             = step.create_rdp_domain_controller.domain_name
       domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
       domain_controller_ip                = step.create_rdp_domain_controller.private_ip
