@@ -260,6 +260,7 @@ scenario "e2e_aws_windows" {
     variables {
       vpc_id                              = step.create_base_infra.vpc_id
       server_version                      = matrix.rdp_server
+      kerberos_only  = matrix.rdp_server == "true" ? true : false
       active_directory_domain             = step.create_rdp_domain_controller.domain_name
       domain_controller_aws_keypair_name  = step.create_rdp_domain_controller.keypair_name
       domain_controller_ip                = step.create_rdp_domain_controller.private_ip
