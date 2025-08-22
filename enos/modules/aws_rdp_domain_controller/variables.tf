@@ -53,3 +53,9 @@ variable "active_directory_netbios_name" {
   description = "Ostensibly the short-hand for the name of the domain."
   default     = "mydomain"
 }
+
+variable "kerberos_only" {
+  type        = bool
+  description = "Only allow kerberos auth"
+  default     = false
+}

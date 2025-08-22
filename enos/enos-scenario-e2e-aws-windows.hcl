@@ -10,9 +10,10 @@ scenario "e2e_aws_windows" {
   ]
 
   matrix {
-    builder    = ["local", "crt"]
-    client     = ["win10", "win11"]
-    rdp_server = ["2016", "2019", "2022", "2025"]
+    builder       = ["local", "crt"]
+    client        = ["win10", "win11"]
+    rdp_server    = ["2016", "2019", "2022", "2025"]
+    kerberos_only = ["true", "false"]
   }
 
   locals {
@@ -151,6 +152,7 @@ scenario "e2e_aws_windows" {
     variables {
       vpc_id         = step.create_base_infra.vpc_id
       server_version = matrix.rdp_server
+      kerberos_only  = matrix.rdp_server == "true" ? true : false
     }
   }
 
