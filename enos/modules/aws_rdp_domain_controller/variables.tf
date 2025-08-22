@@ -47,9 +47,3 @@ variable "active_directory_domain" {
   description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
   default     = "mydomain.com"
 }
-
-variable "kerberos_only" {
-  type        = bool
-  description = "Only allow kerberos auth"
-  default     = false
-}
