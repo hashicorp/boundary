@@ -145,7 +145,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.8 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect

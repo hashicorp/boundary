@@ -93,8 +93,8 @@ resource "aws_instance" "worker" {
 
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  # Loop to make sure that SSH installs correctly                       
-                  $elapsed = 0          
+                  # Loop to make sure that SSH installs correctly
+                  $elapsed = 0
                   do {
                     try {
                       Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
@@ -158,14 +158,14 @@ resource "aws_instance" "worker" {
                   New-NetFirewallRule -Name boundary_in -DisplayName 'Boundary inbound' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 9202
                   New-NetFirewallRule -Name boundary_out -DisplayName 'Boundary outbound' -Enabled True -Direction Outbound -Protocol TCP -Action Allow -LocalPort 9202
 
-                  ## Add computer to the domain
+                  # Add computer to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
                   Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
                   $here_string_password = @'
 ${var.domain_admin_password}
 '@
                   $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
-                  $username = "${local.domain_sld}\Administrator" 
+                  $username = "${local.domain_sld}\Administrator"
                   $credential = New-Object System.Management.Automation.PSCredential($username,$password)
 
                   # check that domain can be reached
@@ -184,7 +184,7 @@ ${var.domain_admin_password}
                       Write-Host "Resolving domain after 5 minutes. Exiting."
                       exit 1
                     }
-                  } while ($true) 
+                  } while ($true)
 
                   #logging to troubleshoot domain issues
                   Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
