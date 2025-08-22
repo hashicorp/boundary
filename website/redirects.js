@@ -602,7 +602,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19)\\.x)/secure/encryption/data-encryption',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/secure/encryption/data-encryption',
     destination: '/boundary/docs/:version/concepts/security/data-encryption',
     permanent: true,
   },
@@ -638,8 +638,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/:version(v0\\.(?:8|14|15|16|17|18)\\.x)/monitor',
-    destination: '/boundary/docs/:version/oss/security/operations',
+    source: '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/monitor',
+    destination: '/boundary/docs/:version/operations',
     permanent: true,
   },
   {
@@ -692,7 +692,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:8|14|15|16|17|18)\\.x)/monitor/metrics',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/monitor/metrics',
     destination: '/boundary/docs/:version/operations/metrics',
     permanent: true,
   },
@@ -703,7 +703,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:8|14|15|16|17|18)\\.x)/monitor/health',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/monitor/health',
     destination: '/boundary/docs/:version/operations/health',
     permanent: true,
   },
@@ -779,11 +779,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/release-notes/index',
-    destination: '/boundary/docs',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/release-notes',
     destination: '/boundary/docs',
     permanent: true,
@@ -795,8 +790,13 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/workers',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|10|11|12|13|14|15|16|17|18)\\.x)/workers',
     destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:9)\\.x)/workers',
+    destination: '/boundary/docs/:version/configuration/worker/overview',
     permanent: true,
   },
   {
