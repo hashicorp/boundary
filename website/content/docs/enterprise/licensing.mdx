@@ -18,11 +18,11 @@ Once you have received your valid Boundary license, there are two options for en
 1. You may set the enterprise license for Boundary using an environment variable.
 Set the `BOUNDARY_LICENSE` environment variable to the license key value you received:
 
-   `$ export BOUNDARY_LICENSE=02MV4UU43BK5...`
+  `$ export BOUNDARY_LICENSE=02MV4UU43BK5...`
 
-   or
+  or
 
-   `$ BOUNDARY_LICENSE=file:///folder_path/license.hclic`
+  `$ BOUNDARY_LICENSE=file:///folder_path/license.hclic`
 
 1. You may specify the enterprise license key in the Boundary controller configuration using the `license` attribute in the `controller` block.
 You can either specify the raw license key or the path to a file containing the license key.
@@ -30,64 +30,74 @@ Refer to the sample configurations below:
 
    **Sample #1**
 
-   ```hcl
-   controller {
-     name = "controller"
-     description = "controller"
-     database {
-       url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
-     }
-     public_cluster_addr = "boundary.domain"
-     license = "file:///folder_path/license.hclic"
-   }
-   ```
+  ```hcl
+  controller {
+    name = "controller"
+    description = "controller"
+    database {
+      url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
+    }
+    public_cluster_addr = "boundary.domain"
+    license = "file:///folder_path/license.hclic"
+  }
+  ```
    **Sample #2**
 
-   ```hcl
-   controller {
-     name = "controller"
-     description = "controller"
-     database {
-       url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
-     }
-     public_cluster_addr = "boundary.domain"
-     license = "02MV4UU43BK5..."
-   }
-   ```
-
-   Refer to the [controller](/boundary/docs/configuration/controller) configuration  documentation for more information.
-
-   ## License expiration
-
-   When the Boundary license expires, the Boundary controller performs a graceful shutdown and terminates within 1 minute with the following message:
-
   ```hcl
-  {
-    "id": "SJkaNV09xP",
-    "source": "https://hashicorp.com/boundary/nixos/controller+worker",
-    "specversion": "1.0",
-    "type": "error",
-    "data": {
-      "error": "error from licensing watcher: invalid license or license is expired",
-      "error_fields": {},
-      "id": "e_33IKa8BqB3",
-      "version": "v0.1",
-      "op": "licensing.StartWatching"
-    },
-    "datacontentype": "text/plain",
-    "time": "2025-08-01T16:54:14.34408533-07:00"
+  controller {
+    name = "controller"
+    description = "controller"
+    database {
+      url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
+    }
+    public_cluster_addr = "boundary.domain"
+    license = "02MV4UU43BK5..."
   }
-  ==> Boundary dev environment self-terminating
-  ==> Health is enabled, waiting 0s before shutdown
-  ==> Boundary dev environment graceful shutdown triggered, interrupt again to enter shutdown
   ```
 
-  Prior to the expiration date, Boundary logs 5 warnings to the event stream at the following intervals:
+  Refer to the [controller](/boundary/docs/configuration/controller) configuration  documentation for more information.
 
-  | Warning | Interval                           |
-  |---------| ---------------------------------- |
-  | First   | 30 days before license expiration  |
-  | Second  | 7 days before license expiration   |
-  | Third   | 24 hours before license expiration |
-  | Fourth  | 1 hour before license expiration   |
-  | Fifth   | 1 minute before license expiration |
+## License expiration
+
+When the Boundary license expires, the controller performs a graceful shutdown.
+Ongoing sessions continue to run, but you will not be able to create any new sessions.
+
+Prior to the expiration date, Boundary logs 5 warnings to the event stream at the following intervals:
+
+| Warning | Interval                           |
+|---------| ---------------------------------- |
+| First   | 30 days before license expiration  |
+| Second  | 7 days before license expiration   |
+| Third   | 24 hours before license expiration |
+| Fourth  | 1 hour before license expiration   |
+| Fifth   | 1 minute before license expiration |
+
+When there is 1 minute left before license expiration, Boundary provides the following message:
+
+```hcl
+{
+  "id": "SJkaNV09xP",
+  "source": "https://hashicorp.com/boundary/nixos/controller+worker",
+  "specversion": "1.0",
+  "type": "error",
+  "data": {
+    "error": "error from licensing watcher: invalid license or license is expired",
+    "error_fields": {},
+    "id": "e_33IKa8BqB3",
+    "version": "v0.1",
+    "op": "licensing.StartWatching"
+  },
+  "datacontentype": "text/plain",
+  "time": "2025-08-01T16:54:14.34408533-07:00"
+}
+==> Boundary dev environment self-terminating
+==> Health is enabled, waiting 0s before shutdown
+==> Boundary dev environment graceful shutdown triggered, interrupt again to enter shutdown
+```
+
+To update your license key, refer to the steps in [Enable Boundary Enterprise](#enable-boundary-enterprise).
+There is no downtime associated with updating an expired license key.
+
+## More information
+
+Refer to the [Upgrade and database migration](/boundary/tutorials/self-managed-deployment/upgrade-version) tutorial for step-by-step instructions to upgrade Boundary to its latest version, including database backup and data migration.
