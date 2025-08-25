@@ -154,7 +154,7 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode',
-    destination: '/boundary/docs/:version/oss/instaling/dev-mode',
+    destination: '/boundary/docs/:version/oss/installing/dev-mode',
     permanent: true,
   },
   {
@@ -165,7 +165,7 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode/run-and-login',
-    destination: '/boundary/docs/:version/oss/instaling/run-and-login',
+    destination: '/boundary/docs/:version/oss/installing/run-and-login',
     permanent: true,
   },
   {
