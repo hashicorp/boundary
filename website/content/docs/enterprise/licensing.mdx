@@ -74,7 +74,9 @@ Prior to the expiration date, Boundary logs 5 warnings to the event stream at th
 
 When there is 1 minute left before license expiration, Boundary provides the following message:
 
-```hcl
+<CodeBlockConfig hideClipboard>
+
+```plaintext
 {
   "id": "SJkaNV09xP",
   "source": "https://hashicorp.com/boundary/nixos/controller+worker",
@@ -94,6 +96,8 @@ When there is 1 minute left before license expiration, Boundary provides the fol
 ==> Health is enabled, waiting 0s before shutdown
 ==> Boundary dev environment graceful shutdown triggered, interrupt again to enter shutdown
 ```
+
+</CodeBlockConfig>
 
 To update your license key, refer to the steps in [Enable Boundary Enterprise](#enable-boundary-enterprise).
 There is no downtime associated with updating an expired license key.
