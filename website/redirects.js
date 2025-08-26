@@ -67,7 +67,7 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/zero-trust',
-    destination: '/boundary/docs/:version/overview/vs/use-cases',
+    destination: '/boundary/docs/:version/overview/vs/zero-trust',
     permanent: true,
   },
   {
@@ -148,7 +148,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/installing/dev-mode',
-    destination: '/boundary/docs/getting-started/dev-mode/index',
+    destination: '/boundary/docs/getting-started/dev-mode',
     permanent: true,
   },
   {
@@ -169,13 +169,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source:
-      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/getting-started/dev-mode/run-and-login',
-    destination:
-      '/boundary/docs/:version/getting-started/dev-mode/run-and-login',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/oss/installing/connect-to-dev-target',
     destination:
       '/boundary/docs/getting-started/dev-mode/connect-to-dev-target',
@@ -184,14 +177,7 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode/connect-to-dev-target',
-    destination: '/boundary/docs/:version/oss/instaling/connect-to-dev-target',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/getting-started/dev-mode/connect-to-dev-target',
-    destination:
-      '/boundary/docs/:version/getting-started/dev-mode/connect-to-dev-target',
+    destination: '/boundary/docs/:version/oss/installing/connect-to-dev-target',
     permanent: true,
   },
   {
@@ -249,7 +235,7 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/architecture/recommended-architecture',
     destination:
-      '/boundary/docs/:version/oss/installing/reference-architecture',
+      '/boundary/docs/:version/oss/installing/reference-architectures',
     permanent: true,
   },
   {
@@ -302,6 +288,18 @@ module.exports = [
   {
     source: '/boundary/docs/oss/installing/high-availability',
     destination: '/boundary/docs/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/architecture/high-availability',
+    destination: '/boundary/docs/:version/oss/installing/high-availability',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8)\\.x)/architecture/high-availability',
+    destination: '/boundary/docs/:version/installing/high-availability',
     permanent: true,
   },
   {
@@ -410,6 +408,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8)\\.x)/deploy/self-managed/initialize',
+    destination: '/boundary/docs/:version/installing/no-gen-resources',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/install-clients',
     destination: '/boundary/docs/deploy/self-managed/install-clients',
     permanent: true,
@@ -480,7 +484,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns',
     destination: '/boundary/docs/:version/install-boundary/terraform-patterns',
     permanent: true,
   },
@@ -493,7 +497,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-credentials-and-credential-stores',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-credentials-and-credential-stores',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-credentials-and-credential-stores',
     permanent: true,
@@ -507,7 +511,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-groups-and-rbac',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-groups-and-rbac',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-groups-and-rbac',
     permanent: true,
@@ -521,7 +525,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-hosts-and-host-management',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-hosts-and-host-management',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-hosts-and-host-management',
     permanent: true,
@@ -534,7 +538,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-scopes',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-scopes',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-scopes',
     permanent: true,
@@ -548,7 +552,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-session-recording',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-session-recording',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-session-recording',
     permanent: true,
@@ -561,7 +565,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-pattern/terraform-targets',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-pattern/terraform-targets',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-targets',
     permanent: true,
@@ -575,7 +579,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18|19)\\.x)/deploy/terraform-patterns/terraform-users-and-auth-methods',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-users-and-auth-methods',
     destination:
       '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-users-and-auth-methods',
     permanent: true,
@@ -692,7 +696,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/monitor/metrics',
+      '/boundary/docs/:version(v0\\.(?:8|13|14|15|16|17|18)\\.x)/monitor/metrics',
     destination: '/boundary/docs/:version/operations/metrics',
     permanent: true,
   },
@@ -703,7 +707,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/monitor/health',
+      '/boundary/docs/:version(v0\\.(?:8|13|14|15|16|17|18)\\.x)/monitor/health',
     destination: '/boundary/docs/:version/operations/health',
     permanent: true,
   },
