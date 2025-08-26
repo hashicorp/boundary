@@ -14,6 +14,7 @@ import (
 	"net/textproto"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,6 +53,7 @@ import (
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
@@ -98,7 +100,8 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	corsWrappedHandler := wrapHandlerWithCors(mux, props)
+	cspWrappedHandler := wrapHandlerWithCsp(mux, props, isUiRequest)
+	corsWrappedHandler := wrapHandlerWithCors(cspWrappedHandler, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
@@ -758,4 +761,66 @@ func getActions(urlPath string) []string {
 
 	// Split the rest on ":", returning all actions and sub-actions
 	return strings.Split(rest, ":")
+}
+
+func parseCsp(str string) map[string][]string {
+	split := strings.Split(str, ";")
+	csps := make(map[string][]string)
+
+	for _, element := range split {
+		cspSlice := strings.Split(strings.TrimSpace(element), " ")
+		directive := cspSlice[0]
+		values := cspSlice[1:]
+		csps[directive] = values
+	}
+
+	return csps
+}
+
+func createCspString(cspMap map[string][]string) string {
+	csps := []string{}
+	for directive, values := range cspMap {
+		csps = append(csps, directive+" "+strings.Join(values, " "))
+	}
+	return strings.Join(csps, "; ")
+}
+
+type rewriteWriter struct {
+	http.ResponseWriter
+	status int
+	buf    bytes.Buffer
+}
+
+func (rw *rewriteWriter) WriteHeader(code int)        { rw.status = code }
+func (rw *rewriteWriter) Write(p []byte) (int, error) { return rw.buf.Write(p) }
+
+func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest func(req *http.Request) bool) http.Handler {
+	configCspString := props.ListenerConfig.CustomUiResponseHeaders[0]["Content-Security-Policy"][0]
+	delete(props.ListenerConfig.CustomUiResponseHeaders[0], "Content-Security-Policy")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// requests without extensions are assumed to serve document requests (index.html)
+		pathWithoutExtension := strings.LastIndex(req.URL.Path, ".") == -1
+
+		if isUiRequest(req) && pathWithoutExtension {
+			nonce, _ := base62.Random(20)
+
+			cspMap := parseCsp(configCspString)
+			cspMap["style-src"] = append(cspMap["style-src"], "'nonce-"+nonce+"'")
+			cspString := createCspString(cspMap)
+			w.Header().Set("Content-Security-Policy", cspString)
+
+			rw := &rewriteWriter{ResponseWriter: w, status: http.StatusOK}
+			h.ServeHTTP(rw, req)
+
+			body := rw.buf.Bytes()
+			body = bytes.Replace(body, []byte("{{STYLE_SRC_NONCE_PLACEHOLDER}}"), []byte(nonce), 1)
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+			w.WriteHeader(rw.status)
+			w.Write(body)
+			return
+		}
+
+		h.ServeHTTP(w, req)
+	})
 }
