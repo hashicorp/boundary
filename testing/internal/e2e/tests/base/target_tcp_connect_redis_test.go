@@ -50,9 +50,12 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	t.Logf("Redis info: user=%s, host=%s, port=%s, password-set:%t",
 		user, hostname, port, pwSet)
 
+	// Wait for Redis to be ready
 	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", hostname,
-			"redis-cli", "-h", hostname, "-p", port, "PING").Run()
+		out, e := exec.CommandContext(ctx, "docker", "exec", hostname,
+			"redis-cli", "-h", hostname, "-p", port, "PING").CombinedOutput()
+		t.Logf("Redis PING output: %s", out)
+		return e
 	})
 	require.NoError(t, err, "Redis container failed to start")
 
@@ -60,12 +63,12 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
-	// t.Cleanup(func() {
-	// 	ctx := context.Background()
-	// 	boundary.AuthenticateAdminCli(t, ctx)
-	// 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
-	// 	require.NoError(t, output.Err, string(output.Stderr))
-	// })
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
@@ -81,6 +84,7 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
+
 	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
@@ -93,12 +97,14 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
 	require.NoError(t, err)
 
-	cmd := exec.CommandContext(
-		ctx,
+	t.Logf("Attempting to connect to Redis target %s", targetId)
+
+	cmd := exec.CommandContext(ctx,
 		"boundary",
 		"connect", "redis",
 		"-target-id", targetId,
 	)
+
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -113,15 +119,17 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	_, err = f.Write([]byte("GET e2etestkey\n"))
 	require.NoError(t, err)
 	_, err = f.Write([]byte("EXIT\n"))
+	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	_, err = io.Copy(&buf, f)
+	_, _ = io.Copy(&buf, f)
 
 	output := buf.String()
 	t.Logf("Redis session output: %s", output)
 
 	require.Contains(t, output, "PONG")
 	require.Contains(t, output, "OK")
+	require.Contains(t, output, "\"e2etestvalue\"")
 
 	t.Log("Successfully connected to Redis target")
 }
