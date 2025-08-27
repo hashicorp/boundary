@@ -34,11 +34,11 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 
 	c := infra.StartRedis(t, pool, &network[0], "redis", "latest")
 	require.NotNil(t, c, "Redis container should not be nil")
-	// t.Cleanup(func() {
-	// 	if err := pool.Purge(c.Resource); err != nil {
-	// 		t.Logf("Failed to purge Redis container: %v", err)
-	// 	}
-	// })
+	t.Cleanup(func() {
+		if err := pool.Purge(c.Resource); err != nil {
+			t.Logf("Failed to purge Redis container: %v", err)
+		}
+	})
 
 	u, err := url.Parse(c.UriNetwork)
 	t.Log(u)
@@ -112,13 +112,13 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = f.Write([]byte("PING\n"))
+	_, err = f.Write([]byte("SET e2etestkey e2etestvalue\r\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("SET e2etestkey e2etestvalue\n"))
+	_, err = f.Write([]byte("GET e2etestkey\r\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("GET e2etestkey\n"))
+	_, err = f.Write([]byte("QUIT\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("EXIT\n"))
+	_, err = f.Write([]byte{4})
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -127,7 +127,6 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	output := buf.String()
 	t.Logf("Redis session output: %s", output)
 
-	require.Contains(t, output, "PONG")
 	require.Contains(t, output, "OK")
 	require.Contains(t, output, "\"e2etestvalue\"")
 

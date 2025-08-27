@@ -467,7 +467,6 @@ func StartRedis(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	})
 	require.NoError(t, err, "Redis container did not start in time or is not healthy")
 
-	// setup redis user and auth via commands (see cassandra for example)
 	err = setupRedisAuthAndUser(t, resource, pool, &config)
 	require.NoError(t, err)
 
