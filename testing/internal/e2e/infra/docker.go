@@ -554,7 +554,6 @@ func setupRedisAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *do
 		"docker", "exec", config.NetworkAlias, "redis-cli",
 		"ACL", "SETUSER", config.User, "on", fmt.Sprintf(">%s", config.Password), "+@read", "+@write", "allkeys",
 	).Run()
-
 	if err != nil {
 		return err
 	}
