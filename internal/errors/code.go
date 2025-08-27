@@ -68,7 +68,7 @@ const (
 	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
 	Paused                   = 136 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
 
-	InvalidListToken Code = 136 // InvalidListToken represents an error where the provided list token is invalid
+	InvalidListToken Code = 137 // InvalidListToken represents an error where the provided list token is invalid
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
