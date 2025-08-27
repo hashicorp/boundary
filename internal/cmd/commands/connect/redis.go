@@ -25,7 +25,7 @@ func redisOptions(c *Command, set *base.FlagSets) {
 		EnvVar:     "BOUNDARY_CONNECT_REDIS_STYLE",
 		Completion: complete.PredictSet("redis-cli"),
 		Default:    "redis-cli",
-		Usage:      `Specifies how the CLI will attempt to invoke a Redis client.`,
+		Usage:      `Specifies how the CLI will attempt to invoke a Redis client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "redis-cli".`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -71,7 +71,7 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		case username != "":
 			args = append(args, "--user", username)
 		case c.flagUsername != "":
-			args = append(args, "--user", c.flagUsername)
+			args = append(args, "--user", c.flagUsername, "--askpass")
 		}
 
 		// Password is read by redis-cli via environment variable. The password disappears after the command exits.
