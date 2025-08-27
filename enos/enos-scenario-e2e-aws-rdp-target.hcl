@@ -1,6 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
+# This scenario creates a single Windows ec2 instance that acts as a domain
+# controller. This can be used as an RDP target for boundary.
 scenario "e2e_aws_rdp_target" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default

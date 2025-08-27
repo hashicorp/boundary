@@ -47,9 +47,3 @@ variable "active_directory_domain" {
   description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
   default     = "mydomain.com"
 }
-
-variable "active_directory_netbios_name" {
-  type        = string
-  description = "Ostensibly the short-hand for the name of the domain."
-  default     = "mydomain"
-}

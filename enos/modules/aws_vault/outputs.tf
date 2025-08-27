@@ -11,6 +11,11 @@ output "instance_public_ips" {
   value       = var.ip_version == "4" ? [for instance in aws_instance.vault_instance : instance.public_ip] : flatten([for instance in aws_instance.vault_instance : instance.ipv6_addresses])
 }
 
+output "instance_public_ips_ipv4" {
+  description = "Public IPv4 addresses of Vault instances"
+  value       = [for instance in aws_instance.vault_instance : instance.public_ip if instance.public_ip != null]
+}
+
 output "instance_private_ips" {
   description = "Private IPs of Vault instances"
   value       = [for instance in aws_instance.vault_instance : instance.private_ip]

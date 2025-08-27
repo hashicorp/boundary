@@ -71,3 +71,9 @@ variable "domain_controller_sec_group_id_list" {
   type        = list(any)
   description = "ID's of AWS Network Security Groups created during creation of the domain controller."
 }
+
+variable "kerberos_only" {
+  type        = bool
+  description = "Only allow kerberos auth"
+  default     = false
+}

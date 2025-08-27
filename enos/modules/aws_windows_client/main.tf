@@ -154,15 +154,56 @@ resource "aws_instance" "client" {
 
   user_data = <<EOF
                 <powershell>
+                  # set variables for retry loops
+                  $timeout = 300
+                  $interval = 30
+
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-                  Set-Service -Name sshd -StartupType 'Automatic'
-                  Start-Service sshd
+                  # Loop to make sure that SSH installs correctly                       
+                  $elapsed = 0          
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                      Set-Service -Name sshd -StartupType 'Automatic'
+                      Start-Service sshd
+                      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
+                      if ($result) {
+                        Write-Host "Successfully added and started openSSH server"
+                        break
+                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                        exit 1
+                    }
+                  } while ($true)
 
-                  Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-                  Set-Service -Name ssh-agent -StartupType Automatic
-                  Start-Service ssh-agent
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+                      Set-Service -Name ssh-agent -StartupType Automatic
+                      Start-Service ssh-agent
+                      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
+                      if ($result) {
+                        Write-Host "Successfully added and started openSSH agent"
+                        break
+                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                    }
+                  } while ($true)
 
                   ## Set PowerShell as the default SSH shell
                   New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
@@ -181,7 +222,7 @@ resource "aws_instance" "client" {
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-                
+
                   # Create a non-admin user to be used for RDP connection. This
                   # is needed since the scheduled task that runs pyautogui
                   # doesn't work in an Administrator context.
@@ -197,6 +238,10 @@ resource "aws_instance" "client" {
                   Set-ItemProperty -Path $regPath -Name "DefaultUsername" -Value $Username -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultPassword" -Value "${local.test_password}" -Type String
                   Set-ItemProperty -Path $regPath -Name "DefaultDomainName" -Value "$env:COMPUTERNAME" -Type String
+
+                  # Enable audio
+                  Set-Service -Name "Audiosrv" -StartupType Automatic
+                  Start-Service -Name "Audiosrv"
                 </powershell>
               EOF
 

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/coder/websocket"
 	"github.com/hashicorp/boundary/api/consts"
 	pb "github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/boundary/sdk/wspb"
-	"nhooyr.io/websocket"
 )
 
 func (p *ClientProxy) getWsConn(ctx context.Context) (*websocket.Conn, error) {
