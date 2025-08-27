@@ -226,23 +226,28 @@ KMS types, see our [KMS documentation](/boundary/docs/configuration/kms).
 
 ## Load balancing
 
-You can configure controllers to work with a load balancer.
+Boundary does not require a load balancer or reverse proxy, as long as workers can directly connect to the controller.
+You can connect controllers directly to `cluster` listener addresses using the `public_cluster_addr` along with the workers' `initial_upstreams` attribute.
 
-1. Configure a load balancer or reverse proxy in TCP mode to point directly to each controller's `cluster` address or use a round robin configuration.
+However, a load balancer or reverse proxy may be useful if you want to have a:
+
+- Dynamic set of controller addresses so that you can add or remove controllers without having to update each worker's `initial_upstreams` attribute as they change.
+- TCP proxy in front of each `public_cluster_addr` or `cluster` listener address for other reasons.
+The TCP proxy is supported as long as you do not round robin or load balance and you keep the `initial_upstreams` values in sync.
+
+Refer to the following steps for the recommended method for configuring a load balancer to work with Boundary.
+
+1. Configure a load balancer or reverse proxy in TCP mode to point directly to each controller's `cluster` address or configure a round robin configuration in which the controllers point to each other.
 1. Configure each controller's `initial_upstreams` attribute with the address of the load balancer.
-The load balancer's address should not be any of the `public_cluster_addr` or `cluster` listener addresses.
-1. Configure the `public_cluster_addr` attribute for each controller to be an address that the worker can use to directly connect to the controller after the initial connection through the load balancer.
+The load balancer's address should not be the same as any of the `public_cluster_addr` or `cluster` listener addresses.
+1. Configure each controller's `public_cluster_addr` attribute to be an address that the worker can use to directly connect to the controller after the worker makes the initial connection through the load balancer.
 
-  In that initial connection, the worker is given the current set of controller addresses, sourced from each controller's `public_cluster_addr` if available, or that controller's `cluster` listener address, if it is not.
+  In that initial connection, the worker obtains the current set of controller addresses from each controller's `public_cluster_addr`, if it is available.
+  If you did not configure a `public_cluster_addr`, the worker user the controller's `cluster` listener address.
 
-Alternatively, if you want to use a load balancer or reverse proxy for the `public_cluster_addr` addresses, it must be in TCP mode, and it it must only proxy from each controller's `public_cluster_addr` to that controller's `cluster` lisetner.
-If you attemmpt to load balance across these addresses, it will result in connectivity issues and a failure of the built=in client-side load balancing.
-
-You can use direct connections to `cluster` listener addresses and can make use of `public_cluster_addr` along with the workers' `initial_upstreams` attribute without any load balancer/proxy at all, as long as the workers can connect directly.
-The load balancer/proxy is only useful if you:
-
-- Want to have a more dynamic set of controller addresses so that you can add or remove controllers without having to update each worker's `initial_upstreams` attribute as they change.
-- Want to have a TCP proxy in front of each `public_cluster_addr` or `cluster` listener address for other reasons, which is supported as long as you do not round robin or load balance and are willing to keep the `initial_upstreams` values in sync.
+Alternatively, you can use a load balancer or reverse proxy for the `public_cluster_addr` addresses.
+The load balancer or reverse proxy must be in TCP mode, and it it must only proxy from each controller's `public_cluster_addr` to that controller's `cluster` lisetner.
+If you attemmpt to load balance across these addresses, it will result in connectivity issues and a failure of the built-in client-side load balancing.
 
 ## Complete configuration example
 
