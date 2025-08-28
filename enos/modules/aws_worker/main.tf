@@ -161,6 +161,11 @@ resource "aws_instance" "worker" {
       Name = "${var.name_prefix}-boundary-worker-${split(":", data.aws_caller_identity.current.user_id)[1]}",
     },
   )
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
 }
 
 resource "enos_bundle_install" "worker" {
