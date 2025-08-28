@@ -1,9 +1,9 @@
 # Boundary
 
 - What is Boundary: https://developer.hashicorp.com/boundary/docs/what-is-boundary
-- Website: https://www.boundaryproject.io/
+- Website: https://www.developer.hashicorp.com/boundary/
 - Forums: [HashiCorp Discuss](https://discuss.hashicorp.com/c/boundary/)
-- Documentation: [https://boundaryproject.io/docs](https://boundaryproject.io/docs)
+- Documentation: [https://developer.hashicorp.com/boundary/docs](https://developer.hashicorp.com/boundary/docs)
 - Tutorials: [HashiCorp's Learn Platform](https://developer.hashicorp.com/boundary/tutorials)
 
 <img alt="Boundary" src="boundary.png" alt="Image" width="500px"/>
@@ -24,8 +24,9 @@ Boundary is designed to be straightforward to understand, highly scalable, and
 resilient. It can run in clouds, on-prem, secure enclaves and more, and does not require
 an agent to be installed on every end host, making it suitable for access to managed/cloud services and container-based workflows in addition to traditional host systems and services.
 
-
-<img src="https://www.boundaryproject.io/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F58478%2F1664218843-boundary-illustration-option2-1.png&w=3840&q=75" alt="Watch the video" width="320" height="180">
+<video controls>
+  <source src="https://www.datocms-assets.com/2885/1694719896-how-boundary-works-v3.mp4" type="video/mp4" alt="Watch the video" />
+</video>
 
 For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/what-is-boundary)" on the Boundary website.
 

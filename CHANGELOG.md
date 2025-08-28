@@ -7,8 +7,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### New and Improved
 
 * cli: Added `boundary connect mysql` command for connecting to MySQL targets.
-  This new helper command allows users to authorize sessions against MySQL 
-  targets and automatically invoke a MySQL client with the appropriate 
+  This new helper command allows users to authorize sessions against MySQL
+  targets and automatically invoke a MySQL client with the appropriate
   connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
@@ -1408,7 +1408,7 @@ open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
   anonymous user; currently these are the same permissions as assigned in
   Boundary's default role permissions. If other use-cases arise this list can be
   expanded. See [the
-  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions/assignable-permissions)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/rbac/assignable-permissions)
   for more details.
 
 ## 0.8.1 (2022/05/13)
@@ -1567,7 +1567,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 
 * Boundary now supports dynamic discovery of host resources using our (currently
   internal) new plugin system. See the
-  [documentation](https://www.boundaryproject.io/docs) for configuration
+  [documentation](https://www.developer.hashicorp.com/boundary/docs) for configuration
   instructions. Currently, only Azure and AWS are supported, but more providers
   will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
@@ -1696,7 +1696,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 * OIDC Accounts: When performing a `read` on an `oidc` type account, the
   original token and userinfo claims are provided in the output. This can make
   it significantly easier to write filters to create [managed
-  groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
+  groups](https://www.developer.hashicorp.com/boundary/docs/rbac/users/managed-groups).
   ([PR](https://github.com/hashicorp/boundary/pull/1419))
 * Controllers will now mark connections as closed in the database if the worker
   has not reported its status; this can be seen as the controller counterpart to
@@ -1724,7 +1724,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
     Boundary.
   * Filtering events: hclog log levels have been replaced by optional sets
     of allow and deny event
-    [filters](https://www.boundaryproject.io/docs/concepts/filtering) which are
+    [filters](https://www.developer.hashicorp.com/boundary/docs/filtering) which are
     specified via configuration, or in the case of "boundary dev" there are new
     new cmd flags.
   * Observation events are MVP and contain a minimal set of observations about a
@@ -1937,7 +1937,7 @@ Boundary) but it's worth repeating.
   users this defaults to all fields; for `u_anon` this defaults to the fields
   useful for navigating to and authenticating to the system. In either case,
   this is overridable. See the [permissions
-  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/rbac)
   for more information on why and when to use this. This currently only applies
   to top-level fields in the response.
 * cli/api/sdk: Add support to request additional OIDC claims scope values from
@@ -2123,7 +2123,7 @@ to call out in this changelog. The full set of open issues is on GitHub.
 * list filtering: Listing now supports filtering results before being returned
   to the user. The filtering takes place server side and uses boolean
   expressions against the JSON representation of returned items. See [the
-  documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/filtering)
   for more details. ([PR 1](https://github.com/hashicorp/boundary/pull/952))
   ([PR 2](https://github.com/hashicorp/boundary/pull/957))
   ([PR 3](https://github.com/hashicorp/boundary/pull/967))
@@ -2131,7 +2131,7 @@ to call out in this changelog. The full set of open issues is on GitHub.
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
 * server: On `SIGHUP`, [worker
-  tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
+  tags](https://www.developer.hashicorp.com/boundary/docs/workers/worker-tags) will be
   re-parsed and new values used
   ([PR](https://github.com/hashicorp/boundary/pull/959))
 * server: In addition to the existing `tls_min_version` listener configuration
@@ -2368,7 +2368,7 @@ them to access targets).
     favor of specifying `none` for the new `-keyring-type` parameter.
   * [`pass`](https://www.passwordstore.org/) is now the default keyring type on
     non-Windows/non-macOS platforms. See the [CLI docs
-    page](https://www.boundaryproject.io/docs/api-clients/cli) for more
+    page](https://www.developer.hashicorp.com/boundary/docs/commands) for more
     information.
 
 ### New and Improved
