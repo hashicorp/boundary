@@ -1276,7 +1276,7 @@ module.exports = [
   {
     source:
       '/boundary/docs/concepts/security/permissions/assignable-permissions',
-    destination: '/boundary/docs/rbac/assignable-permisisons',
+    destination: '/boundary/docs/rbac/assignable-permissions',
     permanent: true,
   },
   {
