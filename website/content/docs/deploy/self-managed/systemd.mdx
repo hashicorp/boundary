@@ -13,7 +13,7 @@ This section covers how to install Boundary under the [systemd](https://systemd.
 
 `TYPE` below can be either `worker` or `controller` if you want to run them independently, e.g. for high availability. If you want to run combined nodes, modify as desired.
 
-1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service.
+1. `/etc/boundary.d/boundary-${TYPE}.hcl`: Configuration file for the boundary service.
 
 2. `/usr/local/bin/boundary`: The Boundary binary, which can be built from the [source](https://github.com/hashicorp/boundary) or downloaded from our [release page](/boundary/downloads).
 
