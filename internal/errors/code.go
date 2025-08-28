@@ -43,31 +43,31 @@ const (
 	InvalidDynamicCredential      Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
 	JobAlreadyRunning             Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 	SubtypeAlreadyRegistered      Code = 118 // SubtypeAlreadyRegistered represents that a value has already been registered in the subtype registry system.
-	NoPathFound                        = 119 // NoPathFound represents an error when no path is found to a worker
-	WorkerNotFound                     = 120 // WorkerNotFound represents an error when a worker is not found in the graph of downstream workers
-	CycleFound                         = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
-	WorkerConnNotFound                 = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
-	KmsWorkerUnsupportedOperation      = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
+	NoPathFound                   Code = 119 // NoPathFound represents an error when no path is found to a worker
+	WorkerNotFound                Code = 120 // WorkerNotFound represents an error when a worker is not found in the graph of downstream workers
+	CycleFound                    Code = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
+	WorkerConnNotFound            Code = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
+	KmsWorkerUnsupportedOperation Code = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
 
 	// Note: Currently unused in OSS
-	RetryLimitExceeded = 124 // RetryLimitExceeded represents an error when a retry limit is exceeded
+	RetryLimitExceeded Code = 124 // RetryLimitExceeded represents an error when a retry limit is exceeded
 	// Note: Currently unused in OSS
-	QueueIsFull = 125 // QueueIsFull results in attempting to add an item to a queue which is full
+	QueueIsFull Code = 125 // QueueIsFull results in attempting to add an item to a queue which is full
 
 	// Note: Storage errors are currently unused in OSS
-	StorageFileClosed         = 126 // StorageFileClose represents an error when a file has been closed and a read/write operation is attempted on it
-	StorageContainerClosed    = 127 // StorageContainerClosed represents an error when a container has been closed and a I/O operation is attempted on it
-	StorageFileReadOnly       = 128 // StorageFileReadOnly represents an error when a file is readonly and a write operation is attempted on it
-	StorageFileWriteOnly      = 129 // StorageFileWriteOnly represents an error when a file is write only and a read operation is attempted on it
-	StorageFileAlreadyExists  = 130 // StorageFileAlreadyExists represents an error when a file already exists during an attempt to create it
-	StorageContainerReadOnly  = 131 // StorageContainerReadOnly represents an error when a container is readonly and a write operation is attempted on it
-	StorageContainerWriteOnly = 132 // StorageContainerWriteOnly represents an error when a container is write only and a read operation is attempted on it
+	StorageFileClosed         Code = 126 // StorageFileClose represents an error when a file has been closed and a read/write operation is attempted on it
+	StorageContainerClosed    Code = 127 // StorageContainerClosed represents an error when a container has been closed and a I/O operation is attempted on it
+	StorageFileReadOnly       Code = 128 // StorageFileReadOnly represents an error when a file is readonly and a write operation is attempted on it
+	StorageFileWriteOnly      Code = 129 // StorageFileWriteOnly represents an error when a file is write only and a read operation is attempted on it
+	StorageFileAlreadyExists  Code = 130 // StorageFileAlreadyExists represents an error when a file already exists during an attempt to create it
+	StorageContainerReadOnly  Code = 131 // StorageContainerReadOnly represents an error when a container is readonly and a write operation is attempted on it
+	StorageContainerWriteOnly Code = 132 // StorageContainerWriteOnly represents an error when a container is write only and a read operation is attempted on it
 
-	WorkerNotFoundForRequest      = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
-	Closed                        = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
-	ChecksumMismatch              = 135 // ChecksumMismatch represents an error when a checksum is mismatched
+	WorkerNotFoundForRequest Code = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
+	Closed                   Code = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
+	ChecksumMismatch         Code = 135 // ChecksumMismatch represents an error when a checksum is mismatched
 	InvalidListToken         Code = 136 // InvalidListToken represents an error where the provided list token is invalid
-	Paused                        = 137 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
+	Paused                   Code = 137 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
