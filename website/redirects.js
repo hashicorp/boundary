@@ -1081,14 +1081,14 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/session-recording/configure-worker-storage',
+      '/boundary/docs/:version(v0\\.(?:16|17|18)\\.x)/session-recording/configuration/configure-worker-storage',
     destination:
       '/boundary/docs/:version/configuration/session-recording/configure-worker-storage',
     permanent: true,
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:13|14|15)\\.x)/session-recording/configure-worker-storage',
+      '/boundary/docs/:version(v0\\.(?:13|14|15)\\.x)/session-recording/configuration/configure-worker-storage',
     destination:
       '/boundary/docs/:version/configuration/session-recording/create-storage-bucket',
     permanent: true,
