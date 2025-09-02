@@ -771,6 +771,28 @@ Running a MacOS VM in Parallels Desktop with shared networking causes the system
 As a workaround, you can configure Parallels Desktop to use a different network mode.
 Select an alternative network configuration such as **Host-Only**, **Default Adapter**, or **Wi-Fi** instead of **Shared Network**.
 Refer to the Parallels Desktop documentation for more information.
+### Cisco AnyConnect VPN
+
+When you run the Cisco AnyConnect VPN at the same time as the Boundary Client Agent, DNS resolution may fail for Boundary aliases.
+
+**Root cause**:
+The Boundary Client Agent runs on the default IPv4 range `100.x.x.x`. Cisco AnyConnect VPN treats this range as a *secured range*, which forces DNS queries to resolve through the VPN instead of the Boundary Client Agent. As a result, Boundary aliases cannot be resolved.
+
+**Workaround**:
+You can configure the Boundary Client Agent to use a different IPv4 prefix by setting the `v4_prefix` option in the client configuration file. This overrides the default `100.x.x.x` range and avoids the conflict with Cisco AnyConnect VPN.
+
+For example:
+```hcl
+v4_prefix = "172.16.0.0/12"
+```
+This configuration was tested successfully and resolved the issue.
+<Note>
+The `v4_prefix` can be set to any valid RFC1918 private IPv4 range, as long as it does not overlap with ranges secured by the VPN. Common options include:
+-   `10.0.0.0/8`
+-   `172.16.0.0/12`
+
+Choose a range that best fits your environment.
+</Note>
 
 ## Uninstall the Client Agent on Mac
 
