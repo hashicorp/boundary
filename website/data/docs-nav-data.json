@@ -634,6 +634,10 @@
             "path": "configuration/events"
           },
           {
+            "title": "Configure event logging",
+            "path": "configuration/events/configure-events"
+          },
+          {
             "title": "Common sink parameters",
             "path": "configuration/events/common"
           },
@@ -644,6 +648,10 @@
           {
             "title": "Stderr sink",
             "path": "configuration/events/stderr"
+          },
+          {
+            "title": "Telemetry data",
+            "path": "configuration/events/telemetry-data"
           }
         ]
       },

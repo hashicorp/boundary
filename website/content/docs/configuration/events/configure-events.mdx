@@ -1,0 +1,70 @@
+---
+layout: docs
+page_title: Configure events
+description: >-
+  Configure log event sinks for controllers and workers to monitor Boundary resources and actions.
+---
+
+# Configure event logging
+
+The [`events`](/boundary/docs/configuration/events) stanza lets you log system information in a well-defined, structured format that gives you visibility into emitted events.
+
+You configure emitted events and sinks in the configuration file for any [controller](/boundary/docs/configuration/controller) or [worker](/boundary/docs/configuration/worker) server.
+Complete the following steps to configure events:
+
+1. Open the configuration file for the controller or worker server that you want to emit events.
+1. Edit the `events` stanza in the configuration file.
+Set the following to `true` to emit that type of event, and then configure any sinks:
+   - `audit_enabled` - Specifies if Boundary emits audit events.
+   - `observations_enabled` - Specifies if Boundary emits observation events.
+   - `sysevents_enabled` - Specifies if Boundary should emit system events.
+   - `telemetry_enabled` - Specifies if Boundary should emit telemetry events.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
+1. Save the file.
+
+The following example includes the contents of the `events` stanza in the `compose/controller.hcl` configuration file:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+  telemetry_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+  }
+
+  sink {
+    name        = "controller-audit-sink"
+    description = "Audit sent to a file"
+    event_types = ["audit"]
+    format      = "cloudevents-json"
+
+    file {
+      path      = "/logs"
+      file_name = "controller.log"
+    }
+
+    audit_config {
+      audit_filter_overrides {
+        secret    = "encrypt"
+        sensitive = "hmac-sha256"
+      }
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+## More information
+
+Refer to the `events` stanza [Overview](/boundary/docs/configuration/events) for more information about monitoring events for a controller or worker.
+
+Refer to [Telemetry data](/boundary/docs/configuration/events/telemetry-data) for a list of the events and data you can track by enabling telemetry events.
