@@ -11,8 +11,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"math"
 	"math/big"
-	mathrand "math/rand"
 	"net"
 	"time"
 
@@ -62,6 +62,11 @@ func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time
 
 	opts := GetOpts(opt...)
 
+	randomSerialNumber, err := rand.Int(rand.Reader, big.NewInt(int64(math.MaxInt64)))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating random serial number"))
+	}
+
 	template := &x509.Certificate{
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -71,7 +76,7 @@ func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time
 		},
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-		SerialNumber:          big.NewInt(mathrand.Int63()),
+		SerialNumber:          randomSerialNumber,
 		NotBefore:             time.Now().Add(-1 * time.Minute),
 		NotAfter:              exp,
 		BasicConstraintsValid: true,
