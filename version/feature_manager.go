@@ -25,6 +25,7 @@ const (
 	PluginDelete
 	LocalStorageState
 	StorageBucketCredentialState
+	RDPSessionProxy
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -96,6 +97,11 @@ func init() {
 	// Worker supports reporting the state of storage bucket credentials
 	featureMap[StorageBucketCredentialState] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.17.0"),
+	}
+
+	// Worker supports RDP session proxy
+	featureMap[RDPSessionProxy] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.20.0"),
 	}
 }
 

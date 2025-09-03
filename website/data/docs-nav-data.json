@@ -742,7 +742,6 @@
       {
         "title": "Resource tables",
         "path": "rbac/resource-table"
-
       },
       {
         "title": "Manage access to resources dynamically",
@@ -1219,12 +1218,20 @@
             "path": "commands/connect"
           },
           {
+            "title": "cassandra",
+            "path": "commands/connect/cassandra"
+          },
+          {
             "title": "http",
             "path": "commands/connect/http"
           },
           {
             "title": "kube",
             "path": "commands/connect/kube"
+          },
+          {
+            "title": "mysql",
+            "path": "commands/connect/mysql"
           },
           {
             "title": "postgres",

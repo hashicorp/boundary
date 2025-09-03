@@ -174,8 +174,164 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				opts := []Option{
 					WithCredentialType(globals.UsernamePasswordCredentialType),
 					WithMappingOverride(NewUsernamePasswordOverride(
+						WithOverridePasswordAttribute("test-password"),
+						WithOverrideUsernameAttribute("test-username"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverrideUsernameAttribute("test-username"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverridePasswordAttribute("test-password"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverrideDomainAttribute("test-domain"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverridePasswordAttribute("test-password"),
+						WithOverrideDomainAttribute("test-domain"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePasswordAttribute("test-password"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverrideUsernameAttribute("test-username"),
+						WithOverrideDomainAttribute("test-domain"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverrideUsernameAttribute("test-username"),
+						WithOverridePasswordAttribute("test-password"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.UsernamePasswordDomainCredentialType),
+					WithMappingOverride(NewUsernamePasswordDomainOverride(
+						WithOverrideUsernameAttribute("test-username"),
+						WithOverridePasswordAttribute("test-password"),
+						WithOverrideDomainAttribute("test-domain"),
 					)),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
@@ -300,6 +456,10 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 					case *UsernamePasswordOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
+					case *UsernamePasswordDomainOverride:
+						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
+						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
+						assert.Equal(w.DomainAttribute, got.DomainAttribute)
 					case *SshPrivateKeyOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PrivateKeyAttribute, got.PrivateKeyAttribute)
@@ -553,7 +713,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
 					CredType:          string(globals.UsernamePasswordCredentialType),
-					UsernameAttribute: "missing-password",
+					PasswordAttribute: "missing-password",
 				},
 				secretData: map[string]any{
 					"username":      "default-username",
@@ -607,7 +767,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			wantErr: errors.VaultInvalidCredentialMapping,
 		},
 		{
-			name: "invalid-kv2-no-passsword-default-username-attribute",
+			name: "invalid-kv2-no-password-default-username-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
 					CredType: string(globals.UsernamePasswordCredentialType),
@@ -759,6 +919,498 @@ func TestBaseToUsrPass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToUsrPass(context.Background(), tt.given)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			want := tt.want
+			want.baseCred = tt.given
+			assert.Equal(want, got)
+		})
+	}
+}
+
+func TestBaseToUsrPassDomain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		given   *baseCred
+		want    *usrPassDomainCred
+		wantErr errors.Code
+	}{
+		{
+			name:    "nil-input",
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name:    "nil-library",
+			given:   &baseCred{},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "library-not-username-password-domain-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UnspecifiedCredentialType),
+				},
+			},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "invalid-no-username-default-password-no-domain-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"password": "my-password",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-no-password-default-username-no-domain-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"username": "my-username",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-no-password-no-username-default-domain-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"domain": "my-domain",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-default-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"username": "my-username",
+					"password": "my-password",
+					"domain":   "my-domain",
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "my-username",
+				password: credential.Password("my-password"),
+				domain:   "my-domain",
+			},
+		},
+		{
+			name: "valid-override-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					UsernameAttribute: "test-username",
+					PasswordAttribute: "test-password",
+					DomainAttribute:   "test-domain",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "override-username",
+				password: credential.Password("override-password"),
+				domain:   "override-domain",
+			},
+		},
+		{
+			name: "valid-default-username-override-password-override-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					PasswordAttribute: "test-password",
+					DomainAttribute:   "test-domain",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "default-username",
+				password: credential.Password("override-password"),
+				domain:   "override-domain",
+			},
+		},
+		{
+			name: "valid-override-username-default-password-default-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					UsernameAttribute: "test-username",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "override-username",
+				password: credential.Password("default-password"),
+				domain:   "default-domain",
+			},
+		},
+		{
+			name: "valid-default-username-default-password-override-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:        string(globals.UsernamePasswordDomainCredentialType),
+					DomainAttribute: "test-domain",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "default-username",
+				password: credential.Password("default-password"),
+				domain:   "override-domain",
+			},
+		},
+		{
+			name: "invalid-username-override",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					UsernameAttribute: "missing-username",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-password-override",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					PasswordAttribute: "missing-password",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-domain-override",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:        string(globals.UsernamePasswordDomainCredentialType),
+					DomainAttribute: "missing-domain",
+				},
+				secretData: map[string]any{
+					"username":      "default-username",
+					"password":      "default-password",
+					"domain":        "default-domain",
+					"test-username": "override-username",
+					"test-password": "override-password",
+					"test-domain":   "override-domain",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-metadata-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"data": map[string]any{
+						"username": "my-username",
+						"password": "my-password",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-data-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-username-default-password-default-domain-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"password": "my-password",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-default-username-no-password-default-domainattribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username": "my-username",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-default-username-default-password-no-domainattribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username": "my-username",
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": "hello",
+					"data": map[string]any{
+						"username": "my-username",
+						"password": "my-password",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data":     "hello",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-additional-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"bad-field": "hello",
+					"metadata":  map[string]any{},
+					"data": map[string]any{
+						"username": "my-username",
+						"password": "my-password",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-kv2-default-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UsernamePasswordDomainCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username": "my-username",
+						"password": "my-password",
+						"domain":   "my-domain",
+					},
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "my-username",
+				password: credential.Password("my-password"),
+				domain:   "my-domain",
+			},
+		},
+		{
+			name: "valid-kv2-override-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					UsernameAttribute: "test-username",
+					PasswordAttribute: "test-password",
+					DomainAttribute:   "test-domain",
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username":      "default-username",
+						"password":      "default-password",
+						"domain":        "default-domain",
+						"test-username": "override-username",
+						"test-password": "override-password",
+						"test-domain":   "override-domain",
+					},
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "override-username",
+				password: credential.Password("override-password"),
+				domain:   "override-domain",
+			},
+		},
+		{
+			name: "valid-kv2-default-username-override-password-default-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					PasswordAttribute: "test-password",
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username":      "default-username",
+						"password":      "default-password",
+						"domain":        "default-domain",
+						"test-username": "override-username",
+						"test-password": "override-password",
+						"test-domain":   "override-domain",
+					},
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "default-username",
+				password: credential.Password("override-password"),
+				domain:   "default-domain",
+			},
+		},
+		{
+			name: "valid-kv2-override-username-default-password-default-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.UsernamePasswordDomainCredentialType),
+					UsernameAttribute: "test-username",
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username":      "default-username",
+						"password":      "default-password",
+						"domain":        "default-domain",
+						"test-username": "override-username",
+						"test-password": "override-password",
+						"test-domain":   "override-domain",
+					},
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "override-username",
+				password: credential.Password("default-password"),
+				domain:   "default-domain",
+			},
+		},
+		{
+			name: "valid-kv2-default-username-default-password-override-domain",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:        string(globals.UsernamePasswordDomainCredentialType),
+					DomainAttribute: "test-domain",
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"username":      "default-username",
+						"password":      "default-password",
+						"domain":        "default-domain",
+						"test-username": "override-username",
+						"test-password": "override-password",
+						"test-domain":   "override-domain",
+					},
+				},
+			},
+			want: &usrPassDomainCred{
+				username: "default-username",
+				password: credential.Password("default-password"),
+				domain:   "override-domain",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := baseToUsrPassDomain(context.Background(), tt.given)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

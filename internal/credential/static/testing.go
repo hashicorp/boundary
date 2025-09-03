@@ -213,6 +213,77 @@ func TestUsernamePasswordCredentials(
 	return creds
 }
 
+// TestUsernamePasswordDomainCredential creates a username password domain credential in the provided DB with
+// the provided project id and any values passed in through.
+// If any errors are encountered during the creation of the store, the test will fail.
+func TestUsernamePasswordDomainCredential(
+	t testing.TB,
+	conn *db.DB,
+	wrapper wrapping.Wrapper,
+	username, password, domain, storeId, projectId string,
+	opts ...Option,
+) *UsernamePasswordDomainCredential {
+	t.Helper()
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	w := db.New(conn)
+
+	opt := getOpts(opts...)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
+	cred, err := NewUsernamePasswordDomainCredential(storeId, username, credential.Password(password), domain, opts...)
+	require.NoError(t, err)
+	require.NotNil(t, cred)
+
+	id := opt.withPublicId
+	if id == "" {
+		id, err = credential.NewUsernamePasswordDomainCredentialId(ctx)
+		require.NoError(t, err)
+	}
+	cred.PublicId = id
+
+	err = cred.encrypt(ctx, databaseWrapper)
+	require.NoError(t, err)
+
+	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, iw db.Writer) error {
+			require.NoError(t, iw.Create(ctx, cred))
+			return nil
+		},
+	)
+	require.NoError(t, err2)
+
+	return cred
+}
+
+// TestUsernamePasswordDomainCredentials creates count number of username password domain credentials in
+// the provided DB with the provided project id. If any errors are
+// encountered during the creation of the credentials, the test will fail.
+func TestUsernamePasswordDomainCredentials(
+	t testing.TB,
+	conn *db.DB,
+	wrapper wrapping.Wrapper,
+	username, password, domain, storeId, projectId string,
+	count int,
+) []*UsernamePasswordDomainCredential {
+	t.Helper()
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
+	creds := make([]*UsernamePasswordDomainCredential, 0, count)
+	for i := 0; i < count; i++ {
+		creds = append(creds, TestUsernamePasswordDomainCredential(t, conn, wrapper, username, password, domain, storeId, projectId))
+	}
+	return creds
+}
+
 // TestSshPrivateKeyCredential creates an ssh private key credential in the
 // provided DB with the provided project and any values passed in through. If any
 // errors are encountered during the creation of the store, the test will fail.

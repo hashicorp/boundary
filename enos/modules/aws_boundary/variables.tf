@@ -31,7 +31,7 @@ variable "worker_instance_type" {
 variable "worker_type_tags" {
   description = "Tag to set on worker for use in worker filters"
   type        = list(string)
-  default     = ["collocated", "prod", "webservers"]
+  default     = ["collocated", "prod", "webservers", "linux"]
 }
 
 variable "worker_ebs_iops" {

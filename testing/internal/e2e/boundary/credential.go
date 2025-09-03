@@ -238,6 +238,43 @@ func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, creden
 	return credentialId, nil
 }
 
+// CreateStaticCredentialPasswordDomainCli uses the cli to create a new username password domain credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialPasswordDomainCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string, domain string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credentials", "create", "username-password-domain",
+			"-credential-store-id", credentialStoreId,
+			"-username", user,
+			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-domain", domain,
+			"-name", fmt.Sprintf("e2e Credential %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", password),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialsResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialsResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password/Domain Credentials: %s", credentialId)
+	return credentialId, nil
+}
+
 // CreateStaticCredentialJsonCli uses the cli to create a new json credential in the provided
 // static credential store.
 // Returns the id of the new credential
@@ -293,5 +330,30 @@ func CreateStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client
 
 	credentialId := createCredentialsResult.Item.Id
 	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	return credentialId, nil
+}
+
+// CreateStaticCredentialPasswordDomainApi uses the API to create a new username-password-domain credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialPasswordDomainApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string, domain string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	c := credentials.NewClient(client)
+	createCredentialsResult, err := c.Create(ctx, "username_password_domain", credentialStoreId,
+		credentials.WithUsernamePasswordDomainCredentialUsername(user),
+		credentials.WithUsernamePasswordDomainCredentialPassword(password),
+		credentials.WithUsernamePasswordDomainCredentialDomain(domain),
+		credentials.WithName(fmt.Sprintf("e2e Credential %s", name)),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password/domain Credentials: %s", credentialId)
 	return credentialId, nil
 }

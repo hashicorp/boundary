@@ -75,6 +75,9 @@ const (
 	// UsernamePasswordCredentialPrefix is the prefix for username/password
 	// creds
 	UsernamePasswordCredentialPrefix = "credup"
+	// UsernamePasswordDomainCredentialPrefix is the prefix for username/password/domain
+	// creds
+	UsernamePasswordDomainCredentialPrefix = "credupd"
 	// UsernamePasswordCredentialPreviousPrefix is the previous prefix for
 	// username/password creds
 	UsernamePasswordCredentialPreviousPrefix = "cred"
@@ -111,6 +114,8 @@ const (
 	TcpTargetPrefix = "ttcp"
 	// SshTargetPrefix is the prefix for TCP targets
 	SshTargetPrefix = "tssh"
+	// RdpTargetPrefix is the prefix for RDP targets
+	RdpTargetPrefix = "trdp"
 
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
@@ -130,6 +135,9 @@ const (
 
 	// TargetAliasPrefix is the prefix for target aliases
 	TargetAliasPrefix = "alt"
+
+	// ProxyServerCertificatePrefix is the prefix for proxy server certificates
+	ProxyServerCertificatePrefix = "psc"
 )
 
 type ResourceInfo struct {
@@ -244,6 +252,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
 	},
+	UsernamePasswordDomainCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
 	UsernamePasswordCredentialPreviousPrefix: {
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
@@ -305,6 +317,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 	SshTargetPrefix: {
+		Type:    resource.Target,
+		Subtype: UnknownSubtype,
+	},
+	RdpTargetPrefix: {
 		Type:    resource.Target,
 		Subtype: UnknownSubtype,
 	},

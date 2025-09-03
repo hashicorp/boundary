@@ -43,8 +43,12 @@ module "aws_bucket" {
   source = "./modules/aws_bucket"
 }
 
-module "aws_rdp_server" {
-  source = "./modules/aws_rdp_server"
+module "aws_rdp_domain_controller" {
+  source = "./modules/aws_rdp_domain_controller"
+}
+
+module "aws_rdp_member_server" {
+  source = "./modules/aws_rdp_member_server"
 }
 
 module "build_crt" {
@@ -117,6 +121,14 @@ module "aws_target" {
   project_name = "qti-enos-boundary"
   environment  = var.environment
   enos_user    = var.enos_user
+}
+
+module "aws_windows_client" {
+  source = "./modules/aws_windows_client"
+}
+
+module "aws_rdp_member_server_with_worker" {
+  source = "./modules/aws_rdp_member_server_with_worker"
 }
 
 module "vault" {

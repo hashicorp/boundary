@@ -223,6 +223,11 @@ message Target {
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "ssh"
     ];
+    RdpTargetAttributes rdp_target_attributes = 203 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "rdp"
+    ];
   }
 
   // Output only. The available actions on this resource for this user.
@@ -321,6 +326,30 @@ message SshTargetAttributes {
       that: "EnableSessionRecording"
     }
   ]; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+// RdpTargetAttributes contains attributes relevant to Targets of type "rdp"
+message RdpTargetAttributes {
+  // The default RDP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
+  // If this is not specified the DefaultPort will be 3389.
+  google.protobuf.UInt32Value default_port = 10 [
+    json_name = "default_port",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.default_port"
+      that: "DefaultPort"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // The default RDP port that will be listened on by the client's local proxy.
+  google.protobuf.UInt32Value default_client_port = 20 [
+    json_name = "default_client_port",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.default_client_port"
+      that: "DefaultClientPort"
+    }
+  ]; // @gotags: `class:"public"`
 }
 
 // WorkerInfo contains information about workers, returned in to the client in SessionAuthorization
@@ -432,6 +461,18 @@ message UsernamePasswordCredential {
 
   // Password of the credential
   string password = 2; // @gotags: `class:"secret"`
+}
+
+// The layout of the struct for "credential" field in SessionCredential for a username_password_domain credential type.
+message UsernamePasswordDomainCredential {
+  // Username of the credential
+  string username = 1; // @gotags: `class:"sensitive"`
+
+  // Password of the credential
+  string password = 2; // @gotags: `class:"secret"`
+
+  // Domain of the credential
+  string domain = 3; // @gotags: `class:"public"`
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a ssh_private_key credential type.

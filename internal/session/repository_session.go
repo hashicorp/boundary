@@ -22,46 +22,38 @@ import (
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
-// session: WorkerId, and PublicId.  No options are
-// currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, error) {
+// session: WorkerId, and PublicId.
+// Supports the withProxyCertificate option
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, opt ...Option) (*Session, error) {
 	const op = "session.(Repository).CreateSession"
-	if newSession == nil {
+	switch {
+	case newSession == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
-	}
-	if newSession.PublicId != "" {
+	case newSession.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
-	}
-	if len(newSession.Certificate) != 0 {
+	case newSession.Certificate != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "certificate is not empty")
-	}
-	if newSession.TargetId == "" {
+	case newSession.TargetId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
-	}
-	if newSession.UserId == "" {
+	case newSession.UserId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
-	}
-	if newSession.AuthTokenId == "" {
+	case newSession.AuthTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
-	}
-	if newSession.ProjectId == "" {
+	case newSession.ProjectId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
-	}
-	if newSession.HostId == "" && newSession.HostSetId == "" && newSession.Endpoint == "" {
+	case newSession.HostId != "" && newSession.HostSetId != "" && newSession.Endpoint == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source and endpoint")
-	}
-	if newSession.CtTofuToken != nil {
+	case newSession.CtTofuToken != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
-	}
-	if newSession.TofuToken != nil {
+	case newSession.TofuToken != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "tofu token is not empty")
-	}
-	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
+	case newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero():
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+	case len(workerAddresses) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker addresses")
 	}
-	if len(workerAddresses) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
-	}
+
+	opts := getOpts(opt...)
 
 	id, err := newId(ctx)
 	if err != nil {
@@ -144,6 +136,22 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 					return errors.Wrap(ctx, err, op)
 				}
 				returnedSession.StaticCredentials = c
+			}
+
+			if opts.withProxyCertificate != nil {
+				sessionProxyCertificate := opts.withProxyCertificate
+				sessionProxyCertificate.SessionId = newSession.PublicId
+
+				if len(sessionProxyCertificate.PrivateKey) == 0 || len(sessionProxyCertificate.Certificate) == 0 {
+					return errors.New(ctx, errors.InvalidParameter, op, "proxy certificate private key or certificate is empty")
+				}
+				err := sessionProxyCertificate.Encrypt(ctx, sessionWrapper)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("failed to encrypt proxy certificate"))
+				}
+				if err = w.Create(ctx, sessionProxyCertificate); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("failed to create proxy certificate"))
+				}
 			}
 
 			// TODO: after upgrading to gorm v2 this batch insert can be replaced, since gorm v2 supports batch inserts
@@ -978,4 +986,34 @@ func decrypt(ctx context.Context, kmsRepo kms.GetWrapperer, session *Session) er
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to decrypt session value"))
 	}
 	return nil
+}
+
+// LookupProxyCertificate will look up a proxy certificate in the repository by session ID.
+// If not found, it returns nil, nil.
+func (r *Repository) LookupProxyCertificate(ctx context.Context, projectId, sessionId string) (*ProxyCertificate, error) {
+	const op = "session.(Repository).LookupProxyCertificate"
+	switch {
+	case projectId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	case sessionId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+	}
+
+	proxyCert := allocProxyCertificate()
+	proxyCert.SessionId = sessionId
+	if err := r.reader.LookupById(ctx, proxyCert); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	wrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeSessions)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get session wrapper"))
+	}
+	err = proxyCert.Decrypt(ctx, wrapper)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to decrypt proxy certificate"))
+	}
+	return proxyCert, nil
 }

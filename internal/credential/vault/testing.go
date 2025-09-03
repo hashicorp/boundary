@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -115,7 +116,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 // libraries in the provided DB with the provided store id. If any errors
 // are encountered during the creation of the credential libraries, the
 // test will fail.
-func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, credType globals.CredentialType, count int) []*CredentialLibrary {
 	t.Helper()
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
@@ -123,7 +124,11 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 	var libs []*CredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), WithMethod(MethodGet))
+		opts := []Option{WithMethod(MethodGet)}
+		if credType != "" {
+			opts = append(opts, WithCredentialType(credType))
+		}
+		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), opts...)
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newCredentialLibraryId(ctx)

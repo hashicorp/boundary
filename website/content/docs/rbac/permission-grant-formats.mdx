@@ -18,9 +18,10 @@ A grant string has a form similar to:
 
 There are two types of selectors:
 
-- An `id` field that indicates a specific resource or a wildcard to match all
+- An `ids` field that indicates a specific resource or a wildcard to match all.
+You can enter multiple comma-separated ID values in a grant string.
 - A `type` field that indicates a specific resource type or a wildcard to match
-  all; this might also be used to grant permissions on collections of resources
+  all; this might also be used to grant permissions on collections of resources.
 
 Selectors are used to indicate the resources on which the grant should apply,
 using specific IDs or wildcard IDs and type selectors.
@@ -43,6 +44,12 @@ This example grants `read` and `update` actions to the resource `hsst_1234567890
 to specify `create` or `list` as actions in this format, because this format
 explicitly identifies a resource.
 The `create` and `list` actions are only supported for collections.
+
+You can enter multiple comma-separated ID values in a grant string:
+
+`ids=hsst_1234567890,hsst_0987654321;actions=read,update`
+
+This example grants the `read` and `update` actions to both resources `hsst_1234567890` and `hsst_0987654321`.
 
 ## Type only
 

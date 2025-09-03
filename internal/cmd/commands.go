@@ -417,6 +417,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "mysql",
 			}
 		}),
+		"connect cassandra": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "cassandra",
+			}
+		}),
 		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -597,6 +603,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credentials create username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credentials create ssh-private-key": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui, opts...),
@@ -617,6 +629,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credentials update username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
@@ -1331,6 +1349,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"targets create rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &targetscmd.RdpCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"targets update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -1339,6 +1363,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"targets update tcp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.TcpCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"targets update rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &targetscmd.RdpCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}

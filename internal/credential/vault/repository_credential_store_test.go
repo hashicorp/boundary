@@ -1441,7 +1441,7 @@ group by store_id, status;
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
-				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
+				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				return
 			},
 		},
@@ -1453,7 +1453,7 @@ group by store_id, status;
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
-				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
+				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
@@ -1466,7 +1466,7 @@ group by store_id, status;
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
-				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
+				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
@@ -1479,7 +1479,7 @@ group by store_id, status;
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
-				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
+				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
@@ -1492,7 +1492,7 @@ group by store_id, status;
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
-				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
+				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 2)
 				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 3)
 				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 5)

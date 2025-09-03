@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(10);
+  select plan(11);
 
   -- Verify the trigger functions exist and are declared properly
   select has_function('update_credential_static_table_update_time');
@@ -11,6 +11,7 @@ begin;
   select has_trigger('credential_static_json_credential', 'update_credential_static_table_update_time');
   select has_trigger('credential_static_ssh_private_key_credential', 'update_credential_static_table_update_time');
   select has_trigger('credential_static_username_password_credential', 'update_credential_static_table_update_time');
+  select has_trigger('credential_static_username_password_domain_credential', 'update_credential_static_table_update_time');
   select has_index('credential_static', 'credential_static_create_time_public_id_idx', array['create_time', 'public_id']);
   select has_index('credential_static', 'credential_static_update_time_public_id_idx', array['update_time', 'public_id']);
 

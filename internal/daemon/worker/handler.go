@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/coder/websocket"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
@@ -31,7 +32,6 @@ import (
 	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"nhooyr.io/websocket"
 )
 
 type HandlerProperties struct {
@@ -280,7 +280,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "error getting decryption function")
 			event.WriteError(ctx, op, err)
 		}
-		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager)
+		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager, proxyHandlers.WithLogger(w.logger))
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
 			event.WriteError(ctx, op, err)
