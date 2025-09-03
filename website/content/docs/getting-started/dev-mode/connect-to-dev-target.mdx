@@ -30,7 +30,7 @@ boundary connect -target-id ttcp_0987654321
 
 For the purpose of this guide, both of these targets accomplish the same goal,
 however they have different purposes. Refer to the
-[domain](/boundary/docs/concepts/domain-model/index) documentation for more information.
+[domain model](/boundary/docs/domain-model/) documentation for more information.
 
 For the rest of this guide, assume the default is used.
 
@@ -82,7 +82,7 @@ These are written as `boundary connect <subcommand>` and are supported for the f
 - RDP
 - SSH
 
-Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) documentation for more information.
+Refer to the [Connect helpers](/boundary/docs/targets/connections/connect-helpers) documentation for more information.
 
 ## Built-in vs. exec
 
@@ -93,7 +93,7 @@ tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
 
-Refer to the [Exec flag](/boundary/docs/concepts/connection-workflows/exec-flag) documentation for more information.
+Refer to the [Exec flag](/boundary/docs/targets/connections/exec-flag) documentation for more information.
 
 ## SSH ProxyCommand
 
@@ -101,7 +101,7 @@ SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a c
 It can help simplify common developer and operator workflows.
 You can configure the file to connect to the target ID or the target domain.
 
-Refer to the [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) documentation for more information.
+Refer to the [SSH ProxyCommand](/boundary/docs/targets/connections/workflow-ssh-proxycommand) documentation for more information.
 
 ## Desktop client
 
@@ -124,5 +124,5 @@ proxy details.
 ## Next steps
 
 See our [basic administration
-workflows](/boundary/tutorials/oss-administration)
+workflow](/boundary/tutorials/community-administration) tutorials
 for in depth discussion on managing scopes, targets, identities, and sessions.

@@ -1,0 +1,106 @@
+---
+layout: docs
+page_title: Terraform patterns for users and auth methods
+description: >-
+  Use Terraform patterns to create and manage Boundary users and auth methods. Learn how to configure password and LDAP auth methods, add accounts, create users.
+---
+
+# Terraform patterns for users and auth methods
+
+Boundary supports password, OIDC, and LDAP auth methods.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+- Created a [scope](/boundary/docs/deploy/terraform-patterns/terraform-scopes) to add the users and auth methods to.
+
+## Auth method configuration
+
+Below is an example of creating a password auth method.  Terraform creates the auth method in the scope that is specified by the `scope_id` option.
+
+```hcl
+resource "boundary_auth_method" "password" {
+  scope_id = boundary_scope.org.id
+  type     = "password"
+}
+```
+
+### LDAP auth method configuration
+
+The next example demonstrates how to create an LDAP auth method.
+
+```hcl
+resource "boundary_auth_method_ldap" "forumsys_ldap" {
+  name          = "forumsys public LDAP"
+  scope_id      = "global"                               # add the new auth method to the global scope
+  urls          = ["ldap://ldap.forumsys.com"]           # the addr of the LDAP server
+  user_dn       = "dc=example,dc=com"                    # the basedn for users
+  user_attr     = "uid"                                  # the user attribute
+  group_dn      = "dc=example,dc=com"                    # the basedn for groups
+  bind_dn       = "cn=read-only-admin,dc=example,dc=com" # the dn to use when binding
+  bind_password = "password"                             # passwd to use when binding
+  state         = "active-public"                        # make sure the new auth-method is available to everyone
+  enable_groups = true                                   # this turns-on the discovery of a user's groups
+  discover_dn   = true                                   # this turns-on the discovery of an authenticating user's dn
+}
+```
+
+## Account and user configuration
+
+After you create an auth method, you need to add accounts to it and create users to represent the accounts. Users and accounts are different constructs. A user is a "parent" object associated to one or more accounts created using a supported auth method.
+
+This example creates 2 accounts using the password auth method and associated users.
+
+```hcl
+# Create a user named "Jeff"
+resource "boundary_account_password" "jeff" {
+  auth_method_id = boundary_auth_method.password.id
+  type           = "password"
+  login_name     = "jeff"
+  password       = "$uper$ecure"
+}
+
+# Associate the Jeff account with a user alias
+resource "boundary_user" "jeff" {
+  name        = "jeff"
+  description = "Jeff's user resource"
+  account_ids = [boundary_account_password.jeff.id]
+  scope_id    = boundary_scope.org.id
+}
+
+#Create a user named Susmitha
+resource "boundary_account_password" "susmitha" {
+  auth_method_id = boundary_auth_method.password.id
+  type           = "password"
+  login_name     = "susmitha"
+  password       = "more$super$ecure"
+}
+
+# And this associates the account with a user alias
+resource "boundary_user" "susmitha" {
+  name        = "susmitha"
+  description = "Susmitha's user resource"
+  account_ids = [boundary_account_password.susmitha.id]
+  scope_id    = boundary_scope.org.id
+}
+```
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+- [Auth methods](/boundary/docs/domain-model/auth-methods)
+- [Users](/boundary/docs/domain-model/users)
+- [Accounts](/boundary/docs/domain-model/accounts)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+- [LDAP accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_ldap/)
+- [OIDC accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc/)
+- [Password accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_password/)
+
+## Next steps
+
+Once you have created users and auth methods, you may want to create [groups for your users or configure RBAC](/boundary/docs/deploy/terraform-patterns/terraform-groups-and-rbac) to define the actions a user is allowed to take.

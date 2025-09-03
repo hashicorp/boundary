@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: Host catalog resource
+description: >-
+  Learn about using the host catalog resource to organize and manage hosts and host sets within a project based on their function, environment, or other criteria.
+---
+
+# Host catalogs
+
+A host catalog is a resource
+that contains [hosts][] and [host sets][].
+A host catalog can only be defined within a [project][].
+
+## Attributes
+
+A host catalog has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the host catalog's project.
+
+- `description` - (optional)
+
+### Plugin host catalog information and attributes
+
+- `plugin_id` - (required)
+  Must reference an installed plugin.
+
+- `attributes` - (optional)
+  A collection of fields which the plugin uses to interface with the backing
+  service.
+
+- `secrets` - (optional)
+  A collection of sensitive fields, like credentials, which the plugin uses to
+  interface with the backing service.  These fields are write-only.
+
+## Referenced by
+
+- [Host][]
+- [Host set][]
+- [Project][]
+
+[host set]: /boundary/docs/domain-model/host-sets
+[host sets]: /boundary/docs/domain-model/host-sets
+[host]: /boundary/docs/domain-model/hosts
+[hosts]: /boundary/docs/domain-model/hosts
+[project]: /boundary/docs/domain-model/scopes#projects
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Host catalog service](/boundary/api-docs/host-catalog-service)

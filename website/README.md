@@ -1,6 +1,6 @@
 # Boundary Documentation Website
 
-This subdirectory contains the content for the [Boundary Website](https://boundaryproject.io/).
+This subdirectory contains the content for the [Boundary Website](https://developer.hashicorp.com/boundary/).
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information

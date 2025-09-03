@@ -1,0 +1,15 @@
+The `unix` listener configures Boundary to listen on a Unix domain socket.
+
+It is only available for listeners for `api` and `cluster` purpose.
+Unix sockets cannot currently be used for `"proxy"` purpose on a worker.
+
+```hcl
+listener "unix" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+}
+```
+
+The `listener` stanza may be specified more than once to make Boundary listen on
+multiple interfaces; however, only one listener marked for `cluster` purpose is
+allowed.

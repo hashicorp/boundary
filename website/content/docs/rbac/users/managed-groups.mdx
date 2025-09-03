@@ -1,0 +1,166 @@
+---
+layout: docs
+page_title: Filtering - managed groups
+description: >-
+  Learn how to configure filters for managed groups. View search filter attributes and examples of filters for OIDC and LDAP managed groups.
+---
+
+# Filter managed groups
+
+This page describes how to use filters with OIDC or LDAP managed groups. It assumes that you are familiar with the Boundary's general filter syntax as well as [OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html) or [LDAP](https://ldap.com/ldap-specifications/).
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+## OIDC filters
+
+Currently, two blocks of data are available for OIDC filters:
+
+- `/token/<claims>` contains claims from the JSON web token (JWT) that is returned by the OIDC Identity
+  Provider (IdP). For example, `/token/sub` is the `"sub"` claim from the token.
+
+- `/userinfo/<claims>` contains claims from the
+  [UserInfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
+  endpoint.
+
+### OIDC examples
+
+The specific content of the claims is unique to the IdP, besides any claims that are part of the OIDC specification.
+We provide some examples in this section using sample claims.
+Refer to your IdP for the specific syntax.
+
+Example JWT claims:
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{
+  "iss": "https://server.example.com",
+  "sub": "24400320",
+  "aud": "s6BhdRkqt3",
+  "nonce": "n-0S6_WzA2Mj",
+  "exp": 1311281970,
+  "iat": 1311280970,
+  "auth_time": 1311280969,
+  "custom": {
+    "department": "infosec"
+  }
+}
+```
+
+</CodeBlockConfig>
+
+Example UserInfo claims:
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{
+  "roles": ["user", "operator"],
+  "sub": "alice@example.com",
+  "email": "rabbithole@example.com",
+  "name": "Alice of Wonderland"
+}
+```
+
+</CodeBlockConfig>
+
+The following are some examples of using these values in filters:
+
+- `"operator" in "/userinfo/roles"` matches users (like Alice) that have
+  `"operator"` in the roles returned by UserInfo.
+
+- `"/token/custom/department" == "infosec" or "/token/custom/department" == "ops"` matches users (like Alice) that are either in the `ops` or `infosec` departments.
+
+## LDAP managed groups
+
+Membership is determined by matching the LDAP group names against an LDAP account's associated groups.
+Every authentication updates the group membership comparison.
+
+To enable managed groups, set the LDAP auth method `enable_groups` attribute to `true`.
+
+After you enable groups on the auth method, the managed group membership is defined as a list with the `group-names` attribute on the managed group itself.
+
+### LDAP auth method search filter attributes
+
+When you define the auth method, you can set a number of group and user attributes to resolve group membership according to the structure of your directory schema.
+
+You can set an optional `group_dn` to define the base distinguished name (DN) to perform a group search under. A common example is:
+
+`ou=Groups,dc=example,dc=com`
+
+Because the directory schema can vary, you may specify a `group_filter` that constructs a group membership query from a template. The following default template is compatible with several common directory schemas:
+
+`(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))`
+
+You may also set a `group_attr` value that enumerates group membership based on the objects returned from the `group_filter`. Common examples include:
+
+- `group_filter` queries returning group objects, use: `cn`. This is the default.
+- `group_filter` queries returning user objects, use: `memberOf`.
+
+### LDAP examples
+
+Directory schemas can vary according to your implementation.
+We provide some examples in this section using the schema declared for the [Online LDAP Test Server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/) provided by ForumSystems.
+Refer to your directory schema for the specific syntax.
+
+LDAP server information (read-only access):
+Server: `ldap.forumsys.com  `
+Port: `389`
+Bind DN: `cn=read-only-admin,dc=example,dc=com`
+Bind password: `password`
+
+All user passwords are `password`. You may also bind to individual Users (uid) or the two Groups (ou) that include:
+
+Mathematicians: `ou=mathematicians,dc=example,dc=com`
+- riemann
+- gauss
+- euler
+- euclid
+
+Scientists: `ou=scientists,dc=example,dc=com`
+- einstein
+- newton
+- galieleo
+- tesla
+
+Example LDAP auth method attributes:
+
+<CodeBlockConfig hideClipboard>
+
+```text
+Attributes:
+  bind_dn:              cn=read-only-admin,dc=example,dc=com
+  bind_password_hmac:   IC29KNPDTPC57nc2aT9UFthOh4Kh1i3660_euBsgL7Y
+  enable_groups:        true
+  group_dn:             dc=example,dc=com
+  state:                active-public
+  urls:                 [ldap://ldap.forumsys.com]
+  user_attr:            uid
+  user_dn:              dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+In this example, the following attributes are set on the LDAP auth method:
+
+- `urls:` `"ldap://ldap.forumsys.com"`
+- `bind-dn`:` "cn=read-only-admin,dc=example,dc=com"`
+- `bind-password`:` file://bind-pass.txt` (passed directly if you use Terraform)
+- `user-dn`:` "dc=example,dc=com"`
+- `user-attr`:` "uid"`
+- `group-dn`:` "dc=example,dc=com"`
+
+Example managed group attributes:
+
+<CodeBlockConfig hideClipboard>
+
+```text
+Attributes:
+  group_names:       [Mathematicians]
+```
+
+</CodeBlockConfig>
+
+In this example, the following attribute is set on the managed group:
+
+- `group-names`: `"Mathematicians"`

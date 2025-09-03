@@ -1,0 +1,94 @@
+---
+layout: docs
+page_title: Filtering - events
+description: >-
+  Learn how to filter audit, observation, system, and telemetry events to find information written to any event sinks you configured.
+---
+
+# Filter events
+
+This page describes how to filter events written to Boundary event sinks.
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+A variety of event types (error, observation,
+system, etc) are emitted from Boundary.   Boundary events can be emitted in
+several formats including [cloudevents](https://github.com/cloudevents/spec) and
+[hclog](https://github.com/hashicorp/go-hclog), and can be encoded as text and
+json.
+
+Boundary allows you to configure any number of sinks where these events will be
+written. When configuring an event sink, you can specify [common sink
+parameters](/boundary/docs/monitor/events/common) which include both
+`allow_filters` and `deny_filters` which use the standard [filter
+syntax](/boundary/docs/filtering) used elsewhere in Boundary.
+
+Example events encoded as cloudevents-text.  The first event is a system event
+and the second event is an observation event.
+
+```json
+{
+  "id": "DU7u227Jhc",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "worker.(Worker).createClientConn",
+    "data": {
+      "address": "127.0.0.1:9201",
+      "msg": "connected to controller"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2021-08-05T18:00:05.303435-04:00"
+}
+{
+  "id": "s5ESg6CckX",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "observation",
+  "data": {
+    "latency-ms": 202.995176,
+    "request_info": {
+      "id": "gtraceid_WiLnGzc2UHmNAYlcQ0sK",
+      "method": "POST",
+      "path": "/v1/auth-methods/ampw_1234567890:authenticate"
+    },
+    "start": "2021-08-05T18:00:34.032333-04:00",
+    "status": 200,
+    "stop": "2021-08-05T18:00:34.235335-04:00",
+    "version": "v0.1"
+  },
+  "datacontentype": "text/plain",
+  "time": "2021-08-05T18:00:34.235357-04:00"
+}
+```
+
+To filter an event sink which was configured for every event type to
+only include the above events, use the following sink configuration:
+```
+sink "stderr" = {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-text"
+    allow_filters = [
+        "\"/data/request_info/path\" contains \":authenticate\"",
+        "\"/data/op\" contains \".createClientConn\"",
+    ]
+    # note: deny_filters are also supported.
+}
+```
+
+When running `boundary dev` the example allow filter can be given via:
+```bash
+boundary dev \
+    -event-allow-filter '"/data/request_info/path" contains ":authenticate"' \
+    -event-allow-filter '"/data/op" contains ".createClientConn"'
+```
+Double quotes are part of the filter syntax; when using the CLI, it is likely
+easier to surround the filter with single quotes than to deal with escaping
+double quotes.
+
+~> **Note:** Both `-event-allow-filter` and `-event-deny-filter` command flags are
+supported for the `boundary dev` command.

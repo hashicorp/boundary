@@ -1,0 +1,71 @@
+---
+layout: docs
+page_title: What is dev mode?
+description: >-
+   Learn about Boundary's dev mode and how it enables you to quickly deploy a temporary, pre-configured Boundary environment for testing and learning purposes.
+---
+
+# What is dev mode?
+
+Dev mode is a method for getting started with Boundary quickly for testing and
+learning purposes. As the name implies, dev mode is not a production
+installation method, and provides a way to get Boundary running with a Postgres
+database easily.
+
+Do not use dev mode in a production environment, refer to the following sections for production-ready deployment methods:
+
+- [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed)
+- [Deploy HCP Boundary](/boundary/docs/hcp/get-started/deploy-and-login)
+- [Terraform patterns for Boundary](/boundary/docs/deploy/terraform-patterns)
+
+Dev mode brings up a fully-functioning instance of Boundary, including:
+
+- A controller server
+- A worker server
+- A Postgres database
+
+These components should all be considered ephemeral - no data persistence occurs
+across dev mode restarts. Along with these external components, dev mode also
+creates several resources within Boundary to make it easier and faster to
+connect to your first target:
+
+1. An org [scope](/boundary/docs/domain-model/scopes) and a project scope with a
+   default ID of `o_1234567890` and `p_1234567890` respectively.
+1. A password [auth method](/boundary/docs/domain-model/auth-methods) with a
+   default auth method ID of `ampw_1234567890`.
+1. An OIDC [auth method](/boundary/docs/domain-model/auth-methods) with a
+   default auth method ID of `amoidc_1234567890`.
+1. An admin user with login name `admin` and password `password`.
+1. An unprivileged user with login name `user` and password `password`.
+1. A static [host catalog](/boundary/docs/domain-model/host-catalogs) with a
+   default ID of `hcst_1234567890`.
+1. A static [host](/boundary/docs/domain-model/hosts) and [host
+   set](/boundary/docs/domain-model/host-sets) with default ID's of
+   `hst_1234567890` and `hsst_1234567890` respectively.
+1. A TCP [target](/boundary/docs/domain-model/targets) with a default ID of
+   `ttcp_1234567890`, directly set-up with an address and port.
+1. A TCP [target](/boundary/docs/domain-model/targets) with a default ID of
+   `ttcp_0987654321` using the previously mentioned static host set.
+
+The default ID suffixes can be overwritten or randomly generated, and there are
+many other dev mode controls. To see a complete list of these override flags,
+consult `boundary dev -h`.
+
+If you plan on provisioning a large number of resources in dev mode, it's
+strongly recommended that users leverage our [Terraform Provider for
+Boundary](https://github.com/hashicorp/terraform-provider-boundary) for managing
+configuration of Boundary. This will simplify starting up and shutting down your
+Boundary dev instance.
+
+## Requirements
+
+There are a few requirements for running dev mode:
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+- A route to download the [Postgres Docker
+   image](https://hub.docker.com/_/postgres) is available or a local image cache
+   is available
+- A [Boundary binary](/boundary/downloads) in your `$PATH`
+- _Optionally_, an [installation of Boundary
+   Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
+   if you want to use the desktop examples

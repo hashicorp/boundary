@@ -1,0 +1,71 @@
+---
+layout: docs
+page_title: Managed group resource
+description: >-
+  Learn about using the managed group resource to organize identity provider accounts and assign them grants. Understand how to configure OIDC and LDAP attributes.
+---
+
+# Managed groups
+
+A managed group is a resource that represents a collection of [accounts][]. The
+collection is formed by evaluating account information defined by the [auth
+method][]'s identity provider against the managed group's configuration; members
+cannot be managed manually. An account can be associated with zero or more
+managed groups within the same [auth method][]. The managed group can be used as
+a principal within [roles][] to assign grants.
+
+## Attributes
+
+All managed group types have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the account's auth method.
+
+- `description` - (optional)
+
+### OIDC managed group information and attributes
+
+Membership in OIDC managed groups is evaluated when the auth method is used for
+authentication, based on information contained within the OIDC ID token and the
+OIDC User Info endpoint. Every authentication will result in a new evaluation of
+managed group membership.
+
+OIDC managed groups have the following additional attributes:
+
+- `filter` - (required)
+  A boolean expression defining a filter run against the provided information.
+  For general syntax information refer to the [filtering concepts][] page; for more specific information on the data available for this purpose refer to the [managed groups filtering][] page.
+
+[filtering concepts]: /boundary/docs/filtering
+[managed groups filtering]: /boundary/docs/rbac/users/managed-groups
+
+### LDAP managed group information and attributes
+
+Membership in LDAP managed groups is evaluated when the auth method is used for
+authentication, based on information contained within the LDAP server. Every
+authentication results in a new evaluation of managed group membership.
+LDAP managed groups have the following additional attributes:
+
+- `group-names` - (required)
+  A list of group names.
+
+## Referenced by
+
+- [Accounts][]
+- [Auth method][]
+
+[accounts]: /boundary/docs/domain-model/accounts
+[auth method]: /boundary/docs/domain-model/auth-methods
+[roles]: /boundary/docs/domain-model/roles
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Managed group service](/boundary/api-docs/managed-group-service)
+
+## Tutorial
+
+Refer to the [Manage users and groups with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-users-groups) tutorial to learn how to complete user management related tasks.
+
+Refer to the [Identity management](/boundary/tutorials/identity-management) tutorials to learn about OIDC, LDAP, and managed groups.

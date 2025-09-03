@@ -1,0 +1,65 @@
+---
+layout: docs
+page_title: Host discovery
+description: >-
+  Learn how host discovery workflows let Boundary discover and onboard new resources. Understand how dynamic host catalogs enable automated host discovery.
+---
+
+# Host discovery
+
+Traditionally, connecting to remote hosts and services requires knowledge of
+the endpoint’s connection info (e.g. the IP address and port of the service).
+This creates complexity when managing the onboarding of new resources at scale
+or dealing with dynamic, ephemeral services whose connection info frequently changes.
+Furthermore, the increased operational overhead of having to manually manage and update
+new or old resources is an inefficient use of time.
+Resources should be tagged appropriately so that, depending on their identity, users
+automatically have the resources that they are allowed to connect to.
+
+**Host discovery** focuses on automating the process of onboarding new or
+changed infrastructure resources – and their connection info – to Boundary
+as hosts.
+
+## Automated host discovery in Boundary
+
+Boundary supports target/host discovery in three primary workflows:
+
+**[Manual configuration](/boundary/tutorials/community-administration/community-manage-targets)**:
+Boundary administrators can manually configure static
+hosts and targets via the administrator UI and CLI. Manual configuration of
+targets with static hosts requires knowledge of the IP address or endpoint used
+to connect to a host.
+
+**[Host discovery via configuration as code with Terraform](/boundary/tutorials/get-started-community/community-get-started-config)**:
+Boundary is fully programmatically instrumented and the discovery and configuration of new
+infrastructure targets can be automated with
+[Boundary’s Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+This allows for dynamic configuration of a host and target without the need
+for prior knowledge of the target’s connection info.
+
+**[Runtime host discovery via dynamic host catalogs](/boundary/tutorials/host-management/aws-host-catalogs)**:
+Boundary dynamic host catalogs automate the ingestion of resources from
+infrastructure providers into Boundary. Boundary hosts are automatically
+created, updated and added to host sets in order to reflect the connection
+information maintained in these providers. This removes the need to know
+host connection info or reapply infrastructure as code templates to
+configure new or changed resources.
+
+## Dynamic host catalogs
+Dynamic host catalogs are an agentless workflow for Boundary to
+securely query infrastructure providers at runtime to discover and configure
+new services. Boundary administrators can define rules for which
+external resources should be ingested into the catalog by
+[creating a host set](/boundary/docs/domain-model/host-sets)
+with an attributes filter. These filters specify which discovered hosts
+should be members of the host set.
+
+Boundary currently supports dynamic host catalog for AWS, Azure, and GCP.
+We will continue to grow this ecosystem to support additional providers.
+
+## Next steps
+To get started with dynamic host catalogs, refer to the following topics:
+
+- [AWS dynamic host catalogs](/boundary/docs/hosts/aws)
+- [Azure dynamic host catalogs](/boundary/docs/hosts/azure)
+- [GCP dynamic host catalogs](/boundary/docs/hosts/gcp)
