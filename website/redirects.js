@@ -1,17 +1,18 @@
 /**
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: BUSL-1.1
+ *
+ * Example redirect:
+ *
+ * {
+ *   source: '/vault/docs/some/path',
+ *   destination: '/vault/docs/some/other/path',
+ *   permanent: true
+ * }
+ *
  */
 
 module.exports = [
-  // define your custom redirects within this file.
-  // vercel's redirect documentation: https://vercel.com/docs/project-configuration#project-configuration/redirects
-  // example redirect:
-  // {
-  //   "source": "/boundary/docs/some/path",
-  //   "destination": "/boundary/docs/some/other/path",
-  //   "permanent": true,
-  // },
   {
     source: '/boundary/docs/overview/what-is-boundary',
     destination: '/boundary/docs/what-is-boundary',
