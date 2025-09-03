@@ -1,15 +1,18 @@
 /**
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: BUSL-1.1
+ *
+ * Example redirect:
+ *
+ * {
+ *   source: '/vault/docs/some/path',
+ *   destination: '/vault/docs/some/other/path',
+ *   permanent: true
+ * }
+ *
  */
 
 module.exports = [
-  // example redirect:
-  // {
-  //   source: '/vault/docs/some/path',
-  //   destination: '/vault/docs/some/other/path',
-  //   permanent: true
-  // },
   {
     source: '/boundary/docs/overview/what-is-boundary',
     destination: '/boundary/docs/what-is-boundary',
