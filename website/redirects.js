@@ -638,7 +638,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/monitor',
-    destination: '/boundary/docs/:version/oss/security/operations',
+    destination: '/boundary/docs/:version/oss/operations',
     permanent: true,
   },
   {
