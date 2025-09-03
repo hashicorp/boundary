@@ -49,9 +49,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source:
-      '/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/use-cases',
-    destination: '/boundary/docs/:version/overview/use-cases',
+    source: '/boundary/docs/:version(v0\\.(?:10)\\.x)/overview/use-cases',
+    destination: '/boundary/docs/:version/use-cases',
     permanent: true,
   },
   {
@@ -132,7 +131,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/overview/faq',
+      '/boundary/docs/:version(v0\\.(?:12|13|14|15|16|17|18)\\.x)/overview/faq',
     destination: '/boundary/docs/:version/troubleshoot/faq',
     permanent: true,
   },
@@ -155,6 +154,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode',
     destination: '/boundary/docs/:version/oss/installing/dev-mode',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/getting-started/dev-mode',
+    destination: '/boundary/docs/:version/getting-started/dev-mode/dev-mode',
     permanent: true,
   },
   {
