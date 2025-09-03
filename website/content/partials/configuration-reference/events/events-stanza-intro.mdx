@@ -1,0 +1,40 @@
+The `events` stanza configures Boundary events-specific parameters.
+
+Example:
+
+```hcl
+events {
+  observations_enabled = true
+  sysevents_enabled = true
+  telemetry_enabled = false
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "hclog-text"
+  }
+  sink {
+    name = "obs-sink"
+    description = "Observations sent to a file"
+    event_types = ["observation"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "events.ndjson"
+    }
+  }
+}
+```
+
+- `audit_enabled` - Specifies if audit events should be emitted.
+
+- `observations_enabled` - Specifies if observation events should be emitted.
+
+- `sysevents_enabled` - Specifies if system events should be emitted.
+
+- `telemetry_enabled` - Specifies if telemetry events should be emitted.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
+
+- `sink` - Specifies the configuration of an event sink. Currently, two types of
+sink are supported: [file](/boundary/docs/monitor/events/file) and [stderr](/boundary/docs/monitor/events/stderr). If no sinks are configured then all
+events will be sent to a default stderr sink. Events may be sent to multiple sinks.

@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: Alias resource
+description: >-
+  Learn about using the alias resource to transparently connect to targets without having to provide the target ID or target name and scope ID.
+---
+
+# Aliases
+
+An alias is a globally unique, DNS-like string that is associated with a destination resource.
+Examples of valid aliases are `webserver` and `webserver.boundary`.
+You can establish a session to a target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
+For example, if you have an alias `boundary.dev`, you can use it to connect to a target with the following command: `boundary connect ssh boundary.dev`.
+
+## Attributes
+
+Aliases have the following attributes:
+
+- `-description=<string>` - Specifies the optional description you want to use to describe the alias for identification purposes.
+- `-destination-id=<string>` - Specifies the ID of the target that the alias points to.
+- `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+- `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+  You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+  At this time, aliases are only supported for the global scope.
+- `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+  The `value` must comply with DNS naming rules.
+
+### Target subtypes
+
+The target subtype has the following additional attributes:
+
+- `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.
+
+## More information
+
+- [Aliases](/boundary/docs/concepts/aliases)

@@ -26,40 +26,20 @@ You can use workers in various ways depending on your needs, as follows:
 
 ### Session proxying
 
-You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in
-[multi-hop](#multi-hop-sessions) sessions and form a chain of proxies to reach deeper into protected networks.
+You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in multi-hop sessions and form a chain of proxies to reach deeper into protected networks.
 
 ### Worker authentication
 
-Workers can [authenticate](/boundary/docs/concepts/security/connections-tls#pki-based-worker-authentication) directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication."
+Workers can authenticate directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication."
 
 ### Controller proxy
 
-In situations where controllers need access to a private service but don't have network access to it, workers can act as a proxy for communication. This is currently
-supported for controllers connecting to a [private Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection)
-environment.
+In situations where controllers need access to a private service but don't have network access to it, workers can act as a proxy for communication. This is currently supported for controllers connecting to a private Vault environment.
 
 ### Protocol decryption
 
-Workers can perform SSH protocol decryption for [credential injection](/boundary/docs/concepts/credential-management#credential-injection) and [session
-recording](/boundary/docs/concepts/domain-model/session-recordings). For session recording, workers also write the recorded session contents directly to the [storage
-bucket](/boundary/docs/concepts/domain-model/storage-buckets).
-
-## Tags
-In multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often
-desired to reduce latency or comply with security standards. You can assign workers [tags](/boundary/tutorials/worker-management/target-aware-workers) that Boundary
-can [filter](/boundary/docs/concepts/filtering/worker-tags) through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers
-with tag “A,” to connect to targets in “Network A.”
-
-![Boundary architecture example showing workers with tags](/img/worker-tags.png)
-
-## Status and health
-Boundary workers report their status to controllers on a regular basis. You can view the last time a worker reported its status in the
-admin UI as **Last Seen** and in the CLI as the **Last Status Time**. If a worker hasn't reported status recently, it can be an
-indication of an unhealthy worker.
-
-You can query the worker health endpoint to determine the health of a worker. The endpoint returns the worker state, active
-session count, and connection state of the worker. For more information, refer to the [health endpoints](/boundary/docs/operations/health) documentation.
+Workers can perform SSH protocol decryption for credential injection and session recording. For session recording, workers also write the recorded session contents directly to the storage
+bucket.
 
 ## Multi-hop sessions
 
@@ -69,14 +49,35 @@ Most organizations want to provide access to infrastructure without exposing pri
 inbound traffic to route through multiple network enclaves in order to reach the target system.
 Multi-hop sessions allow you to chain together two or more workers across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
-Refer to the [multi-hop sessions](/boundary/docs/concepts/connection-workflows/multi-hop) documentation for more information.
+## Tags
 
-## Deployment
-Workers are services that can run on a container or virtual machine. You should deploy them strategically within networks to provide access to targets. In
-all editions of Boundary, workers are fully self-managed and can be deployed anywhere. In HCP Boundary, HCP-managed workers are automatically deployed with the cluster.
+In multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often
+desired to reduce latency or comply with security standards. You can assign workers tags that Boundary
+can filter through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers with tag “A,” to connect to targets in “Network A.”
 
-To learn more about workers and deployment, see:
-* [Worker configuration](/boundary/docs/configuration/worker)
-* [Recommended architecture](/boundary/docs/install-boundary/recommended-architecture)
-* [Worker system requirements](/boundary/docs/install-boundary/system-requirements)
-* [Worker management tutorials](/boundary/tutorials/worker-management)
+![Boundary architecture example showing workers with tags](/img/worker-tags.png)
+
+## Status and health
+
+Boundary workers report their status to controllers on a regular basis. You can view the last time a worker reported its status in the admin UI as **Last Seen** and in the CLI as the **Last Status Time**. If a worker hasn't reported status recently, it can be an indication of an unhealthy worker.
+
+You can query the worker health endpoint to determine the health of a worker. The endpoint returns the worker state, active session count, and connection state of the worker.
+
+## Tutorial
+
+Refer to the [HCP credential injection with private Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection) tutorial to practice configuring credential injection.
+
+Refer to the [Worker-aware targets](/boundary/tutorials/worker-management/target-aware-workers) tutorial to practice configuring worker-aware targets and applying worker filters.
+
+
+## More information
+
+Refer to the following topics for more information:
+
+- [TLS in Boundary](/boundary/docs/secure/encryption/connections-tls)
+- [Credential injection](/boundary/docs/concepts/credential-management#credential-injection)
+- [Session recording](/boundary/docs/session-recording)
+- [Route traffic through a worker](/boundary/docs/workers/worker-tags)
+- [Boundary health endpoints](/boundary/docs/monitor/health)
+- [Multi-hop sessions](/boundary/docs/workers/multi-hop)
+- [Filtering and listing resources](/boundary/docs/filtering)
