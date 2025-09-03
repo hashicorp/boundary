@@ -1,0 +1,310 @@
+---
+layout: docs
+page_title: Connections/TLS
+description: >-
+  Learn how Boundary uses transport layer security (TLS) to secure connections and establish sessions. Understand how workers authenticate to resources.
+---
+
+# TLS in Boundary
+
+As a security product, Boundary has been designed from the ground up to ensure
+its connections are secure. There are three types of connections in Boundary;
+this page will describe how TLS works with each of them.
+
+Some of the ways that Boundary uses TLS, e.g. for client-to-worker connections,
+are different from most other products. It may not be readily apparent that user
+configuration of TLS on the listening port of Workers is not only not required,
+but more secure; however, when it comes to TLS, Boundary tries to provide high
+security by default with simplicity of operation.
+
+Details are in the individual sections below.
+
+## Client-to-controller TLS
+
+Boundary's API access (that is, the Controller server defaulting to port 9200)
+uses standard PKI. TLS is configured by providing a valid certificate (and
+optionally CA certificate or chain) and clients must trust that CA chain. This
+provides broad compatibility with a wide array of clients.
+
+It is possible to require client certificates; see the configuration for
+`listener` blocks to see the available TLS parameters.
+
+## Client-to-worker TLS
+
+Workers do not require any configuration for their client-facing listeners to
+support a high degree of security. Instead, the TLS configuration to use is
+determined dynamically via SNI, and the session is then mutually authenticated.
+Here's how it works:
+
+TLS establishment is performed as follows:
+
+1. When the session is authorized, the Controller generates a TLS certificate
+   acting as a self-contained chain. This is similar to the Worker-to-Controller
+   flow above, but in this case the key is an Ed25519 key generated via
+   derivation from a base key within the Controller, which itself is protected
+   at rest via the "root" KMS for the scope that contains the target. The
+   derivation uses HKDF-SHA256 with the user ID and the session ID as inputs.
+   The lifetime of the certificate is tied to the lifetime of the session.
+
+2. The certificate and private key (along with other session authorization data,
+   notably the session ID) are returned to the client as part of the output of an
+   `authorize-session` action against a target, in the form of a marshaled object.
+   The controller persists the certificate in the database, but not the private
+   key.
+
+3. The client (that is, the `boundary connect` command) parses this session
+   authorization data and uses the certificate and private key to construct a TLS
+   stack. It then makes a TLS 1.3 connection to a Worker, passing the session ID as
+   the SNI value.
+
+4. The worker sees the SNI value and makes a call to the Controller to fetch
+   session authorization information, keyed by the session ID.
+
+5. The Controller looks for a session with the given ID and fetches the
+   information. Using the session ID and the user ID tied to the session, it
+   re-derives the private key and passes all of the information back to the Worker.
+   Notably, this may include a TOFU (Trust On First Use) token.
+
+6. The Worker uses the given data to construct a TLS stack with the same
+   certificate and key.
+
+7. The connection is mutually authenticated; on each end, only the single
+   self-signed CA certificate that was securely transmitted is configured as a
+   valid root CA for validation checking.
+
+8. If successful, the client and Worker perform a handshake, where the client
+   passes a TOFU (Trust On First Use) value to the Worker. This value is derived
+   when the client is created; that is, when `boundary connect` is run. This allows
+   for a single client to make multiple connections within a session, without the
+   credentials being usable via a different client:
+
+9. If the worker was not given a TOFU token in step 5, the worker submits the
+  value to the Controller. The Controller verifies (via a database transaction)
+  that the session has not had a different TOFU token submitted prior and stores
+  it. Otherwise it's rejected, and so is the connection, as a possible replay
+  attack.
+
+10. If the Worker was given a TOFU token in step 5, it checks to see whether the
+  token values match. If not, the connection is rejected as a possible replay
+  attack.
+
+In the future, to support other client paradigms, we may support user
+configuration of the Worker's client-facing TLS. In this model, the shared
+certificate/private key would instead act as credentials for the session,
+similar to a username/password.
+
+
+## Worker-to-upstream TLS
+
+Workers connect to upstreams (Controllers, or other Workers) via TLS
+connections. In order to make these connections, Workers have to be
+authenticated to the cluster. How this authentication and session establishment
+takes place can happen in one of two ways: by a built-in X.509-based PKI system,
+or by leveraging a KMS system to provide secure transport of authentication
+information.
+
+The KMS-based mechanism provides zero-touch registration of Workers to a
+cluster, while the PKI mechanism provides positive access control at
+registration time. Currently, HCP Boundary deployments only support PKI
+authentication for self-managed Workers.
+
+### PKI-based worker authentication
+
+In the PKI-based authentication mechanisms, Workers are registered to the
+cluster by informing the cluster of a Worker's public signing and encryption
+keys. The cluster then returns to the Worker a set of signed certificates and a
+Controller public encryption key. This process is arbited by the operator (or a
+provisioning system) to provide security for transport of the initial public key
+material.
+
+The PKI mechanism is set up via transport of a single value from the Worker to
+any cluster Controller. Once established, certificates and encryption keys are
+automatically rotated periodically, currently at a period of two weeks.
+
+There are two variations on this mechanism: _worker-led_, where the Worker
+produces the initial key material, and _controller-led_, where the Controller produces
+the initial key material.
+
+Note that the mechanisms described in this section omit detail for clarity.
+
+#### Worker-led PKI-based registration
+
+Registration proceeds as follows:
+
+1. The Worker generates a signing public/private Ed25519 keypair and an
+   encryption public/private X25519 keypair, along with a registration nonce,
+   and provides these values in a bundle to the operator or orchestration
+   system. The bundle is signed with the Worker's private Ed25519 key (signing
+   ensures that a Meddler-in-the-Middle (MITM) that is able to snoop traffic
+   will be unable to masquerade as the Worker in requests sent to the
+   Controller, due to lacking the Worker's private signing key; as a result it
+   should never be properly registered or sent sessions to proxy).
+
+2. The operator or orchestration system submits this bundle to a Controller in
+   the cluster via an authenticated and authorized API call, requesting that a
+   Worker resource be created tied to the given key information.
+
+3. The Controller creates a Worker resource and associates it to the given key
+   material. The Controller also signs a _client-only_ certificate
+   authenticating the Worker's signing key and generates its own encryption
+   public/private keypair specific to that Worker.
+
+4. The Worker requests to its configured upstream(s) to fetch its issued
+   credentials. It provides its public keys and original registration nonce in
+   the request, which is signed via the Worker's private Ed25519 key. (Here
+   again this means that a MitM cannot masquerade as the Worker due to lacking
+   the signing key.) If the configured upstream is a Controller, it can respond
+   directly; otherwise the request is relayed up to the cluster Controllers.
+
+5. A Controller receiving the request validates that the provided nonce matches
+   the nonce in the bundle provided by the operator/orchestration system in step
+   2, and that the keys also match. If so, the Controller uses its
+   Worker-specific encryption private key and the Worker's encryption public key
+   to derive a shared symmetric encryption key, and uses it to encrypt the
+   Worker certificate, its CA certificate, and the nonce, and returns it to the
+   Worker along with its encryption public key.
+
+6. The Worker uses the given Controller encryption public key and its private
+   key to derive the shared symmetric key; confirms it can decrypt the returned
+   bundle; and validates the nonce, storing the issued certificate and CA
+   certificate.
+
+#### Controller-led PKI-based registration
+
+Registration proceeds as follows:
+
+1. An operator requests a worker activation token. The Controller creates a Worker resource and generates a single-use
+activation token and nonce, returning this value to the operator.
+
+2. The operator puts this token in the `controller_generated_activation_token` field of a worker's configuration
+file.
+
+3. The Worker generates a signing public/private Ed25519 keypair and an
+encryption public/private X25519 keypair, and signs this bundle.
+
+4. The Worker sends a request to its configured upstream(s) to fetch its issued
+credentials. It provides its public keys and the activation token in
+the request, which is signed via the Worker's private Ed25519 key. (A man-in-the-middle cannot masquerade as the Worker due to lacking
+the signing key.) If the configured upstream is a Controller, it can respond
+directly; otherwise the request is relayed to the cluster's Controllers.
+
+5. A Controller receiving the request validates the activation token generated in step 1.
+If the token is validated, the Controller associates the given key material with the premade Worker resource.
+The Controller also signs a _client-only_ certificate authenticating the Worker's signing key,
+and generates its own encryption public/private keypair specific to that Worker. The keypair is used
+to derive a shared symmetric encryption key, and to encrypt the
+Worker certificate and its CA certificate. The Controller returns it to the
+Worker along with its public encryption key.
+
+6. The Worker uses the given Controller encryption public key and its private
+key to derive the shared symmetric key, confirms it can decrypt the returned
+bundle, and stores the issued certificate and CA certificate.
+
+#### PKI-based session establishment
+
+Using the stored credentials, a PKI-based worker establishes a session as
+follows:
+
+1. The Worker initiates a TLS connection to an upstream, presenting its TLS
+   certificate along with a signed bundle containing a nonce.
+
+2. The upstream requests a just-in-time server certificate (remember,
+   certificates issued during registration are client-only), either directly (if
+   a Controller) or via a proxied request to a Controller (if another Worker).
+   The request conveys the Worker's nonce as well as the key ID from the client
+   certificate.
+
+3. A cluster Controller validates the key ID to ensure it is a registered
+   worker, then creates a certificate with a short validation period that embeds
+   the Worker's nonce, signed with the cluster's CA certificate. The Controller
+   issuing this certificate has now authenticated the incoming Worker to the
+   upstream, as the Controller has now vouched for the validity of the Worker
+   tied to the client certificate. (Technically client certificate verification
+   happens later in the TLS handshake, but conceptually this is when the
+   incoming Worker is authenticated to the upstream.)
+
+4. The upstream presents this server certificate to the Worker. The Worker
+   validates that its nonce is embedded in the certificate and that the
+   certificate chain can be validated to one of its saved CAs. This
+   authenticates the upstream to the incoming Worker, since the trusted root has
+   issued a new certificate containing the expected nonce and provided it to the
+   upstream.
+
+5. The TLS connection is now established, and the upstream can handle the Worker
+   protocol.
+
+#### PKI-based credential rotation
+
+Periodically, a PKI-based Worker will trigger rotation of its credentials. The
+mechanism is as follows:
+
+1. The Worker generates a new signing public/private Ed25519 keypair and a new
+   encryption X25519 public/private keypair.
+
+2. The Worker creates a request to fetch new credentials from the Controller,
+   providing its new public keys and an operation nonce in the request,
+   encrypted with the current shared symmetric encryption key via the current
+   X25519 parameters. As only the Controllers and the Worker can derive this
+   shared symmetric key, the Worker knows that for the request to be satisfied
+   it must be handled by an already-trusted Controller.
+
+3. The Controller decrypts the bundle and registers the new key information to
+   the Worker resource. It generates a new certificate and encryption
+   public/private keypair and returns the certificate, current CA, operation
+   nonce, and encryption public key to the worker. All but the encryption public
+   key are encrypted with the symmetric key derived from the new Controller
+   encryption private key/new Worker encryption public key.
+
+4. This information is itself encrypted with the existing symmetric encryption
+   key, and this value returned to the Worker.
+
+5. The Worker decrypts the outer bundle with its current information, uses that
+   to retrieve an authenticated new encryption public key from the Controller,
+   then uses that with its new encryption private key to derive the new shared
+   symmetric encryption key. That new key is used to decrypt the rest of the
+   parameters, and the nonce is checked to ensure that the response is for the
+   current operation started by the Worker in step 1.
+
+6. The Worker has validated that a trusted Controller provided the new
+   certificate information and encryption parameters and that those parameters
+   can be used to successfully derive a shared symmetric encryption key. The
+   Worker saves the new credentials and uses them going forwardl
+
+### KMS-based worker authentication
+
+Workers can take advantage of the [KMS](/boundary/docs/secure/encryption/data-encryption)
+key designated for `worker-auth` within Boundary's configuration file, which
+must point to the same key on the KMS for both the Controller and the Worker.
+Security of the connection relies on secure transmission of a single set of
+allowed TLS parameters, which forms the entire allowable CA chain for the
+connection.
+
+TLS establishment is performed as follows:
+
+1. The Worker generates a TLS certificate acting as a self-contained chain, as
+   well as a nonce. The generated key type is currently Ed25519. The certificate is
+   valid for a total of 2.5 minutes: thirty seconds before the current time (to
+   allow for some minor clock drift) and two minutes after (to allow time to
+   establish the connection).
+
+2. The Worker marshals the TLS chain and nonce and encrypts the resulting bytes
+   via the shared KMS. This value is marshaled and split into chunks.
+
+3. The Worker establishes a TLS 1.3 connection to the Controller. The encrypted
+   value is transmitted to the Controller via the TLS ALPN field as numbered
+   chunks.
+
+4. The Controller reads the chunks and reassembles them into the original
+   encrypted value.
+
+5. The Controller decrypts this value via the shared KMS. If successful, the
+   Controller validates that the nonce is not known to ensure that this is not a
+   replay. The nonce value is checked against and stored into the database,
+   ensuring that nonce replay cannot occur across controllers.
+
+6. The Controller uses the decrypted parameters to configures its TLS stack with
+   the same certificate and key.
+
+7. The connection is mutually authenticated; on each end, only the single
+   self-signed CA certificate that was securely transmitted is configured as a
+   valid root CA for validation checking.

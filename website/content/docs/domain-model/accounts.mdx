@@ -1,0 +1,80 @@
+---
+layout: docs
+page_title: Account resource
+description: >-
+  Learn about using the accounts resource to establish the identities of users. Understand how to configure general, password, and LDAP account attributes.
+---
+
+# Accounts
+
+An account is a resource
+that represents a unique set of credentials
+issued from a configured [auth method][]
+which can be used to establish the identity of a user.
+A [user][] can have zero or more accounts
+but an account can only belong to a single user.
+An account can only be associated with a user
+in the same scope as the account's [auth method][].
+
+## Attributes
+
+All account types have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the account's auth method.
+
+- `description` - (optional)
+
+### Password account attributes
+
+Password account types have the following additional attributes:
+
+- `login_name` - (required)
+  Must be unique within the account's auth method.
+  Can only contain lower case letters.
+
+- `password` - (optional)
+  Not setting the `password` disables the account.
+
+### LDAP account attributes
+
+LDAP account types have the following additional attributes:
+
+- `login_name` - (required)
+  Must be unique within the account's auth method.
+  Can only contain lower case letters.
+
+- `full_name` - (output only)
+  Maps to the name attribute for the authenticated user, and is updated every
+  time the user successfully authenticates. It is empty until the user's
+  first successful authentication.
+
+- `email` - (output only)
+  Maps to the email address attribute for the authenticated user, and is updated
+  every time the user successfully authenticates. It is empty until the
+  user's first successful authentication.
+
+- `dn` - (output only)
+  Maps to the distinguished name for the authenticated user, and is updated
+  every time the user successfully authenticates. It is empty until the
+  user's first successful authentication.
+
+- `member_of_groups` - (output only)
+  A list of the groups the authenticated user is a member of. It is empty
+  until the user's first successful authentication.
+
+## Referenced by
+
+- [Auth method][]
+- [Managed group][]
+- [User][]
+
+[auth method]: /boundary/docs/domain-model/auth-methods
+[managed group]: /boundary/docs/domain-model/managed-groups
+[user]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Account service](/boundary/api-docs/account-service)

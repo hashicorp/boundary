@@ -1,0 +1,498 @@
+---
+layout: docs
+page_title: GCP dynamic host catalogs
+description: >-
+  Use dynamic host catalogs to automatically discover GCP Compute Engine VM instances and add them as hosts. Create a host catalog and host set for GCP resources.
+---
+# GCP dynamic host catalogs
+
+Boundary uses dynamic host catalogs to automatically discover GCP Compute Engine VM instances and add them as hosts.
+
+You can authenticate to GCP using a service account, service impersonation, or the GCP Application Default Credentials (ADC):
+
+<Tabs>
+<Tab heading="Service account" group="account">
+
+To authenticate using the service account, create a service account in GCP and download the private key file.
+
+The service account should have the following roles:
+
+  - `roles/compute.viewer`: (Required) To list Compute Engine VM instance in the project.
+  - `roles/iam.serviceAccountKeyAdmin`: (Optional) To rotate the service account key if `disable_credential_rotation` is set to `false`.
+
+</Tab>
+
+<Tab heading="Service impersonation" group="impersonation">
+
+Service account impersonation allows Boundary to authenticate with GCP using a service account that impersonates another service account.
+Impersonation is useful when you want to restrict the permissions of the service account Boundary uses.
+
+You must create two service accounts to authenticate using service impersonation:
+
+- `Base service account`: The service account Boundary uses to authenticate with GCP. The service account should have the following roles:
+  - `roles/iam.serviceAccountTokenCreator`: (Required) To create a token for the target service account.
+  - `roles/iam.serviceAccountKeyAdmin`: (Optional) To rotate the service account key if `disable_credential_rotation` is set to `false`.
+
+- `Target service account`: The service account to impersonate. The service account should have the following role:
+  - `roles/compute.viewer`: (Required) To list Compute Engine VM instance in the project.
+
+</Tab>
+
+<Tab heading="Application Default Credential (ADC)" group="ADC">
+
+If you run Boundary on a GCP VM instance, you can use Application Default Credentials (ADC) to authenticate with GCP.
+Boundary uses the service account associated with the VM instance to authenticate with GCP.
+
+</Tab>
+</Tabs>
+
+<Note>
+
+If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+You can use the `jq` utility to remove the extra `/n` characters. For example:
+
+```shell-session
+$ jq -r '.private_key' my-gcp-private-key.json
+```
+
+</Note>
+
+## Create a host catalog to connect with GCP
+
+Boundary uses plugins to integrate with a variety of providers.
+To use a dynamic host catalog to integrate with GCP, you create a host catalog of the `plugin` type and set the `plugin-name` value to `gcp`.
+
+You must also provide the specific fields needed for Boundary to authenticate with GCP.
+The required fields depend on whether you authenticate using the service account, service impersonation, or the GCP Application Default Credentials (ADC).
+
+Complete the following steps to create a dynamic host catalog for GCP:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host catalog for.
+1. Select **Host Catalogs**.
+1. Select **New Host Catalog**.
+1. Complete the following fields:
+    - **Name**: (Optional) An optional description of the host catalog for identification purposes.
+    If you enter a name, it must be unique.
+    - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+    - **Type**: (Required) Select **Dynamic** to create a dynamic host catalog.
+    - **Provider**: (Required) Select **GCP** to create a dynamic host catalog for your GCP resources.
+
+      The required fields for creating a dynamic host catalog depend on the type of authentication you configure.
+
+    <Tabs>
+    <Tab heading="Service account" group="account">
+
+    - **Project ID**: (Required) The project ID of any instances that you want to add to the host catalog.
+    - **Zone**: (Required) The GCP zone of the instances that you want to add to the host catalog.
+    - **Client Email**: The unique email address that is used to identify the service account.
+    It is required when you authenticate using the service account.
+    - **Target Service Account ID**: Skip this field when you configure authentication using the service account.
+    It is only used when you authenticate using service account impersonation.
+    - **Private Key ID**: The unique identifier of the private key.
+    It is required when you authenticate using the service account.
+    - **Private Key**: The private key used to obtain an OAuth 2.0 access token.
+    The key must be PEM encoded.
+    It is required when you authenticate using the service account.
+
+      If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+      You can use `jq` to remove the extra `/n` characters.
+
+    </Tab>
+
+    <Tab heading="Service impersonation" group="impersonation">
+
+    - **Project ID**: (Required) The project ID of any instances that you want to add to the host catalog.
+    - **Zone**: (Required) The GCP zone of the instances that you want to add to the host catalog.
+    - **Client Email**: The unique email address that is used to identify the base service account.
+    It is required when you authenticate using service account impersonation.
+    - **Target Service Account ID**: The unique identifier for the service account that is impersonated.
+    It is required when you authenticate using service account impersonation.
+    - **Private Key ID**: The unique identifier of the private key for the base service account.
+    It is required when you authenticate using service account impersonation.
+    - **Private Key**: The private key used to obtain an OAuth 2.0 access token.
+    The key must be PEM encoded.
+    It is required when you authenticate using service account impersonation.
+
+      If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+      You can use `jq` to remove the extra `/n` characters.
+
+    </Tab>
+
+    <Tab heading="Application Default Credential (ADC)" group="ADC">
+
+    - **Project ID**: (Required) The project ID of any instances that you want to add to the host catalog.
+    - **Zone**: (Required) The GCP zone of the instances that you want to add to the host catalog.
+    - **Client Email**: (Optional) The unique email address that is used to identify the base service account.
+    - **Target Service Account ID**: Skip this field when you configure authentication using the ADC.
+    It is only used when you authenticate using service account impersonation.
+    - **Private Key ID**: (Optional) The unique identifier of the private key for the base service account.
+    - **Private Key**: (Optional) The private key used to obtain an OAuth 2.0 access token.
+    The key must be PEM encoded.
+
+      If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+      You can use `jq` to remove the extra `/n` characters.
+
+    </Tab>
+    </Tabs>
+
+    - **Worker Filter**: (Optional) An optional filter to route requests to a designated worker.
+    - **Disable credential rotation**: (Optional) When enabled, Boundary does not rotate the credentials with GCP automatically.
+1. Select **Save**.
+
+</Tab>
+
+<Tab heading="CLI" group="cli">
+
+The required fields for creating a dynamic host catalog depend on the type of authentication you configure.
+
+<Tabs>
+<Tab heading="Service account" group="account">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog for GCP:
+
+  ```shell-session
+  $ boundary host-catalogs create plugin \
+    -scope-id $BOUNDARY_PROJECT_ID \
+    -plugin-name gcp \
+    -attr disable_credential_rotation=true \
+    -attr zone=us-central1-a \
+    -attr project_id=env://GCP_PROJECT_ID \
+    -attr client_email=env://CLIENT_EMAIL \
+    -secret private_key_id=env://PRIVATE_KEY_ID \
+    -secret private_key=file://$PRIVATE_KEY_FILE_PATH
+  ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+
+  The fields following the `attr` and `secret` flags are specific to GCP and are used by Boundary for authentication:
+
+    - `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials automatically.
+    - `zone`: (Required) The GCP zone of the instances that you want to add to the host catalog.
+    - `project_id`: (Required) The project ID of any instances that you want to add to the host catalog.
+    - `client_email`: The unique email address that is used to identify the service account.
+    It is required when you authenticate using the service account.
+    - `private_key_id`: The unique identifier of the private key.
+    It is required when you authenticate using the service account.
+    - `private_key`: The private key used to obtain an OAuth 2.0 access token.
+    The key must be PEM encoded.
+    It is required when you authenticate using the service account.
+
+    If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+    You can use `jq` to remove the extra `/n` characters.
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Service impersonation" group="impersonation">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog for GCP:
+
+  ```shell-session
+  $ boundary host-catalogs create plugin \
+    -scope-id $BOUNDARY_PROJECT_ID \
+    -plugin-name gcp \
+    -attr disable_credential_rotation=true \
+    -attr zone=us-central1-a \
+    -attr project_id=env://GCP_PROJECT_ID \
+    -attr client_email=env://BASE_SERVICE_ACCOUNT_EMAIL \
+    -attr target_service_account_id=env://TARGET_SERVICE_ACCOUNT_EMAIL \
+    -secret private_key_id=env://BASE_SERVICE_ACCOUNT_PRIVATE_KEY_ID \
+    -secret private_key=file://$BASE_SERVICE_ACCOUNT_PRIVATE_KEY_FILE_PATH
+  ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+
+  The fields following the `attr` and `secret` flags are specific to GCP and are required by Boundary for authentication:
+
+    - `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials with GCP automatically.
+    - `zone`: (Required) The deployment area within a region.
+    All host sets in this catalog are configured for this zone.
+    - `project_id`: (Required) The project ID associated with the service account.
+    - `client_email`: The email address used to uniquely identify the base service account.
+    It is required when you authenticate using service account impersonation.
+    - `target_service_account_id`: The email address of the service account to impersonate.
+    It is required when you authenticate using service account impersonation.
+    - `private_key_id`: The ID of the private key for the base service account to use with this host catalog.
+    It is required when you authenticate using service account impersonation.
+    - `private_key`: The private key for the base service account to use with this host catalog.
+    It is required when you authenticate using service account impersonation.
+
+    If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+    You can use `jq` to remove the extra `/n` characters.
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Application Default Credential (ADC)" group="ADC">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog for GCP:
+
+  ```shell-session
+  $ boundary host-catalogs create plugin \
+    -scope-id $BOUNDARY_PROJECT_ID \
+    -plugin-name gcp \
+    -attr disable_credential_rotation=true \
+    -attr zone=us-central1-a \
+    -attr project_id=env://GCP_PROJECT_ID
+  ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+
+  The fields following the `attr` flag are specific to GCP and are required by Boundary for authentication:
+
+    - `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials with GCP automatically.
+    - `zone`: (Required) The deployment area within a region.
+    All host sets in this catalog are configured for this zone.
+    - `project_id`: (Required) The project ID associated with the service account.
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+</Tab>
+
+<Tab heading="Terraform" group="terraform">
+
+The required fields for creating a dynamic host catalog depend on the type of authentication you configure.
+
+<Tabs>
+<Tab heading="Service account" group="account">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    # recommended to pass in aws secrets using a file() or using environment variables
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = "GCP_PROJECT_ID_VALUE",
+      "client_email" = "GCP_CLIENT_EMAIL_VALUE",
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "private_key_id" = "GCP_PRIVATE_KEY_ID_VALUE",
+      "private_key" = "GCP_PRIVATE_KEY_VALUE"})
+  }
+  ```
+
+  The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
+
+  The fields following `attributes_json` and `secrets_json` are specific to GCP and are used by Boundary for authentication:
+
+  - `zone`: (Required) The GCP zone of the instances that you want to add to the host catalog.
+  - `project_id`: (Required) The project ID of any instances that you want to add to the host catalog.
+  - `client_email`: The unique email address that is used to identify the service account.
+  It is required when you authenticate using the service account.
+  - `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials automatically.
+  - `private_key_id`: The unique identifier of the private key.
+  It is required when you authenticate using the service account.
+  - `private_key`: The private key used to obtain an OAuth 2.0 access token.
+  The key must be PEM encoded.
+  It is required when you authenticate using the service account.
+
+  If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+  You can use `jq` to remove the extra `/n` characters.
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Service impersonation" group="impersonation">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    # recommended to pass in aws secrets using a file() or using environment variables
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = "GCP_PROJECT_ID_VALUE",
+      "client_email" = "GCP_BASE_SERVICE_ACCOUNT_EMAIL_VALUE",
+      "target_service_account_id" = "GCP_TARGET_SERVICE_ACCOUNT_EMAIL_VALUE",
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "private_key_id" = "BASE_SERVICE_ACCOUNT_PRIVATE_KEY_ID_VALUE",
+      "private_key" = "BASE_SERVICE_ACCOUNT_PRIVATE_KEY_VALUE"})
+  }
+  ```
+
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
+
+The fields following `attributes_json` and `secrets_json` are specific to GCP and are required by Boundary for authentication:
+
+- `zone`: (Required) The deployment area within a region. All host sets in this
+  catalog are configured for this zone.
+- `project_id`: (Required) The project ID associated with the service account.
+- `client_email`: The email address used to uniquely identify the base service account.
+It is required when you authenticate using service account impersonation.
+- `target_service_account_id`: The email address of the service account to impersonate.
+It is required when you authenticate using service account impersonation.
+- `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials with GCP automatically.
+- `private_key_id`: The ID of the private key for the base service account to use with this host catalog.
+It is required when you authenticate using service account impersonation.
+- `private_key`: The private key for the base service account to use with this host catalog.
+It is required when you authenticate using service account impersonation.
+
+  If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
+  You can use `jq` to remove the extra `/n` characters.
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Application Default Credential (ADC)" group="ADC">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    # recommended to pass in aws secrets using a file() or using environment variables
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = "GCP_PROJECT_ID_VALUE",
+      "disable_credential_rotation" = true })
+  }
+  ```
+
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
+
+The fields following `attributes_json` are specific to GCP and are required by Boundary for authentication:
+
+- `zone`: (Required) The GCP zone of the instances that you want to add to the host catalog.
+- `project_id`: (Required) The project ID of any instances that you want to add to the host catalog.
+- `disable_credential_rotation`: (Optional) When set to `true`, Boundary does not rotate the credentials with GCP automatically.
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+## Create a host set to connect with GCP
+
+[Host sets](/boundary/docs/domain-model/host-sets) specify which GCP filters Boundary should use to identify which discovered hosts that should be added as members.
+
+Complete the following steps to create a host set:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host set for.
+1. Select **Host Catalogs**.
+1. Select the dynamic host catalog to which you want to add a host set.
+1. Click the **Host Sets** tab, and then click **New**.
+1. Complete the following fields:
+
+   - **Name**: (Optional) An optional name for identification purposes.
+   If you enter a name, it must be unique.
+   - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+1. Click **Save**.
+
+</Tab>
+
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create a host set:
+
+  ```shell-session
+  $ boundary host-sets create plugin \
+    -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
+    -attr filters=labels.env:prod \
+    -attr filters=labels.app:web
+  ```
+
+  The `host-catalog-id` value is a required field that specifies in which host catalog to create this host set.
+
+  Like with the host catalog, the fields passed in after the `attr` flag are specific to GCP.
+
+  The `filters` field contains string filters in the format key=val.
+  The key corresponds to a filter option.
+  For a list of filter options, refer to the [GCP API documentation](https://cloud.google.com/compute/docs/reference/rest/v1/instances/list#filter).
+  When you apply multiple filters, the plugin applies a logical `AND` operation to combine the filters.
+
+  If there is no explicit instance status filter, the default status is set to `status="RUNNING"`.
+  The default status ensures that Boundary only filters running instances, saving time when processing results.
+
+  We recommend using labels as filters because they are more flexible and can filter on multiple values as in the following examples:
+
+    - `-attr filters=labels.env:dev`
+    - `-attr filters="labels.env:prod AND labels.app:web"`
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_host_set_plugin" "gcp_host_set" {
+  name        = "GCP Host Set"
+  description = "GCP Host Set"
+  host_catalog_id  = boundary_host_catalog_plugin.gcp_host_catalog.id
+  attributes_json = jsonencode({
+  "filters" = ["labels.env:prod", "labels.app:web"] })
+}
+```
+
+The `host_catalog_id` value is a required field that specifies in which host catalog to create this host set.
+
+Like with the host catalog, the fields passed in after `attributes_json` flag are specific to GCP.
+
+The `filters` field contains string filters in the format key=val1.
+The key corresponds to a filter option.
+For a list of filter options, refer to the [GCP API documentation](https://cloud.google.com/compute/docs/reference/rest/v1/instances/list#filter).
+When you apply multiple filters, the plugin applies a logical `AND` operation to combine the filters.
+
+If there is no explicit instance status filter, the default status is set to `status="RUNNING"`.
+The default status ensures that Boundary only filters running instances, saving time when processing results.
+
+We recommend using labels as filters because they are more flexible and can filter on multiple values as in the following examples:
+
+  - `-attr filters=labels.env:dev`
+  - `-attr filters="labels.env:prod AND labels.app:web"`
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+## More information
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.

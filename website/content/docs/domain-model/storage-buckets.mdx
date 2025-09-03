@@ -1,0 +1,94 @@
+---
+layout: docs
+page_title: Storage bucket resource
+description: >-
+  Learn how to use the storage bucket resource to retain session recordings for compliance. Understand storage bucket attributes and how scopes affect storage.
+---
+
+# Storage buckets
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A resource known as a storage bucket is used to store the [session recordings][].
+The storage bucket represents a bucket in an external object store.
+A storage bucket's name is optional, but it must be unique if you define one.
+Storage buckets can be associated with zero to many [targets][].
+
+A storage bucket exists in either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
+Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
+The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
+Any session recording metadata that is attached to the storage bucket is deleted, when the storage bucket is deleted.
+
+## Attributes
+
+A storage bucket has the following configurable attributes:
+
+- `name` - (Optional) The name of the resource in Boundary.
+The name is optional, but if you set it, it must be unique within the scope ID.
+- `description` - (Optional) A description of the resource.
+- `bucket_name` - (Required) The name of the bucket in the external object store.
+You must provide a name for the bucket in the external object store.
+- `bucket_prefix` - (Optional) The prefix used to organize the data that is stored in the external object store.
+- `plugin_name` - (Required) The plugin name must reference an installed plugin.
+- `worker_filter` - (Required) A filter to identify the worker or workers that can process requests for the storage bucket.
+- `attributes` - (Optional) A collection of fields the plugin uses to interface with the backing service.
+- `secrets` - (Optional) A collection of sensitive fields, like [credentials][], which the plugin uses to interface with the backing service.
+These fields are write only.
+
+## AWS S3 attributes and secrets
+
+At this time, the only supported storage for storage buckets is AWS S3.
+In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
+
+The AWS S3 storage bucket can use static or dynamic credentials.
+You can configure static credentials using an access key and secret key or dynamic credentials using the AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole).
+
+### Attributes
+
+AWS S3 buckets have the following attributes:
+
+- `region` - (Required) The S3 region to configure the storage bucket in.
+- `disable_credential_rotation` - (Optional for static credentials, Required for dynamic credentials) If set to `true`, credential rotation is not performed.
+By default, the AWS plugin [rotates credentials](https://github.com/hashicorp/boundary-plugin-aws/blob/main/README.md#credential-rotation).
+Note that this attribute is required, if you use dynamic credentials.
+- `role_arn` - (Optional) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
+The Role ARN is required if the AWS S3 bucket is configured to use dynamic credentials using `AssumeRole`.
+- `role_external_id` - (Optional) A required value if you delegate third party access to your AWS resources.
+You can configure this value if your AWS S3 bucket is configured to use dynamic credentials.
+For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
+- `role_session_name`: (Optional) A unique identifier for the AWS session.
+You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
+By providing a session name, you enable tracking session actions in AWS CloudTrail logs.
+You can configure this value if your AWS S3 bucket is configured to use dynamic credentials.
+For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
+- `role_tags`: (Optional) An object with key-value pair attributes that is passed when you assume an IAM role.
+For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
+
+### Secrets
+
+AWS S3 buckets can have the following secrets:
+
+- `access_key_id` - (Optional) The access key ID for the IAM user to use with this storage bucket.
+Access keys are required if the AWS S3 bucket is configured to use static credentials.
+- `secret_access_key` - (Optional) The secret access key for the IAM user to use with this storage bucket.
+Secret access keys are required if the AWS S3 bucket is configured to use static credentials.
+
+## Referenced by
+
+- [Session recordings](/boundary/docs/domain-model/session-recordings)
+- [Create a storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket)
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Session recording service](/boundary/api-docs/session-recording-service)
+
+[session recordings]: /boundary/docs/domain-model/session-recordings
+[credentials]: /boundary/docs/domain-model/credentials
+[targets]: /boundary/docs/domain-model/targets
+[scope]: /boundary/docs/domain-model/scopes

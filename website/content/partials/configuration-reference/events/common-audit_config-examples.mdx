@@ -1,0 +1,32 @@
+This example is equivalent to the default settings if no `audit_config` stanza
+is provided.
+
+```hcl
+audit_config {
+  audit_filter_overrides {
+    sensitive = "redact"
+    secret    = "redact"
+  }
+}
+```
+
+This example will HMAC sensitive fields, and encrypt secrets.
+
+```hcl
+audit_config {
+  audit_filter_overrides {
+    sensitive = "hmac-sha256"
+    secret    = "encrypt"
+  }
+}
+```
+
+This example will not apply a filter to sensitive fields.
+
+```hcl
+audit_config {
+  audit_filter_overrides {
+    sensitive = ""
+  }
+}
+```

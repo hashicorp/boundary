@@ -1,0 +1,27 @@
+---
+layout: docs
+page_title: Session connection resource
+description: >-
+  Learn how the session connection resource represents the proxy Boundary creates between user and host. Understand how connections are established and terminated.
+---
+
+# Session connections
+
+A session connection represents an authorized proxy between a [user][] and a [host][]. After the creation of a
+[session][], a user initiates a connection to a [target][] using the Boundary-provided
+proxy information and [credentials][] (if applicable).
+
+Users can create multiple connections to a target, so long as the session has not expired or reached its maximum
+number of connections.
+
+Session connections terminate on user exit from the proxy, or on termination of the session.
+
+## Referenced by
+
+- [Session][]
+
+[credentials]: /boundary/docs/domain-model/credentials
+[host]: /boundary/docs/domain-model/hosts
+[session]: /boundary/docs/domain-model/sessions
+[target]: /boundary/docs/domain-model/targets
+[user]: /boundary/docs/domain-model/users

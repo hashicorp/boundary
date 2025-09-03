@@ -1,0 +1,102 @@
+---
+layout: docs
+page_title: Find and view recorded sessions
+description: >-
+  Find and view recorded sessions. View a list of all recorded sessions, or search for a specific recording. Download recorded sessions to meet compliance needs.
+---
+
+# Find and view recorded sessions
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary converts recorded sessions into an asciicast format so that you can play back interactive SSH sessions.
+Make sure to refer to the [asciicast](/boundary/docs/session-recording#asciicast) documentation to understand potential limitations to the asciicast format.
+
+You can view a list of all recorded sessions, or if you know the ID of a specific recorded session, you can find any channels associated with that recording.
+
+<Tabs>
+<Tab heading="CLI">
+
+## Find all recorded sessions
+
+Complete the following steps to find all recorded sessions using the CLI.
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to view a list of all recorded sessions:
+
+   ```bash
+   boundary session-recordings list -recursive
+   ```
+
+   Boundary displays a list of all recorded sessions by scope.
+
+## Find a specific recorded session by ID
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```bash
+boundary session-recordings read -id <id>
+```
+
+## Download recorded session channels
+
+You can download a recording of SSH shell or exec sessions for a channel from a recorded session.
+The channel ID is required for the download.
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```bash
+boundary session-recordings read -id <id>
+```
+
+Complete the following steps to download a recorded session channel:
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to download a recorded session channel.
+Substitute the ID of the channel for **chr_1234567890**:
+
+   ```bash
+   boundary session-recordings download -id chr_1234567890
+   ```
+
+</Tab>
+<Tab heading="Admin Console">
+
+## Find all recorded sessions
+
+You can find all recorded sessions in the UI from the global scope.
+
+1. Log in to Boundary.
+1. Select **Session Recordings** in the navigation pane.
+
+   The **Session Recordings** page displays the created time, user, project,
+   target, and duration of the recording.
+
+## View session recording details
+
+1. Select **View** next to the session recording you want to view.
+
+   The details page has information related to the session recording and
+   links to related information like user, target, and storage bucket.
+
+## Play back channel recording
+
+1. Select **Play** next to the channel recording you want to view.
+
+   The recorded session appears in the media player.
+   Click the **Play** button located at the bottom of the media player
+   to watch the recording.
+
+   If a recorded session channel does not support playback, a **View** button
+   is shown. The playback page displays a message stating that playback
+   is not supported, but still shows details specific to that channel.
+
+</Tab>
+</Tabs>
+
+## More information
+
+Refer to the following topics for more information:
+
+- [Session recording](/boundary/docs/session-recording)
+- [asciicast](/boundary/docs/session-recording#asciicast)
