@@ -19,7 +19,7 @@ Boundary streamlines just-in-time access to privileged sessions for users, and t
 Boundary validates a user's identity using your identity provider of choice, and then dynamically grants them access to the resources they need using their associated permissions.
 Boundary's worker nodes, the resources that proxy connections to private endpoints, are fundamentally stateless and can be easily scaled elastically using modern development tools.
 
-You can use SSH to inject the credentials of any target resources that you want to connect to using Boundary, so that the credentials are never exposed to the user while establishing a connection.
+You can use SSH or RDP to inject the credentials of any target resources that you want to connect to using Boundary, so that the credentials are never exposed to the user while establishing a connection.
 Alternatively, Boundary can return brokered credentials back to users (if permitted), which could take the form of API tokens, usernames and passwords, public keys, etc.
 
 **Can Boundary replace a bastion/jumphost access model?**
