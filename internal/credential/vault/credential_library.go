@@ -98,7 +98,7 @@ func (l *CredentialLibrary) TableName() string {
 	if l.tableName != "" {
 		return l.tableName
 	}
-	return "credential_vault_library"
+	return "credential_vault_generic_library"
 }
 
 // SetTableName sets the table name.
@@ -218,5 +218,5 @@ type deletedCredentialLibrary struct {
 
 // TableName returns the tablename to override the default gorm table name
 func (s *deletedCredentialLibrary) TableName() string {
-	return "credential_vault_library_deleted"
+	return "credential_vault_generic_library_deleted"
 }

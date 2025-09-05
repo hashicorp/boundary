@@ -13,9 +13,9 @@ begin;
   select volatility_is('delete_credential_library_history_subtype', 'volatile');
   select isnt_strict('delete_credential_library_history_subtype');
 
-  select has_trigger('credential_vault_library_hst', 'insert_credential_library_history_subtype');
-  select has_trigger('credential_vault_library_hst', 'delete_credential_library_history_subtype');
-  select fk_ok('credential_vault_library_hst', 'history_id', 'credential_library_history_base' , 'history_id');
+  select has_trigger('credential_vault_generic_library_hst', 'insert_credential_library_history_subtype');
+  select has_trigger('credential_vault_generic_library_hst', 'delete_credential_library_history_subtype');
+  select fk_ok('credential_vault_generic_library_hst', 'history_id', 'credential_library_history_base' , 'history_id');
 
   select has_trigger('credential_vault_ssh_cert_library_hst', 'insert_credential_library_history_subtype');
   select has_trigger('credential_vault_ssh_cert_library_hst', 'delete_credential_library_history_subtype');
@@ -23,7 +23,7 @@ begin;
 
   select results_eq(
     'select '
-    '(select count(*) from credential_vault_library_hst) + '
+    '(select count(*) from credential_vault_generic_library_hst) + '
     '(select count(*) from credential_vault_ssh_cert_library_hst)',
     'select count(*) from credential_library_history_base'
   );

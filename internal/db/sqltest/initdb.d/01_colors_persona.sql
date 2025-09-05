@@ -479,7 +479,7 @@ begin;
     ('p____rcolors', 'cvs__rcolors', 'red vault store',   'Some',      'https://red.vault.color',   'red'),
     ('p____gcolors', 'cvs__gcolors', 'green vault store', 'Maybe',     'https://green.vault.color', 'green');
 
-  insert into credential_vault_library
+  insert into credential_vault_generic_library
     (store_id,       public_id,      name,                  description, vault_path, http_method)
   values
     ('cvs__bcolors', 'cvl_______b1', 'blue vault library',  'None',      '/secrets', 'GET'),

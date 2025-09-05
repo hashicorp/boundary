@@ -231,8 +231,10 @@ type issuingCredentialLibrary interface {
 	retrieveCredential(context.Context, errors.Op, ...credential.Option) (dynamicCred, error)
 }
 
-// A genericIssuingCredentialLibrary contains all the values needed to connect to Vault and
-// retrieve credentials.
+// genericIssuingCredentialLibrary is a subtype of
+// privateCredentialLibraryAllTypes specifically for Vault generic credential
+// libraries. It contains all the values needed to connect to Vault and retrieve
+// credentials.
 type genericIssuingCredentialLibrary struct {
 	PublicId                      string
 	StoreId                       string
@@ -446,11 +448,6 @@ func (pl *genericIssuingCredentialLibrary) retrieveCredential(ctx context.Contex
 	return convert(ctx, dCred)
 }
 
-// TableName returns the table name for gorm.
-func (pl *genericIssuingCredentialLibrary) TableName() string {
-	return "credential_vault_library_issue_credentials"
-}
-
 func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]issuingCredentialLibrary, error) {
 	const op = "vault.(Repository).getIssueCredLibraries"
 
@@ -514,8 +511,9 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	return decryptedLibs, nil
 }
 
-// privateCredentialLibraryAllTypes is a clone of genericIssuingCredentialLibrary. Contains
-// all the values needed to connect to Vault and retrieve credentials.
+// privateCredentialLibraryAllTypes is a type that interfaces with the database.
+// It contains all the values needed to connect to Vault and retrieve
+// credentials.
 type privateCredentialLibraryAllTypes struct {
 	PublicId                      string `gorm:"primary_key"`
 	StoreId                       string
@@ -768,6 +766,10 @@ func (m *requestMap) get(libraryId string) []credential.Purpose {
 	return m.ids[libraryId]
 }
 
+// sshCertIssuingCredentialLibrary is a subtype of
+// privateCredentialLibraryAllTypes specifically for Vault SSH Certificate
+// credential libraries. It contains all the values needed to connect to Vault
+// and retrieve credentials.
 type sshCertIssuingCredentialLibrary struct {
 	PublicId                  string
 	StoreId                   string

@@ -33,6 +33,7 @@ begin;
     'along with the values of those entities at the time of the recording. '
     'These values are also stored in the BSR file.';
 
+  -- Updated in 99/01_credential_vault_library_refactor.up.sql
   create function insert_recording_dynamic_credentials() returns trigger
   as $$
   begin

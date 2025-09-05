@@ -194,7 +194,7 @@ delete from credential_vault_credential
 select sum(reltuples::bigint) as estimate
   from pg_class
  where oid in (
-  'credential_vault_library'::regclass,
+  'credential_vault_generic_library'::regclass,
   'credential_vault_ssh_cert_library'::regclass
 )
 `
@@ -209,7 +209,7 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
@@ -280,7 +280,7 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
@@ -351,7 +351,7 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
@@ -423,7 +423,7 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (

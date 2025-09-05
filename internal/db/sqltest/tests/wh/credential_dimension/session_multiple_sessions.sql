@@ -46,7 +46,7 @@ begin;
   select is(count(*), 1::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- change the crediential for the target
-  update credential_vault_library set vault_path = '/secrets/tcp/admin' where public_id = 'vl______wvl1';
+  update credential_vault_generic_library set vault_path = '/secrets/tcp/admin' where public_id = 'vl______wvl1';
 
   -- start another session, should result in a new credential dimension
   insert into session
@@ -80,7 +80,7 @@ begin;
   select is(count(*), 3::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- change the crediential again for the target
-  update credential_vault_library set vault_path = '/secrets/tcp/user' where vault_path = '/secrets/tcp/admin';
+  update credential_vault_generic_library set vault_path = '/secrets/tcp/user' where vault_path = '/secrets/tcp/admin';
 
   -- start another session, should result in a one new credential dimensions since one changed
   insert into session
@@ -101,7 +101,7 @@ begin;
 
   -- remove all credentials from the target
   -- then test creating a session
-  delete from credential_vault_library;
+  delete from credential_vault_generic_library;
   insert into session
     ( project_id,                  target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values

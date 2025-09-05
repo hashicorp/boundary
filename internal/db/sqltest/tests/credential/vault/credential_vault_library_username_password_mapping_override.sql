@@ -3,10 +3,10 @@
 
 --  credential_vault_library_username_password_mapping_override tests:
 --   the following triggers
---    insert_credential_vault_library_mapping_override_subtype
---    delete_credential_vault_library_mapping_override_subtype
+--    insert_credential_vault_generic_library_mapping_override_subtyp
+--    delete_credential_vault_generic_library_mapping_override_subtyp
 --   and the following view
---    credential_vault_library_list_lookup
+--    credential_vault_generic_library_list_lookup
 
 begin;
   select plan(11);
@@ -14,16 +14,16 @@ begin;
 
   -- validate the setup data
   select is(count(*), 4::bigint)
-    from credential_vault_library_username_password_mapping_override
+    from credential_vault_generic_library_username_password_mapping_ovrd
    where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7');
 
   select is(count(*), 4::bigint)
-    from credential_vault_library_mapping_override
+    from credential_vault_generic_library_mapping_override
    where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7');
 
   prepare select_libraries as
    select public_id::text, credential_type::text, username_attribute::text, password_attribute::text
-     from credential_vault_library_list_lookup
+     from credential_vault_generic_library_list_lookup
     where public_id in ('vl______wvl2', 'vl______wvl3', 'vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7')
  order by public_id;
 
@@ -39,28 +39,28 @@ begin;
   );
 
   -- validate the insert triggers
-  select is(count(*), 0::bigint) from credential_vault_library_username_password_mapping_override where library_id = 'vl______wvl3';
-  select is(count(*), 0::bigint) from credential_vault_library_mapping_override               where library_id = 'vl______wvl3';
+  select is(count(*), 0::bigint) from credential_vault_generic_library_username_password_mapping_ovrd where library_id = 'vl______wvl3';
+  select is(count(*), 0::bigint) from credential_vault_generic_library_mapping_override               where library_id = 'vl______wvl3';
 
   prepare insert_cvl_username_password_mapping_override as
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     username_attribute, password_attribute)
     values
       ('vl______wvl3', 'my_username',      'my_password');
   select lives_ok('insert_cvl_username_password_mapping_override');
 
-  select is(count(*), 1::bigint) from credential_vault_library_username_password_mapping_override where library_id = 'vl______wvl3';
-  select is(count(*), 1::bigint) from credential_vault_library_mapping_override               where library_id = 'vl______wvl3';
+  select is(count(*), 1::bigint) from credential_vault_generic_library_username_password_mapping_ovrd where library_id = 'vl______wvl3';
+  select is(count(*), 1::bigint) from credential_vault_generic_library_mapping_override               where library_id = 'vl______wvl3';
 
   -- validate the delete triggers
   prepare delete_cvl_username_password_mapping_override as
     delete
-      from credential_vault_library_username_password_mapping_override
+      from credential_vault_generic_library_username_password_mapping_ovrd
      where library_id = 'vl______wvl3';
   select lives_ok('delete_cvl_username_password_mapping_override');
 
-  select is(count(*), 0::bigint) from credential_vault_library_username_password_mapping_override where library_id = 'vl______wvl3';
-  select is(count(*), 0::bigint) from credential_vault_library_mapping_override               where library_id = 'vl______wvl3';
+  select is(count(*), 0::bigint) from credential_vault_generic_library_username_password_mapping_ovrd where library_id = 'vl______wvl3';
+  select is(count(*), 0::bigint) from credential_vault_generic_library_mapping_override               where library_id = 'vl______wvl3';
 
   select * from finish();
 rollback;
