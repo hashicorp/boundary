@@ -41,7 +41,6 @@ install_cassandra() {
 # Install Cassandra
 install_cassandra
 
-
 # Create a GPG key
 export KEY_PW=boundary
 gpg --generate-key --batch <<eoGpgConf
