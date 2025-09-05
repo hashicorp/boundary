@@ -495,6 +495,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credential-libraries create vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultLdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credential-libraries update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -515,6 +521,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credential-libraries update vault-ssh-certificate": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-libraries update vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultLdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
