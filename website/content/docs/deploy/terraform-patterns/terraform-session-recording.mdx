@@ -1,0 +1,88 @@
+---
+layout: docs
+page_title: Terraform patterns for session recording
+description: >-
+   Use Terraform patterns to enable session recording for auditing user sessions in Boundary. Learn how to configure storage policies and storage buckets.
+---
+
+# Terraform patterns for session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Session recording requires that you create a storage policy for your current scope and then allocate an AWS S3 bucket to store the recordings. This example does not demonstrate creating the S3 bucket or the associated IAM policies. Refer to the [create storage buckets](/boundary/docs/session-recording/configuration/create-storage-bucket) documentation to learn how to configure AWS.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+- Created a [scope](/boundary/docs/deploy/terraform-patterns/terraform-scopes) for any storage policy you plan to create.
+- A licensed version of HCP Boundary or Boundary Enterprise.
+
+## Storage policy configuration
+
+This example creates a Boundary storage policy for a project scope.
+
+```hcl
+# Create the storage policy. This policy is effective for the attached scope
+resource "boundary_policy_storage" "example" {
+
+  # The policy applies to all recordings in this scope
+  scope_id = boundary_scope.project.id
+
+  name = "soc2-policy"
+  description = "SOC 2 compliant storage policy for session recordings"
+
+  # These define your retention parameters
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2657
+  delete_after_overridable = true
+}
+```
+
+## Storage bucket configuration
+
+This example creates the Boundary storage bucket and attaches it to the S3 bucket.
+
+```hcl
+resource "boundary_storage_bucket" "aws_bucket" {
+  name        = "My aws storage bucket with dynamic credentials"
+  description = "My first storage bucket"
+  scope_id    = boundary_scop.project.id
+  plugin_name = "aws"
+
+  # This must match the name of the AWS S3 bucket that stores the recordings
+  bucket_name = "mybucket1"
+
+  # The role_arn value must be the same arn used as the instance profile
+  # attached to your Boundary Worker ec2 instance
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+  attributes_json = jsonencode({
+    "region"                      = "us-east-1"
+    "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access"
+    "disable_credential_rotation" = true
+  })
+}
+```
+
+You have configured the prerequisites for session recording. The last task is to enable recording on a Boundary target.
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+
+- [Session recordings](/boundary/docs/domain-model/session-recordings)
+- [Storage buckets](/boundary/docs/domain-model/storage-buckets)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+
+- [Storage buckets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/storage_bucket/)
+- [Storage policies](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/policy_storage/)
+
+## Next steps
+
+Once you have configured the prerequisites for session recording, you can enable recording on a Boundary [target](/boundary/docs/deploy/terraform-patterns/terraform-targets).

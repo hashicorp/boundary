@@ -45,4 +45,22 @@ func Test_GetOpts(t *testing.T) {
 			runtime.FuncForPC(reflect.ValueOf(testOpts.WithPostConnectionHook).Pointer()).Name(),
 		)
 	})
+	t.Run("WithTestKdcAdress", func(t *testing.T) {
+		assert := assert.New(t)
+		testKdcAddress := "test-kdc-address"
+		opts := GetOpts(WithTestKdcAddress(testKdcAddress))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.WithTestKdcAddress = testKdcAddress
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithTestKerberosServerHostname", func(t *testing.T) {
+		assert := assert.New(t)
+		testKerberosServerHostname := "test-kerberos-server-hostname"
+		opts := GetOpts(WithTestKerberosServerHostname(testKerberosServerHostname))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.WithTestKerberosServerHostname = testKerberosServerHostname
+		assert.Equal(opts, testOpts)
+	})
 }

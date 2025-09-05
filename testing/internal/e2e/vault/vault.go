@@ -101,6 +101,39 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kv
 	return
 }
 
+// CreateKvPasswordDomainCredential creates a username/password/domain credential in vault and creates a vault
+// policy to be able to read that credential. Returns the name of the policy
+func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user string, domain string, kvPolicyFilePath string) (secretName string, password string) {
+	secretName, err := base62.Random(16)
+	require.NoError(t, err)
+
+	// Update policy file
+	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	require.NoError(t, err)
+	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
+		secretPath,
+		secretName,
+	))
+	require.NoError(t, err)
+
+	// Create secret
+	password, err = base62.Random(16)
+	require.NoError(t, err)
+	output := e2e.RunCommand(context.Background(), "vault",
+		e2e.WithArgs(
+			"kv", "put",
+			"-mount", secretPath,
+			secretName,
+			"username="+user,
+			"password="+password,
+			"domain="+domain,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	return
+}
+
 // WritePolicy adds a policy to vault. Provide a name for the policy that you want to create as well
 // as the path to the file that contains the policy definition. Returns a policy name
 func WritePolicy(t testing.TB, ctx context.Context, policyFilePath string) string {

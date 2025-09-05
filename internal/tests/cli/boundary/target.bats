@@ -150,3 +150,8 @@ load _target_host_sources
   run update_address $id "localhost"
   [ "$status" -eq 0 ]
 }
+
+teardown_file() {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run delete_target $id
+}

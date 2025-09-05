@@ -1,0 +1,158 @@
+---
+layout: docs
+page_title: Permission grant formats
+description: >-
+  Learn how to construct grant strings that map resources and permissions. Understand ID, Type, Pinned, and Wildcard grant formats. View possible grant templates.
+---
+
+# Permission grant formats
+
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
+
+Refer to [Assignable permissons](/boundary/docs/rbac/assignable-permissions) for more information about the permissions you can include in grants.
+
+A grant string has a form similar to:
+
+`ids=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
+
+There are two types of selectors:
+
+- An `ids` field that indicates a specific resource or a wildcard to match all.
+You can enter multiple comma-separated ID values in a grant string.
+- A `type` field that indicates a specific resource type or a wildcard to match
+  all; this might also be used to grant permissions on collections of resources.
+
+Selectors are used to indicate the resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors.
+
+You can supply grant strings using a human-friendly string syntax or using JSON.
+The following examples use the canonical string syntax.
+The JSON equivalents are an object with a string `id` value, a string `type` value, a string array `actions` value, and a string array `output_fields` value.
+
+In the following examples, `output_fields` is omitted for brevity, but they are valid for each example.
+It is also valid to omit `actions` and specify only `output_fields`.
+
+## ID only
+
+The simplest form of grant allows the specified actions for a given resource.
+Refer to the following example:
+
+`ids=hsst_1234567890;actions=read,update`
+
+This example grants `read` and `update` actions to the resource `hsst_1234567890`. It is invalid
+to specify `create` or `list` as actions in this format, because this format
+explicitly identifies a resource.
+The `create` and `list` actions are only supported for collections.
+
+You can enter multiple comma-separated ID values in a grant string:
+
+`ids=hsst_1234567890,hsst_0987654321;actions=read,update`
+
+This example grants the `read` and `update` actions to both resources `hsst_1234567890` and `hsst_0987654321`.
+
+## Type only
+
+You can configure a grant to allow the specified actions for a given type.
+Refer to the following example:
+
+`type=host-catalog;actions=create,list`
+
+Because type specifies only a collection as opposed to specific resources within
+that collection, only collection actions are allowed in this format. Currently,
+this includes the `create` and `list` actions.
+
+There is one additional restriction: this grant format is only valid against "top-level"
+resource types, which include:
+
+- Auth methods
+- Auth tokens
+- Groups
+- Host catalogs
+- Roles
+- Scopes
+- Sessions
+- Targets
+- Users
+
+The reason for this is that other types of resources are contained within one of
+these resource types.
+For example, accounts are instantiated within an auth
+method. To specify actions against an auth method, you must also specify the
+specific containing resource you want to apply the grants to.
+You can update those resources using the pinned format shown below.
+
+## Pinned ID
+
+This form "pins" actions to a non-top-level type within a specific ID.
+Refer to the following example:
+
+`ids=hcst_1234567890;type=host-set;actions=create,read,update`
+
+In this example, the user is able to create, read, or update host sets within
+the scope, but only the host sets belonging to host catalog `hcst_1234567890`.
+Pinning is essentially a way to use top-level resources to create mini
+permission boundaries for their subordinate resources.
+
+## Wildcards
+
+You can use wildcards in grants.
+Refer to the following sections for the various wildcard possibilities that are supported.
+
+### Wildcard ID
+
+When just the ID is `*`, it matches all IDs of the given type. You can use this grant format
+with both top-level resource types and non-top-level resource types.
+Refer to the following example:
+
+`ids=*;type=host-set;actions=create,read,update,set-hosts`
+
+### Wildcard type
+
+For non-top-level resources with pinned IDs, the `type` can be a wildcard.
+Refer to the following example:
+
+`ids=hcst_1234567890;type=*;actions=create,read,update`
+
+This grant format would allow `create`, `read`, and `update` actions for all types of
+subordinate resources underneath the host
+catalog with ID `hcst_1234567890`.
+In this example, that would include host sets and hosts.
+
+### Wildcard ID and type
+
+If the ID and type are both wildcards, the grant is essentially a catch-all that matches any resource of any type within the scope and allows the given actions.
+Refer to the following example:
+
+`ids=*;type=*;actions=read,list`
+
+### Wildcard ID, type, and actions
+
+ID, type, and actions can all be wildcards.
+Refer to the following example:
+
+`ids=*;type=*;actions=*`
+
+Such a grant is essentially a full administrator grant for a scope.
+
+## Templates
+
+A few template possibilities exist for grants.
+The following templates substitute a given value into the ID field of the grant string at evaluation time:
+
+- `{{.Account.Id}}`: The substituted value is the account ID associated with the
+  token used to perform the action. As an example,
+  `ids={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  default grants to allow users that have authenticated with the Password auth
+  method to change their own password.
+- `{{.User.Id}}`: The substituted value is the user ID associated with the token
+  used to perform the action.
+
+## More information
+
+1. Refer to [Assignable permissions](/boundary/docs/rbac/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
+1. Refer to the [Resource tables](/boundary/docs/rbac/resource-table) for a cheat sheet to help you manage your permissions.
+
+## Next steps
+
+Refer to [Manage access with roles](/boundary/docs/rbac/manage-roles) for instructions to configure roles and grant scopes for principals.

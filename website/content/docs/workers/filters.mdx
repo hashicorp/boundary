@@ -1,0 +1,167 @@
+---
+layout: docs
+page_title: Configure a worker filter
+description: >-
+  Learn about configuring a filter to control which workers are allowed to manage a session.
+---
+
+# Configure a worker filter
+
+You can use tags to configure a worker filter that controls which workers are allowed to perform specific functions.
+Following are some examples of using these values in filters that can be applied to targets, Vault credential stores, or storage buckets:
+
+- Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
+  match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
+
+- Region: `"us-east-1" in "/tags/region"`.
+
+- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
+
+Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+## Example worker filter for targets
+
+Once workers have tags, you can use these tags to control which
+workers are allowed to manage a given session by specifying worker filter attributes
+when you configure [targets](/boundary/docs/domain-model/targets).
+
+The `egress_worker_filter` attribute controls which workers are used for egress to a target. This is the worker
+that accesses the target.
+
+The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers are used for ingress to a target.
+This is the worker a client connects to when initiating a connection to a target.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+Example of a filter configured on a target in the Admin UI:
+
+![Example of a target ingress worker filter](/img/ui/target-ingress-worker-filter_light.png#light-theme-only)
+![Example of a target ingress worker filter](/img/ui/target-ingress-worker-filter_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Example of a filter configured on a target with the CLI:
+
+```
+$ boundary targets update tcp -id tssh_1234567890 -egress-worker-filter='"prod" in "/tags/type"'
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Example of a filter configured on a target with Terraform:
+
+```hcl
+resource "boundary_target" "aws-webservers-prod" {
+  type                 = "ssh"
+  name                 = "aws-web-prod"
+  description          = "AWS EC2 Targets"
+  egress_worker_filter = "\"prod\" in \"/tags/type\""
+}
+```
+
+</Tab>
+</Tabs>
+
+## Example worker filter for Vault credential store
+
+Tags are used to control which workers can manage Vault requests by specifying
+a `worker_filter`attribute when configuring [credential stores](/boundary/docs/domain-model/credential-stores#vault-credential-store-attributes).
+
+This allows the use of private Vault instances with Boundary. Workers
+deployed in the same network as a private Vault instance can access and relay
+Vault requests to Boundary controllers.
+
+<Tip>
+
+  A worker that matches the worker filter must exist before you define the Vault credential store, as it will perform the Vault calls needed to set up the credential store with Boundary.
+
+</Tip>
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+Example of a worker filter configured on a Vault credential store in the Admin UI:
+
+![Example of a credential store worker filter](/img/ui/vault-worker-filter_light.png#light-theme-only)
+![Example of a credential store worker filter](/img/ui/vault-worker-filter_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Example of a worker filter configured on a Vault credential store with the CLI:
+
+```
+$ boundary credential-stores update vault -id csvlt_1234567890 -worker-filter='"vault" in "/tags/type"'
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Example of a worker filter configured on a Vault credential store with Terraform:
+
+```hcl
+resource "boundary_credential_store_vault" "vault_cred_store" {
+  name          = "Vault host credentials"
+  address       = "http://127.0.0.1:8200"       # change to Vault address
+  token         = "s.0ufRo6XEGU2jOqnIr7OlFYP5"  # change to valid Vault token
+  scope_id      = boundary_scope.project.id     # change to target scope
+  worker_filter = "\"vault\" in \"/tags/type\"" # change to access private Vault cluster
+}
+```
+
+</Tab>
+</Tabs>
+
+## Example worker filter for storage buckets
+
+<EnterpriseAlert product="boundary">Storage buckets are used for session recording, which requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Session recording functions are performed by Boundary workers. Workers also store recordings on Boundary storage buckets. When you create Boundary storage buckets, you can use tags to select the workers you prefer to use for session recording responsibilities.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+Example of a worker filter configured on a storage bucket in the Admin UI:
+
+![Example of a storage bucket worker filter](/img/ui/session-rec-worker-filter_light.png#light-theme-only)
+![Example of a storage bucket worker filter](/img/ui/session-rec-worker-filter_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Example of a worker filter configured on a storage bucket with the CLI:
+
+```
+$ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-recording" in "/tags/type"'
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Example of a worker filter configured on a storage bucket with Terraform:
+
+```hcl
+resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
+  name        = "session-recording-storage-bucket"
+  scope_id    = boundary_scope.org.id # change to valid scope ID
+  plugin_name = "aws"
+  bucket_name = "mybucket"            # change to valid AWS S3 storage bucket name
+
+  # the role_arn value should match the arn used as the instance profile attached to the ec2 instance
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+  attributes_json = jsonencode({
+    "region"                      = "us-east-1"
+    "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access" # change to valid role ARN
+    "disable_credential_rotation" = "true"
+  })
+  worker_filter = "\"session-recording\" in \"/tags/type\"" # change to valid worker filter tag
+}
+```
+
+</Tab>
+</Tabs>

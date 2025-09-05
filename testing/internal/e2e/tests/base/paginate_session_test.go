@@ -6,6 +6,7 @@ package base_test
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/scopes"
@@ -124,6 +125,9 @@ func TestApiPaginateSessions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
+
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
@@ -134,7 +138,7 @@ func TestApiPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)

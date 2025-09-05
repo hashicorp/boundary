@@ -152,6 +152,22 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		require.NoError(err)
 	}
 
+	if opts.withProxyCertificate != nil {
+		sessionProxyCertificate := opts.withProxyCertificate
+		sessionProxyCertificate.SessionId = s.PublicId
+
+		if len(sessionProxyCertificate.PrivateKey) == 0 || len(sessionProxyCertificate.Certificate) == 0 {
+			t.Fatalf("proxy certificate and private key must both be set")
+		}
+		err := sessionProxyCertificate.Encrypt(ctx, wrapper)
+		if err != nil {
+			require.NoError(err)
+		}
+		if err = rw.Create(ctx, sessionProxyCertificate); err != nil {
+			require.NoError(err)
+		}
+	}
+
 	ss, err := fetchStates(ctx, rw, s.PublicId, opts.withDbOpts...)
 	require.NoError(err)
 	s.States = ss

@@ -1,0 +1,65 @@
+---
+layout: docs
+page_title: Create multi-hop sessions for HCP
+description: >-
+  Configure multi-hop sessions for HCP Boundary. Chain together two or more workers across multiple networks to reach a target without exposing private networks.
+---
+
+# Configure multi-hop sessions for HCP Boundary
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Many organizations have strict network policies that prohibit all inbound traffic into their networks. In these scenarios, you can use HCP-managed workers as the ingress workers. To establish a connection into the network, a self-managed worker configured as an egress worker initiates an outbound connection to the HCP-managed worker, creating a persistent connection. As a result, when end users connect to a target, the end user's connection would hop from the Boundary client to the HCP-managed worker (ingress worker) to the self-managed worker (egress worker) to the target (or other intermediary workers if needed).
+
+## Configure HCP-managed workers for ingress
+
+To configure end user traffic to ingress through HCP-managed workers, you must configure the self-managed worker (enterprise version). On your self-managed worker that you use for egress to the HCP-managed worker, set the configuration file with the following parameters:
+- `hcp_boundary_cluster_id` - The HCP Boundary cluster ID, which can be found in the HCP Boundary cluster's URL.
+- Omit the `public_addr` parameter. A public address is not needed since the self-managed worker initiates the connection to HCP-managed workers.
+- Omit the `initial_upstreams` parameter. This is not needed because the `hcp_boundary_cluster_id` parameter is sufficent to indicate the HCP-managed workers as the upstream.
+- Include a [worker tag](/boundary/docs/workers/worker-tags) in the `worker` stanza which will be used to select multi-hop routes for each target.
+
+### Example self-managed worker configuration:
+```
+hcp_boundary_cluster_id = "7acdefe2c-1234-4ff1-b710-123456789876"
+
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/ubuntu/boundary/worker1"
+  tags {
+    tag = ["multihop"]
+  }
+  recording_storage_path = "/tmp/worker1"
+}
+```
+## Allow-list outbound network traffic to HCP-managed workers
+
+Some organizations require explicit destination addresses set in their network firewall rules for any outbound traffic. In this scenario, you should use the fully qualified domain name (FQDN) of the HCP-managed workers:
+
+```
+<cluster_uuid>.proxy.boundary.hashicorp.cloud
+```
+
+where the `cluster_uuid` is the HCP Boundary cluster ID. You can find your HCP Boundary cluster ID in the HCP Boundary cluster's URL.
+
+<Note>
+
+  The Boundary cluster ID is derived from the Boundary address. For example, if
+  your cluster URL is:
+
+  `https://abcd1234-e567-f890-1ab2-cde345f6g789.boundary.hashicorp.cloud`
+
+  Then your cluster id is `abcd1234-e567-f890-1ab2-cde345f6g789`.
+
+</Note>
+
+## Route end user traffic to targets through HCP-managed workers
+
+To route traffic through the HCP-managed workers, you should set the egress filters of each target to match the tag set in the self-managed worker's configuration file. You do not need to set additional ingress filters on the targets.
+
+![Multi-hop egress worker filter](/img/ui/multi-hop-egress-filter_light.png#light-theme-only)
+![Multi-hop egress worker filter](/img/ui/multi-hop-egress-filter_dark.png#dark-theme-only)

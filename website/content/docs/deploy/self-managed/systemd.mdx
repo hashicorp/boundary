@@ -1,0 +1,90 @@
+---
+layout: docs
+page_title: systemd Installation
+description: |-
+  How to install Boundary under systemd on Linux
+---
+
+# Install Boundary under systemd
+
+This section covers how to install Boundary under the [systemd](https://systemd.io/) init system on modern Linux distributions. In this section, we'll cover an example of breaking out the controller and worker servers onto separate instances, though you can opt to run both on a single server.
+
+## Filesystem configuration
+
+`TYPE` below can be either `worker` or `controller` if you want to run them independently, e.g. for high availability. If you want to run combined nodes, modify as desired.
+
+1. `/etc/boundary.d/boundary-${TYPE}.hcl`: Configuration file for the boundary service.
+
+2. `/usr/local/bin/boundary`: The Boundary binary, which can be built from the [source](https://github.com/hashicorp/boundary) or downloaded from our [release page](/boundary/downloads).
+
+3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service.
+
+## User and group configuration
+
+We recommend running Boundary as a non-root user and using this user to manage the Boundary process running under systemd. The example init files here do exactly that. Our example install script below creates a user and group on Ubuntu or Debian-like systems.
+
+## systemd unit file
+
+```
+[Unit]
+Description=${NAME} ${TYPE}
+
+[Service]
+ExecStart=/usr/local/bin/${NAME} server -config /etc/${NAME}-${TYPE}.hcl
+User=boundary
+Group=boundary
+LimitMEMLOCK=infinity
+Capabilities=CAP_IPC_LOCK+ep
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## systemd all-in-one installation script
+
+Here's a simple install script that creates the `boundary` group and user, installs the
+systemd unit file, and enables it at startup:
+
+```
+#!/bin/bash
+# Installs the boundary as a service for systemd on linux
+# Usage: ./install.sh <worker|controller>
+
+TYPE=$1
+NAME=boundary
+
+sudo cat << EOF > /etc/systemd/system/${NAME}-${TYPE}.service
+[Unit]
+Description=${NAME} ${TYPE}
+
+[Service]
+ExecStart=/usr/local/bin/${NAME} server -config /etc/${NAME}-${TYPE}.hcl
+User=boundary
+Group=boundary
+LimitMEMLOCK=infinity
+Capabilities=CAP_IPC_LOCK+ep
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Add the boundary system user and group to ensure we have a no-login
+# user capable of owning and running Boundary
+sudo adduser --system --group boundary || true
+sudo chown boundary:boundary /etc/${NAME}-${TYPE}.hcl
+sudo chown boundary:boundary /usr/local/bin/boundary
+
+# Make sure to initialize the DB before starting the service. This will result in
+# a database already initialized warning if another controller or worker has done this
+# already, making it a lazy, best effort initialization
+if [ "${TYPE}" = "controller" ]; then
+  sudo /usr/local/bin/boundary database init -config /etc/${NAME}-${TYPE}.hcl || true
+fi
+
+sudo chmod 664 /etc/systemd/system/${NAME}-${TYPE}.service
+sudo systemctl daemon-reload
+sudo systemctl enable ${NAME}-${TYPE}
+sudo systemctl start ${NAME}-${TYPE}
+```

@@ -1,0 +1,115 @@
+---
+layout: docs
+page_title: Configure workers for local storage
+description: >-
+  Configure workers for session recording storage. View requirements and an example configuration. Understand possible storage states for local and remote storage.
+---
+
+# Configure workers for session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Session recording requires that you configure at least one worker for local storage.
+
+<Note>
+
+  You cannot use an HCP managed worker for the local storage. HCP Boundary users must configure a self-managed worker to enable session recording.
+
+</Note>
+
+## Requirements
+
+Workers that you configure for storage must:
+
+- Have access to the external storage provider
+- Have an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy.
+   - For HCP Boundary, refer to the [Self-managed worker configuration](/hcp/docs/boundary/self-managed-workers/session-recording) documentation.
+   - For Boundary Enterprise, refer to the refer to the [worker configuration](/boundary/docs/workers#session-recording) documentation.
+- Have available disk space defined by `recording_storage_minimum_available_capacity`. If you do not configure the minimum available storage capacity, Boundary uses the default value of 500MiB.
+For more information about how much space is required to store BSR files, refer to [storage considerations](/boundary/docs/session-recording#storage-considerations).
+- Run Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
+
+## Local storage
+
+Workers require sufficient local disk space in the `recording_storage_path` to store session recordings while they are in progress. Local disk space is also required for session recording playback.
+
+The `recording_storage_minimum_available_capacity` vaule defines the minimum available disk space that must be available on the worker for session recording and session recording playback. This threshold determines the local storage state of the worker.
+
+The possible storage states determined by the `recording_storage_minimum_available_capacity` are:
+
+- `Available`: The worker is above the storage threshold and is available to proxy sessions that are enabled with session recording.
+
+- `Low storage`: The worker is below the storage threshold. Existing sessions can continue without interruption, but new sessions that are enabled with session recording cannot be proxied. The worker is not available to record new sessions or play back existing recordings.
+
+- `Critically low storage`: The worker is below half the storage threshold. Existing sessions that are enabled with session recording will be forcefully closed. The worker is not available to record new sessions or play back existing recordings.
+
+- `Out of storage`: The worker is out of local disk space. It is not available to record new sessions or play back existing recordings. The worker is in a unrecoverable state. An administrator must intervene to remedy the issue.
+
+- `Not configured`: The worker does not have a `recording_storage_path` configured.
+
+- `Unknown`: The default local storage state of a worker. This state indicates that the local storage state of a worker is not yet known. Older workers (< 0.16.0) will be in this state.
+
+If a worker is in an unhealthy local storage state, Boundary does not allow new session recordings or session recording playback until the worker is in an `available` local storage state.
+
+## Remote storage state
+
+The workers that you configure for session recording storage must have access to the external object store. Workers report permission states back to Boundary, depending on the availability of the external object store.
+Boundary uses the permission states to determine what actions the worker can perform on the configured external storage.
+
+Workers can have the following permission states:
+
+- `read`: The worker can read from the external storage. It can also play back recorded sessions, if the permission state is `ok`.
+- `write`: The worker can write to the external storage. It can also record sessions, if the permission state is `ok`.
+- `delete`: The worker can delete data from the external storage. It can also clean up recorded sessions, if the permission state is `ok`.
+
+Boundary uses the permission states to determine the remote storage state of a worker. The worker can have the following remote storage states:
+- `available`: All permission states are healthy. The worker has the required access to the external storage.
+- `error`: One or more of the permission states are not healthy. Workers may not be able to perform certain actions on the external storage.
+
+Boundary periodically checks the states of any workers that use the external storage, and then reports them back to the controller.
+
+You can check the remote storage state of a worker using the `boundary workers read -id $WORKER_ID` command.
+
+```
+Worker information:
+  Active Connection Count:   0
+  Address:                   0.0.0.0:9202
+  Created Time:              Tue, 04 Jun 2024 13:52:27 PDT
+  ID:                        w_RPfBj239to
+  Last Status Time:          2024-06-04 20:55:35.589282 +0000 UTC
+  Local Storage State:       available
+  Remote Storage State:
+	sb_fhde575e:
+		Status: available
+		Permissions:
+			Write: ok
+			Read: ok
+			Delete: ok
+	sb_jksdgh4:
+		Status: error
+		Permissions:
+			Write: error
+			Read: ok
+			Delete: ok
+  Release Version:           Boundary v0.17.0+ent
+  Type:                      pki
+  Updated Time:              Tue, 04 Jun 2024 13:55:35 PDT
+  Version:                   1
+```
+
+## Example configuration
+
+Refer to the following example configuration to configure workers for session recording storage:
+
+```hcl
+worker {
+  auth_storage_path      = "/boundary/demo-worker-1"
+  initial_upstreams      = ["10.0.0.1"]
+  recording_storage_path = "/local/storage/directory"
+  recording_storage_minimum_available_capacity = "500MB"
+}
+```
+
+## Next steps
+
+After you configure worker storage, you can configure the external storage for [Amazon S3](/boundary/docs/session-recording/configuration/storage-providers/configure-s3), [MinIO](/boundary/docs/session-recording/configuration/storage-providers/configure-minio), or an [S3-compliant provider](/boundary/docs/session-recording/configuration/storage-providers/configure-s3-compliant).

@@ -43,7 +43,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 	static.TestSets(t, conn, cats[0].GetPublicId(), 2)
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
+	vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 
 	type args struct {
 		target target.Target
@@ -825,7 +825,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				)
 			}
 
-			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
+			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 5)
 			var testClIds []string
 			var testCredLibs []*target.CredentialLibrary
 			for _, cl := range cls {

@@ -1,0 +1,147 @@
+---
+layout: docs
+page_title: Scope resource
+description: >-
+  Learn about using the scope resource to organize and manage resources. Understand how to configure global, org, and project scopes to logically group resources.
+---
+
+# Scopes
+
+A scope is a [permission][] boundary modeled as a container.
+Scopes are groupings of resources.
+Each scope is also a resource.
+You create scopes to partition resources and then assign ownership of those resources to principals (users and groups).
+
+There are three types of scopes in Boundary:
+
+- A single [global][] scope is the outermost container.
+- [Organizations][] (orgs) are contained by the `global` scope.
+- [Projects][] are contained by orgs.
+
+<Note>
+Within the software itself and elsewhere in the documentation, Boundary reliably uses "org" instead of "organization". Among other reasons, this removes ambiguity between different regional spellings of the word. It is spelled out here in the domain model for completeness and to ensure its intent is clear.
+</Note>
+
+You can only associate certain resources with specific levels of scopes.
+For example, while you can create users at the global or org level, you can only create targets within a project.
+Refer to the table below for a list of resources and their valid scope types:
+
+| Resource             | Valid scope types    |
+| -------------------- | -------------------- |
+| Accounts             | Global, org          |
+| Aliases              | Global               |
+| Auth methods         | Global, org          |
+| Auth tokens          | Global, org          |
+| Billing              | Global               |
+| Credential libraries | Project              |
+| Credentials          | Project              |
+| Credential stores    | Project              |
+| Groups               | Global, org, project |
+| Host catalogs        | Project              |
+| Host sets            | Project              |
+| Hosts                | Project              |
+| Managed groups       | Global, org          |
+| Storage policies     | Global, org          |
+| Roles                | Global, org, project |
+| Scopes               | Global, org, project |
+| Session recordings   | Global, org          |
+| Sessions             | Project              |
+| Storage buckets      | Global, org          |
+| Targets              | Project              |
+| Users                | Global, org          |
+| Workers              | Global               |
+
+You can nest projects within orgs to configure access to resources.
+
+For example, you may create an org scope called `IT-Support` that contains the users or groups that make up your IT department.
+Then, you might create a project called `QA-Tests` that is contained within the`IT-Support` org.
+You can add hosts, host sets, and targets to the `QA-Tests` project to control the resources your IT department can access.
+
+To more granularly control what resources your users can access, you can separate resources out into additional projects.
+You can also assign permissons across scopes, if you want a user from one scope to have access to a resource that is not normally granted to that user's scope.
+
+## Global
+
+The global scope is the outermost scope.
+There is always a single global scope
+and it cannot be deleted.
+You use the global scope for the initial administration, setup, and management of any org scopes.
+The global scope can directly contain:
+[users][], [groups][], [auth methods][], and [organizations][].
+
+## Organizations
+
+An org is a scope directly contained by the global scope.
+You can create multiple orgs within the global scope.
+Orgs are used to contain identity and access management-related resources and projects.
+An org can directly contain:
+[users][], [groups][], [auth methods][], [roles][], and [projects][].
+
+## Projects
+
+A project is a scope directly contained by an org scope.
+You can create multiple projects within an org scope.
+Projects are used to contain infrastructure-related resources.
+A project can directly contain:
+[roles][], [targets][], [host catalogs][], and [credential stores][].
+
+## Attributes
+
+A scope has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the scope's parent scope.
+
+- `description` - (optional)
+
+## Storage policy association
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+[Storage policies][] that are created in the global scope can be associated with any org scope.
+However, a storage policy created in an org scope can only be associated with that org scope.
+Changing the storage policy assigned to a scope can impact the resultant set of policy, but such a change only affects future recordings that you create within that scope or using that storage policy.
+
+## Referenced by
+
+- [Auth method][]
+- [Credential store][]
+- [Group][]
+- [Host catalog][]
+- [Role][]
+- [Storage policies][]
+- [Target][]
+- [User][]
+
+[auth method]: /boundary/docs/domain-model/auth-methods
+[auth methods]: /boundary/docs/domain-model/auth-methods
+[credential store]: /boundary/docs/domain-model/credential-stores
+[credential stores]: /boundary/docs/domain-model/credential-stores
+[global]: /boundary/docs/domain-model/scopes#global
+[group]: /boundary/docs/domain-model/groups
+[groups]: /boundary/docs/domain-model/groups
+[host catalog]: /boundary/docs/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[organizations]: /boundary/docs/domain-model/scopes#organizations
+[permission]: /boundary/docs/rbac
+[permissions]: /boundary/docs/rbac
+[project]: /boundary/docs/domain-model/scopes#projects
+[projects]: /boundary/docs/domain-model/scopes#projects
+[role]: /boundary/docs/domain-model/roles
+[roles]: /boundary/docs/domain-model/roles
+[storage policies]: /boundary/docs/domain-model/storage-policy
+[target]: /boundary/docs/domain-model/targets
+[targets]: /boundary/docs/domain-model/targets
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Scope service](/boundary/api-docs/scope-service)
+
+## Tutorial
+
+Refer to the [Manage Scopes with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial to learn how to create an org scope and a project scope.

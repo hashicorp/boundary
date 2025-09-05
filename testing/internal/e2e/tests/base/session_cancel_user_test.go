@@ -7,12 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -173,6 +175,9 @@ func TestApiCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
+
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -190,7 +195,7 @@ func TestApiCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)

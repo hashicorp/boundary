@@ -6,6 +6,7 @@ begin;
   alter table credential_vault_ssh_cert_library add column additional_valid_principals text null;
 
   -- Replaces view from 63/02_add_ssh_cert_to_vault_cred_library_view.up.sql
+  -- This view is replaced in 98/02_username_password_domain_vault.up.sql
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with

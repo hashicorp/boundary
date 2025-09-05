@@ -1,77 +1,93 @@
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
-    - staticcheck
-    - stylecheck
+    - bodyclose
     - errcheck
     - misspell
-    - bodyclose
-
-issues:
-  exclude-rules:
-    - linters:
-        - stylecheck
-      text: "ST1005:"
-    - linters:
-        - stylecheck
-      text: "ST1003:"
-    - linters:
-        - staticcheck
-      text: "SA1019: pbs.AuthorizedWorkerList is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: item.GetGrantScopeId is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: out.GrantScopeId is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: authorized.GetWorkerKeyIdentifiers is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: result.GetAuthorizedWorkers is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: item.GetWorkerFilter is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: out.GetWorkerFilter is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: out.WorkerFilter is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: req.GetTokenType is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: s.resp.GetPkcs8HostKeys is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: s.resp.GetCredentials is deprecated:"
-    - linters:
-        - staticcheck
-      text: 'SA1019: got.GetAuthorizedWorkers is deprecated:'
-    - linters:
-        - staticcheck
-      text: 'SA1019: gotAuthorizedWorkers.GetWorkerKeyIdentifiers is deprecated:'
-    - linters:
-        - staticcheck
-      text: 'SA1019: tc.want.GetAuthorizedWorkers is deprecated:'
-    - linters:
-        - staticcheck
-      text: 'SA1019: wantAuthorizedWorkers.GetWorkerKeyIdentifiers is deprecated:'
-    - linters:
-        - staticcheck
-      text: "SA1019: authorizedWorkerList.WorkerKeyIdentifiers is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: req.GetConnectedWorkerKeyIdentifiers is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: j.GetId is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: pbs.StatusRequest is deprecated:"
-    - linters:
-        - staticcheck
-      text: "SA1019: pbs.StatusResponse is deprecated:"
+    - staticcheck
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: 'ST1005:'
+      - linters:
+          - staticcheck
+        text: 'ST1003:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: pbs.AuthorizedWorkerList is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: item.GetGrantScopeId is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: out.GrantScopeId is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: authorized.GetWorkerKeyIdentifiers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: result.GetAuthorizedWorkers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: item.GetWorkerFilter is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: out.GetWorkerFilter is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: out.WorkerFilter is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: req.GetTokenType is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: s.resp.GetPkcs8HostKeys is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: s.resp.GetCredentials is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: got.GetAuthorizedWorkers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: gotAuthorizedWorkers.GetWorkerKeyIdentifiers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: tc.want.GetAuthorizedWorkers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: wantAuthorizedWorkers.GetWorkerKeyIdentifiers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: authorizedWorkerList.WorkerKeyIdentifiers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: req.GetConnectedWorkerKeyIdentifiers is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: j.GetId is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: pbs.StatusRequest is deprecated:'
+      - linters:
+          - staticcheck
+        text: 'SA1019: pbs.StatusResponse is deprecated:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -1,0 +1,154 @@
+---
+layout: docs
+page_title: Terraform patterns for hosts and host management
+description: >-
+   Use Terraform patterns to create and manage Boundary hosts and host catalogs. Learn how to add static or plugin-based hosts to static or dynamic host catalogs.
+---
+
+# Terraform patterns for hosts and host management
+
+Before you can access a system, you must create a target. Targets require an address or host, and credentials to connect to that host.
+
+You can define target addresses directly to simplify access, but HashiCorp does not recommend that pattern at scale.
+Instead, HashiCorp recommends adding hosts to a host set, and then attaching the host set to a target.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+
+## Static host catalog configuration
+
+The following example shows how to create a Boundary static host catalog and add a known host to that catalog.
+
+```hcl
+# Create the host catalog
+resource "boundary_host_catalog_static" "example" {
+  name        = "My static catalog"
+  description = "My static host catalog"
+  scope_id    = boundary_scope.project.id
+}
+
+# Create the static host
+resource "boundary_host" "example" {
+  type            = "static"
+  name            = "example_host"
+  description     = "My first host"
+  address         = "10.0.0.1"
+
+  # Associate the host with the static host catalog
+  host_catalog_id = boundary_host_catalog.static.id
+}
+```
+
+Static host catalogs increase your administrative burden and should only be used when necessary.
+
+## Dynamic host catalog configuration
+
+When you use cloud providers like Amazon Web Services (AWS) and Microsoft Azure, a better pattern is to use a plugin-based host catalog that automatically discovers hosts based on the filtering criteria for a given cloud.
+
+This example creates a dynamic host catalog that auto-discovers AWS hosts in `us-east-1`.
+
+```hcl
+resource "boundary_host_catalog_plugin" "aws_example" {
+  name            = "My AWS catalog"
+  description     = "My AWS dynamic host catalog"
+  scope_id        = boundary_scope.project.id
+
+  # Delare the cloud plugin to use and the region to search for hosts
+  plugin_name     = "aws"
+  attributes_json = jsonencode({ "region" = "us-east-1" })
+
+  # Define the cloud credentials to use for searching
+  secrets_json = jsonencode({
+    "access_key_id"     = "aws_access_key_id_value",
+    "secret_access_key" = "aws_secret_access_key_value"
+  })
+}
+```
+
+## Azure host catalog configuration
+
+This host catalog example discovers hosts in Azure. Notice that it is very similar to the AWS example.
+
+```hcl
+resource "boundary_host_catalog_plugin" "azure_example" {
+  name        = "My Azure catalog"
+  description = "My Azure dynamic host catalog"
+  scope_id    = boundary_scope.project.id
+  plugin_name = "azure"
+
+  # HashiCorp recommends providing Azure secrets using a file() or environment variables
+
+  # The attributes below must be generated in Azure by creating an Entra ID application
+  attributes_json = jsonencode({
+    "disable_credential_rotation" = "true",
+    "tenant_id"                   = "ARM_TENANT_ID",
+    "subscription_id"             = "ARM_SUBSCRIPTION_ID",
+    "client_id"                   = "ARM_CLIENT_ID"
+  })
+
+  # The secrets below must be generated in Azure by creating an Entra ID application
+  secrets_json = jsonencode({
+    "secret_value" = "ARM_CLIENT_SECRET"
+  })
+}
+```
+
+## Add static hosts to hosts sets configuration
+
+This example adds static hosts to static host sets.
+
+```hcl
+resource "boundary_host_set_static" "web" {
+  host_catalog_id = boundary_host_catalog_static.example.id
+  host_ids = [
+    # This is the static Boundary host created in the example above.
+    boundary_host_static.example.id
+  ]
+}
+```
+
+## Add plugin-based hosts to host sets configuration
+
+Hosts discovered using a plugin-based host catalog should be added to a `boundary_host_set_plugin` host set.
+
+This example demonstrates how to add hosts from the AWS host catalog to a host set using tags as a filtering criteria. In this example, the filter looks for tags named `service-type` that have a value of `web`.
+
+```hcl
+resource "boundary_host_set_plugin" "web" {
+  name            = "My web host set plugin"
+
+  # This is the AWS host catalog that was created above
+  host_catalog_id = boundary_host_catalog_plugin.aws_example.id
+
+  # This is the filter that looks for specific tags using AWS filtering syntax
+  attributes_json = jsonencode({ "filters" = ["tag:service-type=web"] })
+}
+```
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+
+- [Targets](/boundary/docs/domain-model/targets)
+- [Hosts](/boundary/docs/domain-model/hosts)
+- [Host sets](/boundary/docs/domain-model/host-sets)
+- [Host catalogs](/boundary/docs/domain-model/host-catalogs)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+
+- [Static hosts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_static/)
+- [Static host catalogs](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_catalog_static/)
+- [Static host sets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_set_static/)
+- [Plugin-based host catalogs](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_catalog_plugin/)
+- [Plugin-based host sets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_set_plugin/)
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+## Next steps
+
+Once you have configured hosts, you may want to configure [credentials and credential stores](/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores) for your hosts and users.

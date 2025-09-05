@@ -1,0 +1,215 @@
+---
+layout: docs
+page_title: Go SDK overview
+description: >-
+  Learn about Boundary's Go SDK. Use the Go SDK to authenticate to Boundary with an auth method or a recovery KMS workflow.
+---
+
+# Go SDK
+
+Boundary has a Go SDK that sports full coverage of Boundary's API. This SDK is mostly auto-generated, so the patterns are predictable from package to package. For the most part, browsing [pkg.go.dev](https://pkg.go.dev/github.com/hashicorp/boundary/api) is a great way to get started.
+
+<Note>
+
+The Boundary API is configured with [rate limiting](/boundary/docs/api/rate-limiting), by default.
+If the Boundary SDK client is unable to process a request due to a rate limit being met, it sends the API a `429` or `523` [status code](/boundary/docs/api#status-codes) and limits the request.
+By default the client will wait for the amount of time specified in the `Retry-After` header and then try again for a maximum of 2 retries.
+
+</Note>
+
+Below, an example walks through using the SDK to authenticate against an auth method or perform recovery workflows. The patterns for creating a resource-typed client are the same across packages.
+
+## Authenticating to Boundary with the Go SDK
+
+Authenticating to Boundary starts with an [auth method](/boundary/docs/domain-model/auth-methods). An auth method provides
+the basic identity delegation needed for Boundary to generate a token for a client. There are two primary methods for
+authenticating to Boundary:
+
+1. Via an auth method
+1. Via the recovery KMS workflow
+
+We'll cover how to authenticate to Boundary via both of these workflows.
+
+### Auth method
+
+This is the most common way for a client to authenticate to Boundary. To demonstrate this, we'll
+use the [authmethods](https://github.com/hashicorp/boundary/tree/main/api/authmethods) library to generate
+a valid token for a client in Go.
+
+For this example, we're going to use the [password auth method](/boundary/docs/domain-model/auth-methods#password-auth-method-attributes). This example
+assumes there's already a valid user and an associated account in Boundary
+against which the client can authenticate. To simplify this example, we're
+assuming you're running a Boundary instance in dev mode, where the default auth
+method, login name, and password are pre-configured.
+
+First, we need to create a client from the Boundary API and set the address to reach Boundary:
+
+```go
+// The default address points to the default dev mode address
+client, err := api.NewClient(nil)
+if err != nil {
+  return err
+}
+```
+
+The [authenticate
+method](https://github.com/hashicorp/boundary/blob/main/api/authmethods/authenticate.go)
+uses a basic `map[string]interface{}` to pass credential information, in order
+to eventually support multiple auth method types. For this example, we assume
+you're using the password auth method, and so we create an attributes
+map to pass this data:
+
+```go
+credentials := map[string]interface{}{
+  "login_name": "admin",
+  "password":   "password",
+}
+```
+
+Now let's create an auth method client using the base client from above:
+
+```go
+amClient := authmethods.NewClient(client)
+```
+
+<Note>
+
+This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
+
+</Note>
+
+The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI
+with:
+
+```bash
+$ boundary auth-methods list
+
+Auth Method information:
+  ID:             ampw_1234567890
+    Description:  Provides initial administrative authentication into Boundary
+    Name:         Generated global scope initial auth method
+    Type:         password
+    Version:      1
+```
+
+Note the ID in the output above, we're going to use that in the next step.
+
+We can use the credentials object we created to execute `Authenticate()` on this client:
+
+```go
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
+if err != nil {
+  return err
+}
+```
+
+Lastly, let's update the original client with the token we got from the `Authenticate()` call:
+
+```go
+// pass this client to any other resource specific API resources
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
+```
+
+Putting this all together:
+
+```go
+import (
+  "context"
+
+  "github.com/hashicorp/boundary/api"
+  "github.com/hashicorp/boundary/api/authmethods"
+)
+
+credentials := map[string]interface{}{
+  "login_name": "admin",
+  "password":   "password",
+}
+
+// The default address points to the default dev mode address
+client, err := api.NewClient(nil)
+if err != nil {
+  return err
+}
+
+amClient := authmethods.NewClient(client)
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
+if err != nil {
+  return err
+}
+
+// pass this client to any other resource specific API resources
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
+```
+
+### Recovery KMS workflow
+
+The recovery KMS workflow allows you to use a valid [KMS
+configuration](/boundary/docs/configuration/kms) to authenticate and authorize calls
+within the Boundary API. For this example, we're going to assume you've read the
+above and know how to get a base Boundary API client.
+
+Lets start with a valid KMS configuration for recovery that uses a hard coded
+AEAD key as the basis. To authenticate with Boundary using this config we're
+assuming you have an instance of Boundary that declares this as the recovery KMS
+in the Boundary controller config as well.
+
+```go
+import "github.com/hashicorp/boundary/sdk/wrapper"
+
+const kmsConfig = `
+kms "aead" {
+    purpose = "recovery"
+    aead_type = "aes-gcm"
+    key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+    key_id = "recovery_kms"
+}
+`
+```
+
+Now lets use this config to configure our Boundary API client:
+
+```go
+w, err := wrapper.GetWrapperFromHcl(kmsConfig, "recovery")
+if err != nil {
+  return err
+}
+
+client.SetRecoveryKmsWrapper(w)
+```
+
+The client will now use the recovery KMS wrapper for all authenticated calls
+(even if you have previously set a token). You can remove it by instantiating a
+new client, or by passing `nil` into `SetRecoveryKmsWrapper`.
+
+Putting this all together:
+
+```go
+import (
+  "context"
+
+  "github.com/hashicorp/boundary/api"
+  "github.com/hashicorp/boundary/sdk/wrapper"
+)
+
+const kmsConfig = `
+kms "aead" {
+    purpose = "recovery"
+    aead_type = "aes-gcm"
+    key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+    key_id = "recovery_kms"
+}
+`
+
+// The default address points to the default dev mode address
+client, err := api.NewClient(nil)
+if err != nil {
+  return err
+}
+
+w, err := wrapper.GetWrapperFromHcl(kmsConfig, "recovery")
+if err != nil {
+  return err
+}
+
+client.SetRecoveryKmsWrapper(w)
+```

@@ -2,11 +2,12 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(33);
+  select plan(35);
 
   select has_table('recording_static_credential');
 select has_view('credential_static_json_credential_hst_aggregate', 'view for aggregate static json credential history info does not exist');
 select has_view('credential_static_username_password_credential_hst_aggregate', 'view for aggregate static username password credential history info does not exist');
+select has_view('credential_static_username_password_domain_credential_hst_agg', 'view for aggregate static username password domain credential history info does not exist');
 select has_view('credential_static_ssh_private_key_credential_hst_aggregate', 'view for aggregate static ssh private key credential history info does not exist');
 
   -- tests a fk column referencing a history table
@@ -79,6 +80,18 @@ select has_view('credential_static_ssh_private_key_credential_hst_aggregate', 'v
     ('sr1_____cora', 'csu__gcolors', 'css__gcolors', 'brokered')$$
      );
 
+  prepare select_recording_static_username_password_domain_credentials as 
+    select recording_id::text, public_id::text, store_public_id::text, purposes::text
+    from credential_static_username_password_domain_credential_hst_agg
+    where recording_id = 'sr1_____cora'
+    order by public_id;
+
+  select results_eq(
+    'select_recording_static_username_password_domain_credentials',
+        $$VALUES
+      ('sr1_____cora', 'csud_gcolors', 'css__gcolors', 'brokered')$$
+      );
+
   prepare select_recording_static_ssh_private_key_credentials as
     select recording_id::text, public_id::text, store_public_id::text, purposes::text
     from credential_static_ssh_private_key_credential_hst_aggregate
@@ -91,11 +104,11 @@ select has_view('credential_static_ssh_private_key_credential_hst_aggregate', 'v
     ('sr1_____cora', 'cspk_gcolors', 'css__gcolors', 'injected_application')$$
      );
 
-  select is(count(*), 3::bigint)
+  select is(count(*), 4::bigint)
     from target_static_credential
    where target_id = 'tssh______cg';
 
-  select is(count(*), 3::bigint)
+  select is(count(*), 4::bigint)
     from session_credential_static
    where session_id = 's1______cora';
 
@@ -104,7 +117,7 @@ select has_view('credential_static_ssh_private_key_credential_hst_aggregate', 'v
    where session_id = 's1______cora'
      and public_id  = 'sr1_____cora';
 
-  select is(count(*), 3::bigint)
+  select is(count(*), 4::bigint)
     from recording_static_credential
    where recording_id = 'sr1_____cora';
 

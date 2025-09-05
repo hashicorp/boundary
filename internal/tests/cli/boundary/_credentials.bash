@@ -18,6 +18,39 @@ function create_username_password_credential() {
     -password env://BP
 }
 
+
+function create_username_password_domain_credential_with_domain() {
+  local name=$1
+  local sid=$2
+  local user=$3
+  local pass=$4
+  local domain=$5
+
+  export BP="${pass}"
+  boundary credentials create username-password-domain \
+    -name $name \
+    -description 'test username password domain credential with domain' \
+    -credential-store-id $sid \
+    -username $user \
+    -password env://BP \
+    -domain $domain
+}
+
+function create_username_password_domain_credential() {
+  local name=$1
+  local sid=$2
+  local user=$3
+  local pass=$4
+
+  export BP="${pass}"
+  boundary credentials create username-password-domain \
+    -name $name \
+    -description 'test username password domain credential with domain parsed from username' \
+    -credential-store-id $sid \
+    -username $user \
+    -password env://BP
+}
+
 function create_json_credential() {
   local name=$1
   local sid=$2

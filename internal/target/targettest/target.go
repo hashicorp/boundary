@@ -36,6 +36,7 @@ type Target struct {
 	HostSource        []target.HostSource       `gorm:"-"`
 	CredentialSources []target.CredentialSource `gorm:"-"`
 	Aliases           []*talias.Alias           `gorm:"-"`
+	ServerCert        *target.ServerCertificate `gorm:"-"`
 }
 
 var (
@@ -161,6 +162,10 @@ func (t *Target) GetStorageBucketId() string {
 	return ""
 }
 
+func (t *Target) GetProxyServerCertificate() *target.ServerCertificate {
+	return t.ServerCert
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -252,6 +257,10 @@ func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
 func (t *Target) SetEnableSessionRecording(_ bool) {}
 
 func (t *Target) SetStorageBucketId(_ string) {}
+
+func (t *Target) SetProxyServerCertificate(sc *target.ServerCertificate) {
+	t.ServerCert = sc
+}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{

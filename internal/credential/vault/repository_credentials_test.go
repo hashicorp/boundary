@@ -518,7 +518,7 @@ func TestRepository_Revoke(t *testing.T) {
 	assert.NotEmpty(prj.GetPublicId())
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 
 	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -526,7 +526,7 @@ func TestRepository_Revoke(t *testing.T) {
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
 	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 
 	const (
 		sessionCount    = 4
@@ -636,7 +636,7 @@ func Test_TerminateSession(t *testing.T) {
 	assert.NotEmpty(prj.GetPublicId())
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 
 	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -644,7 +644,7 @@ func Test_TerminateSession(t *testing.T) {
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
 	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 
 	const (
 		sessionCount    = 4

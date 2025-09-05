@@ -42,6 +42,7 @@ type options struct {
 	withIgnoreDecryptionFailures bool
 	withRandomReader             io.Reader
 	withStartPageAfterItem       pagination.Item
+	withProxyCertificate         *ProxyCertificate
 }
 
 func getDefaultOptions() options {
@@ -157,5 +158,12 @@ func WithRandomReader(rand io.Reader) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
+	}
+}
+
+// WithProxyCertificate is used to associate a ProxyCertificate with a session.
+func WithProxyCertificate(pc *ProxyCertificate) Option {
+	return func(o *options) {
+		o.withProxyCertificate = pc
 	}
 }

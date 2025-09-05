@@ -107,6 +107,95 @@ func (r *Repository) CreateUsernamePasswordCredential(
 	return newCred, nil
 }
 
+// CreateUsernamePasswordDomainCredential inserts c into the repository and returns a new
+// UsernamePasswordDomainCredential containing the credential's PublicId. c is not
+// changed. c must not contain a PublicId. The PublicId is generated and
+// assigned by this method. c must contain a valid StoreId.
+//
+// The password is encrypted and a HmacSha256 of the password is calculated. Only the
+// PasswordHmac is returned, the plain-text and encrypted password is not returned.
+//
+// Both c.Name and c.Description are optional. If c.Name is set, it must
+// be unique within c.ProjectId. Both c.CreateTime and c.UpdateTime are
+// ignored.
+func (r *Repository) CreateUsernamePasswordDomainCredential(
+	ctx context.Context,
+	projectId string,
+	c *UsernamePasswordDomainCredential,
+	_ ...Option,
+) (*UsernamePasswordDomainCredential, error) {
+	const op = "static.(Repository).CreateUsernamePasswordDomainCredential"
+	if c == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential")
+	}
+	if c.UsernamePasswordDomainCredential == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
+	}
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if c.Username == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing username")
+	}
+	if c.Domain == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing domain")
+	}
+	if c.Password == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password")
+	}
+	if c.StoreId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
+	}
+	if c.PublicId != "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+	}
+
+	c = c.clone()
+	id, err := credential.NewUsernamePasswordDomainCredentialId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	c.PublicId = id
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	// encrypt
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+	if err := c.encrypt(ctx, databaseWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var newCred *UsernamePasswordDomainCredential
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			newCred = c.clone()
+			if err := w.Create(ctx, newCred,
+				db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in store: %s: name %s already exists", c.StoreId, c.Name)))
+		}
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in store: %s", c.StoreId)))
+	}
+
+	// Clear password fields, only PasswordHmac should be returned
+	newCred.CtPassword = nil
+	newCred.Password = nil
+
+	return newCred, nil
+}
+
 // CreateSshPrivateKeyCredential inserts c into the repository and returns a new
 // SshPrivateKeyCredential containing the credential's PublicId. c is not
 // changed. c must not contain a PublicId. The PublicId is generated and
@@ -308,6 +397,20 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		upCred.Password = nil
 		cred = upCred
 
+	case credential.UsernamePasswordDomainSubtype:
+		updCred := allocUsernamePasswordDomainCredential()
+		updCred.PublicId = publicId
+		if err := r.reader.LookupByPublicId(ctx, updCred); err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, nil
+			}
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+		}
+		// Clear password fields, only passwordHmac should be returned
+		updCred.CtPassword = nil
+		updCred.Password = nil
+		cred = updCred
+
 	case credential.SshPrivateKeySubtype:
 		spkCred := allocSshPrivateKeyCredential()
 		spkCred.PublicId = publicId
@@ -429,6 +532,122 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 
 	var rowsUpdated int
 	var returnedCredential *UsernamePasswordCredential
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedCredential = c.clone()
+			var err error
+			rowsUpdated, err = w.Update(ctx, returnedCredential,
+				dbMask, nullFields,
+				db.WithOplog(oplogWrapper, returnedCredential.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithVersion(&version))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsUpdated > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, db.NoRowsAffected, err
+	}
+
+	// Clear password fields, only PasswordHmac should be returned
+	returnedCredential.CtPassword = nil
+	returnedCredential.Password = nil
+
+	return returnedCredential, rowsUpdated, nil
+}
+
+// UpdateUsernamePasswordDomainCredential updates the repository entry for c.PublicId with
+// the values in c for the fields listed in fieldMaskPaths. It returns a
+// new UsernamePasswordDomainCredential containing the updated values and a count of the
+// number of records updated. c is not changed.
+//
+// c must contain a valid PublicId. Only Name, Description, Username, Password, and Domain can be
+// changed. If c.Name is set to a non-empty string, it must be unique within c.ProjectId.
+//
+// An attribute of c will be set to NULL in the database if the attribute
+// in c is the zero value and it is included in fieldMaskPaths.
+func (r *Repository) UpdateUsernamePasswordDomainCredential(ctx context.Context,
+	projectId string,
+	c *UsernamePasswordDomainCredential,
+	version uint32,
+	fieldMaskPaths []string,
+	_ ...Option,
+) (*UsernamePasswordDomainCredential, int, error) {
+	const op = "static.(Repository).UpdateUsernamePasswordDomainCredential"
+	if c == nil {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing credential")
+	}
+	if c.UsernamePasswordDomainCredential == nil {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
+	}
+	if c.PublicId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
+	}
+	if version == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	}
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if c.StoreId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
+	}
+	c = c.clone()
+
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descriptionField, f):
+		case strings.EqualFold(usernameField, f):
+		case strings.EqualFold(passwordField, f):
+		case strings.EqualFold(domainField, f):
+		default:
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
+		}
+	}
+	dbMask, nullFields := dbw.BuildUpdatePaths(
+		map[string]any{
+			nameField:        c.Name,
+			descriptionField: c.Description,
+			usernameField:    c.Username,
+			passwordField:    c.Password,
+			domainField:      c.Domain,
+		},
+		fieldMaskPaths,
+		nil,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
+	}
+
+	for _, f := range fieldMaskPaths {
+		if strings.EqualFold(passwordField, f) {
+			// Password has been updated, re-encrypt and recalculate hmac
+			databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+			}
+			if err := c.encrypt(ctx, databaseWrapper); err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+
+			// Set PasswordHmac and CtPassword masks for update.
+			dbMask = append(dbMask, "PasswordHmac", "CtPassword", "KeyId")
+		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected,
+			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var rowsUpdated int
+	var returnedCredential *UsernamePasswordDomainCredential
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedCredential = c.clone()
@@ -865,6 +1084,11 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 		c.PublicId = id
 		input = c
 		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
+	case credential.UsernamePasswordDomainSubtype:
+		c := allocUsernamePasswordDomainCredential()
+		c.PublicId = id
+		input = c
+		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
 	case credential.SshPrivateKeySubtype:
 		c := allocSshPrivateKeyCredential()
 		c.PublicId = id
@@ -944,6 +1168,13 @@ func (r *Repository) ListDeletedCredentialIds(ctx context.Context, since time.Ti
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted username password credentials"))
 		}
 		for _, cl := range deletedUsernamePasswordCredentials {
+			credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+		}
+		var deletedUsernamePasswordDomainCredentials []*deletedUsernamePasswordDomainCredential
+		if err := r.SearchWhere(ctx, &deletedUsernamePasswordDomainCredentials, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted username password domain credentials"))
+		}
+		for _, cl := range deletedUsernamePasswordDomainCredentials {
 			credentialStoreIds = append(credentialStoreIds, cl.PublicId)
 		}
 		var deletedSSHPrivateKeyCredentials []*deletedSSHPrivateKeyCredential

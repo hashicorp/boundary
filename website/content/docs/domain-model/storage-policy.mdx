@@ -1,0 +1,61 @@
+---
+layout: docs
+page_title: Storage policy resource
+description: >-
+  Learn about using the storage policy resource to manage session recording retention. Understand how to configure policies for scopes and specify retention.
+---
+
+# Storage policies
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A resource known as a storage policy is used to codify how long [session recordings][] must be kept and when they should be deleted.
+A storage policy's name is optional, but it must be unique if you define one.
+Storage policies can only be assigned to the global [scope][] or an org scope.
+You must [attach][] storage policies to a scope (global or a specific org) to take effect.
+
+A storage policy exists in either the global scope or an org scope.
+Storage policies that are created in the global scope can be associated with any org scope.
+However, a storage policy created in an org scope can only be associated with that org scope.
+Any storage policies associated with an org scope are deleted when you delete the org itself.
+
+## Attributes
+
+A storage policy has the following configurable attributes:
+
+- `name` - (Optional) The name of the resource in Boundary.
+The name is optional, but if you set it, it must be unique within the scope ID.
+If you do not provide a name, Boundary uses the storage policy ID as the default name.
+- `description` - (Optional) A description of the resource.
+- `retain_for_days` - (Optional) The number of days a session recording must be kept.
+A value of `-1` indicates an infinite retention.
+- `retain_for_days_overridable` - (Optional) Indicates that a lower scope can override the `retain_for_days` attribute value.
+The default value is `true`.
+- `delete_after_days` - (Optional) The number of days after which a session recording should be deleted.
+- `delete_after_days_overridable` - (Optional) Indicates that a lower scope can override the  `delete_after_days` attribute value.
+The default value is `true`.
+
+## Retention and deletion guidelines
+
+- Setting the `retain_for_days` value to `-1` (infinity) requires the `delete_after_days` value to be set to `0`.
+- If you set the `delete_after_days` value, it must be greater than or equal to 0.
+- The `delete_after_days` value must be greater than or equal to the `retain_for_days` value, unless you set `delete_after_days` to `0`.
+- You cannot set the `retain_for_days` and `delete_after_days` values to 0.
+- Changing an attribute of a storage policy that is assigned to a scope can impact the resultant set of policy.
+However, such a change only affects future recordings created within that scope or using that storage policy.
+
+## Referenced by
+
+- [Scopes](/boundary/docs/domain-model/scopes)
+- [Session recordings](/boundary/docs/domain-model/session-recordings)
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Scope service](/boundary/api-docs/scope-service)
+- [Policy service](/boundary/api-docs/policy-service)
+
+[attach]: /boundary/docs/session-recording/compliance/configure-storage-policy#attach-storage-policies-to-a-scope
+[session recordings]: /boundary/docs/domain-model/session-recordings
+[scope]: /boundary/docs/domain-model/scopes

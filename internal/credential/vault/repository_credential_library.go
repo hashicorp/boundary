@@ -363,6 +363,7 @@ type listLookupLibrary struct {
 	CredentialType                string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 }
@@ -394,6 +395,16 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 			up.PasswordAttribute = pl.PasswordAttribute
 			up.sanitize()
 			cl.MappingOverride = up
+		}
+	case string(globals.UsernamePasswordDomainCredentialType):
+		if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" || pl.DomainAttribute != "" {
+			upd := allocUsernamePasswordDomainOverride()
+			upd.LibraryId = pl.PublicId
+			upd.UsernameAttribute = pl.UsernameAttribute
+			upd.PasswordAttribute = pl.PasswordAttribute
+			upd.DomainAttribute = pl.DomainAttribute
+			upd.sanitize()
+			cl.MappingOverride = upd
 		}
 	case string(globals.SshPrivateKeyCredentialType):
 		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" || pl.PrivateKeyPassphraseAttribute != "" {

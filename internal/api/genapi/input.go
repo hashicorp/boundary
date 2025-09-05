@@ -697,6 +697,30 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentials.UsernamePasswordDomainAttributes{},
+		outFile:     "credentials/username_password_domain_attributes.gen.go",
+		subtypeName: "UsernamePasswordDomainCredential",
+		subtype:     "username_password_domain",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Domain",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:     &credentials.SshPrivateKeyAttributes{},
 		outFile:     "credentials/ssh_private_key_attributes.gen.go",
 		subtypeName: "SshPrivateKeyCredential",
@@ -1073,6 +1097,15 @@ var inputStructs = []*structInfo{
 				Name:        "EnableSessionRecording",
 				SkipDefault: true,
 			},
+		},
+	},
+	{
+		inProto:        &targets.RdpTargetAttributes{},
+		outFile:        "targets/rdp_target_attributes.gen.go",
+		subtypeName:    "RdpTarget",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
 		},
 	},
 	{

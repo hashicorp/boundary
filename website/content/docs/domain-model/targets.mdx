@@ -1,0 +1,174 @@
+---
+layout: docs
+page_title: Target resource
+description: >-
+  Learn about using the target resource to configure a networked service a user can connect to. Understand the TCP and SSH target type requirements and attributes.
+---
+
+# Targets
+
+A target is a resource
+that represents a networked service
+with an associated set of permissions
+a [user][] can connect to
+and interact with
+through Boundary
+by way of a session.
+
+A target can only be defined within a [project][].
+A target can contain references to [host sets][] from [host catalogs][]
+which belong to the same project as the target.
+A target can contain references to [credential libraries][]
+from [credential stores][] which belong to the same project as the target.
+
+A target can contain an address
+which is used by a session to connect to a networked resource.
+A target cannot have an address and also reference host sources.
+
+A user must be assigned a [role][] with the `authorize-session` [permission][]
+for the target to
+establish a session with a networked resource by way of an address,
+or host in any host set referenced by the target.
+
+## Attributes
+
+A target has the following configurable attributes:
+
+- `name` - (required)
+  The `name` must be unique within the target's project.
+
+- `description` - (optional)
+  An optional description of the target for identificaiton purposes.
+
+- `address` - (optional)
+  This value represents a network resource address and is used when establishing a session.
+  It does not accept a port, only an IP address or DNS name.
+
+- `default_client_port` - (optional)
+  Represents a local port that you want Boundary to listen to by default when someone initiates a session on the client.
+
+- `egress_worker_filter` - (optional)
+  A boolean expression to [filter][] which egress workers can handle sessions
+  for this target.
+  Egress worker filters determine which workers are used to access targets.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/workers/multi-hop) connections.
+  If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
+
+- `ingress_worker_filter` - (optional) <sup>HCP/ENT</sup>
+  A boolean expression to [filter][] which ingress workers can handle sessions
+  for this target.
+  Ingress worker filters determine which workers you connect with to initiate a session.
+  If you do not configure an ingress filter, Boundary selects a front line worker for the session.
+  A front line worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
+
+- `session_connection_limit` - (required)
+  The cumulative number of connections allowed during a session.
+  A -1 value means no limit.
+  The default is -1.
+  The value must be greater than 0 or exactly -1.
+
+- `session_max_seconds` - (required)
+  The maximum duration of an individual session between the user and the target.
+  All connections for a session are closed
+  and the session is terminated
+  when a session reaches the maximum duration.
+  The default is 8 hours (28800 seconds).
+  This value must be greater than 0.
+  If you do not specfiy a maximum duration, Boundary uses the default value.
+
+- `with-alias-authorize-session-host-id` (Optional)
+  The authorize session host ID flag that an alias uses when you create the alias at the same time as you create the target.
+
+- `with-alias-scope-id` (Optional)
+  The scope ID for the alias to be created in, when you create it at the same time as you create the target.
+  The default scope is global.
+
+- `with-alias-value` (Optional)
+  The string that you want to use as the alias to represent the target, when you create an alias at the same time as you create the target.
+
+## Target types
+
+Boundary supports TCP and SSH target types.
+An SSH target **must** have at least one injected application credential to establish the SSH connection.
+A TCP target **cannot** have any injected application credentials.
+
+Note the following target type requirements:
+
+- **To use brokered credentials to connect to a target that runs SSH**: you must use a `tcp` target type.
+- **To use injected application credentials to connect to a target that runs SSH**: you must use an `ssh` target type.
+- **To enable session recording for a target that runs SSH**: you must use injected application credentials and an `ssh` target type.
+
+You can configure brokered credentials for use with SSH targets for purposes other than establishing the initial SSH connection.
+
+### TCP target attributes
+
+TCP targets have the following additional attribute:
+
+- `default_port` - (required)
+  The default port to set on this target.
+
+### SSH target attributes
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+SSH targets use injected application credentials to authenticate an SSH session between the client and end host.
+Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.
+The injected credentials can be a username/password or username/private key credential from Vault credential libraries or they can be static [credentials][] or an SSH certificate from Vault SSH credential libraries.
+
+SSH targets require you to configure injected credentials to create a session.
+If you attempt to create a session against an SSH target without configuring injected credentials, it results in an error.
+However, you can use brokered credentials with SSH targets for purposes other than establishing the initial SSH connection.
+
+SSH targets have the following additional attributes:
+
+- `default_port` - (optional)
+  The default port to set on this target.
+  If this is not specified the default port will be 22.
+
+- `enable_session_recording` - (optional)
+  Set to `true` to enable [session recordings][] for a target.
+  If you enable session recording, the `storage_bucket_id` is required.
+
+- `storage_bucket_id` - (optional)
+  Designates the storage bucket to be used for session recording.
+  This attribute is required if you set `enable_session_recording` to `true`.
+
+## Referenced by
+
+- [Credential library][]
+- [Host set][]
+- [Project][]
+- [Session][]
+- [Session recordings][]
+- [Worker filtering][]
+
+[credentials]: /boundary/docs/domain-model/credentials
+[credential library]: /boundary/docs/domain-model/credential-libraries
+[credential libraries]: /boundary/docs/domain-model/credential-libraries
+[credential store]: /boundary/docs/domain-model/credential-stores
+[credential stores]: /boundary/docs/domain-model/credential-stores
+[host catalog]: /boundary/docs/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/domain-model/host-catalogs
+[host set]: /boundary/docs/domain-model/host-sets
+[host sets]: /boundary/docs/domain-model/host-sets
+[host]: /boundary/docs/domain-model/hosts
+[hosts]: /boundary/docs/domain-model/hosts
+[permission]: /boundary/docs/rbac
+[permissions]: /boundary/docs/rbac
+[project]: /boundary/docs/domain-model/scopes#projects
+[projects]: /boundary/docs/domain-model/scopes#projects
+[role]: /boundary/docs/domain-model/roles
+[roles]: /boundary/docs/domain-model/roles
+[session]: /boundary/docs/domain-model/sessions
+[sessions]: /boundary/docs/domain-model/sessions
+[session recordings]: /boundary/docs/domain-model/session-recordings
+[filter]: /boundary/docs/workers/worker-tags
+[worker filtering]: /boundary/docs/workers/worker-tags
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Target service](/boundary/api-docs/target-service)

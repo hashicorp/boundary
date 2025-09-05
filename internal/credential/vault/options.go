@@ -34,6 +34,7 @@ type options struct {
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
+	withOverrideDomainAttribute               string
 	withOverridePrivateKeyAttribute           string
 	withOverridePrivateKeyPassphraseAttribute string
 	withMappingOverride                       MappingOverride
@@ -159,6 +160,14 @@ func WithOverrideUsernameAttribute(s string) Option {
 func WithOverridePasswordAttribute(s string) Option {
 	return func(o *options) {
 		o.withOverridePasswordAttribute = s
+	}
+}
+
+// WithOverrideDomainAttribute provides the name of an attribute in the
+// Data field of a Vault api.Secret that maps to a Domain value.
+func WithOverrideDomainAttribute(s string) Option {
+	return func(o *options) {
+		o.withOverrideDomainAttribute = s
 	}
 }
 

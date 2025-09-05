@@ -1,0 +1,119 @@
+---
+layout: docs
+page_title: Common error messages
+description: >-
+  View common Boundary error messages and learn how to troubleshoot them.
+---
+
+# Common error messages
+
+When installing and running Boundary, there are some common messages you might see. Usually they indicate an issue in your network or in your IAM
+configuration. Some of the more common errors and their solutions are listed below. If you think you have found a bug, please report the issue on
+[github](https://github.com/hashicorp/boundary/issues/new/choose).
+
+To troubleshoot specific issues with the Client Agent or transparent sessions, refer to the following topics:
+
+- [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot)
+- [Client Agent software conflicts](/boundary/docs/client-agent/conflicting-software)
+- [Transparent sessions interoperability matrix](/boundary/docs/interoperability-matrix)
+
+## Cannot connect to target: error from controller when performing authorize-session action against given target
+
+```
+$ boundary targets authorize-session
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                PermissionDenied
+  Message:             Forbidden.
+  Status:              403
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+This error message indicates the user does not have permission to access the requested target. Ensure the right IAM policies are configured for the
+user attempting to create a session. Users need to belong to a role in the target's scope with an authorize-session grant to access the target.
+The [Resource tables](/boundary/docs/rbac/resource-table) page is a great reference for how to configure
+the right permission grants for Boundary roles.
+
+## Error from controller when performing authorize-session action against given target
+
+```
+$ boundary connect -target-id $TARGET_ID
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No workers are available to handle this session, or all have been filtered.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+This error message indicates the worker is unable to proxy connections to the target. This could be caused by a number of issues.
+
+**Network misconfiguration:** ensure that worker, target, and clients have the required network configurations
+- Targets
+  - Need to allow inbound connections from workers
+- Workers
+  - Need to allow outbound connections to a Boundary trusted control point (either the Boundary control plane or another trusted worker)
+  - Need to allow outbound connections to targets
+  - Need to allow inbound connections from clients
+- Client devices
+  - Need to allow outbound (client->worker) connections to workers
+  - The target is accessible by the Worker. The same error message is thrown if the target IP is either misconfigured or inaccessible by the worker
+
+**Worker tag and filter misconfiguration:** If your target is using a worker filter
+- Ensure the worker filter selects the intended worker(s) to proxy connections to the target.
+- Ensure your intended worker(s) have the intended tags to match your target's filter
+
+## Error from controller when performing authorize-session action against given target: unsupported credential *vault.baseCred
+
+```
+$ boundary connect ssh -target-id tssh_dmcFiVIakM
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                Internal
+  Message:             targets.(Service).AuthorizeSession: targets.dynamicToWorkerCredential: unsupported credential *vault.baseCred:
+  parameter violation: error #100
+  Status:              500
+  context:             Error from controller when performing authorize-session action against given target
+```
+You may experience this error when attempting credential injection via Vault. Currently username_password and ssh_private_key credential
+types are supported for credential injection, but only username_password can be set up using the Web UI. If you experience this error,
+attempt to create the Vault ssh_private_key credential library using the CLI instead of the UI.
+
+## Error from controller when performing authorize-session action against given target: No ingress workers with valid next-hop paths could be found for this multi-hop session
+
+```
+boundary connect ssh -target-id ttcp_3DxjpP9Y3o Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No ingress workers with valid next-hop paths could be found for this multi-hop session.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+You may experience this error when deploying multiple Boundary controllers in high availability (HA) mode if you have not assigned a unique name to each controller. Ensure each controller has a [unique name](/boundary/docs/configuration/controller#name) in the controller stanza.
+
+## Error from worker when attempting to run worker in docker container on AWS: Error issuing command
+
+```
+Error: error creating storage bucket: {"kind":"Internal","message":"storage_buckets.(EntService).createInRepo: unable to create storage bucket: plugin.(Repository).CreateStorageBucket: in scope: global: db.DoTx: plugin.(Repository).CreateStorageBucket: storage.(ProxyClient).OnCreateStorageBucket: routing.(CommandClientProducer).IssueCommand: unknown,
+ unknown: error #0: rpc error: code = InvalidArgument desc = from worker w_xxx: from worker w_xxx: Error issuing command: storage_bucket.(storageService).OnCreateStorageBucket: plugin error,
+ external system issue: error #3001: rpc error: code = InvalidArgument desc = error getting S3 client: failed to retrieve credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\n"}
+```
+
+You may experience this error when deploying Boundary controllers in Docker when enabling IMDSv2. The fix is to extend the `http-put-response-hop-limit` option key to a value of 2 or greater.
+
+For more information, refer to [Boundary Client in Docker Additional Configuration When Using IMDSv2](https://support.hashicorp.com/hc/en-us/articles/36515134051859-Boundary-Client-in-Docker-Additional-Configuration-When-Using-IMDSv2).```
+
+## More information
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+To troubleshoot specific issues with the Client Agent or transparent sessions, refer to the following topics:
+
+- [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot)
+- [Client Agent software conflicts](/boundary/docs/client-agent/conflicting-software)
+- [Transparent sessions interoperability matrix](/boundary/docs/interoperability-matrix)

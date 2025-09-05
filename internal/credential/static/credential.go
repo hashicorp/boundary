@@ -22,6 +22,7 @@ type listCredentialResult struct {
 	Name        string
 	Description string
 	Username    string
+	Domain      string
 	KeyId       string
 	Hmac1       string
 	Hmac2       string
@@ -63,6 +64,26 @@ func (c *listCredentialResult) toCredential(ctx context.Context) (credential.Sta
 				UpdateTime:  c.UpdateTime,
 				Version:     uint32(c.Version),
 				Username:    c.Username,
+				KeyId:       c.KeyId,
+			},
+		}
+		// Assign byte slices only if the string isn't empty
+		if c.Hmac1 != "" {
+			cred.PasswordHmac = []byte(c.Hmac1)
+		}
+		return cred, nil
+	case "upd":
+		cred := &UsernamePasswordDomainCredential{
+			UsernamePasswordDomainCredential: &store.UsernamePasswordDomainCredential{
+				PublicId:    c.PublicId,
+				StoreId:     c.StoreId,
+				Name:        c.Name,
+				Description: c.Description,
+				CreateTime:  c.CreateTime,
+				UpdateTime:  c.UpdateTime,
+				Version:     uint32(c.Version),
+				Username:    c.Username,
+				Domain:      c.Domain,
 				KeyId:       c.KeyId,
 			},
 		}

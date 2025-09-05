@@ -32,7 +32,7 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
 - `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
    `root`, `previous-root`, `recovery`, `bsr`, or `config`.
 
-   To [enable session recording](/boundary/docs/configuration/session-recording/enable-session-recording), you must configure the `bsr` value for the `purpose`.
+   To [enable session recording](/boundary/docs/session-recording/configuration/enable-session-recording), you must configure the `bsr` value for the `purpose`.
 
 - `region` `(string: "us-east-1")`: The AWS region where the encryption key
   lives. If not provided, may be populated from the `AWS_REGION` or
@@ -54,22 +54,22 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
   also be specified by the `AWS_SECRET_ACCESS_KEY` environment variable or as
   part of the AWS profile from the AWS CLI or instance profile.
 
-- `shared_creds_filename` `(string: "")`: (Boundary 0.5.1+) If set, the file
+- `shared_creds_filename` `(string: "")`: If set, the file
   name to read as a shared credentials file.
 
-- `shared_creds_profile` `(string: "")`: (Boundary 0.5.1+) If set, the
+- `shared_creds_profile` `(string: "")`: If set, the
   profile to use from the shared credentials file. If not set, will use the
   `AWS_PROFILE` env var, or if that is not set, `"default"`.
 
-- `role_arn` `(string: "")`: (Boundary 0.5.1+) If this and
+- `role_arn` `(string: "")`: If this and
   `web_identity_token_file` are set, the role ARN to use when using a web
   identity role provider with STS.
 
-- `web_identity_token_file` `(string: "")`: (Boundary 0.5.1+) If this and
+- `web_identity_token_file` `(string: "")`: If this and
   `role_arn` are set, the token file to use when using a web identity role
   provider with STS.
 
-- `role_session_name` `(string: "")`: (Boundary 0.5.1+) If using the web
+- `role_session_name` `(string: "")`: If using the web
   identity role provider, the role session to use.
 
 - `endpoint` `(string: "")`: The KMS API endpoint to be used to make AWS KMS

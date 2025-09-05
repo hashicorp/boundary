@@ -1,0 +1,57 @@
+---
+layout: docs
+page_title: Group resource
+description: >-
+  Learn about using the group resource to create collections of users with the same access control. Any role assigned to a group is assigned to the group's users.
+---
+
+# Groups
+
+A group is a resource
+that represents a collection of [users][]
+which can be treated equally
+for the purposes of access control.
+A group is a principal
+which allows it to be assigned to [roles][].
+Any role assigned to a group is indirectly assigned to the users in the group.
+This assignment is a transitive property.
+A user in a group receives all [permissions][] of the roles assigned to the group.
+Groups can be defined at the [global][], [organization][], or [project][] [scope][].
+
+## Attributes
+
+A group has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the group's immediate parent scope.
+
+- `description` - (optional)
+
+## Referenced by
+
+- [Global][]
+- [Organization][]
+- [Role][]
+- [User][]
+
+[global]: /boundary/docs/domain-model/scopes#global
+[group]: /boundary/docs/domain-model/groups
+[groups]: /boundary/docs/domain-model/groups
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[permissions]: /boundary/docs/rbac
+[project]: /boundary/docs/domain-model/scopes#projects
+[role]: /boundary/docs/domain-model/roles
+[roles]: /boundary/docs/domain-model/roles
+[scope]: /boundary/docs/domain-model/scopes
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Group service](/boundary/api-docs/group-service)
+
+## Tutorial
+
+Refer to the [Manage Users and Groups with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-users-groups) tutorial to learn how to complete user management related tasks.

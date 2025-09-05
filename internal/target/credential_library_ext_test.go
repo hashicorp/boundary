@@ -52,6 +52,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					CredentialLibraryId: "lib_0000000",
 					CredentialPurpose:   string(credential.BrokeredPurpose),
 				},
+				CredentialType: "test",
 			},
 		},
 	}
@@ -59,7 +60,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.NewCredentialLibrary(context.Background(), tt.args.targetId, tt.args.libraryId, credential.BrokeredPurpose)
+			got, err := target.NewCredentialLibrary(context.Background(), tt.args.targetId, tt.args.libraryId, credential.BrokeredPurpose, "test")
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

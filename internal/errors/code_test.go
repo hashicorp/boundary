@@ -301,6 +301,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: VaultInvalidCredentialMapping,
 		},
 		{
+			name: "VaultTokenMissingCapabilities",
+			c:    VaultTokenMissingCapabilities,
+			want: VaultTokenMissingCapabilities,
+		},
+		{
 			name: "OidcProviderCallbackError",
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,
@@ -424,6 +429,36 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "InvalidTextRepresentation",
 			c:    InvalidTextRepresentation,
 			want: InvalidTextRepresentation,
+		},
+		{
+			name: "Sign",
+			c:    Sign,
+			want: Sign,
+		},
+		{
+			name: "Verify",
+			c:    Verify,
+			want: Verify,
+		},
+		{
+			name: "Unauthorized",
+			c:    Unauthorized,
+			want: Unauthorized,
+		},
+		{
+			name: "Conflict",
+			c:    Conflict,
+			want: Conflict,
+		},
+		{
+			name: "Paused",
+			c:    Paused,
+			want: Paused,
+		},
+		{
+			name: "ImmutableColumn",
+			c:    ImmutableColumn,
+			want: ImmutableColumn,
 		},
 	}
 	for _, tt := range tests {

@@ -1,0 +1,271 @@
+---
+layout: docs
+page_title: BSR file data structure
+description: >-
+  Understand the data structure in Boundary's proprietary BSR file that stores session recording data.
+---
+
+# BSR file data structure
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
+It contains all the data transmitted between a user and a target during a single session.
+
+Boundary creates the top-level directory of the BSR as `<sessionRecordingID>.bsr`. This top level directory contains session summary
+information and subdirectories for connections.
+
+A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
+If you use a multiplexed protocol, there are subdirectories for the channels.
+
+Every directory contains a SHA256SUMS and SHA256SUMS.sig file, to be used for cryptographically verifying the contents of
+that directory. The SHA256SUMS file contains rows of file names paired with a checksum for file contents. The
+SHA256SUMS.sign is a copy of the SHA256SUMS file, signed with the BSR’s private key. For more information on verifying a
+session recording, refer to [Validating the integrity of session recordings](/boundary/docs/session-recording/compliance/validate-session-recordings).
+
+The example BSR below is for a multiplexed session recording with the ID `sr_iNCdGSREeX`. The session recording contains one connection,
+`cr_3bB78W53Y9`. Connection `cr_3bB78W53Y9` contains two channels, `chr_VUnVuVnITu` and `chr_nITuVUnVuV`.
+The files in each directory are explained in the following sections.
+
+```
+└── sr_iNCdGSREeX.bsr
+    ├── SHA256SUM
+    ├── SHA256SUM.sig
+    ├── bsrKey.pub
+    ├── pubKeyBsrSignature.sign
+    ├── pubKeySelfSignature.sign
+    ├── session-meta.json
+    ├── session-recording-summary.json
+    ├── session-recording.meta
+    ├── wrappedBsrKey
+    ├── wrappedPrivKey
+    ├── cr_3bB78W53Y9.connection
+    │   ├── SHA256SUM
+    │   ├── SHA256SUM.sig
+    │   ├── connection-recording-summary.json
+    │   ├── connection-recording.meta
+    │   ├── requests-inbound.data
+    │   ├── requests-outbound.data
+    │   ├── chr_VUnVuVnITu.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   ├── chr_nITuVUnVuV.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   └──
+    └──
+
+
+```
+
+## BSR Session folder
+
+A BSR session folder contains the following files:
+
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `bsrKey.pub` is the public ed25519 key.
+- `pubKeySelfSignature.sign` is a self-signature of the plaintext public ed25519 key created with its private key.
+- `pubKeyBsrSignature.sign` is a signature of the plaintext public ed25519 key created with the BSR key.
+- `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key that you configure.
+- `wrappedPrivKey` is the private ed25519 key wrapped by the external KMS AES-GCM key that you configure.
+- `session-meta.json` is a JSON file that contains metadata about the session, including the session id, endpoint,
+user, target, host, worker, and credentials used to access the target. The intention of this file is to provide all information
+relevant to the recorded session so that the BSR provides a complete snapshot of a session even in the absence of the Boundary
+control plane.
+- `session-recording.meta` is a plaintext file that contains metadata about the session, including the session id, protocol,
+and a connection ids. For each connection id listed, there should be a corresponding connection directory in the session directory.
+- `session-recording-summary.json` is a JSON file that contains a summary of the session recording, including the session id, connection count,
+start time, end time, and any errors encountered during recording of the session.
+
+`session-recording.meta` file example:
+
+```
+id: sr_iNCdGSREeX
+protocol: BSSH
+connection: cr_3bB78W53Y9.connection
+```
+
+`session-recording-summary.json` file example:
+
+```
+{
+  "Id": "sr_iNCdGSREeX",
+  "ConnectionCount": 1,
+  "StartTime": "2023-09-19T15:05:39.343307163Z",
+  "EndTime": "2023-09-19T15:08:02.953159598Z",
+  "Errors": ""
+}
+
+```
+
+`session-meta.json` file example:
+
+```
+{
+    "PublicId": "s_HQbVb8fJaM",
+    "Endpoint": "ssh://openssh-server:2222",
+    "User": {
+        "PublicId": "u_5Ry4oDiEVp",
+        "Scope": {
+            "PublicId": "global",
+            "Name": "global",
+            "Description": "Global Scope",
+            "Type": "global",
+            "ParentId": "",
+            "PrimaryAuthMethodId": "ampw_CdIa5KR9iw"
+        },
+        "Name": "admin",
+        "Description": "Initial admin user within the \"global\" scope"
+    },
+    "Target": {
+        "PublicId": "tssh_TIx4ENZMdA",
+        "Scope": {
+            "PublicId": "p_7Qe46uNMYX",
+            "Name": "session-recording-project",
+            "Description": "",
+            "Type": "project",
+            "ParentId": "o_yK7GoA6OG2",
+            "PrimaryAuthMethodId": ""
+        },
+        "Name": "session-recording-target",
+        "Description": "",
+        "DefaultPort": 2222,
+        "DefaultClientPort": 0,
+        "SessionMaxSeconds": 28800,
+        "SessionConnectionLimit": -1,
+        "WorkerFilter": "",
+        "EgressWorkerFilter": "",
+        "IngressWorkerFilter": "\"pki\" in \"/tags/type\"",
+        "EnableSessionRecording": true,
+        "StorageBucketId": "sb_vqn871JdQf"
+    },
+    "Worker": {
+        "PublicId": "w_ogOQt0rsuQ",
+        "Version": "0.13.0",
+        "Sha": ""
+    },
+    "StaticHost": null,
+    "DynamicHost": null,
+    "StaticJSONCredentials": null,
+    "StaticUsernamePasswordCredentials": [
+        {
+            "PublicId": "credup_gdzeB5UWJv",
+            "Name": "",
+            "Description": "",
+            "Username": "username",
+            "PasswordHmac": "PasswordHmac,
+            "Purposes": [
+                "injected_application"
+            ],
+            "CredentialStore": {
+                "PublicId": "csst_agwIT97uZ7",
+                "ProjectId": "p_7Qe46uNMYX",
+                "Name": "ssh static store",
+                "Description": "SSH Static Cred store"
+            }
+        }
+    ],
+    "StaticSshPrivateKeyCredentials": null,
+    "VaultGenericLibraries": null,
+    "VaultSshCertificateLibraries": null
+}
+```
+
+## BSR Connection folder
+
+A BSR connection folder contains the following files:
+
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `connection-recording.meta` is a plaintext file that contains metadata about the connection, including the connection id,
+requests seen, channel ids, and any errors seen. For each channel id listed, there should be a corresponding channel directory in the connection directory.
+- `connection-recording-summary.json` is a JSON file that contains a summary of the connection, including the connection id,
+start time, end time, bytes up, bytes down, and any errors encountered during recording the connection.
+- `requests-inbound.data` is a binary file containing all inbound SSH request messages transmitted for the connection.
+- `requests-outbound.data` is a binary file containing all outbound SSH request messages transmitted for the connection.
+
+`connection-recording.meta` file example:
+
+```
+id: cr_W53Y93bB78
+requests: outbound
+requests: inbound
+channel: chr_uVVuUITnVn.channel
+error: error message would be appear here
+```
+
+`connection-recording-summary.json` file example:
+
+```
+{
+  "Id": "cr_W53Y93bB78",
+  "ChannelCount": 1,
+  "StartTime": "2023-07-13T20:21:49.164105381Z",
+  "EndTime": "2023-07-13T20:22:37.241911112Z",
+  "BytesUp": 125,
+  "BytesDown": 748,
+  "Errors": null
+}
+```
+
+### BSR Channel folder
+
+A BSR connection folder contains the following files:
+
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `channel-recording.meta` is a plaintext file that contains metadata about the channel, including the channel id,
+inbound and outbound requests seen, and inbound and outbound messages seen.
+- `channel-recording-summary.json` is a JSON file that contains a summary of the channel, including the channel id,
+start time, end time, bytes up, bytes down, channel type, session program, subsystem name (if applicable), exec program (if applicable),
+and file transfer direction (if applicable).
+- `requests-inbound.data` is a binary file containing all inbound SSH request messages transmitted for the channel.
+- `requests-outbound.data` is a binary file containing all outbound SSH request messages transmitted for the channel.
+- `messages-inbound.data` is a binary file containing all inbound SSH data transmitted for the channel.
+- `messages-outbound.data` is a binary file containing all outbound SSH data transmitted for the channel.
+
+`channel-recording.meta` file example:
+
+```
+id: chr_uVVuUITnVn
+channelType: session
+messages: outbound
+requests: outbound
+messages: inbound
+requests: inbound
+```
+
+`channel-recording-summary.json` file example:
+
+```
+{
+  "ChannelSummary": {
+    "Id": "chr_uVVuUITnVn",
+    "ConnectionRecordingId": "cr_W53Y93bB78",
+    "StartTime": "2023-07-13T20:21:49.230916214Z",
+    "EndTime": "2023-07-13T20:22:37.229379944Z",
+    "BytesUp": 125,
+    "BytesDown": 748,
+    "ChannelType": "session"
+  },
+  "SessionProgram": "shell",
+  "SubsystemName": "",
+  "ExecProgram": "",
+  "FileTransferDirection": "not applicable"
+}
+```
+
+For more information, refer to the [overview of session recording](/boundary/docs/session-recording).

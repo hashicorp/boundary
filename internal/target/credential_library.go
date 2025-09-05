@@ -18,12 +18,13 @@ import (
 // between a target and a credential library.
 type CredentialLibrary struct {
 	*store.CredentialLibrary
-	tableName string `gorm:"-"`
+	CredentialType string `gorm:"-"` // The credential library's issuing credential type.
+	tableName      string `gorm:"-"`
 }
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
 // representing the relationship between targetId and credentialLibraryId.
-func NewCredentialLibrary(ctx context.Context, targetId, credentialLibraryId string, purpose credential.Purpose) (*CredentialLibrary, error) {
+func NewCredentialLibrary(ctx context.Context, targetId, credentialLibraryId string, purpose credential.Purpose, credType string) (*CredentialLibrary, error) {
 	const op = "target.NewCredentialLibrary"
 	if targetId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no target id")
@@ -38,6 +39,7 @@ func NewCredentialLibrary(ctx context.Context, targetId, credentialLibraryId str
 			CredentialLibraryId: credentialLibraryId,
 			CredentialPurpose:   string(purpose),
 		},
+		CredentialType: credType,
 	}
 	return t, nil
 }

@@ -1,0 +1,83 @@
+---
+layout: docs
+page_title: Overview
+description: >-
+  Learn how to configure aliases and transparent sessions to enhance end-user workflows and simplify target access.
+---
+
+# Overview of aliases
+
+Target aliases simplify the connection workflow for end users by allowing them to reference targets using a globally unique DNS-like string.
+
+Without aliases, connecting to an end target requires you to reference the target ID, or a combination of target name and scope:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890
+```
+
+```shell-session
+$ boundary connect ssh -target-name sql-database -target-scope-name -staging
+```
+
+With target aliases, a single globally referenced value is assigned to a target, simplifying connection workflows and enabling transparent sessions for Enterprise and HCP end users.
+
+```shell-session
+$ boundary connect ssh sql-database-staging
+```
+
+## Permissions
+
+The existence of an alias for a Boundary resource does not change how permissions function. Anyone can attempt to use an alias to access a target, but if you do not have permission to access the target, the attempt fails. You can create an alias for a target, even if you do not have permission to access the target.
+
+Separating the permissions from aliases and destination resources means a different set of people can manage the aliases than the people who have permission to operate on targets. For example, you may have a project with a sensitive set of targets. You can configure Boundary to allow a select few users to manage those targets, while a different group of users manage the aliases.
+
+## Naming conventions
+
+An alias is a globally unique, DNS-like string that is associated with a destination resource. The alias `value` parameter does not have to be delimited by a suffix, and can be just a hostname.
+
+Examples of valid aliases include `database.boundary` and `webserver.boundary`.
+
+### Single word aliases and transparent sessions
+
+HashiCorp recommends that you do not use single-word aliases such as `webserver` as opposed to `webserver.boundary`, because single-word aliases do not work intuitively on Windows.
+
+Windows DNS resolution does not support resolving unqualified single word DNS hostnames. You can make the hostname fully qualified, but is not intuitive to most users.
+
+For example the following hostname works:
+
+```
+ssh mytarget.
+```
+
+But this hostname does not work:
+
+```
+ssh mytarget
+```
+
+For this reason, if you expect any Windows users to use an alias, it should contain a dot (`.`) anywhere in the value.
+
+Refer to the [transparent sessions](/boundary/docs/concepts/transparent-sessions) documentation for more information.
+
+### HTTPS websites
+
+If you create an alias for a website that uses HTTPS, the alias must match the website's hostname.
+You may receive connection errors if the alias does not match the website's hostname exactly.
+
+For example, if you want to create an alias to connect to https://www.hashicorp.com, you must name the alias `www.hashicorp.com`.
+
+## Scopes
+
+You can only create aliases in the `global` scope. However, you can associate aliases with targets or hosts from any scope. Support for additional resource types may be added in the future.
+
+If you delete a project, Boundary clears the `destination_id` parameter for any aliases that resolve to targets in that project, so that they no longer function.
+
+Refer to the [Create target aliases](/boundary/docs/targets/configuration/create-target-alias) pages to learn more.
+
+## Next steps
+
+To use target aliases to connect to targets:
+
+1. [Create a target alias](/boundary/docs/targets/configuration/create-target-alias)
+1. [Connect to a target using an alias](/boundary/docs/targets/connections/connect-target-alias)
+1. After you set up a target alias, you can optionally [Configure transparent sessions for end users](/boundary/docs/targets/configuration/configure-transparent-sessions). <sup>HCP/ENT</sup>

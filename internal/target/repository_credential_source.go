@@ -494,7 +494,11 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 		}
 		switch CredentialSourceType(chg.Type) {
 		case LibraryCredentialSourceType:
-			lib, err := NewCredentialLibrary(ctx, targetId, chg.SourceId, purpose)
+			credType, err := getCredentialLibraryCredentialType(ctx, r.reader, chg.SourceId)
+			if err != nil {
+				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
+			}
+			lib, err := NewCredentialLibrary(ctx, targetId, chg.SourceId, purpose, credType)
 			if err != nil {
 				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 			}
@@ -577,7 +581,11 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype glo
 		for _, id := range ids {
 			switch credTypeById[id] {
 			case LibraryCredentialSourceType:
-				lib, err := NewCredentialLibrary(ctx, tId, id, purpose)
+				credType, err := getCredentialLibraryCredentialType(ctx, r.reader, id)
+				if err != nil {
+					return nil, nil, errors.Wrap(ctx, err, op)
+				}
+				lib, err := NewCredentialLibrary(ctx, tId, id, purpose, credType)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}
@@ -601,4 +609,24 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype glo
 	}
 
 	return credLibs, staticCred, nil
+}
+
+func getCredentialLibraryCredentialType(ctx context.Context, reader db.Reader, clId string) (string, error) {
+	rows, err := reader.Query(ctx, getCredentialLibraryCredentialTypeQuery, []any{clId})
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var credType string
+	for rows.Next() {
+		if err := reader.ScanRows(ctx, rows, &credType); err != nil {
+			return "", err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+
+	return credType, nil
 }

@@ -1,0 +1,226 @@
+---
+layout: docs
+page_title: Auth method resource
+description: >-
+  Learn about using the auth method resource to authenticate users. Understand which attributes you can configure for password, OIDC, and LDAP auth methods.
+---
+
+# Auth methods
+
+An auth method is a resource that provides a mechanism for [users][] to
+authenticate to Boundary. An auth method contains [accounts][] which link an
+individual user to a set of credentials and [managed groups][] which groups
+[accounts][] that satisfy criteria and can be used as principals in [roles][].
+Auth methods can be defined at either a [global][] or [organization][]
+[scope][].
+
+## Attributes
+
+All auth methods have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the auth method's scope.
+
+- `description` - (optional)
+
+### Password auth method attributes
+
+The password auth method has the following additional attributes:
+
+- `min_login_name_length` - (required) The default is 3.
+
+- `min_password_length` - (required) The default is 8.
+
+### OIDC auth method attributes
+
+The OIDC auth method has the following additional attributes:
+
+- `account_claim_maps` (optional list) These are a map from custom
+  claims to the standard claims of sub, name, and email. These maps are
+  represented as key=value where the key equals the provider from-claim and the
+  value equals the Boundary to-claim. For example "oid=sub". You can specify this attribute
+  multiple times for different to-claims.
+
+- `allowed_audiences` (optional list) Audiences for which provider
+  responses are allowed.
+
+- `api_url_prefix` (required) The API prefix to use when generating callback URLs
+  for the provider. You should set the value to an address that allows the provider to reach
+  the controller.
+
+- `callback_url` (output read-only) The URL that should be provided to the IdP
+  for callbacks.
+
+- `claims_scopes` (optional list) The claims scope requested. You can specify this attribute
+  multiple times.
+
+- `client_id` (required) The OAuth 2.0 client identifier this auth method should
+  use with the provider.
+
+- `client-secret` (required) The corresponding client secret.
+
+- `client_secret_hmac` (output read-only) The HMAC of the client secret that the Boundary controller
+  returns. It is used for comparison to the value's initial setting.
+
+- `disable_discovered_config_validation` (optional) Disables validation logic
+  to ensure that the OIDC provider's information from its discovery endpoint
+  matches the information here. The validation is only performed at create or
+  update time.
+
+- `idp_ca_certs` - (optional) PEM-encoded X.509 CA certificate that can be used
+  as trust anchors when you connect to an OIDC provider. You can specify this attribute
+  multiple times.
+
+- `issuer` - (required) The provider's issuer URL. This value must match the issuer
+  field in generated tokens.
+
+- `max_age` (optional) The max age to send to the provider. This value indicates how
+  much time is allowed to have passed since the last authentication before the
+  user is challenged again. A value of `0` sets an immediate requirement for all
+  users to reauthenticate, and an unset `maxAge` results in a Terraform value of
+  -1 and the default TTL of the chosen OIDC is used.
+
+  If you set a `max_age` value, it works in conjunction with the [`auth_token_time_to_live` parameter](/boundary/docs/configuration/controller#auth_token_time_to_live) set on the controller. Users are not challenged to authenticate again by the provider until the `auth_token_time_to_live` value has expired, even if the `max_age` expires first.
+
+- `prompt` (optional) If you configure this attribute, the OIDC authorization server prompts users for reauthentication, account selection, or consent when they log in.
+You can optionally configure one or more of the following additional attributes to customize the behavior of the authentication process:
+   - `none` (optional) The authorization server does not display any authentication or consent prompts.
+   - `login` (optional) The authorization server prompts users for reauthentication before allowing them to log in.
+   - `consent` (optional) The authorization server prompts users for consent before returning any information to Boundary.
+   - `select_account` (optional) The authorization server prompts users to select a user account.
+   The `select_account` setting can be helpful if your users have multiple accounts.
+
+<Note>
+
+Cloud providers implement `prompt` in different ways.
+You may notice differences in behavior if you configure OIDC authentication on multiple cloud providers.
+
+</Note>
+
+- `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
+  multiple times for multiple values.
+
+
+### LDAP auth method attributes
+
+The ldap auth method has the following additional attributes:
+
+- `state` - The state of the auth method; either `inactive`, `active-private`, or
+  `active-public`.
+
+- `start_tls` - (optional) If `true`, issues a StartTLS command after establishing
+  an unencrypted connection. Defaults to `false`.
+
+- `insecure_tls` - (optional) If `true`, skips LDAP server SSL certificate
+  validation, which is insecure and should be used with caution. Defaults to
+  `false`.
+
+- `discover_dn` - (optional) If `true`, use anon bind to discover the bind DN
+  (Distinguished Name) of a user. Defaults to `false`.
+
+- `anon_group_search` - (optional) If `true`, use anon bind when performing LDAP
+  group searches. Defaults to `false`.
+
+- `upn_domain` - (optional) If set, the `userPrincipalDomain` is used to construct
+  the UPN string for the authenticating user. The constructed UPN appears as
+  `[username]@UPNDomain`. Example: `example.com`, which causes Boundary to
+  bind as `username@example.com` when it authenticates the user.
+
+- `urls` - (required) The LDAP URLS that specify LDAP servers to connect to.
+  There must be at least one URL for each LDAP auth method. When attempting to
+  connect, the URLs are tried in the order specified.
+
+- `user_dn` - (optional) If set, the base DN under which to perform user
+  search. Example: `ou=Users,dc=example,dc=com`.
+
+- `user_attr` - (optional) If set, defines the attribute on a user's entry
+  matching the login-name passed when the user authenticates.  Examples: cn, uid
+
+- `user_filter` - (optional) If set, the Go template used to construct an LDAP
+  user search filter. The template can access the following context variables:
+  [UserAttr, Username]. The default `user_filter` is
+  `({{.UserAttr}}={{.Username}})` or
+  `(userPrincipalName={{.Username}}@UPNDomain)` if the `upn-domain` parameter is
+  set.
+
+- `enable_groups` - (optional) If `true`, an authenticated user's groups are
+  found during authentication. Defaults to `false`.
+
+- `group_dn` - (optional) If set, the base DN under which to perform a group
+  search. Example: `ou=Groups,dc=example,dc=com`.
+
+  Note: There is no default, so no base DN is used for group searches, if
+  it's not specified.
+
+- `group_attr` - (optional) If set, the LDAP attribute to follow on objects
+  returned by `group_filter` in order to enumerate user group membership.
+  Examples: for `group_filter` queries returning group objects, use: `cn`. For
+  queries returning user objects, use: `memberOf`. The default is `cn`.
+
+- `group_filter` - (optional) If set, the Go template used when constructing the
+  group membership query. The template can access the following context
+  variables: `UserDN`, `Username`. The default is
+  `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))`,
+  which is compatible with several common directory schemas.
+
+- `certificates` - (optional) If set, PEM encoded x509 certificates in ASN.1
+  DER form that can be used as trust anchors when connecting to an LDAP
+  provider.
+
+- `client_certificate` - (optional) If set, a PEM encoded x509 certificate in
+  ASN.1 DER form to be used as a client certificate. It must be set, if you
+  specify the optional client_certificate_key.
+
+- `client_certificate_key` - (optional) If set, a PEM encoded certificate key in
+  PKCS #8, ASN.1 DER form. It must be set, if you specify the optional
+  client_certificate.
+
+- `bind_dn` - (optional) If set, the distinguished name of entry to bind when
+  performing user and group searches. Example:
+  `cn=vault,ou=Users,dc=example,dc=com`.
+
+- `bind_password` - (optional) If set, the password to use along with `bind_dn`
+  when performing user search. It must be set, if you specify the optional
+  `bind_dn`.
+
+- `use_token_groups` - (optional) If `true`, use the Active Directory `tokenGroups`
+  constructed attribute of the user to find the group memberships. This
+  finds all security groups, including nested ones.
+
+- `account_attribute_maps` - (optional) If set, the attribute maps from custom
+  attributes to the standard fullname and email account attributes. These
+  maps are represented as `key=value` where the key equals the `from_attribute`, and
+  the value equals the `to_attribute`.  For example, `preferredName=fullName`.  All
+  attribute names are case insensitive.
+
+  - `maximum_page_size` - (optional) If set, it specifies a maximum ldap search
+    result size to use when retrieving the authenticated user's group
+    memberships. You can use this setting to avoid reaching the LDAP server's max result
+    size.
+
+  - `dereference_aliases` - (optional) If set, it will control how aliases are
+    dereferenced when you search.
+
+## Referenced by
+
+- [Account][]
+- [Global][]
+- [Managed group][]
+- [Organization][]
+
+[account]: /boundary/docs/domain-model/accounts
+[accounts]: /boundary/docs/domain-model/accounts
+[global]: /boundary/docs/domain-model/scopes#global
+[managed group]: /boundary/docs/domain-model/managed-groups
+[managed groups]: /boundary/docs/domain-model/managed-groups
+[organization]: /boundary/docs/domain-model/scopes#organizations
+[roles]: /boundary/docs/domain-model/roles
+[scope]: /boundary/docs/domain-model/scopes
+[users]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Auth method service](/boundary/api-docs/auth-method-service)
+- [Auth token service](/boundary/api-docs/auth-token-service)

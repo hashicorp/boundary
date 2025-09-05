@@ -1,0 +1,43 @@
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	address = "127.0.0.1"
+}
+
+worker {
+  # Path for worker storage, assuming worker-led or controller-led registration. Must be unique across workers
+  auth_storage_path="/boundary/demo-worker-1"
+
+  # Local storage path required if session recording is enabled
+  recording_storage_path = "tmp/boundary/"
+
+  # Minimum available disk space required in the local storage path if session recording is enabled
+  recording_storage_minimum_available_capacity = "500MB"
+
+  # Workers typically need to reach upstreams on :9201
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+
+  public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+
+# The following KMS config is an example only
+# Use a production KMS such as AWS KMS for production installs
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
+	key_id = "worker-auth-storage"
+}
+
+
+```

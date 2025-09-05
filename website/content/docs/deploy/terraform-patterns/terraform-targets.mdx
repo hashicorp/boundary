@@ -1,0 +1,125 @@
+---
+layout: docs
+page_title: Terraform patterns for targets
+description: >-
+   Use Terraform patterns to create and manage Boundary targets. Learn how to configure SSH and TCP targets, inject passwords, and enable session recording.
+---
+
+# Terraform patterns for targets
+
+Once you have defined a host, a host catalog, and a credential store, you
+can create [targets](/boundary/docs/domain-model/targets).
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+- Defined a host, [host catalog](/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management), and [credential store](/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores).
+- (Optional) Configured a storage policy and storage bucket for any targets you want to enable for [session recording](/boundary/docs/deploy/terraform-patterns/terraform-session-recording).
+
+## Target configuration
+
+This example creates a target with an injected username and password.
+
+<Note>
+
+  [Credential injection](/boundary/docs/concepts/credential-management#credential-injection) and SSH target types are only supported for HCP Boundary and Boundary Enterprise. You can configure [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) instead using `brokered_credential_source_ids`.
+
+</Note>
+
+```hcl
+resource "boundary_target" "ssh_foo" {
+  name         = "ssh_foo"
+  description  = "SSH target"
+  scope_id     = boundary_scope.project.id
+
+  # Declare the target type and connection port
+  type         = "ssh"
+  default_port = "22"
+
+  # Declare the host set
+  host_source_ids = [
+    boundary_host_set.foo.id
+  ]
+
+  # Declare the injected credentials
+  injected_application_credential_source_ids = [
+    boundary_credential_library_vault.example.id
+  ]
+
+  # Enable session recording
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
+}
+
+```
+## Session recording configuration
+
+This example enables session recording, but uses brokered credentials instead.
+
+```hcl
+resource "boundary_target" "ssh_foo" {
+  name         = "ssh_foo"
+  description  = "SSH target"
+  scope_id     = boundary_scope.project.id
+
+  # Declare the target type and connection port
+  type         = "ssh"
+  default_port = "22"
+
+  # Declare the host set
+  host_source_ids = [
+    boundary_host_set.foo.id
+  ]
+
+  # Declare the brokered credentials
+  # This uses a static credential library created earlier
+  brokered_application_credential_source_ids = [
+    boundary_credential_library.example.id
+  ]
+
+   # Enable session recording.
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
+}
+```
+
+## TCP target configuration
+
+This example creates a `tcp` target that connects to Windows servers using RDP.
+
+```hcl
+resource "boundary_target" "rdp_foo" {
+  name         = "rdp_foo"
+  description  = "RDP target"
+  scope_id     = boundary_scope.project.id
+
+  # Declare the target type and connection port
+  type         = "tcp"
+  default_port = "3389"
+
+  # Declare the host set. This assumes that this host set contains Windows hosts
+  host_source_ids = [
+    boundary_host_set.foo.id
+  ]
+
+  # The credentials we will use to connect. RDP requires the use of brokered credentials
+  # This uses a static credential library created earlier
+  brokered_application_credential_source_ids = [
+    boundary_credential_library.example.id
+  ]
+}
+```
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+
+- [Targets](/boundary/docs/domain-model/targets)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+
+- [Targets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/target/)

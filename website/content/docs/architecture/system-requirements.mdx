@@ -1,0 +1,229 @@
+---
+layout: docs
+page_title: System requirements
+description: >-
+  Learn about Boundary system requirements including recommendations for hardware sizing, network connectivity, traffic encryption, databases, and load balancers.
+---
+
+# System requirements
+
+This topic contains specific recommendations for system requirements.
+
+<Note>
+
+All specifications outlined in this topic are minimum recommendations without
+any reservations towards vertical scaling, redundancy, or other site reliability
+needs.
+
+All resource requirements are directly proportional to the operations
+performed by the Boundary cluster, and the end users' level of usage.
+
+</Note>
+
+To match your requirements and maximize the stability of your Boundary
+controller and worker instances, perform load tests and monitor
+resource usage including reported matrices from Boundary's telemetry.
+
+Refer to [Monitor Boundary](/boundary/docs/monitor) for
+more information.
+
+## Hardware sizing for Boundary servers
+
+Refer to the tables below for sizing recommendations for controller nodes and
+worker nodes, as well as small and large use cases based on expected usage.
+
+Controller nodes
+
+| Size  | CPU        | Memory         | Disk capacity | Network throughput |
+|-------|------------|----------------|---------------|--------------------|
+| Small | 2 - 4 core | 8 - 16 GB RAM  | 50+ GB        | Minimum 5 Gbps     |
+| Large | 4 - 8 core | 32 - 64 GB RAM | 100+ GB       | Minimum 10 Gbps    |
+
+Worker nodes
+
+| Size  | CPU        | Memory         | Disk capacity | Network throughput |
+|-------|------------|----------------|---------------|--------------------|
+| Small | 2 - 4 core | 8 - 16 GB RAM  | 50+ GB        | Minimum 10 Gbps    |
+| Large | 4 - 8 core | 32 - 64 GB RAM | 100+ GB       | Minimum 10 Gbps    |
+
+To ensure predictable performance, we recommend that you
+avoid "burstable" CPU and storage options whose performance may degrade
+under continuous load.
+
+## Hardware considerations
+
+The Boundary controller and worker nodes perform two different tasks.
+The Boundary controller nodes handle requests for authentication and
+configuration.
+The Boundary worker nodes proxy client connections to Boundary
+targets which may require additional resources.
+
+Depending on the number of clients connecting to Boundary targets at any given
+time, Boundary workers can become memory or file descriptor constrained.
+As your users create new sessions, the Boundary worker node opens more sockets and
+ultimately creates additional file descriptors. Monitor both the
+file descriptor usage and the memory consumption of each Boundary worker node.
+
+## Network considerations
+
+The amount of network bandwidth used by the Boundary controllers and workers
+depends on your specific usage patterns.
+For the Boundary controller, even a high request volume does not
+translate to a large amount of network bandwidth consumption.
+
+Boundary worker nodes proxy client sessions to Boundary targets. The
+bandwidth consumption depends on the amount of potential clients,
+the number of sessions created, and the amount of data transferred
+between the user and the Boundary targets.
+
+It is also important to consider bandwidth requirements to other external
+systems such as monitoring and logging collectors.
+It may be necessary to increase the size of the virtual machine to take
+advantage of additional throughput in certain circumstances.
+
+Refer to the following pages for provider-specific virtual machine networking
+limitations:
+
+- [AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html)
+- [Azure](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-machine-network-throughput/)
+- [GCP](https://cloud.google.com/compute/docs/network-bandwidth/)
+
+## Network connectivity
+
+The following table outlines the default ingress network connectivity
+requirements for Boundary cluster nodes.
+
+If you restrict network egress, ensure you allow outgoing access from:
+
+- The Boundary controllers to any external integration providers (for example,
+  OIDC authentication providers) as well as external log handlers, metrics
+  collection, and security and configuration management providers.
+
+- The Boundary workers to controllers and any upstream workers.
+
+<Note>
+
+If any of the default port mappings do not meet your organization's
+requirements, you can update the default listening ports using the resource's
+[listener](/boundary/docs/monitor/listeners) stanza.
+
+</Note>
+
+![Boundary network](/img/boundary-network.png)
+
+| Source          | Destination                 | Default destination port | protocol  | Purpose                                 |
+| --------------- | --------------------------- | ------------------------ | --------- | --------------------------------------  |
+| Client machines | Controller load balancer    | 443                      | tcp       | Request distribution                    |
+| Load balancer   | Controller servers          | 9200                     | tcp       | Boundary API                            |
+| Load balancer   | Controller servers          | 9203                     | tcp       | Health checks                           |
+| Worker servers  | Controller load balancer    | 9201                     | tcp       | Session authorization, credentials, etc |
+| Controllers     | PostgreSQL                  | 5432                     | tcp       | Storing system state                    |
+| Client machines | Worker servers \*           | 9202                     | tcp       | Session proxying                         |
+| Worker servers  | Boundary targets\*          | various                  | tcp       | Session proxying                         |
+| Client machines | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxying               |
+| Egress workers  | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxying               |
+| Egress workers  | Boundary targets \*\*       | various                  | tcp       | Multi-hop session proxying               |
+
+\* In this scenario, the client connects directly to one worker, which then
+proxies the connection to the Boundary target.
+
+** Multi-hop sessions start reverse proxy tunnels when the downstream workers
+start and connect to upstream workers.
+
+There are four steps when a client requests to connect to a target that requires
+a multi-hop path:
+
+1. The client connects to an ingress worker.
+
+1. The ingress worker connects with the next-downstream or egress worker through
+   that worker's established reverse-proxy tunnel. This step may be repeated
+   multiple times if there are multiple worker connections in the middle of the
+   tunnel chain.
+
+1. The final downstream egress worker connects to the Boundary target.
+
+1. The client can now send data through the tunnel chain.
+
+A multi-hop worker that acts as a downstream can start a tunnel to one or
+more upstream workers, specified in the `initial_upstreams` list in the
+worker configuration.
+
+## Network traffic encryption
+
+You should encrypt connections to the Boundary control plane at the controller
+nodes using standard PKI HTTPS TLS.
+
+You can use either a layer 4 load balancer to pass through traffic to the
+Boundary controllers, or a layer 7 load balancer with no configured TLS
+termination.
+
+## Database recommendations
+
+Boundary clusters depend on a PostgreSQL database for managing state and
+configuration.
+Ensure you are using a version of PostgreSQL covered under [Boundary's supported
+version
+policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#postgresql-support-policy).
+
+Each major cloud provider offers a managed PostgreSQL database service:
+
+| Cloud provider | Managed database service                                                                |
+|----------------|-----------------------------------------------------------------------------------------|
+| AWS            | [Amazon RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/)                     |
+| Azure          | [Azure database for PostgreSQL](https://azure.microsoft.com/en-us/products/postgresql/) |
+| GCP            | [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/postgresql)                     |
+
+### Database network requirements
+
+Boundary controllers must be able to reach the PostgreSQL database.
+Worker nodes do not need access to the database.
+
+### Database users and roles
+
+Database initialization requires elevated privileges.
+When you initialize the database with the `boundary database init` command, the
+Boundary database user requires the `superuser` role plus `all privileges` on
+the Boundary database.
+
+Once the database initialization is complete, the database user for a Boundary
+controller requires permissions for [data
+manipulation](https://www.postgresql.org/docs/current/dml.html) operations
+(select, insert, update, and delete).
+
+### Required PostgreSQL modules
+
+Boundary has a dependency on the PostgreSQL
+[pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html) module and
+[citext](https://www.postgresql.org/docs/11/citext.html), which are part of the
+standard modules supplied with PostgreSQL. Refer to the PostgreSQL documentation
+for more information.
+
+## Load balancer recommendations
+
+For the highest levels of reliability and stability, we recommend that you use
+some load balancing technology to distribute requests to your Boundary
+controller nodes.
+
+Boundary workers do not require any load balancing.
+The Boundary controller manages load balancing for the Boundary workers when
+clients initiate sessions to Boundary targets.
+
+To monitor the health of Boundary controller nodes, configure the load balancer
+to poll the `/health` API endpoint to detect the status of the node and direct
+traffic accordingly.
+
+Each major cloud provider offers one or more managed load balancing services:
+
+| Cloud | Layer               | Layer | Managing load balancing service                                                                                        |
+|-------|---------------------|-------|----------------------------------------------------------------------------------------------------------------|
+| AWS   | Network             | 4     | [Network load balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)         |
+| AWS   | Application         | 7     | [Application load balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) |
+| Azure | Network             | 4     | [Azure load balancer](https://learn.microsoft.com/en-us/azure/load-balancer/)                                      |
+| Azure | Application         | 7     | [Azure application gateway](https://learn.microsoft.com/en-us/azure/application-gateway/)                          |
+| GCP   | Network/Application | 4/7   | [Cloud load balancing](https://cloud.google.com/load-balancing/docs/load-balancing-overview)                     |
+
+There are also a number of self-hosted options, as well as service discovery
+systems like Consul.
+
+Refer to the [listener stanza
+documentation](/boundary/docs/monitor/listeners/) for more information.

@@ -45,7 +45,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	proj1CredStore := vault.TestCredentialStores(t, conn, wrap, proj.PublicId, 1)
-	proj1Libs := vault.TestCredentialLibraries(t, conn, wrap, proj1CredStore[0].GetPublicId(), 3)
+	proj1Libs := vault.TestCredentialLibraries(t, conn, wrap, proj1CredStore[0].GetPublicId(), globals.UnspecifiedCredentialType, 3)
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {

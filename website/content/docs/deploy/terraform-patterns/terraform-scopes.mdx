@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: Terraform patterns for scopes
+description: >-
+  Use Terraform patterns to create and manage Boundary scopes. Learn how to configure global, org-level, and project-level scopes using the Boundary provider.
+---
+
+# Terraform patterns for scopes
+
+You can use the following patterns to create org-level and project-level scopes.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+
+## Scopes configuration
+
+The `scope_id` parameter determines what kind of scope to create according to these rules:
+
+- If `scope_id` is the global scope, an org-level scope is created.
+- If `scope_id` is an org-level scope, a project-level scope is created.
+- If `scope_id` is a project-level scope, a nested project-level scope is created.
+
+```hcl
+resource "boundary_scope" "project" {
+  name                     = "Basic Boundary Demo"
+  description              = "First Ever Boundary Demo"
+
+  # This parameter is the parent scope.  It can be either the global scope, an
+  # org-level scope, or a project-level scope.
+  scope_id                 = var.se_org_scope
+
+  # Using the auto_create_x_role flags can help you get set up faster
+  # becasue you won't have to explicitly define these roles.
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+```
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+
+- [Scopes](/boundary/docs/domain-model/scopes)
+- [Org-level scopes](/boundary/docs/domain-model/scopes#organizations)
+- [Project-level scopes](/boundary/docs/domain-model/scopes#projects)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+
+- [Scopes](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/scope/)
+
+## Next steps
+
+You use scopes to partition resources and assign them to users.
+Once you have created scopes, you may want to create [users and auth methods](/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods).

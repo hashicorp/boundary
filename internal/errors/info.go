@@ -267,6 +267,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "purposefully aborted without error",
 		Kind:    Other,
 	},
+	ImmutableColumn: {
+		Message: "immutable column",
+		Kind:    Integrity,
+	},
 	UnexpectedRowsAffected: {
 		Message: "unexpected number of rows affected",
 		Kind:    Integrity,
@@ -337,6 +341,10 @@ var errorCodeInfo = map[Code]Info{
 	},
 	Closed: {
 		Message: "closed",
+		Kind:    State,
+	},
+	Paused: {
+		Message: "paused",
 		Kind:    State,
 	},
 	ExternalPlugin: {

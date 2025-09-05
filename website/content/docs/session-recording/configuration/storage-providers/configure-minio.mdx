@@ -1,0 +1,115 @@
+---
+layout: docs
+page_title: Configure MinIO storage
+description: >-
+  Configure MinIO as a storage provider for recorded sessions. Understand session recording and MinIO requirements. View an example configuration.
+---
+
+# Configure MinIO as a storage provider
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+This page describes how to configure MinIO as a storage provider for session recording with Boundary.
+
+## Requirements
+
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements.
+
+Session recording requires specific configuration for both the external storage provider and the Boundary worker.
+
+Refer to [Configure workers for session recording](/boundary/docs/session-recording/configuration/configure-worker-storage) to learn about configuring self-managed workers for session recording.
+
+When you determine storage requirements for the external bucket, you should consider:
+
+- [BSR storage considerations](/boundary/docs/session-recording#storage-considerations)
+- [Storage bucket retention policies](/boundary/docs/session-recording/compliance/configure-storage-policy)
+
+### MinIO requirements
+
+- A MinIO storage bucket
+
+   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. To enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. You can disable credential rotation when you create the Boundary storage bucket.
+
+   At the time of the 0.18.0 release, the latest tested and supported MinIO version is `RELEASE.2024-10-02T17-50-4Z`.
+   Newer versions may work as well, but they have not been tested.
+
+   <Note>
+
+   At this time, the NetBSD operating system is not supported for the MinIO storage bucket.
+
+   </Note>
+
+- A MinIO service account and access keys
+
+   You must provide service account access keys when you configure a Boundary storage bucket later on.
+
+   Refer to the [MinIO Access Keys](https://min.io/docs/minio/kubernetes/upstream/administration/console/security-and-access.html#access-keys) documentation page to learn how to set up a MinIO service account.
+
+- A MinIO storage bucket must be configured with R/W access. If you use a
+  restricted IAM user policy, the following policy actions must be allowed at a minimum.
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket/*"
+        },
+        {
+           "Action": "s3:ListBucket",
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket"
+        }
+     ]
+   }
+   ```
+
+- HashiCorp recommends that you enable credential rotation. To enable credential rotation, use the following service account policy:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket/*"
+        },
+        {
+           "Action": "s3:ListBucket",
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket"
+        },
+        {
+           "Action": [
+           "admin:CreateServiceAccount",
+           "admin:RemoveServiceAccount"
+         ],
+         "Effect": "Allow"
+        }
+     ]
+   }
+   ```
+
+## Resources
+
+The following docs MinIO docs are relevant for configuring storage buckets and service accounts:
+
+- Refer to the [MinIO Policy Action Keys](https://min.io/docs/minio/linux/administration/identity-access-management/policy-based-access-control.html#mc-admin-policy-action-keys) documentation to learn more about restricting IAM user policies.
+- Refer to the [MinIO Object Encryption with KES](https://min.io/docs/minio/linux/operations/server-side-encryption/configure-minio-kes.html#minio-sse-vault) documentation to learn more about KMS and data encryption with vault key management.
+
+## Next steps
+
+After you configure the external storage provider, you can [create the storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket) in Boundary.

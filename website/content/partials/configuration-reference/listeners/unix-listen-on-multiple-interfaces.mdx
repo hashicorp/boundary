@@ -1,0 +1,13 @@
+This example shows Boundary listening on a private interface, as well as localhost.
+
+```hcl
+listener "tcp" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+}
+
+listener "tcp" {
+  purpose = "cluster"
+  address = "/var/run/boundary-cluster.sock"
+}
+```

@@ -1,0 +1,113 @@
+---
+layout: docs
+page_title: Client Agent overview
+description: >-
+  Learn how the Boundary Client Agent intercepts DNS requests as the primary resolver on the system, allowing Boundary to proxy connections transparently.
+---
+
+# Boundary Client Agent
+
+@include 'alerts/enterprise-only.mdx'
+
+The Boundary Client Agent is Boundary's DNS daemon.
+When the Boundary Client Agent runs alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the system and intercepts DNS requests.
+
+If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
+If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
+
+<Note>
+
+You must enable both IPv4 and IPv6 protocols for your environment to ensure the Client Agent can start and perform DNS lookups.
+
+</Note>
+
+## Security
+
+When you successfully authorize a session on a Boundary controller, the response includes a list of any brokered credentials, which include the decoded secrets.
+When the Boundary Client Agent receives a DNS request, Boundary creates a new session.
+An OS user can only connect to an authorized session managed by the Boundary Client Agent daemon if they are the same OS user that added the Boundary auth token used for authorizing the session.
+
+<Note>
+
+Currently, you cannot authenticate to multiple Boundary controllers at once.
+If you authenticate to a different Boundary controller, any existing sessions are terminated and any new transparent sessions would be established with the new controller.
+
+</Note>
+
+The Boundary Client Agent stores the credentials and some other information related to the session in memory.
+The in-memory store removes the session information:
+
+- when the session ends.
+- if the auth token stored in the Boundary expires.
+- if the current OS user authenticates with a different Boundary user.
+- if the current OS user authenticates to a new Boundary controller.
+- if the Boundary Client Agent is paused.
+- if the Boundary Client Agent is terminated.
+
+API requests are authenticated in the same way as session proxy access.
+
+Credential brokering is supported for transparent sessions.
+A notification appears when you establish a session against a target that is configured with credential brokering.
+You can retrieve the credentials later using the following command:
+
+```shell-session
+$ boundary client-agent sessions
+```
+
+### Grants
+
+In a production environment, you may want to provide the least amount of privileges necessary for users.
+For a Boundary user to be able to use the Client Agent to establish a transparent session, they must:
+
+- be able to authenticate using an auth method.
+- have read permissions for their auth token.
+- have permission to establish a session to one or more targets.
+
+You can use the following grant strings to grant those permissions:
+
+```
+type=auth-method;ids=*;actions=authorize
+type=target;ids=*;actions=authorize-session
+type=auth-token;ids=*;actions=read:self
+```
+
+HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
+Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
+
+You can use the following grant string to grant the permission to list resolvable aliases:
+
+```
+type=user;ids=*;actions=list-resolvable-aliases
+```
+
+<Warning>
+
+A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
+Clusters created before April 26, 2025 may be missing the following grants:
+
+   `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+
+   `ids=*;type=target;actions=list,read`
+
+If your cluster is missing these grants, HashiCorp recommends adding them.
+
+For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
+
+</Warning>
+
+## More information
+
+Refer to the following topics for more information:
+
+- [Aliases](/boundary/docs/concepts/aliases)
+- [Transparent sessions](/boundary/docs/concepts/transparent-sessions)
+
+## Next steps
+
+Refer to the following topics for more information about installing, configuring, and using the Client Agent:
+
+- [Install Boundary clients](/boundary/docs/deploy/self-managed/install-clients)
+- [Configure the Client Agent](/boundary/docs/client-agent/configuration)
+- [Manage the Client Agent](/boundary/docs/client-agent/manage)
+- [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot)
+- [Client Agent software conflicts](/boundary/docs/client-agent/conflicting-software)

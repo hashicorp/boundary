@@ -7,6 +7,7 @@ import (
 	"net"
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/go-hclog"
 )
 
 // Option - how Options are passed as arguments.
@@ -26,12 +27,16 @@ type Options struct {
 	WithInjectedApplicationCredentials []*serverpb.Credential
 	WithPostConnectionHook             func(net.Conn)
 	WithDnsServerAddress               string
+	WithTestKdcAddress                 string
+	WithTestKerberosServerHostname     string
+	WithLogger                         hclog.Logger
 }
 
 func getDefaultOptions() Options {
 	return Options{
 		WithInjectedApplicationCredentials: nil,
 		WithPostConnectionHook:             nil,
+		WithLogger:                         hclog.NewNullLogger(),
 	}
 }
 
@@ -59,5 +64,26 @@ func WithPostConnectionHook(fn func(net.Conn)) Option {
 func WithDnsServerAddress(with string) Option {
 	return func(o *Options) {
 		o.WithDnsServerAddress = with
+	}
+}
+
+// WithTestKdcAddress allows specifying a test KDC address to use for testing
+func WithTestKdcAddress(with string) Option {
+	return func(o *Options) {
+		o.WithTestKdcAddress = with
+	}
+}
+
+// WithTestKerberosServerHostname allows specifying a test Kerberos server
+func WithTestKerberosServerHostname(with string) Option {
+	return func(o *Options) {
+		o.WithTestKerberosServerHostname = with
+	}
+}
+
+// WithLogger allows specifying a logger to be used during session proxy
+func WithLogger(l hclog.Logger) Option {
+	return func(o *Options) {
+		o.WithLogger = l
 	}
 }

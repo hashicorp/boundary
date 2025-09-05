@@ -1,0 +1,42 @@
+---
+layout: docs
+page_title: Troubleshoot session recordings
+description: >-
+  View known issues and troubleshoot problems with Boundary's recorded sessions.
+---
+
+# Troubleshoot session recordings
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Refer to the following for information about how to troubleshoot recorded sessions.
+
+## Known bugs
+
+**Rotation of AWS access and secret keys during a session results in stale recordings:**
+
+When you rotate a storage bucket's secrets, any new sessions use the new credentials.
+However, previously established sessions continue to use the old credentials.
+
+As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+Otherwise, you may end up with recordings that aren't stored in the remote storage bucket and are unable to be played back.
+
+
+<a id="unsupported-recovery-workflow"></a>
+
+**Unsupported recovery workflow during worker failure:**
+
+If a worker fails during a recording, there is no way to recover the recording.
+This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+There are a number of currently unsupported failure cases, including when the worker:
+
+- Crashes and restarts while servicing connections and channels for session to an SSH target
+- Crashes and restarts while closing a channel before all files are synced to remote storage
+- Crashes and restarts while closing a connection recorder before all files are synced to remote storage
+- Crashes and restarts while closing a session recorder before all files are synced to remote storage
+- Crashes and never restarts or is seen again while closing a channel/connection recorer/session recorder
+- Loses its connection to the controller and cancels sessions; it must resend the information when communication resumes
+
+## Tips
+
+When you create or update a storage bucket, the actions `GetBucketAcl` and `GetEncryptionConfiguration` can be helpful in debugging access issues.

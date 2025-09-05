@@ -175,3 +175,99 @@ message CredentialSourceView {
   // @inject_tag: `gorm:"not_null"`
   string type = 20;
 }
+
+message TargetProxyCertificate {
+  // public_id is used to identify the target proxy key
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // target_id is used to access the proxy target this key is for
+  // @inject_tag: `gorm:"not_null"`
+  string target_id = 20;
+
+  // public_key is the public key associated with this certificate
+  // @inject_tag: `gorm:"not_null"`
+  bytes public_key = 30;
+
+  // private_key is the plaintext key. this is not stored in the db
+  // @inject_tag: `gorm:"-" wrapping:"pt,private_key"`
+  bytes private_key = 40;
+
+  // private_key_encrypted is the encrypted PEM encoded private key
+  // @inject_tag: `gorm:"not_null" wrapping:"ct,private_key"`
+  bytes private_key_encrypted = 50;
+
+  // key_id is the kms private id used to encrypt this entry's private key
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 60;
+
+  // certificate is the PEM encoded certificate
+  // @inject_tag: `gorm:"not_null"`
+  bytes certificate = 70;
+
+  // not_valid_after is the timestamp at which this certificate's validity period ends
+  // @inject_tag: `gorm:"not_null"`
+  timestamp.v1.Timestamp not_valid_after = 80;
+
+  // version allows optimistic locking during modification
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 90;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 100;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 110;
+}
+
+message TargetAliasProxyCertificate {
+  // public_id is used to identify the target proxy key
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // target_id is used to access the proxy target this key is for
+  // @inject_tag: `gorm:"not_null"`
+  string target_id = 20;
+
+  // public_key is the public key associated with this certificate
+  // @inject_tag: `gorm:"not_null"`
+  bytes public_key = 30;
+
+  // private_key is the plaintext key. this is not stored in the db
+  // @inject_tag: `gorm:"-" wrapping:"pt,private_key"`
+  bytes private_key = 40;
+
+  // private_key_encrypted is the encrypted PEM encoded private key
+  // @inject_tag: `gorm:"not_null" wrapping:"ct,private_key"`
+  bytes private_key_encrypted = 50;
+
+  // key_id is the kms private id used to encrypt this entry's private key
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 60;
+
+  // alias_id is the public id of the alias target
+  // @inject_tag: `gorm:"not_null"`
+  string alias_id = 70;
+
+  // certificate is the PEM encoded certificate
+  // @inject_tag: `gorm:"not_null"`
+  bytes certificate = 80;
+
+  // not_valid_after is the timestamp at which this certificate's validity period ends
+  // @inject_tag: `gorm:"not_null"`
+  timestamp.v1.Timestamp not_valid_after = 90;
+
+  // version allows optimistic locking during modification
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 100;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 110;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 120;
+}

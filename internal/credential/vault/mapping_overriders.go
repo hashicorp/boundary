@@ -19,6 +19,8 @@ func validMappingOverride(m MappingOverride, ct globals.CredentialType) bool {
 		return true // it is always valid to not specify a mapping override
 	case *UsernamePasswordOverride:
 		return ct == globals.UsernamePasswordCredentialType
+	case *UsernamePasswordDomainOverride:
+		return ct == globals.UsernamePasswordDomainCredentialType
 	case *SshPrivateKeyOverride:
 		return ct == globals.SshPrivateKeyCredentialType
 	default:
@@ -99,6 +101,73 @@ func (o *UsernamePasswordOverride) TableName() string {
 
 // SetTableName sets the table name.
 func (o *UsernamePasswordOverride) SetTableName(n string) {
+	o.tableName = n
+}
+
+// A UsernamePasswordDomainOverride contains optional values for overriding the
+// default mappings used to map a Vault secret to a UsernamePasswordDomain credential
+// type for the credential library that owns it.
+type UsernamePasswordDomainOverride struct {
+	*store.UsernamePasswordDomainOverride
+	tableName string `gorm:"-"`
+}
+
+var _ MappingOverride = (*UsernamePasswordDomainOverride)(nil)
+
+// NewUsernameDomainPasswordOverride creates a new in memory UsernamePasswordDomainOverride.
+// WithOverrideUsernameAttribute, WithOverridePasswordAttribute, and WithOverrideDomainAttribute are the
+// only valid options. All other options are ignored.
+func NewUsernamePasswordDomainOverride(opt ...Option) *UsernamePasswordDomainOverride {
+	opts := getOpts(opt...)
+	o := &UsernamePasswordDomainOverride{
+		UsernamePasswordDomainOverride: &store.UsernamePasswordDomainOverride{
+			UsernameAttribute: sanitize.String(opts.withOverrideUsernameAttribute),
+			PasswordAttribute: sanitize.String(opts.withOverridePasswordAttribute),
+			DomainAttribute:   sanitize.String(opts.withOverrideDomainAttribute),
+		},
+	}
+	return o
+}
+
+func allocUsernamePasswordDomainOverride() *UsernamePasswordDomainOverride {
+	return &UsernamePasswordDomainOverride{
+		UsernamePasswordDomainOverride: &store.UsernamePasswordDomainOverride{},
+	}
+}
+
+func (o *UsernamePasswordDomainOverride) clone() MappingOverride {
+	cp := proto.Clone(o.UsernamePasswordDomainOverride)
+	return &UsernamePasswordDomainOverride{
+		UsernamePasswordDomainOverride: cp.(*store.UsernamePasswordDomainOverride),
+	}
+}
+
+func (o *UsernamePasswordDomainOverride) setLibraryId(i string) {
+	o.LibraryId = i
+}
+
+func (o *UsernamePasswordDomainOverride) sanitize() {
+	if sentinel.Is(o.UsernameAttribute) {
+		o.UsernameAttribute = ""
+	}
+	if sentinel.Is(o.PasswordAttribute) {
+		o.PasswordAttribute = ""
+	}
+	if sentinel.Is(o.DomainAttribute) {
+		o.DomainAttribute = ""
+	}
+}
+
+// TableName returns the table name.
+func (o *UsernamePasswordDomainOverride) TableName() string {
+	if o.tableName != "" {
+		return o.tableName
+	}
+	return "credential_vault_library_username_password_domain_mapping_ovrd"
+}
+
+// SetTableName sets the table name.
+func (o *UsernamePasswordDomainOverride) SetTableName(n string) {
 	o.tableName = n
 }
 

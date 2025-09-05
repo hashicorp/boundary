@@ -1,0 +1,31 @@
+---
+layout: docs
+page_title: Boundary vs. privileged access management
+description: >-
+    Learn how Boundary compares to privileged access management (PAM) solutions by providing automation for user and credential management and service discovery.
+---
+
+# Boundary vs. privileged access management
+
+Privileged access management (PAM) tools secure access to critical systems by managing and monitoring access to privileged accounts.
+PAM assists an organization in reducing their attack surface in an attempt to mitigate damage caused from internal or external incidents.
+Traditionally, a focus is put on the management of privileged credentials, and the monitoring of sessions and commands that enable detection and response teams to respond to incidents.
+
+Boundary enables many of the security controls traditionally filled by PAM tools.
+Boundary can manage network access to privileged systems and audit access.
+It can be used with credential management providers, like Vault, to manage access to privileged accounts and credentials.
+
+Where Boundary differs from traditional PAM solutions is in its automation-friendly workflows.
+Boundary is instrumented programmatically via REST, CLI, and [Terraform](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+It provides automation-friendly workflows for managing users and credentials, as well as the discovery and configuration of new services:
+
+- **Automated credential management**: Boundary and Vault can create workflows with automated credential management in which user sessions are secured with [single-use dynamic credentials that are injected into sessions](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection) such that secrets are never returned to users.
+- **Context-based access**: When users' business context changes, you want to ensure their permissions reflect the new business context.
+As an example, on-call engineers might require different permissions than when they end their on-call shifts.
+[Boundary's managed groups](/boundary/tutorials/access-management/oidc-idp-groups) enable user permission workflows to be assigned dynamically based on identity provider MFA checks, group memberships, and other IDP-level context.
+- **[Host discovery](/boundary/docs/hosts)**: Boundary's [dynamic host catalogs](/boundary/tutorials/host-management/aws-host-catalogs) are advanced workflows for automating the process of onboarding new or changed infrastructure resources and their connection information, and applying pre-configured security policies.
+
+**Can Boundary replace a PAM solution?**
+
+Yes, Boundary provides many of the security controls traditionally delivered by PAM tools.
+Boundary can also be used with an existing PAM tool, particularly the ones that emphasize agent-based security where Boundary's proxy-based security can be a natural complement.

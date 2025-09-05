@@ -5,7 +5,7 @@
 
 begin;
 
-  select plan(8);
+  select plan(9);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials');
 
   -- validate the setup data
@@ -19,6 +19,10 @@ begin;
   select is(count(*), 4::bigint)
     from credential_vault_library_username_password_mapping_override
   where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7');
+
+  select is(count(*), 8::bigint)
+    from credential_vault_library_username_password_domain_mapping_ovrd
+  where library_id in ('vl______wvl13', 'vl______wvl14', 'vl______wvl15', 'vl______wvl16', 'vl______wvl17', 'vl______wvl18', 'vl______wvl19', 'vl______wvl20');
 
   select is(count(*), 8::bigint)
     from credential_vault_library_mapping_override

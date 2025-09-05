@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -146,12 +147,12 @@ func Test_TestCredentialLibrary(t *testing.T) {
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, t.Name())
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	vlibs := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	vlibs := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 	var libIds []string
 	var libs []*target.CredentialLibrary
 	for _, v := range vlibs {
 		libIds = append(libIds, v.GetPublicId())
-		lib := target.TestCredentialLibrary(t, conn, tar.GetPublicId(), v.GetPublicId())
+		lib := target.TestCredentialLibrary(t, conn, tar.GetPublicId(), v.GetPublicId(), v.GetCredentialType())
 		require.NotNil(lib)
 		libs = append(libs, lib)
 	}

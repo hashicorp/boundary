@@ -472,7 +472,7 @@ func TestGrants_SetTargetCredentialSources(t *testing.T) {
 	_, proj2 := iam.TestScopes(t, iamRepo, iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
 
 	proj1Vault := vault.TestCredentialStores(t, conn, wrapper, proj1.GetPublicId(), 1)[0]
-	proj1Cls := vault.TestCredentialLibraries(t, conn, wrapper, proj1Vault.GetPublicId(), 2)
+	proj1Cls := vault.TestCredentialLibraries(t, conn, wrapper, proj1Vault.GetPublicId(), globals.UsernamePasswordCredentialType, 2)
 
 	proj2StoreStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj2.GetPublicId())
 	proj2Creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", proj2StoreStatic.GetPublicId(), proj2.GetPublicId(), 2)

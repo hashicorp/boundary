@@ -1,0 +1,29 @@
+These parameters are shared across all sink types:
+
+- `name` - Specify a name for the sink.
+
+- `description` - Specify a description for the sink.
+
+- `event_types` - Specifies a list of event types that will be sent to the sink.
+  Can be `*`, `audit`, `error`, `observation`, `system`, or `telemetry`.
+
+- `event_source_url` - Specifies an optional event source URL for the sink. If
+  not specified, the default source will be composed of the
+  `https://hashicorp.com/boundary.io/ServerName/Path/FileName`.
+
+- `allow_filters` - Specifies a set of predicates for including an event in the
+  sink. If any filter matches, the event will be included. For more information,
+  on using filters see: [event filtering](/boundary/docs/monitor/events/filter-events)
+
+- `deny_filters` - Specifies a set predicates for excluding an event in the
+  sink. If any filter matches, the event will be excluded. For more information
+  on using filters see: [event filtering](/boundary/docs/monitor/events/filter-events)
+
+- `format` - Specifies the format for the sink. Can be `cloudevents-json`,
+  `cloudevents-text`, `hclog-json`, or `hclog-text`.
+
+- `type` - Specifies the type of sink.  Can be `stderr` or `file`.
+
+- `audit_config` - Specifies configuration for the processing of audit events
+    for the sink. This is ignored if the sink is not configured to receive
+    `audit` events.

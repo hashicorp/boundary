@@ -15,6 +15,7 @@ import (
 func init() {
 	kms.RegisterTableRewrapFn(defaultSessionTableName, sessionRewrapFn)
 	kms.RegisterTableRewrapFn("session_credential", sessionCredentialRewrapFn)
+	kms.RegisterTableRewrapFn("session_proxy_certificate", sessionProxyCertificateRewrapFn)
 }
 
 func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) string {
@@ -121,6 +122,42 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId strin
 		}
 		if _, err := writer.Update(ctx, session, []string{"CtTofuToken", "CtCertificatePrivateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update session row with rewrapped fields"))
+		}
+	}
+	return nil
+}
+
+func sessionProxyCertificateRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
+	const op = "session.sessionProxyCertificateRewrapFn"
+	switch {
+	case dataKeyVersionId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
+	case scopeId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	case util.IsNil(reader):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database reader")
+	case util.IsNil(writer):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database writer")
+	case kmsRepo == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
+	}
+	var certs []*ProxyCertificate
+	if err := reader.SearchWhere(ctx, &certs, "key_id=?", []any{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeSessions)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
+	}
+	for _, ck := range certs {
+		if err := ck.Decrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt proxy certificate"))
+		}
+		if err := ck.Encrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt proxy certificate"))
+		}
+		if _, err := writer.Update(ctx, ck, []string{"PrivateKeyEncrypted", "KeyId"}, nil); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to rewrap proxy certificate"))
 		}
 	}
 	return nil

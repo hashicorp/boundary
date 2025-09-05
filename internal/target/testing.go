@@ -17,13 +17,14 @@ import (
 // TestNewCredentialLibrary creates a new in memory CredentialLibrary
 // representing the relationship between targetId and credentialLibraryId with
 // the given purpose.
-func TestNewCredentialLibrary(targetId, credentialLibraryId string, purpose credential.Purpose) *CredentialLibrary {
+func TestNewCredentialLibrary(targetId, credentialLibraryId string, purpose credential.Purpose, credType string) *CredentialLibrary {
 	return &CredentialLibrary{
 		CredentialLibrary: &store.CredentialLibrary{
 			TargetId:            targetId,
 			CredentialLibraryId: credentialLibraryId,
 			CredentialPurpose:   string(purpose),
 		},
+		CredentialType: credType,
 	}
 }
 
@@ -53,11 +54,11 @@ func TestNewStaticCredential(targetId, credentialId string, purpose credential.P
 
 // TestCredentialLibrary creates a CredentialLibrary for targetId and
 // libraryId with the credential purpose of brokered.
-func TestCredentialLibrary(t testing.TB, conn *db.DB, targetId, libraryId string) *CredentialLibrary {
+func TestCredentialLibrary(t testing.TB, conn *db.DB, targetId, libraryId, credType string) *CredentialLibrary {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	lib := TestNewCredentialLibrary(targetId, libraryId, credential.BrokeredPurpose)
+	lib := TestNewCredentialLibrary(targetId, libraryId, credential.BrokeredPurpose, credType)
 	err := rw.Create(context.Background(), lib)
 	require.NoError(err)
 	return lib

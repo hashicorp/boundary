@@ -9,6 +9,7 @@ const (
 	descriptionField          = "Description"
 	usernameField             = "Username"
 	passwordField             = "Password"
+	domainField               = "Domain"
 	privateKeyField           = "PrivateKey"
 	PrivateKeyPassphraseField = "PrivateKeyPassphrase"
 	objectField               = "Object"

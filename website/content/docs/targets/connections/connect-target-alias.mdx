@@ -1,0 +1,30 @@
+---
+layout: docs
+page_title: Overview
+description: >-
+  Learn how to connect to a target configured with an alias.
+---
+
+# Connect to a target using an alias
+
+After you [Create a target alias](/boundary/docs/targets/configuration/create-target-alias), you can refer to the alias when you establish sessions.
+
+With aliases, you don't have to specify the target ID, target name, or scope when you connect with Boundary. Target aliases are also required to use [transparent sessions](/boundary/docs/concepts/transparent-sessions).
+
+You can substitute an alias whenever you could use the `-id` flag or `-target` flag in the CLI.
+
+For example, you can use the following command to connect to an SSH target with the ID `ttcp_1234567890`:
+
+```shell-session
+$ boundary connect ssh -target -id ttcp_1234567890
+```
+
+If you configured an alias named `example.alias.boundary` for the target, you can now use the alias to connect to the target:
+
+```shell-session
+$ boundary connect ssh example.alias.boundary
+```
+
+Aliases are globally unique, so you don't need to specify the scope to connect to the target.
+
+After you verify that you can connect to the target using an alias, you can try to connect to the target using [transparent sessions](/boundary/docs/targets/configuration/configure-transparent-sessions). <sup>HCP/ENT</sup>
