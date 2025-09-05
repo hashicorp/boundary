@@ -5,6 +5,7 @@ package session
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -2003,4 +2004,120 @@ func TestRepository_LookupProxyCertificate(t *testing.T) {
 			assert.Equal(got.Certificate, certValue)
 		})
 	}
+}
+
+func TestRepository_ProxyCertificateDeletion(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	t.Run("Deleting the project deletes the cert", func(t *testing.T) {
+		org, proj := iam.TestScopes(t, iamRepo)
+		kmsWrapper, err := kmsCache.GetWrapper(context.Background(), proj.PublicId, kms.KeyPurposeSessions)
+		require.NoError(t, err)
+
+		at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+		uId := at.GetIamUserId()
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+		session := TestSession(t, conn, wrapper, ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ProjectId:   proj.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		privKeyValue := []byte("fake-private-key")
+		certValue := []byte("fake-cert-value")
+		cert, err := NewProxyCertificate(ctx, session.PublicId, privKeyValue, certValue)
+		require.NoError(t, err)
+		require.NotNil(t, cert)
+
+		err = cert.Encrypt(ctx, kmsWrapper)
+		require.NoError(t, err)
+
+		err = rw.Create(ctx, cert)
+		require.NoError(t, err)
+
+		// Check that the cert is there
+		got, err := repo.LookupProxyCertificate(ctx, proj.GetPublicId(), session.PublicId)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, got.PrivateKey, privKeyValue)
+		assert.Equal(t, got.Certificate, certValue)
+
+		n, err := iamRepo.DeleteScope(ctx, proj.GetPublicId())
+		require.NoError(t, err)
+		require.Equal(t, n, 1)
+		got, err = repo.LookupProxyCertificate(ctx, proj.GetPublicId(), session.PublicId)
+		require.NoError(t, err)
+		require.Nil(t, got)
+	})
+
+	// Ensure that if project ID is set to null on a session for a reason other than the scope being
+	// removed that the cert is still removed
+	t.Run("Null project id on session deletes the cert", func(t *testing.T) {
+		org, proj := iam.TestScopes(t, iamRepo)
+		kmsWrapper, err := kmsCache.GetWrapper(context.Background(), proj.PublicId, kms.KeyPurposeSessions)
+		require.NoError(t, err)
+
+		at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+		uId := at.GetIamUserId()
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+		session := TestSession(t, conn, wrapper, ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ProjectId:   proj.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		privKeyValue := []byte("fake-private-key")
+		certValue := []byte("fake-cert-value")
+		cert, err := NewProxyCertificate(ctx, session.PublicId, privKeyValue, certValue)
+		require.NoError(t, err)
+		require.NotNil(t, cert)
+
+		err = cert.Encrypt(ctx, kmsWrapper)
+		require.NoError(t, err)
+		err = rw.Create(ctx, cert)
+		require.NoError(t, err)
+
+		// Check that the cert is there
+		got, err := repo.LookupProxyCertificate(ctx, proj.GetPublicId(), session.PublicId)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, got.PrivateKey, privKeyValue)
+		assert.Equal(t, got.Certificate, certValue)
+
+		query := `update session set project_id = null where 
+			public_id = @session_id`
+
+		rowsAffected, err := rw.Exec(ctx, query, []any{
+			sql.Named("session_id", session.PublicId),
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, rowsAffected)
+
+		got, err = repo.LookupProxyCertificate(ctx, proj.GetPublicId(), session.PublicId)
+		require.NoError(t, err)
+		require.Nil(t, got)
+	})
 }

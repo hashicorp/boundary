@@ -137,4 +137,22 @@ create table session_proxy_certificate(
 comment on table session_proxy_certificate is
   'session_proxy_certificate is a table where each row maps a certificate to a session id.';
 
+-- delete_session_proxy_certificate_with_null_fk is intended to be a before update trigger that
+-- deletes the session_proxy_certificate entry for a session if the project_id of the session is being set to null.
+-- If the project_id is null, this indicates that the kms key used to encrypt the session_proxy_certificate is being deleted
+-- and therefore the session_proxy_certificate entry must also be deleted.
+create or replace function delete_session_proxy_certificate_with_null_fk() returns trigger
+as $$
+begin
+  case
+    when new.project_id is null then
+      delete from session_proxy_certificate where session_id = new.public_id;
+  end case;
+return new;
+end;
+$$ language plpgsql;
+
+create trigger delete_session_proxy_certificate_with_null_fk before update of project_id on session
+    for each row execute procedure delete_session_proxy_certificate_with_null_fk();
+
 commit;
