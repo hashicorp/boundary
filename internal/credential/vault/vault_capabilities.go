@@ -174,7 +174,7 @@ func (pc pathCapabilities) get(path string) (capabilities, bool) {
 // from x and y.
 func (pc pathCapabilities) union(y pathCapabilities) (z pathCapabilities) {
 	if len(pc) == 0 && len(y) == 0 {
-		return
+		return z
 	}
 	max := func(a, b int) int {
 		if a < b {
@@ -189,7 +189,7 @@ func (pc pathCapabilities) union(y pathCapabilities) (z pathCapabilities) {
 	for p := range y {
 		z[p] = pc[p] | y[p]
 	}
-	return
+	return z
 }
 
 func (pc pathCapabilities) missing(required pathCapabilities) pathCapabilities {

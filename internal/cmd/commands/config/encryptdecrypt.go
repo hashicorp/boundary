@@ -235,5 +235,5 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		c.UI.Error(fmt.Sprintf("Wrong number of bytes written to file, expected %d, wrote %d", len(raw), n))
 	}
 
-	return
+	return ret
 }

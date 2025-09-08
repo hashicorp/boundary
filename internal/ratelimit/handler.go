@@ -51,7 +51,7 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 			if !ok {
 				res = resource.Unknown.String()
 				err = errUnknownResource
-				return
+				return res, act, err
 			}
 			res = r.String()
 		case "action":
@@ -61,17 +61,17 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 				if err != nil {
 					act = action.Unknown.String()
 					err = errUnknownAction
-					return
+					return res, act, err
 				}
 				at, ok := action.Map[act]
 				if !ok {
 					act = action.Unknown.String()
 					err = errUnknownAction
-					return
+					return res, act, err
 				}
 				if !actionSet.HasAction(at) {
 					err = errUnsupportedAction
-					return
+					return res, act, err
 				}
 			}
 		case "id":
@@ -91,7 +91,7 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 			default:
 				act = action.Unknown.String()
 				err = errUnsupportedAction
-				return
+				return res, act, err
 			}
 		default:
 			switch method {
@@ -104,11 +104,11 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 			default:
 				act = action.Unknown.String()
 				err = errUnsupportedAction
-				return
+				return res, act, err
 			}
 		}
 	}
-	return
+	return res, act, err
 }
 
 // LimiterFunc returns a rate.Limiter

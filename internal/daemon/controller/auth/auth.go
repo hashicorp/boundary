@@ -237,17 +237,17 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 			iamRepo, err := v.iamRepoFn()
 			if err != nil {
 				ret.Error = errors.Wrap(ctx, err, op, errors.WithMsg("failed to get iam repo"))
-				return
+				return ret
 			}
 
 			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
 			if err != nil {
 				ret.Error = errors.Wrap(ctx, err, op)
-				return
+				return ret
 			}
 			if scp == nil {
 				ret.Error = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("non-existent scope %q", ret.Scope.Id))
-				return
+				return ret
 			}
 			ret.Scope = &scopes.ScopeInfo{
 				Id:            scp.GetPublicId(),
@@ -264,7 +264,7 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 		}
 		ea.UserInfo = &event.UserInfo{UserId: ret.UserId}
 		ret.Error = nil
-		return
+		return ret
 	}
 
 	v.act = opts.withAction
@@ -292,7 +292,7 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourcesToFetchGrants, opts.withRecursive)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
-		return
+		return ret
 	}
 
 	if ret.UserData.User.Id != nil {
@@ -330,7 +330,7 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 			ea.UserInfo = &event.UserInfo{
 				UserId: ret.UserId,
 			}
-			return
+			return ret
 		}
 	}
 
@@ -364,7 +364,7 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 	}
 
 	ret.Error = nil
-	return
+	return ret
 }
 
 func (v *verifier) decryptToken(ctx context.Context) {
@@ -530,7 +530,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op)
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
@@ -553,13 +553,13 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to get iam repo"))
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 
 	u, _, err := iamRepo.LookupUser(ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup user"))
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 	userData.User.Name = util.Pointer(u.Name)
 	userData.User.Email = util.Pointer(u.Email)
@@ -574,34 +574,34 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get password auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		case oidc.Subtype:
 			repo, repoErr := v.oidcAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		case ldap.Subtype:
 			repo, repoErr := v.ldapAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get ldap auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		default:
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("unrecognized account id type"))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		if err != nil {
 			if errors.IsNotFoundError(err) {
 				retErr = errors.Wrap(ctx, err, op, errors.WithMsg("account doesn't exist"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("error looking up account"))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		userData.Account.Name = util.Pointer(acct.GetName())
 		userData.Account.Email = util.Pointer(acct.GetEmail())
@@ -625,11 +625,11 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op)
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		if scp == nil {
 			retErr = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", v.res.ScopeId))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		scopeInfo = &scopes.ScopeInfo{
 			Id:            scp.GetPublicId(),
@@ -646,7 +646,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 		aclResults.AuthenticationFinished = true
 		aclResults.Authorized = true
 		retErr = nil
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 
 	var parsedGrants []perms.Grant
@@ -657,7 +657,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id, iamOpt...)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
 	// Note: Below, we always skip validation so that we don't error on formats
@@ -677,7 +677,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 			permsOpts...)
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", tuple.Grant)))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		parsedGrants = append(parsedGrants, parsed)
 	}
@@ -690,7 +690,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 	// grants successfully loaded.
 	aclResults.AuthenticationFinished = true
 	retErr = nil
-	return
+	return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 }
 
 // FetchActionSetForId returns the allowed actions for a given ID using the

@@ -758,7 +758,7 @@ func (c *container) computeFileChecksum(ctx context.Context, fileName string, op
 	f, err = c.container.OpenFile(ctx, fileName)
 	if err != nil {
 		err = fmt.Errorf("%s: %w", op, err)
-		return
+		return checksum, err
 	}
 	defer func() {
 		if closeErr := f.Close(); closeErr != nil {
@@ -769,5 +769,5 @@ func (c *container) computeFileChecksum(ctx context.Context, fileName string, op
 	if err != nil {
 		err = fmt.Errorf("%s: %w", op, err)
 	}
-	return
+	return checksum, err
 }
