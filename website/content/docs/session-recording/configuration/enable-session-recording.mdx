@@ -1,0 +1,116 @@
+---
+layout: docs
+page_title: Enable session recording on a target
+description: >-
+  Enable session recording for targets so that user sessions are recorded for compliance and threat management.
+---
+
+# Enable session recording on a target
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
+
+You must enable session recording for any targets that you want to record sessions on.
+When you [create a storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket), Boundary provides you with an ID.
+You use the storage bucket's ID to associate a target with the storage bucket.
+
+## Requirements
+
+- One or more storage buckets to store the recordings.
+- Session recording is only supported for SSH targets at this time.
+- A KMS key with the purpose `bsr` must be added to the controller configuration.
+The key is used for encrypting data and checking the integrity of recordings.
+Refer to [Create the controller configuration](/boundary/docs/deploy/self-managed/configure-controllers#create-the-controller-configuration) and [the `bsr` KMS key](/boundary/docs/secure/encryption/data-encryption#the-bsr-kms-key) documentation for more information about configuring a KMS block.
+- The targets must be configured with an ingress or egress worker filter that includes a worker with access to the storage bucket you created.
+Refer to [SSH target attributes](/boundary/docs/domain-model/targets#ssh-target-attributes) for more information.
+- You must enable injected application credentials on any target that you want to use for session recording.
+Refer to [Configure targets with credential injection](/boundary/docs/credentials/configure-credential-injection) for more information about injecting application credentials.
+
+Complete the following steps to enable session recording on a target.
+
+<Tabs>
+<Tab heading="UI">
+
+1. Log in to Boundary.
+1. Click **Orgs** in the navigation pane.
+1. Select the org that contains the target you want to enable for session recording.
+1. Select the project that contains the target you want to enable for session recording.
+1. Select **Targets** in the navigation pane.
+1. Do one of the following:
+
+   - To create a new target, select **New Target**.
+   - To edit an existing target, select the target, and then select **Edit Form**.
+1. Configure the target with any relevant [attributes](/boundary/docs/domain-model/targets).
+The following setting is required for session recording:
+
+   - Select **SSH** for the **Type**.
+
+1. Click **Save**.
+1. Click **Enable recording**.
+
+   ![Example of enabling session recording](/img/ui/enable-session-recording_light.png#light-theme-only)
+   ![Example of enabling session recording](/img/ui/enable-session-recording_dark.png#dark-theme-only)
+
+1. Enable the **Record sessions for this target** option.
+1. Select the storage bucket where you want to store recordings from this target.
+
+   You can also [create a new storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket).
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Do one of the following:
+
+   - To enable an existing SSH target for session recording, run the following commmand:
+
+      ```shell-session
+      $ boundary targets update ssh -scope-id p_1234567890 -id tssh_1234567890 -enable-session-recording true -storage-bucket-id sb_1234567890
+      ```
+
+      Make sure to add the `-enable-session-recording true` flag to turn on session recording for the target.
+      Add the `-storage-bucket-id ID` for the storage bucket you want to associate with this target.
+
+   - To create a new target and enable it for session recording, run the following command:
+
+      ```shell-session
+      $ boundary targets create ssh -scope-id p_1234567890 -default -port 22 -name test1 -address 99.12.345.67 -enable-session-recording true -storage-bucket-id sb_1234567890
+      ```
+
+      Make sure to add the `-enable-session-recording true` flag to turn on session recording for the target.
+      Add the `-storage-bucket-id ID` for the storage bucket you want to associate with this target.
+      You can configure any other [target attributes](/boundary/docs/domain-model/targets).
+
+      You can now view the target from the **Targets** page in the Boundary console.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_target" "address_foo" {
+  name         = "address_foo"
+  description  = "Foo target with an address"
+  type         = "tcp"
+  default_port = "22"
+  scope_id     = boundary_scope.project.id
+  address      = "127.0.0.1"
+
+  # Add the next two lines to an existing target to enable session recording.
+  # Modify the value of storage_bucket_id as appropriate
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_example.id
+}
+```
+
+</Tab>
+</Tabs>
+
+The target is now enabled for session recording.
+Any user session that connects to the target is automatically recorded.
+
+## Next steps
+
+After you have enabled session recording, you may want to [configure storage policies](/boundary/docs/session-recording/compliance/configure-storage-policy) to codify the lifecycle management of your session recordings.

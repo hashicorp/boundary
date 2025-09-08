@@ -1,0 +1,199 @@
+---
+layout: docs
+page_title: API rate limiting
+description: >-
+  Learn how API rate limiting lets you configure limits on the rates of API requests in Boundary to help manage resources and prevent them from being overwhelmed.
+---
+
+# Rate limiting
+
+If your controllers try to process every API request, it can lead to situations when the controllers are overwhelmed with requests.
+The controllers may either run out of resources or overwhelm the database server and exhaust its resources.
+API rate limiting lets you configure limits on the rate of API requests to help manage your resources and prevent them from being overwhelmed.
+
+## Quotas
+
+Boundary creates quotas to track the number of requests in a given time period.
+By default, Boundary tracks the number of requests by auth token, IP address, and the overall total.
+Boundary reserves a portion of its memory for tracking quotas to ensure that it does not consume too much memory if there is a sudden burst of requests.
+
+If Boundary is unable to store a quota, it limits the request with a 503 HTTP status code.
+You can configure the maximum number of quotas Boundary allows using the `api_rate_limit_max_quotas` variable.
+There are also two metrics that allow you to monitor quota tracking:
+
+- `boundary_controller_api_ratelimiter_quota_storage_capacity`
+- `boundary_controller_api_ratelimiter_quota_storage_usage`
+
+## Default limits
+
+API rate limiting is enforced on the controllers.
+There are separate configurable limits for each combination of resource and action.
+By default, the limits for `list` actions are:
+
+- 150 requests per 30 seconds per auth token
+- 1,500 requests per 30 seconds per IP address
+- 1,500 requests per 30 seconds in total
+
+The default limits for all other actions are:
+
+- 3,000 requests per 30 seconds per auth token
+- 30,000 requests per 30 seconds per IP address
+- 30,000 requests per 30 seconds in total
+
+You can override the default settings and configure other specific limitations using the `api_rate_limit` stanza in the controller configuration.
+
+## Rate limiting HTTP headers
+
+Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
+Each response contains the `RateLimit` and `RateLimit-Policy` headers.
+
+If the request is rate limited, Boundary sends the client a 429 HTTP status code with a `Retry-After` header.
+The `Retry-After` header contains the number of seconds the client should wait before it sends the request again.
+
+For more information, refer to [HTTP headers](/boundary/docs/api#http-headers).
+
+## More information
+
+Refer to the [controller stanza](/boundary/docs/configuration/controller#api_rate_limit) documentation for the specific `api_rate_limit` configuration options.
+Some example configurations are listed below.
+
+### Rate limiting configuration examples
+
+The following example shows a simple configuration where the same limits are applied to all resources and examples:
+
+```hcl
+controller {
+  # Total limit for all resources and actions
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "total"
+    limit     = 500
+    period    = "1s"
+  }
+
+  # Limit for all IP addresses to all resources and actions to prevent a
+  # malicious host that is fabricating tokens or spamming unauthed endpoints
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "ip-address"
+    limit     = 100
+    period    = "1s"
+  }
+
+  # Limit for all authed requests to prevent one user
+  # from consuming all of the total limit
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "auth-token"
+    limit     = 100
+    period    = "1s"
+  }
+}
+```
+
+The following example shows a configuration that disables rate limiting.
+You may want to disable rate limiting if you already use an external system like a reverse proxy to apply rate limiting:
+
+```hcl
+controller {
+  api_rate_limit_disable = true
+}
+```
+
+The following example uses the default settings for most endpoints, but configures a single override:
+
+```hcl
+controller {
+  api_rate_limit {
+    resources = ["target"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 10
+    period    = "1s"
+  }
+}
+```
+
+The following example is more complex.
+Initially it sets some defaults to apply to all resources and actions.
+Then it configures some specific endpoints with different limits.
+
+```hcl
+controller {
+  # Total limit for all resources and actions
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "total"
+    limit     = 500
+    period    = "1s"
+  }
+
+  # Total limit for all list operations,
+  # sets an overall cap on the list action since it is relatively expensive
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["list"]
+    per       = "total"
+    limit     = 200
+    period    = "1s"
+  }
+
+  # Limit for IP address to all resources and actions
+  # to prevent a malicious host that is fabricating tokens
+  # or spamming unauthed endpoints
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "ip-address"
+    limit     = 50
+    period    = "1s"
+  }
+
+  # Limit of all authed requests, this essentially sets a default
+  # for all authed requests to prevent one user from consuming
+  # all of the total list limit set above. Any limits that follow
+  # can override the default for specific sets of resources and actions
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "auth-token"
+    limit     = 100
+    period    = "1s"
+  }
+
+  # Limit of all list operations by auth token to set a sane default
+  # since they are generally more expensive
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 50
+    period    = "1s"
+  }
+
+  # Limit for targets and sessions list by auth token. These are resources
+  # that clients will want to list frequently, but might be more expensive
+  # if there is a large number of them for each user. Having a lower limit
+  # encourages the use of refresh tokens and caching.
+  api_rate_limit {
+    resources = ["target", "session"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 20
+    period    = "1s"
+  }
+
+  #Limit for authorize session by auth token
+  api_rate_limit {
+    resources = ["target"]
+    actions   = ["authorize-session"]
+    per       = "auth-token"
+    limit     = 150
+    period    = "1s"
+  }
+}
+```

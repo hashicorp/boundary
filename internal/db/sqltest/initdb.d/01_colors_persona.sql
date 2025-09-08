@@ -440,6 +440,13 @@ begin;
     ('p____rcolors', 'tssh______cr', 'Red Color SSH Target',   false,                    null),
     ('p____gcolors', 'tssh______cg', 'Green Color SSH Target', true,                     'sb____colors');
 
+  insert into target_rdp
+    (project_id,     public_id,      name,                     enable_session_recording, storage_bucket_id)
+  values
+    ('p____bcolors', 'trdp______cb', 'Blue Color RDP Target',  true,                     'sb____global'),
+    ('p____rcolors', 'trdp______cr', 'Red Color RDP Target',   false,                    null),
+    ('p____gcolors', 'trdp______cg', 'Green Color RDP Target', true,                     'sb____colors');
+
   insert into target_host_set
     (project_id,     target_id,      host_set_id)
   values
@@ -451,13 +458,19 @@ begin;
     ('p____bcolors', 'tssh______cb', 'hs__st____b2'),
     ('p____bcolors', 'tssh______cb', 'hs__plg___b1'),
     ('p____rcolors', 'tssh______cr', 'hs__st____r1'),
-    ('p____rcolors', 'tssh______cr', 'hs__st____r2');
+    ('p____rcolors', 'tssh______cr', 'hs__st____r2'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b1'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b2'),
+    ('p____bcolors', 'trdp______cb', 'hs__plg___b1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r2');
 
   insert into target_address
     (target_id,      address)
   values
     ('t_________cg', '8.8.8.8'),
-    ('tssh______cg', '8.8.8.8');
+    ('tssh______cg', '8.8.8.8'),
+    ('trdp______cg', '8.8.8.8');
 
   insert into credential_vault_store
     (project_id,     public_id,      name,                description, vault_address,               namespace)
@@ -501,6 +514,13 @@ begin;
     ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csu__rcolors', 'Red username password cred',   'ruser',  'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea),
     ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csu__gcolors', 'Green username password cred', 'guser',  'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea);
 
+  insert into credential_static_username_password_domain_credential
+    (key_id,         project_id,     store_id,       public_id,      name,                           username,  password_encrypted,   password_hmac,         domain)
+    values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'csud_bcolors', 'Blue username password cred',  'buser',   'bpasswd-enc'::bytea, 'bpasswd-hmac'::bytea, 'blue.domain'),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csud_rcolors', 'Red username password cred',   'ruser',   'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea, 'red.domain'),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csud_gcolors', 'Green username password cred', 'guser',   'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea, 'green.domain');
+
   insert into credential_static_ssh_private_key_credential
     (key_id,         project_id,     store_id,       public_id,      name,                           username, private_key_encrypted, private_key_hmac)
   values
@@ -515,7 +535,9 @@ begin;
     ('p____bcolors', 'tssh______cb', 'csj__bcolors',       'injected_application'),
     ('p____gcolors', 'tssh______cg', 'csj__gcolors',       'brokered'),
     ('p____gcolors', 'tssh______cg', 'csu__gcolors',       'brokered'),
-    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application');
+    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application'),
+    ('p____gcolors', 'tssh______cg', 'csud_gcolors',       'brokered');
+    ;
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)
@@ -560,6 +582,7 @@ begin;
     ('s1______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'csu__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'cspk_gcolors',       'injected_application'), -- tssh______cg
+    ('s1______cora', 'csud_gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'cspk_gcolors',       'injected_application'); -- tssh______cg
 

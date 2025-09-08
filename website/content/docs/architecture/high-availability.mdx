@@ -1,0 +1,56 @@
+---
+layout: docs
+page_title: High availability installation
+description: >-
+  Learn about network requirements and architecture to set up Boundary for high availability, including database, load balancer, and configuration best practices.
+
+---
+
+# High availability installation
+
+Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and 3 worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for a number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant configuration, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+
+## Network requirements
+
+The following ports should be available:
+
+- Clients must have access to the Controller's `api` port (default 9200)
+- Clients must have access to the Worker's port (default 9202)
+- Workers must have access to the Controller's `cluster` port (default 9201)
+- Workers must have a route and port access to the hosts defined within the system to provide connectivity
+
+## Architecture
+
+The general architecture for the server infrastructure requires 3 controllers and 3 workers. Note that it is possible to run a controller and worker within the same process, but the guide here assumes separate deployments. The documentation here uses virtual machines running on Amazon EC2 as the example environment, but this use case can be extrapolated to almost any cloud platform to suit operator needs:
+
+![](/img/boundary-network.png)
+
+As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
+3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate availability zones, with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
+
+The workers must be able to establish a connection to the hosts with which they interact. In the architecture above, we place them in the public subnet so our remote client can establish a session between them and the target VM.
+
+Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](https://aws.amazon.com/kms/). In the example above, we're using AWS managed services for these components. For Postgres, we're using [RDS](https://aws.amazon.com/rds/) and for KMS we're using Amazon's [Key Management Service](https://aws.amazon.com/kms/).
+
+### Database
+
+Boundary controllers must be able to reach the PostgreSQL database.
+If you use a high availability (HA) configuration, then the controllers must have access to the PostgreSQL server infrastructure.
+
+For more information about configuring the Postgres database for HA, refer to the [Postgres high availability, load balancing, and replication documentation](https://www.postgresql.org/docs/current/high-availability.html).
+If you use a managed service, refer to your provider's PostgreSQL high availability documentation.
+
+### API and console load balancer
+
+Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary servers in private networks and using load balancing techniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
+
+For general configuration, we recommend the following:
+
+- HTTPS listener with valid TLS certificate for the domain it's serving or TLS passthrough
+- Health checks should use TCP port 9200
+
+### Controller configuration
+
+When running Boundary controller as a service we recommend storing the file at `/etc/boundary.d/boundary-controller.hcl`. A `boundary` user and group should exist to manage this configuration file and to further restrict who can read and modify it.
+
+For detailed configuration options, see our [configuration docs](/boundary/docs/configuration).

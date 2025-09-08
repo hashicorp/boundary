@@ -37,6 +37,8 @@ func TestRepository_Retrieve(t *testing.T) {
 	staticStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	upCred1 := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", staticStore.GetPublicId(), prj.GetPublicId())
 	upCred2 := TestUsernamePasswordCredential(t, conn, wrapper, "different user", "better password", staticStore.GetPublicId(), prj.GetPublicId())
+	updCred1 := TestUsernamePasswordDomainCredential(t, conn, wrapper, "user", "pass", "domain.com", staticStore.GetPublicId(), prj.GetPublicId())
+	updCred2 := TestUsernamePasswordDomainCredential(t, conn, wrapper, "different user", "better password", "new-domain.com", staticStore.GetPublicId(), prj.GetPublicId())
 	spkCred1 := TestSshPrivateKeyCredential(t, conn, wrapper, "final user", string(testdata.PEMBytes["ed25519"]), staticStore.GetPublicId(), prj.GetPublicId())
 	spkCred2 := TestSshPrivateKeyCredential(t, conn, wrapper, "last user", string(testdata.PEMBytes["rsa-openssh-format"]), staticStore.GetPublicId(), prj.GetPublicId())
 	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "another last user",
@@ -104,6 +106,26 @@ func TestRepository_Retrieve(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-one-upd-cred",
+			args: args{
+				projectId: prj.GetPublicId(),
+				credIds:   []string{updCred1.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				updCred1,
+			},
+		},
+		{
+			name: "valid-multiple-upd-creds",
+			args: args{
+				projectId: prj.GetPublicId(),
+				credIds:   []string{updCred1.GetPublicId(), updCred2.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				updCred1, updCred2,
+			},
+		},
+		{
 			name: "valid-ssh-pk-cred",
 			args: args{
 				projectId: prj.GetPublicId(),
@@ -147,10 +169,10 @@ func TestRepository_Retrieve(t *testing.T) {
 			name: "valid-mixed-creds",
 			args: args{
 				projectId: prj.GetPublicId(),
-				credIds:   []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId(), jsonCred1.GetPublicId(), jsonCred2.GetPublicId()},
+				credIds:   []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId(), jsonCred1.GetPublicId(), jsonCred2.GetPublicId(), updCred1.GetPublicId(), updCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				upCred1, spkCred1, spkCredWithPass, spkCred2, upCred2, jsonCred1, jsonCred2,
+				upCred1, spkCred1, spkCredWithPass, spkCred2, upCred2, jsonCred1, jsonCred2, updCred1, updCred2,
 			},
 		},
 	}
@@ -170,6 +192,7 @@ func TestRepository_Retrieve(t *testing.T) {
 					gotCreds,
 					cmpopts.IgnoreUnexported(
 						UsernamePasswordCredential{}, store.UsernamePasswordCredential{},
+						UsernamePasswordDomainCredential{}, store.UsernamePasswordDomainCredential{},
 						SshPrivateKeyCredential{}, store.SshPrivateKeyCredential{},
 						JsonCredential{}, store.JsonCredential{}),
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),

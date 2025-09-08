@@ -94,4 +94,16 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withRandomReader = reader
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithProxyCertificate", func(t *testing.T) {
+		assert := assert.New(t)
+		pc := &ProxyCertificate{
+			Certificate: []byte("test-cert"),
+			PrivateKey:  []byte("test-key"),
+			SessionId:   "s_1234",
+		}
+		opts := getOpts(WithProxyCertificate(pc))
+		testOpts := getDefaultOptions()
+		testOpts.withProxyCertificate = pc
+		assert.Equal(opts, testOpts)
+	})
 }

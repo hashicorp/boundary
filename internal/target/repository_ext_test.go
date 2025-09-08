@@ -405,7 +405,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 
 	storeVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 2)
+	credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
@@ -415,7 +415,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	cred2 := credsStatic[1]
 
 	setupFn := func(tar target.Target) ([]target.CredentialSource, target.CredentialSources) {
-		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 5)
+		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), globals.UnspecifiedCredentialType, 5)
 		var ids target.CredentialSources
 		for _, cl := range credLibs {
 			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cl.GetPublicId())

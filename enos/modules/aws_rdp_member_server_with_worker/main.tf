@@ -87,36 +87,56 @@ resource "aws_instance" "worker" {
 
   user_data = <<EOF
                 <powershell>
+                  # set variables for retry loops
+                  $timeout = 300
+                  $interval = 30
+
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  $timeout = 300
-                  $interval = 10
-                  # Loop to make sure that SSH installs correctly               
+                  # Loop to make sure that SSH installs correctly
+                  $elapsed = 0
                   do {
-                  try {
-                      $result = Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                      Set-Service -Name sshd -StartupType 'Automatic'
+                      Start-Service sshd
+                      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
                       if ($result) {
-                          Write-Host "Successfully added openSSH server"
+                          Write-Host "Successfully added and started openSSH server"
                           break
                       }
-                      } catch {
-                          Write-Host "SSH server was not installed, retrying"
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                          Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                          exit 1
-                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                    }
                   } while ($true)
 
-
-                  Set-Service -Name sshd -StartupType 'Automatic'
-                  Start-Service sshd
-
-                  Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-                  Set-Service -Name ssh-agent -StartupType Automatic
-                  Start-Service ssh-agent
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+                      Set-Service -Name ssh-agent -StartupType Automatic
+                      Start-Service ssh-agent
+                      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
+                      if ($result) {
+                        Write-Host "Successfully added and started openSSH agent"
+                        break
+                      }
+                    } catch {
+                      Write-Host "SSH server was not installed, retrying"
+                      Start-Sleep -Seconds $interval
+                      $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                      exit 1
+                    }
+                  } while ($true)
 
                   # Set PowerShell as the default SSH shell
                   New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
@@ -138,38 +158,65 @@ resource "aws_instance" "worker" {
                   New-NetFirewallRule -Name boundary_in -DisplayName 'Boundary inbound' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 9202
                   New-NetFirewallRule -Name boundary_out -DisplayName 'Boundary outbound' -Enabled True -Direction Outbound -Protocol TCP -Action Allow -LocalPort 9202
 
-                  ## Add computer to the domain
+                  # Add computer to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
                   Set-DNSClientServerAddress -interfaceIndex $intix -ServerAddresses ("${var.domain_controller_ip}","127.0.0.1")
                   $here_string_password = @'
 ${var.domain_admin_password}
 '@
                   $password = ConvertTo-SecureString $here_string_password -AsPlainText -Force
-                  $username = "${local.domain_sld}\Administrator" 
+                  $username = "${local.domain_sld}\Administrator"
                   $credential = New-Object System.Management.Automation.PSCredential($username,$password)
 
                   # check that domain can be reached
                   $elapsed = 0
                   do {
                     try {
-                      $result = Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
-                      if ($result) {
-                        Write-Host "DNS resolved successfully."
-                        break
-                        }
-                      } catch {
-                          Write-Host "DNS not resolved yet. Retrying in $interval seconds..."
-                          Start-Sleep -Seconds $interval
-                          $elapsed += $interval
-                      }
-                      if ($elapsed -ge $timeout) {
-                        Write-Host "DNS resolution failed after 5 minutes. Exiting."
-                        exit 1
-                      }
+                      Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction Stop
+                      Write-Host "resolved domain successfully."
+                      break
+                    } catch {
+                        Write-Host "Could not resolve domain. Retrying in $interval seconds..."
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "Resolving domain after 5 minutes. Exiting."
+                      exit 1
+                    }
                   } while ($true)
 
-                  # add computer to domain
-                  Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                  #logging to troubleshoot domain issues
+                  Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
+                  Get-Service -Name LanmanWorkstation, Netlogon, RpcSs | Select-Object Name, DisplayName, Status
+
+
+                  $timeout = 900
+                  $interval = 30
+                  # Add computer to domain
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-Computer -DomainName "${var.active_directory_domain}" -Credential $credential
+                      $result = (Get-WmiObject Win32_ComputerSystem).Domain
+                      if ($result -ne "WORKGROUP") {
+                        Write-Host "Added to domain successfully."
+                        break
+                        }
+                    } catch {
+                          Write-Host "Could not add to domain. Retrying in $interval seconds..."
+                          Start-Sleep -Seconds $interval
+                          $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                      Write-Host "Adding to domain after 5 minutes. Exiting."
+                      exit 1
+                    }
+                  } while ($true)
+
+                  # Logging to determine domain and ssh state for debugging
+                  (Get-WmiObject Win32_ComputerSystem).Domain
+                  Get-Process -Name *ssh* -ErrorAction SilentlyContinue
                 </powershell>
               EOF
 

@@ -56,6 +56,7 @@ begin;
   drop view target_all_subtypes;
 
   -- replaces target_all_subtypes defined in oss/64/01_ssh_targets.up.sql
+  -- replaced in 98/04_rdp_targets.up.sql
   create view target_all_subtypes as
   select
     public_id,
@@ -99,6 +100,7 @@ begin;
     target_ssh;
 
   -- replaces whx_host_dimension_source defined in oss/64/01_ssh_targets.up.sql
+  -- replaced in 98/04_rdp_targets.up.sql
   create view whx_host_dimension_source as
   with 
   host_sources (
@@ -232,6 +234,7 @@ begin;
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
   -- Replaces whx_credential_dimension_source defined in oss/64/01_ssh_targets.up.sql.sql
+  -- Replaced in 98/04_rdp_targets.up.sql
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,

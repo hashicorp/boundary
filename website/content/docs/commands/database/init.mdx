@@ -13,10 +13,10 @@ The `database init` command initializes Boundary's database.
 
 ## Examples
 
-The following example initializes a Boundary's database with the configuration specified in the `/etc/boundary/controller.hcl` file:
+The following example initializes a Boundary's database with the configuration specified in the `/etc/boundary.d/controller.hcl` file:
 
 ```shell-session
-$ boundary database init -config=/etc/boundary/controller.hcl
+$ boundary database init -config=/etc/boundary.d/controller.hcl
 ```
 
 The `controller.hcl` file contains the database URL.

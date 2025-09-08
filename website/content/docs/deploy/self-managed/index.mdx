@@ -1,0 +1,51 @@
+---
+layout: docs
+page_title: Deploy Boundary in a self-managed environment
+description: >-
+ Discover resources for deploying a self-managed version of Boundary Enterprise or Boundary Community Edition.
+---
+
+# Deploy Boundary in a self-managed environment
+
+To deploy a self-managed Boundary environment you should:
+
+1. Install the Boundary binary
+1. Deploy and configure Boundary controllers and workers
+1. Install end-user clients
+
+This guide outlines the required steps to manually install and configure a
+single self-managed HashiCorp Boundary cluster as defined in the Recommended
+architecture topic.
+It assumes you install Boundary on virtual machines (VMs) or bare-metal servers
+running a Debian or Red Hat-based Linux distribution.
+
+To deploy HCP Boundary instead, refer to the [Deploy and log in](/boundary/docs/hcp/get-started/deploy-and-login) in the HCP Boundary Get started documentation.
+
+This document includes general guidance as well as specific recommendations for
+popular cloud infrastructure platforms. These recommendations have also been
+encoded into official Terraform reference architectures for
+[AWS](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/aws),
+[Azure](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/azure),
+and
+[GCP](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/gcp).
+
+## More information
+
+Before you begin, you may want to review the following information about Boundary's architecture and system requirements:
+
+- [System requirements](/boundary/docs/architecture/system-requirements)
+- [Recommended architecture](/boundary/docs/architecture/recommended-architecture)
+- [Fault tolerance](/boundary/docs/architecture/fault-tolerance)
+- [High availability](/boundary/docs/architecture/high-availability)
+
+## Next steps
+
+Refer to the following topics to deploy your self-managed environment:
+
+1. [Install Boundary](/boundary/docs/deploy/self-managed/install)
+1. [Configure controllers](/boundary/docs/deploy/self-managed/configure-controllers)
+1. [Deploy workers](/boundary/docs/deploy/self-managed/deploy-workers)
+1. [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize)
+1. [Install Boundary clients](/boundary/docs/deploy/self-managed/install-clients)
+
+To configure Boundary resources using Terraform, refer to [Terraform patterns](/boundary/docs/deploy/terraform-patterns).

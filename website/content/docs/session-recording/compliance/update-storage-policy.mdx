@@ -1,0 +1,350 @@
+---
+layout: docs
+page_title: Update storage bucket policies
+description: >-
+  Update storage bucket policies to manage the lifecycles of session recordings. Understand how changing a policy affects existing and new recorded sessions.
+---
+
+# Update storage bucket policies
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
+
+A [storage policy][] codifies [storage bucket][] lifecycle management for [session recordings][].
+
+A storage policy exists in either the global scope or an org scope. Storage policies that are created in the global scope can be associated with any org scope.
+
+When you update a storage policy, new session recordings within a scope where the policy is applied will conform to the updated policy. Existing recordings will maintain the previous policy unless the new policy is retroactively applied.
+
+This page describes the process for applying updated storage policies to existing recordings within a scope.
+
+For more information about setting up storage bucket policies, refer to the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page.
+
+## Requirements
+
+This page continues the workflows outlined in the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page. The requirements outlined in that page are prerequisites for the workflow defined below.
+
+To apply an updated storage policy to existing session recordings, you first need:
+
+1. An external storage provider configured to store session recordings.
+1. A Boundary worker configured for local storage.
+1. A Boundary storage bucket with a defined retention and/or deletion policy.
+1. A scope with the storage policy attached.
+1. A set of session recordings made when the storage policy was attached.
+
+The policies mentioned here demonstrate how to apply an updated storage policy to an existing set of [session recordings][].
+
+## Storage policy changes
+
+A storage policy defines how long the recording within a scope should retain its session recordings.
+
+Over time, you may update storage policies to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless you apply the new policy directly to those recordings.
+
+In the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page, the following policy was created to implement compliance with SOC-2 retention requirement of 7 years:
+
+- Name: `soc2-policy`
+- Description: `SOC 2 compliant storage policy for session recordings`
+- Retention policy: `2557` days, Overridable: `false`
+- Deletion policy: `2657` days, Overridable: `true`
+
+## Update a storage policy
+
+In the following example, the `soc2-policy` should be updated to the following:
+
+- Name: `soc2-policy`
+- Description: `SOC 2 compliant storage policy for session recordings, V2`
+- Retention policy: `2557` days, Overridable: `false`
+- Deletion policy: `2757` days, Overridable: `false`
+
+The updated policy requires the deletion of recordings after `2757` days, 200 days after the standard SOC 2 retention requirements. It also changes Overridable to `false`, preventing lower scopes from overwriting the Deletion policy.
+
+The following is an example of updating the `soc2-policy` policy.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Storage Policies** in the navigation panel and select the `global` scope.
+1. Click on **`soc2-policy`**.
+1. Click the **Edit Form** button and update the following fields:
+   - **Description**: `SOC 2 compliant storage policy for session recordings, V2`
+   - **Retention Policy**: `SOC 2 (7 years)`
+   - **Deletion Policy**: `Custom`
+   **Delete after**: `2757` days
+   Toggle the switch beside **Allow orgs to override** to the off position.
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. List the available storage policies and copy the `soc2-policy` ID.
+
+   <CodeBlockConfig highlight="1,3">
+
+   ```shell-session
+   $ boundary policies list
+   Policy information:
+     ID:                    pst_WZ3SQSSYJY
+       Version:             1
+       Type:                storage
+       Name:                soc2-policy
+       Description:         SOC 2 compliant storage policy for session recordings
+       Authorized Actions:
+         read
+         update
+         delete
+         no-op
+   ```
+
+   </CodeBlockConfig>
+
+1. Use the following command to update the `soc2-policy` storage policy to reflect the new deletion requirements:
+
+   ```shell-session
+   $ boundary policies update storage \
+       -id pst_WZ3SQSSYJY \
+       -description 'SOC 2 compliant storage policy for session recordings, V2' \
+       -scope-id global \
+       -retain-for-days 2557 \
+       -retain-for-overridable false \
+       -delete-after-days 2757 \
+       -delete-after-overridable false
+   ```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Due to the declarative nature of Terraform, you update policies by modifying your existing Terraform configuration. To perform the requested changes, update your existing block of code as shown below, and then execute `terraform apply`.
+
+```hcl
+resource "boundary_policy_storage" "example" {
+  name = "soc2-policy"
+  v2"
+  scope_id = data.boundary_scope.org.id
+
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2757
+  delete_after_overridable = false
+}
+```
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+The following API call is an example of updating a storage policy in Boundary:
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request PATCH \
+    --data '{"attributes":{"retain_for":{"days":2557,"overridable":false},"delete_after":{"days":2757,"overridable":false}},"scope_id":"global","description":"SOC 2 compliant storage policy for session recordings, V2","type":"storage","version":"2"}' \
+    $BOUNDARY_ADDR/v1/policies/pst_WZ3SQSSYJY | jq
+```
+
+<Note>
+
+  This example uses [jq](https://stedolan.github.io/jq/download/) to process the JSON output for readability.
+
+</Note>
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+{
+  "id": "pst_WZ3SQSSYJY",
+  "scope_id": "global",
+  "scope": {
+    "id": "global",
+    "type": "global",
+    "name": "global",
+    "description": "Global Scope"
+  },
+  "name": "soc2-policy",
+  "description": "SOC 2 compliant storage policy for session recordings, V2",
+  "created_time": "2024-01-25T22:05:52.112677Z",
+  "updated_time": "2024-01-30T22:44:08.890715Z",
+  "type": "storage",
+  "version": 2,
+  "attributes": {
+    "delete_after": {
+      "days": 2757,
+      "overridable": false
+    },
+    "retain_for": {
+      "days": 2557,
+      "overridable": false
+    }
+  },
+  "authorized_actions": [
+    "no-op",
+    "read",
+    "update",
+    "delete"
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+This policy was applied to the `prod-databases` org in the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page.
+
+New recordings within the `prod-databases` org will automatically have the updated version of the `soc2-policy` applied.
+
+### Reapply a storage policy
+
+Many organizations compliance standards will require that previous versions of storage policies remain applied to existing recordings.
+
+<Note>
+
+  During the initial migration to a Boundary version that includes storage policies, all existing session recordings will have a `retain_for` attribute of `-1`, which retains the recording forever.
+
+</Note>
+
+In the event that an updated policy should be retroactively applied to existing session recordings, you must reapply the storage policy.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Session Recordings** in the navigation panel in the `global` scope.
+1. Click on **View** for a session recording that should have the storage policy re-applied.
+1. Click the **Manage** dropdown and select **Re-apply storage policy**.
+1. Verify the *Delete after* field has been updated under the recording's **Session details**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Find the ID of the session recording that should have the storage policy re-applied.
+
+   <CodeBlockConfig highlight="1,3">
+
+   ```shell-session
+   $ boundary session-recordings list
+   Session Recording information:
+     ID:                    sr_nt5dFeBYdh
+       Storage Bucket ID:   sb_DC8SPb9uc2
+       Created Time:        Mon, 29 Jan 2024 23:25:31 MST
+       Updated Time:        Tue, 30 Jan 2024 16:14:13 MST
+       Start Time:          Mon, 29 Jan 2024 23:25:32 MST
+       End Time:            Mon, 29 Jan 2024 23:25:53 MST
+       Type:                ssh
+       State:               available
+       Retain Until:        Wed, 29 Jan 2031 23:25:53 MST
+       Delete After:        Mon, 18 Aug 2031 00:25:53 MDT
+       Authorized Actions:
+         no-op
+         read
+         download
+         delete
+         reapply-storage-policy
+   ```
+
+   </CodeBlockConfig>
+
+1. Re-apply the storage policy to the session recording by providing its ID:
+
+   <CodeBlockConfig highlight="1,6">
+
+   ```shell-session
+   $ boundary session-recordings reapply-storage-policy -id sr_nt5dFeBYdh
+   Session Recording information:
+     Bytes Down:           710
+     Bytes Up:             36
+     Created Time:         Mon, 29 Jan 2024 23:25:31 MST
+     Delete After:         Mon, 18 Aug 2031 00:25:53 MDT
+     Duration (Seconds):   21.01881
+     Endpoint:             ssh://54.159.144.135:22
+     ID:                   sr_nt5dFeBYdh
+     Retain Until:         Wed, 29 Jan 2031 23:25:53 MST
+     Scope ID:             global
+     Start Time:           Mon, 29 Jan 2024 23:25:32 MST
+     State:                available
+     Storage Bucket ID:    sb_DC8SPb9uc2
+     Type:                 ssh
+     Updated Time:         Mon, 29 Jan 2024 23:25:53 MST
+
+   ...
+   ... More Output ...
+   ...
+   ```
+
+   </CodeBlockConfig>
+
+   Verify that the `Delete After` attribute reflects the updated storage policy.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Once the policy changes have been applied with Terraform, you can reapply the policy as needed by following the CLI instructions in this section.
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+The following API call is an example of re-applying a storage policy to a session recording by providing the recording's ID:
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request POST \
+    $BOUNDARY_ADDR/v1/session-recordings/sr_nt5dFeBYdh:reapply-storage-policy | jq
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="2,25-26">
+
+```plaintext
+{
+  "id": "sr_nt5dFeBYdh",
+  "scope": {
+    "id": "global",
+    "type": "global",
+    "name": "global",
+    "description": "Global Scope"
+  },
+  "storage_bucket_id": "sb_DC8SPb9uc2",
+  "bytes_up": "36",
+  "bytes_down": "710",
+  "created_time": "2024-01-30T06:25:31.873628Z",
+  "updated_time": "2024-01-30T23:14:13.881110Z",
+  "start_time": "2024-01-30T06:25:32.412373Z",
+  "end_time": "2024-01-30T06:25:53.431183Z",
+  "duration": "21.018810s",
+  "type": "ssh",
+  "state": "available",
+  "endpoint": "ssh://xx.xxx.xxx.xxx:22",
+
+...
+... More Output ...
+...
+
+  "retain_until": "2031-01-30T06:25:53.431183Z",
+  "delete_after": "2031-08-18T06:25:53.431183Z"
+}
+```
+
+</CodeBlockConfig>
+
+Verify that the `delete_after` attribute reflects the updated storage policy.
+
+</Tab>
+</Tabs>
+
+### Detached or deleted storage policies
+
+If a scope's storage policy is detached or deleted, new session recordings within that scope will automatically be retained forever, unless there is an overriding policy.
+
+Existing session recordings will maintain their existing storage policy attributes until a new policy is re-applied, including any overriding policy from another scope.
+
+[storage bucket]: /boundary/docs/domain-model/storage-buckets
+[storage policy]: /boundary/docs/domain-model/storage-policy
+[session recordings]: /boundary/docs/domain-model/session-recordings

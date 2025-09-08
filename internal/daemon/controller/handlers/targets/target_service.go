@@ -734,18 +734,20 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
+	var targetAlias *talias.Alias
+	var err error
 	if ctxAlias := alias.FromContext(ctx); ctxAlias != nil {
-		a, err := s.resolveAlias(ctx, ctxAlias.PublicId)
+		targetAlias, err = s.resolveAlias(ctx, ctxAlias.PublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		if a.HostId != "" {
-			if req.GetHostId() != "" && req.GetHostId() != a.HostId {
+		if targetAlias.HostId != "" {
+			if req.GetHostId() != "" && req.GetHostId() != targetAlias.HostId {
 				return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
 					"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omitting the host id in the request.",
 				})
 			}
-			req.HostId = a.HostId
+			req.HostId = targetAlias.HostId
 		}
 	}
 
@@ -803,7 +805,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
+	t, err := repo.LookupTargetForSessionAuthorization(ctx, roundTripTarget.GetPublicId(), target.WithAlias(targetAlias))
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
@@ -997,7 +999,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	for _, sw := range selectedWorkers {
 		workerAddresses = append(workerAddresses, sw.Address)
 	}
-	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses)
+	var proxyCert *session.ProxyCertificate
+	if t.GetProxyServerCertificate() != nil {
+		pc := t.GetProxyServerCertificate()
+		proxyCert = &session.ProxyCertificate{
+			PrivateKey:  pc.PrivateKeyPem,
+			Certificate: pc.CertificatePem,
+		}
+	}
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses, session.WithProxyCertificate(proxyCert))
 	if err != nil {
 		return nil, err
 	}
@@ -2048,6 +2058,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 			globals.VaultCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2060,6 +2071,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 			globals.VaultSshCertificateCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
@@ -2084,6 +2096,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			globals.VaultCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2096,6 +2109,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			globals.VaultSshCertificateCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
@@ -2124,6 +2138,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			globals.VaultCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2136,6 +2151,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			globals.VaultSshCertificateCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)

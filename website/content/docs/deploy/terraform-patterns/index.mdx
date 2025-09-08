@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: Terraform patterns for Boundary
+description: >-
+  Configure the Terraform Boundary provider so that you can use Terraform patterns to install and manage Boundary resources.
+---
+
+# Terraform patterns for Boundary
+
+HashiCorp recommends using Terraform to deploy and maintain your Boundary environment.
+
+This following topics outline MVP (Minimum Viable Product) patterns to deploy and maintain Boundary using Terraform.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+
+## Terraform provider configuration
+
+To use Terraform to manage your Boundary environment, you must first configure the Terraform Boundary provider.
+
+The following code block provides an example of provider configuration using the userpass authentication method.
+You can use any of the available Boundary authentication methods by specifying the appropriate `auth_method_id`.
+
+```hcl
+terraform {
+  required_providers {
+    # Declare the provider
+    boundary = {
+      source  = "hashicorp/boundary"
+    }
+  }
+}
+
+# Configure the provider
+# This example assumes that you have stored your Boundary cluster address and credentials in Terraform variables
+
+provider "boundary" {
+  addr                   = var.boundary_addr
+  auth_method_login_name = var.boundary_login_name
+  auth_method_password   = var.boundary_password
+}
+```
+## More information
+
+Refer to the [Boundary provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/) for more information on the available authentication methods.
+
+## Next steps
+
+The following pages provide examples and patterns for configuring Boundary resources with Terraform.
+
+If you are configuring Boundary resources for the first time, you may want to start by creating a scope.
+You create scopes to partition resources and then assign ownership of those resources to users and groups.
+
+- [Scopes](/boundary/docs/deploy/terraform-patterns/terraform-scopes)
+- [Users and auth methods](/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods)
+- [Groups and role-based-access-control (RBAC)](/boundary/docs/deploy/terraform-patterns/terraform-groups-and-rbac)
+- [Hosts and host management](/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management)
+- [Credentials and credential stores](/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores)
+- [Session recording](/boundary/docs/deploy/terraform-patterns/terraform-session-recording)
+- [Targets](/boundary/docs/deploy/terraform-patterns/terraform-targets)

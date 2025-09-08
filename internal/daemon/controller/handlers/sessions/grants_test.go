@@ -52,7 +52,7 @@ func testSession(t *testing.T,
 	require.NoError(t, err)
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, projectId, fmt.Sprintf("http://vault%s", randomString), fmt.Sprintf("vault-token-%s", randomString), fmt.Sprintf("accessor-%s", randomString))
 
-	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), 2)
+	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), globals.UsernamePasswordCredentialType, 2)
 	tcpTarget := tcp.TestTarget(context.Background(), t, conn, projectId, randomString, target.WithHostSources([]string{sets[0].GetPublicId()}))
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, projectId)
 	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, randomString, randomString, staticStore.GetPublicId(), projectId, 2)

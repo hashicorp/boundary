@@ -1,0 +1,468 @@
+---
+layout: docs
+page_title: Initialize Boundary
+description: >-
+  Initialize new Boundary self-managed installations. Log in with the recovery KMS to create initial scope, auth method, login account, user, and role resources.
+---
+
+# Initialize Boundary
+
+This document describes how to access Boundary for the first time and create the necessary resources to log in as a
+user.
+
+You can also initialize and manage Boundary using Terraform. Refer to the [Terraform patterns](/boundary/docs/deploy/terraform-patterns) page to learn more.
+
+## Requirements
+
+Before you initialize Boundary, you should have [initialized a database](/boundary/docs/deploy/self-managed/configure-controllers#initialize-the-database).
+
+## Log in with recovery KMS
+
+To access a new Boundary instance for the first time, you must use the recovery KMS defined in the
+controller configuration file. The following example represents a configuration file that uses hard-coded AEAD keys:
+
+<Note>
+
+In a production environment, HashiCorp recommends that you use a cloud provider's KMS such as [AWS KMS](/boundary/docs/configuration/kms/awskms)
+to manage the keys Boundary uses to encrypt sensitive information.
+
+</Note>
+
+```hcl
+<truncated>
+kms "aead" {
+	purpose   = "root"
+	aead_type = "aes-gcm"
+	key       = "sP1fnF5Xz85RrXyELHFeZg9Ad2qt4Z4bgNHVGtD6ung="
+	key_id    = "global_root"
+}
+
+kms "aead" {
+	purpose   = "worker-auth"
+	aead_type = "aes-gcm"
+	key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id    = "global_worker-auth"
+}
+
+kms "aead" {
+	purpose   = "recovery"
+	aead_type = "aes-gcm"
+	key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id    = "global_recovery"
+}
+<truncated>
+```
+
+The KMS with the `recovery` purpose is used to "recover" Boundary, allowing you to authenticate to Boundary and manage
+it as a super user. It also allows you to authenticate from the CLI or from Terraform to manage Boundary
+without any generated resources.
+
+To authenticate to Boundary using the recovery KMS workflow:
+
+<Tabs>
+<Tab heading="CLI">
+
+
+To use the recovery workflow on the CLI, you must pass the `-recovery-config <path_to_kms_recovery_config>` flag or set the environment
+variable for `BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for every command
+ran when using the recovery workflow. The `boundary authenticate` command does not apply when you use the recovery KMS.
+
+```shell-session
+$ cat << EOF > /tmp/recovery.hcl
+kms "aead" {
+        purpose   = "recovery"
+        aead_type = "aes-gcm"
+        key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+        key_id    = "global_recovery"
+}
+EOF
+
+# Example command
+$ boundary users create <truncated> -recovery-config /tmp/recovery.hcl
+...
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+To configure your provider to use the recovery KMS workflow, provide the KMS block as the value for
+`recovery_kms_hcl`:
+
+```hcl
+provider "boundary" {
+  addr             = "https://boundary.mycorp.com:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+	purpose   = "recovery"
+	aead_type = "aes-gcm"
+	key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id    = "global_recovery"
+}
+EOT
+}
+```
+
+</Tab>
+</Tabs>
+
+## Create your first login account
+
+This section covers how to configure your first auth method, user, account, and role to log in to Boundary without
+the recovery KMS workflow. In this example, we are going to make an admin user for the global and project level
+scopes we create. This will allow our user to configure targets within those scopes and manage them.
+
+### Create org and project scopes
+
+First, create an org and project scope and skip creating an administrator and admin role for each scope. We are going to
+specify a role for managing these scopes by selected users in a later step.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```shell-session
+$ boundary scopes create -name 'org' -scope-id 'global' \
+  -recovery-config /tmp/recovery.hcl \
+  -skip-admin-role-creation \
+  -skip-default-role-creation
+<truncated>
+
+$ boundary scopes create -name 'project' -scope-id <org_scope_id_from_last_step> \
+  -recovery-config /tmp/recovery.hcl \
+  -skip-admin-role-creation \
+  -skip-default-role-creation
+<truncated>
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_scope" "org" {
+  scope_id    = "global"
+  name        = "organization"
+  description = "Organization scope"
+
+  auto_create_admin_role   = false
+  auto_create_default_role = false
+}
+
+resource "boundary_scope" "project" {
+  name                     = "project"
+  description              = "My first project"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = false
+  auto_create_default_role = false
+}
+```
+
+</Tab>
+</Tabs>
+
+
+### Create an auth method
+
+Create an auth method in the organization scope.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```shell-session
+$ boundary auth-methods create password \
+  -recovery-config /tmp/recovery.hcl \
+  -scope-id <org_scope_id> \
+  -name 'my_method' \
+  -description 'My password auth method'
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_auth_method" "password" {
+  name        = "my_password_auth_method"
+  description = "Password auth method"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+
+### Create a login account
+
+Create a login account for the auth method.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```shell-session
+$ boundary accounts create password \
+  -recovery-config /tmp/recovery.hcl \
+  -login-name "myuser" \
+  -auth-method-id <auth_method_id_from_last_step>
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_account" "myuser" {
+  name           = "myuser"
+  description    = "User account for my user"
+  type           = "password"
+  login_name     = "myuser"
+  password       = "foofoofoo"
+  auth_method_id = boundary_auth_method.password.id
+}
+```
+
+</Tab>
+</Tabs>
+
+
+### Create a user
+
+Create a user and associate the user with the login account created in the previous step.
+This user will also be the principal in the role we create in the following step.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```shell-session
+$ boundary users create -scope-id <org_scope_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -name "myuser" \
+  -description "My user!"
+
+$ boundary users add-accounts \
+  -recovery-config /tmp/recovery.hcl \
+  -id <myuser_user_id> \
+  -account <myuser_account_id>
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_user" "myuser" {
+  name        = "myuser"
+  description = "My user!"
+  account_ids = [boundary_account.myuser.id]
+  scope_id    = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+
+### Create roles to manage scopes
+
+The following section describes the four baseline roles you must create to manage resources within the org and project
+scopes that you created. These roles are similar to the roles Boundary automatically created for you if you did not skip generation using the `-skip-initial-login-role-creation` flag when you ran `boundary database init`. Declaring roles explicitly
+allows you to manage them independently and fully within Terraform or via the CLI. In doing so, you can precisely define their access.
+
+The following example creates 4 roles:
+
+1. To allow anonymous (unauthenticated) users the ability to list scopes and auth methods in the global scope.
+1. To allow anonymous (unauthenticated) users the ability to list scopes and auth methods in the organization scope.
+1. To allow `myuser` user administration grants at the org scope.
+1. To allow `myuser` user administration grants at the project scope.
+
+#### Anonymous listing role for global scope
+
+<Tabs>
+<Tab heading="CLI">
+
+
+Assumes recovery key export from above steps is still set:
+
+```shell-session
+# Create global anonymous listing role
+$ boundary roles create -name 'global_anon_listing' \
+  -recovery-config /tmp/recovery.hcl \
+  -scope-id 'global'
+
+$ boundary roles add-grants -id <global_anon_listing_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -grant 'ids=*;type=auth-method;actions=list,authenticate' \
+  -grant 'ids=*;type=scope;actions=list,no-op' \
+  -grant 'ids={{.Account.Id}};actions=read,change-password'
+
+$ boundary roles add-principals -id <global_anon_listing_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -principal 'u_anon'
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_role" "global_anon_listing" {
+  scope_id = "global"
+  grant_strings = [
+    "ids=*;type=auth-method;actions=list,authenticate",
+    "ids=*;type=scope;actions=list,no-op",
+    "ids={{.Account.Id}};actions=read,change-password"
+  ]
+  principal_ids = ["u_anon"]
+}
+```
+
+</Tab>
+</Tabs>
+
+
+#### Anonymous listing role for org scope
+
+<Tabs>
+<Tab heading="CLI">
+
+
+Assumes recovery key export from above steps is still set:
+
+```shell-session
+$ boundary roles create -name 'org_anon_listing' \
+  -recovery-config /tmp/recovery.hcl \
+  -scope-id <org_scope_id>
+
+$ boundary roles add-grants -id <org_anon_listing_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -grant 'ids=*;type=auth-method;actions=list,authenticate' \
+  -grant 'type=scope;actions=list' \
+  -grant 'ids={{.Account.Id}};actions=read,change-password'
+
+$ boundary roles add-principals -id <org_anon_listing_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -principal 'u_anon'
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_role" "org_anon_listing" {
+  scope_id = boundary_scope.org.id
+  grant_strings = [
+    "ids=*;type=auth-method;actions=list,authenticate",
+    "type=scope;actions=list",
+    "ids={{.Account.Id}};actions=read,change-password"
+  ]
+  principal_ids = ["u_anon"]
+}
+```
+
+</Tab>
+</Tabs>
+
+
+#### Org admin role for myuser
+
+<Tabs>
+<Tab heading="CLI">
+
+
+Assumes recovery key export from above steps is still set:
+
+```shell-session
+$ boundary roles create -name 'org_admin' \
+  -recovery-config /tmp/recovery.hcl \
+  -scope-id 'global'
+
+$ boundary roles set-grant-scopes \
+  -id <org_admin_id> \
+  -grant-scope-id <org_scope_id>
+
+$ boundary roles add-grants -id <org_admin_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -grant 'ids=*;type=*;actions=*'
+
+$ boundary roles add-principals -id <org_admin_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -principal <myuser_user_id>
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_role" "org_admin" {
+  scope_id       = "global"
+  grant_scope_ids = [boundary_scope.org.id]
+  grant_strings = [
+    "ids=*;type=*;actions=*"
+  ]
+  principal_ids = [boundary_user.myuser.id]
+}
+```
+
+</Tab>
+</Tabs>
+
+
+#### Project admin for myuser
+
+<Tabs>
+<Tab heading="CLI">
+
+
+Assumes recovery key export from above steps is still set:
+
+```shell-session
+$ boundary roles create -name 'project_admin' \
+  -recovery-config /tmp/recovery.hcl \
+  -scope-id <org_scope_id> \
+  -grant-scope-id <project_scope_id>
+
+$ boundary roles add-grants -id <project_admin_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -grant 'ids=*;type=*;actions=*'
+
+$ boundary roles add-principals -id <project_admin_id> \
+  -recovery-config /tmp/recovery.hcl \
+  -principal <myuser_user_id>
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_role" "project_admin" {
+  scope_id        = boundary_scope.org.id
+  grant_scope_ids = [boundary_scope.project.id]
+  grant_strings = [
+    "ids=*;type=*;actions=*"
+  ]
+  principal_ids = [boundary_user.myuser.id]
+}
+```
+
+</Tab>
+</Tabs>
+
+
+### Log in as your new user
+
+```shell-session
+boundary authenticate password \
+  -auth-method-id <auth_method_id>
+```
+
+## Next steps
+
+After you initialize Boundary, you should [Install the Boundary Clients](/boundary/docs/deploy/self-managed/install-clients).

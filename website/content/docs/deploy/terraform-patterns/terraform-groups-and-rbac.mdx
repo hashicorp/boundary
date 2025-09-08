@@ -1,0 +1,100 @@
+---
+layout: docs
+page_title: Terraform patterns for groups and RBAC
+description: >-
+  Use Terraform patterns to create and manage Boundary groups and role-based access control (RBAC). Learn how to add users to managed groups and assign roles.
+---
+
+# Terraform patterns for groups and RBAC
+
+The following pattern demonstrates how to aggregate users into groups.
+
+Security best-practices recommend that you use Role-Based Access Control (RBAC) when you make authorization decisions. RBAC is a methodology in which you create a role that defines the actions that a user is allowed to take, and then assign one or more users to that role.
+
+In Boundary, you can assign users directly to a role, but a better pattern is to put users with equivalent access into groups. You can then assign groups to roles that grant least-privileges to your Boundary environment.
+
+## Requirements
+
+This document assumes the reader has:
+
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+- Created Boundary [users and auth methods](/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods) to assign to the group you plan to create.
+
+## Group configuration
+
+This example adds users to the `Accounting` group.
+
+```hcl
+# Add Jeff and Susmitha to the Accounting group
+resource "boundary_group" "Accounting" {
+  name        = "Accounting"
+  description = "The Accounting Department"
+  member_ids  = [boundary_user.susmitha,id, boundary_user.jeff.id]
+  scope_id    = boundary_scope.project.id
+}
+```
+
+You are not required to populate groups manually, and can instead take advantage of the pre-existing groups provided by an identity provider.
+
+## Managed group configuration
+
+This example creates a managed group that is automatically populated based on an LDAP group called `Engineering`.
+
+```hcl
+resource "boundary_managed_group_ldap" "Engineering" {
+  name           = "Engineering"
+  description    = "Engineering Managed LDAP Group"
+  auth_method_id = boundary_auth_method_ldap.forumsys_ldap.id
+  group_names    = ["Engineering"]
+}
+```
+
+HashiCorp recommends using managed groups whenever possible because it abstracts the management of group membership and simplifies Boundary administration.
+
+## Role configuration
+
+After you have created a group, you must assign one or more roles to that group to enable the group members to do useful work in Boundary.
+
+This pattern creates a role called `readonly` that include a grant
+that allows the user read-only access to all Boundary resources. This example also associates the `Accounting` static group and the `Engineering` managed group with that role.
+
+```hcp
+resource "boundary_role" "readonly" {
+  name          = "readonly"
+  description   = "A readonly role"
+
+  # Assign Accounting and Engineering to this role
+  principal_ids = [boundary_group.accounting.id, boundary_managed_group_ldap.Engineering.id]
+
+  # This is the grant string provides read-only access to all objects in the current scope.
+  grant_strings = ["ids=*;type=*;actions=read"]
+  scope_id      = boundary_scope.project.id
+}
+```
+
+## More information
+
+For more information about the Boundary resources mentioned in this topic, refer to the domain model documentation:
+
+- [Roles](/boundary/docs/domain-model/roles)
+- [Groups](/boundary/docs/domain-model/groups)
+- [Managed groups](/boundary/docs/domain-model/managed-groups)
+- [Grants](/boundary/docs/rbac#grant-strings)
+
+For more information about managing the following resources using Terraform, refer to the Boundary provider documentation:
+
+- Accounts
+    - [Password accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_password/)
+    - [LDAP accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_ldap/)
+    - [OIDC accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc/)
+- [Users](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/user/)
+- [Groups](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/group/)
+- [LDAP managed groups](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/managed_group_ldap/)
+- [Roles](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/role/)
+
+## Next steps
+
+You may want to create [hosts and host sets](/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management) so that you can configure targets for your users to connect to.
+Targets require an address or host, and credentials to connect to that host.

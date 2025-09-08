@@ -5,11 +5,11 @@ description: >-
   Learn about the parameters that make up the Boundary HCL configuration file. View parameters for HCP and self-managed installations.
 ---
 
-# Configuration
+# Top-level configuration parameters
 
 [listener]: /boundary/docs/configuration/listener
 [controller]: /boundary/docs/configuration/controller
-[worker]: /boundary/docs/configuration/worker
+[worker]: /boundary/docs/configuration/workers
 [kms]: /boundary/docs/configuration/kms
 [plugins]: /boundary/docs/configuration/plugins
 [events]: /boundary/docs/configuration/events
@@ -30,7 +30,7 @@ path to the file.
 
 ## Shared self-managed and HCP Boundary parameters
 
-- [`worker`](/boundary/docs/configuration/worker): Worker specific configuration. If
+- [`worker`](/boundary/docs/configuration/workers): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
 
 - [`listener`](/boundary/docs/configuration/listener): Configures the listeners on which
@@ -45,7 +45,7 @@ path to the file.
   where Boundary's operational endpoints live (eg: /health).
 
 - [`kms`](/boundary/docs/configuration/kms): Configures KMS blocks [for various
-  purposes](/boundary/docs/concepts/security/data-encryption).
+  purposes](/boundary/docs/secure/encryption/data-encryption).
 
 - [`events`](/boundary/docs/configuration/events): Configures event (observability,
   audit, error) handling.
@@ -93,7 +93,7 @@ path to the file.
 The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
 
 ~> **Note:** You cannot reload all configuration values using the `SIGHUP` signal. Refer to the configuration pages for
-[workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
+[workers](/boundary/docs/configuration/workers) and [controllers](/boundary/docs/configuration/controller) for details
 on which values can be reloaded on `SIGHUP`.
 
 The `SIGTERM` and `SIGINT` signals cause worker and controller processes to enter graceful shutdown. A graceful shutdown for a controller closes listeners and servers before shutting down the controller. A graceful shutdown for a worker waits for any sessions to drain
@@ -103,4 +103,4 @@ before shutting down the worker. Workers in a graceful shutdown state do not rec
 
 For complete example configurations see the sections for
 [controller](/boundary/docs/configuration/controller) and
-[worker](/boundary/docs/configuration/worker).
+[worker](/boundary/docs/configuration/workers).

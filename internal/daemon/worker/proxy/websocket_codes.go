@@ -3,7 +3,7 @@
 
 package proxy
 
-import "nhooyr.io/websocket"
+import "github.com/coder/websocket"
 
 const (
 	WebsocketStatusProtocolSetupError websocket.StatusCode = 3000

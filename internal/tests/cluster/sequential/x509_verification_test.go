@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
@@ -29,7 +30,6 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
-	"nhooyr.io/websocket"
 )
 
 func TestCustomX509Verification_Client(t *testing.T) {

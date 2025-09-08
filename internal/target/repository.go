@@ -89,9 +89,90 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 	}, nil
 }
 
+// LookupTargetForSessionAuthorization will look up a target in the repository and return the target
+// with its host source ids, credential source ids, and server certificate, if applicable.  If the target is not
+// found, it will return nil, nil.
+// Supported option: WithAlias if the session authorization uses a target alias
+func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, publicId string, opt ...Option) (Target, error) {
+	const op = "target.(Repository).LookupTargetForSessionAuthorization"
+	opts := GetOpts(opt...)
+
+	if publicId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	}
+
+	target := allocTargetView()
+	target.PublicId = publicId
+	var address string
+	var hostSources []HostSource
+	var credSources []CredentialSource
+	var cert *ServerCertificate
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			lookupErr := read.LookupById(ctx, &target)
+			if lookupErr != nil {
+				return errors.Wrap(ctx, lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+			}
+
+			var err error
+			if hostSources, err = fetchHostSources(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if credSources, err = fetchCredentialSources(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			targetAddress, err := fetchAddress(ctx, read, target.PublicId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			if targetAddress != nil {
+				address = targetAddress.GetAddress()
+			}
+
+			databaseWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeDatabase)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+			}
+
+			if opts.WithAlias != nil {
+				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds())
+				if err != nil && !errors.IsNotFoundError(err) {
+					return errors.Wrap(ctx, err, op)
+				}
+			} else {
+				cert, err = fetchTargetProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, databaseWrapper, target.GetSessionMaxSeconds())
+				if err != nil && !errors.IsNotFoundError(err) {
+					return errors.Wrap(ctx, err, op)
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	subtype, err := target.targetSubtype(ctx, address)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	subtype.SetHostSources(hostSources)
+	subtype.SetCredentialSources(credSources)
+	subtype.SetProxyServerCertificate(cert)
+
+	return subtype, nil
+}
+
 // LookupTarget will look up a target in the repository and return the target
 // with its host source ids and credential source ids.  If the target is not
-// found, it will return nil, nil, nil, nil. No options are currently supported.
+// found, it will return nil, nil.
+// Supported options: WithName, WithProjectId, and WithProjectName
 func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := GetOpts(opt...)
@@ -513,9 +594,10 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 
-	vet, ok := subtypeRegistry.vetFunc(target.GetType())
+	targetType := target.GetType()
+	vet, ok := subtypeRegistry.vetFunc(targetType)
 	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", targetType))
 	}
 	if err := vet(ctx, target); err != nil {
 		return nil, err
@@ -537,9 +619,9 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 			return nil, err
 		}
 	} else {
-		prefix, ok := subtypeRegistry.idPrefix(target.GetType())
+		prefix, ok := subtypeRegistry.idPrefix(targetType)
 		if !ok {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", targetType))
 		}
 		id, err := db.NewPublicId(ctx, prefix)
 		if err != nil {
@@ -562,9 +644,16 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		}
 	}
 
+	serverCert := t.GetProxyServerCertificate()
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
@@ -611,6 +700,29 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 				}
 				createdAliases = append(createdAliases, a)
 				msgs = append(msgs, &targetAliasOplogMsg)
+			}
+
+			if serverCert != nil {
+				proxyCert := allocTargetProxyCertificate()
+				err = proxyCert.fromServerCertificate(ctx, serverCert)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert server certificate to target proxy certificate"))
+				}
+				proxyCert.TargetId = t.GetPublicId()
+				id, err := db.NewPublicId(ctx, globals.ProxyServerCertificatePrefix)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				proxyCert.PublicId = id
+				if err := proxyCert.Encrypt(ctx, databaseWrapper); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error encrypting target proxy certificate"))
+				}
+
+				var targetProxyCertOplogMsg oplog.Message
+				if err := w.Create(ctx, proxyCert, db.NewOplogMsg(&targetProxyCertOplogMsg)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target proxy certificate"))
+				}
+				msgs = append(msgs, &targetProxyCertOplogMsg)
 			}
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {

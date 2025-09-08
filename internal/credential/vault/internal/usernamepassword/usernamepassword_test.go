@@ -56,7 +56,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			want: usrPass{user: "", pass: ""},
 		},
 		{
-			name: "no-match-username-secret",
+			name: "no-match-password-secret",
 			given: args{
 				s: data{
 					"username":       "user",

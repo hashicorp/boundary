@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: Install Boundary clients
+description: >-
+ Install the Boundary CLI, Boundary Desktop Client app, or Boundary installer for Boundary Enterprise or Community Edition on Windows, MacOS, or Linux.
+---
+
+# Install Boundary clients
+
+Boundary end users access infrastructure targets using the Boundary Desktop Client app or the Boundary CLI. Enterprise or HCP Boundary users can use transparent sessions to proxy traffic through the Boundary Client Agent <sup>HCP/ENT</sup>.
+
+This guide outlines the required steps to manually install and configure a Boundary client depending on which distribution of Boundary end users access.
+
+To learn about installing the Boundary binary when you deploy Boundary controllers or workers, refer to the [Install Boundary](/boundary/docs/deploy/self-managed/install) page.
+
+Select your Boundary distribution, and complete the steps to install the
+correct clients:
+
+<Tabs>
+<Tab heading="Enterprise">
+
+@include 'alerts/enterprise-only.mdx'
+
+The Boundary installer bundles together the following components:
+
+- Boundary binary (CLI)
+- Boundary Desktop Client app
+- Boundary Client Agent <sup>HCP/ENT</sup>
+
+Download the appropriate Boundary installer for your Windows, MacOS, or Linux environment from the [Install Boundary](/boundary/install#installer) downloads page or the [releases](https://releases.hashicorp.com/boundary-installer) page. You can also download the components individually, but compatibility is not guaranteed. Refer to the [Supported versions policy](/boundary/docs/enterprise/supported-versions#control-plane-and-client-cli-compatibility) to learn more.
+
+<Warning>
+
+  Before you launch the Boundary installer, ensure that you have uninstalled all previous versions of the Boundary binary and Boundary Desktop Client app.
+
+</Warning>
+
+To learn more about installing the Boundary CLI and Boundary Desktop Client app, refer to the [Get started with HCP Boundary](/boundary/tutorials/get-started-hcp) tutorials.
+
+</Tab>
+<Tab heading="Community Edition">
+
+We recommend the following components for end users:
+
+- Boundary binary (CLI)
+- Boundary Desktop Client app
+
+Download these components for your Windows, MacOS, or Linux environment from the [Install Boundary](/boundary/install) downloads page or the [HashiCorp releases](https://releases.hashicorp.com/) page.
+
+<Warning>
+
+Client compatibility is not guaranteed. You should always ensure that your client is compatible with the version of the Boundary control plane you connect to. Refer to the [Supported versions policy](/boundary/docs/enterprise/supported-versions#control-plane-and-client-cli-compatibility) to learn more.
+
+</Warning>
+
+To learn more about installing the Boundary CLI and Boundary Desktop Client app, refer to the [Get started with self-managed Boundary](/boundary/tutorials/get-started-community) tutorials.
+
+</Tab>
+</Tabs>
