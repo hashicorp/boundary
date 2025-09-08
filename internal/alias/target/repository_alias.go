@@ -83,6 +83,9 @@ func (r *Repository) CreateAlias(ctx context.Context, a *Alias, opt ...Option) (
 		if strings.Contains(err.Error(), `violates foreign key constraint "target_fkey"`) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.NotFound), errors.WithMsg("target with specified destination id %q was not found", a.GetDestinationId()))
 		}
+		if strings.Contains(err.Error(), `wt_target_alias_value_shape`) {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("alias value %q contains invalid characters", a.Value)))
+		}
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return newAlias, nil
@@ -180,6 +183,9 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 		}
 		if strings.Contains(err.Error(), `violates foreign key constraint "target_fkey"`) {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.NotFound), errors.WithMsg("target with specified destination id %q was not found", a.GetDestinationId()))
+		}
+		if strings.Contains(err.Error(), `wt_target_alias_value_shape`) {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("alias value contains invalid characters"))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
