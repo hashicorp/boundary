@@ -447,10 +447,8 @@ func StartRedis(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:        tag,
-		// Env: []string{
-		// },
+		Repository:   fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:          tag,
 		ExposedPorts: []string{"6379/tcp"},
 		Name:         config.NetworkAlias,
 		Networks:     []*dockertest.Network{network},
