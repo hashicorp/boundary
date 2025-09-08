@@ -528,7 +528,7 @@ func measureCredentialCreations(ctx context.Context, t testing.TB, publicId stri
 		select {
 		case <-ctx.Done():
 			t.Error("timeout")
-			return
+			return mean, max, min
 		case <-time.After(10 * time.Millisecond):
 			// Run GC and check memory use
 			runtime.GC()

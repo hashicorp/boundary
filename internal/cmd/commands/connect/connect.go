@@ -592,7 +592,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	return
+	return retCode
 }
 
 func (c *Command) printCredentials(creds []*targets.SessionCredential) error {

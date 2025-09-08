@@ -205,5 +205,5 @@ func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []any) {
 	queryValues = []any{
 		cs.PublicId,
 	}
-	return
+	return query, queryValues
 }

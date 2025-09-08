@@ -84,7 +84,7 @@ func SplitHostPort(hostport string) (host string, port string, err error) {
 		// a port (or is a malformed IPv6 address like "::1:1234").
 		host = ip.String()
 		err = ErrMissingPort
-		return
+		return host, port, err
 	}
 
 	// At this time, we don't necessarily know that `hostport` is a string
@@ -95,7 +95,7 @@ func SplitHostPort(hostport string) (host string, port string, err error) {
 		addrErr := new(net.AddrError)
 		isAddrErr := errors.As(err, &addrErr)
 		if !isAddrErr {
-			return
+			return host, port, err
 		}
 
 		// Since net.SplitHostPort does not type the error reason, we'll handle
@@ -129,7 +129,7 @@ func SplitHostPort(hostport string) (host string, port string, err error) {
 		}
 	}
 
-	return
+	return host, port, err
 }
 
 // ParseAddress trims and validates the input address string.  It checks whether

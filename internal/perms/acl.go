@@ -369,11 +369,11 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			fields, _ := grant.OutputFields.Fields()
 			results.OutputFields = results.OutputFields.AddFields(fields)
 			if results.OutputFields.Has("*") && results.Authorized {
-				return
+				return results
 			}
 		}
 	}
-	return
+	return results
 }
 
 // ListResolvableAliasesPermissions builds a set of Permissions based on the

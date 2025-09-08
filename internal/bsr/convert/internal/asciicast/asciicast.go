@@ -48,7 +48,7 @@ func (t *Time) UnmarshalJSON(b []byte) (err error) {
 		return err
 	}
 	*(*time.Time)(t) = time.Unix(q, 0)
-	return
+	return err
 }
 
 // HeaderEnv is the env section of the header line.

@@ -9,9 +9,9 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/coder/websocket v1.8.13
+	github.com/coder/websocket v1.8.14
 	github.com/creack/pty v1.1.24
-	github.com/docker/docker v28.3.3+incompatible
+	github.com/docker/docker v28.4.0+incompatible
 	github.com/fatih/color v1.18.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.4.0
@@ -23,7 +23,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
 	github.com/hashicorp/boundary/api v0.0.54
-	github.com/hashicorp/boundary/sdk v0.0.54
+	github.com/hashicorp/boundary/sdk v0.0.55
 	github.com/hashicorp/cap v0.10.0
 	github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744
 	github.com/hashicorp/dawdle v0.5.0
@@ -81,7 +81,7 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/pires/go-proxyproto v0.8.1
 	github.com/posener/complete v1.2.3
-	github.com/prometheus/client_golang v1.23.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.11.1
@@ -102,7 +102,7 @@ require (
 	google.golang.org/protobuf v1.36.8
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/postgres v1.6.0
-	mvdan.cc/gofumpt v0.8.0
+	mvdan.cc/gofumpt v0.9.0
 )
 
 require (
@@ -147,7 +147,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/cli v1.1.7 // indirect
@@ -192,7 +191,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.65.0 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
@@ -213,6 +212,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect

@@ -50,5 +50,5 @@ func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *webso
 	require.NoError(err)
 	t.Cleanup(func() { _ = clientConn.Close(websocket.StatusGoingAway, "done") })
 	wg.Wait()
-	return
+	return clientConn, proxyConn
 }

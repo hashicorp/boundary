@@ -1309,7 +1309,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		projectId = prj.GetPublicId()
-		return
+		return wrapper, repo, projectId
 	}
 
 	testStores := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, projectId string, count int) ([]*CredentialStore, tokenMap) {
@@ -1430,7 +1430,7 @@ group by store_id, status;
 				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 		{
@@ -1442,7 +1442,7 @@ group by store_id, status;
 				storeId = cs.GetPublicId()
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 		{
@@ -1455,7 +1455,7 @@ group by store_id, status;
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 		{
@@ -1468,7 +1468,7 @@ group by store_id, status;
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 		{
@@ -1481,7 +1481,7 @@ group by store_id, status;
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, globals.UnspecifiedCredentialType, 4)
 				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 		{
@@ -1496,7 +1496,7 @@ group by store_id, status;
 				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 2)
 				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 3)
 				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 5)
-				return
+				return storeId, libs, tokens, repo
 			},
 		},
 	}

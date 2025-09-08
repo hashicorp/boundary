@@ -665,5 +665,5 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 		}
 	}
 
-	return
+	return users, groups, managedGroups, retErr
 }

@@ -34,7 +34,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			orgs = append(orgs, org.PublicId)
 			projects = append(projects, proj.PublicId)
 		}
-		return
+		return orgs, projects
 	}
 	createUsersFn := func(orgs []string) []string {
 		results := []string{}
@@ -462,7 +462,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			orgs = append(orgs, org.PublicId)
 			projects = append(projects, proj.PublicId)
 		}
-		return
+		return orgs, projects
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -35,7 +35,7 @@ func insertQuery(c *Credential, sessionId string) (query string, queryValues []a
 		query = insertCredentialWithExpirationQuery
 		queryValues = append(queryValues, sql.Named("expiration_time", int(c.expiration.Round(time.Second).Seconds())))
 	}
-	return
+	return query, queryValues
 }
 
 func updateSessionQuery(c *Credential, sessionId string, purpose credential.Purpose) (query string, queryValues []any) {
@@ -46,7 +46,7 @@ func updateSessionQuery(c *Credential, sessionId string, purpose credential.Purp
 		sql.Named("purpose", string(purpose)),
 	}
 	query = updateSessionCredentialQuery
-	return
+	return query, queryValues
 }
 
 // Issue issues and returns dynamic credentials from Vault for all of the

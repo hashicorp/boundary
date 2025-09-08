@@ -37,7 +37,7 @@ func (a ActionSet) Actions() (typs []action.Type, strs []string) {
 		typs = append(typs, k)
 		strs = append(strs, k.String())
 	}
-	return
+	return typs, strs
 }
 
 // GrantTuple is simply a struct that can be reference from other code to return

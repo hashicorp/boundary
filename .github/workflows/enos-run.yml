@@ -35,7 +35,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -107,7 +107,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Set up Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -141,7 +141,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}

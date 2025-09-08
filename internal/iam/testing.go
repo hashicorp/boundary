@@ -85,7 +85,7 @@ func TestScopes(t testing.TB, repo *Repository, opt ...Option) (org *Scope, prj 
 	require.NotNil(prj)
 	require.NotEmpty(prj.GetPublicId())
 
-	return
+	return org, prj
 }
 
 func TestOrg(t testing.TB, repo *Repository, opt ...Option) *Scope {

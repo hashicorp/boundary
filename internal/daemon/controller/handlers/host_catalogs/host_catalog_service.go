@@ -668,7 +668,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 	case hostplugin.Subtype:
 		hc, plg, err = s.updatePluginInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	}
-	return
+	return hc, plg, err
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {

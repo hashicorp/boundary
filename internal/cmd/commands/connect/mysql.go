@@ -116,5 +116,5 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 			args = append(args, "-u", c.flagUsername)
 		}
 	}
-	return
+	return args, envs, retCreds, retErr
 }

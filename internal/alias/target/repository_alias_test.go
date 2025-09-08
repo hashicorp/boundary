@@ -76,6 +76,16 @@ func TestRepository_CreateAlias(t *testing.T) {
 			errContains: "public id not empty",
 		},
 		{
+			name: "invalid-alias-value",
+			in: &target.Alias{
+				Alias: &store.Alias{
+					ScopeId: "global",
+					Value:   "invalid_alias",
+				},
+			},
+			errContains: "contains invalid characters",
+		},
+		{
 			name: "valid-with-value",
 			in: &target.Alias{
 				Alias: &store.Alias{
@@ -747,6 +757,17 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		assert.Truef(t, errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(t, got2)
 		assert.Equal(t, db.NoRowsAffected, gotCount2, "row count")
+	})
+
+	t.Run("invalid-alias", func(t *testing.T) {
+		value := "invalid_alais"
+		c1 := target.TestAlias(t, db.New(conn), "test")
+		c1.Value = value
+		got1, gotCount1, err := repo.UpdateAlias(context.Background(), c1, 1, []string{"value"})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "contains invalid characters")
+		assert.Nil(t, got1)
+		assert.Equal(t, db.NoRowsAffected, gotCount1, "row count")
 	})
 }
 

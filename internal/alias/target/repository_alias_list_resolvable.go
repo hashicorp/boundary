@@ -26,7 +26,7 @@ func splitPermissions(permissions []perms.Permission) (directIds, directScopeIds
 	for _, perm := range permissions {
 		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
 			allDescendants = true
-			return
+			return directIds, directScopeIds, childAllScopes, allDescendants
 		}
 	}
 
@@ -60,7 +60,7 @@ func splitPermissions(permissions []perms.Permission) (directIds, directScopeIds
 			directIds = append(directIds, perm.ResourceIds...)
 		}
 	}
-	return
+	return directIds, directScopeIds, childAllScopes, allDescendants
 }
 
 // listResolvableAliases lists aliases which have a destination id set to that
