@@ -35,8 +35,6 @@ func redisOptions(c *Command, set *base.FlagSets) {
 		Completion: complete.PredictNothing,
 		Usage:      `Specifies the username to pass through to the client. May be overridden by credentials sourced from a credential store.`,
 	})
-
-	// TODO: username/pass
 }
 
 type redisFlags struct {
