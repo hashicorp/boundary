@@ -78,5 +78,5 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		}
 	}
 
-	return
+	return args, envs, retCreds, retErr
 }
