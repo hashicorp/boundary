@@ -52,16 +52,19 @@ func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockert
 	postgresDb := "e2eboundarydb"
 	postgresUser := "e2eboundary"
 	postgresPassword := "e2eboundary"
-	// Use default Postgres configuration to avoid host mount issues on some environments
+	postgresConfigFilePath, err := filepath.Abs("testdata/postgresql.conf")
+	require.NoError(t, err)
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
 		Tag:        tag,
+		Cmd:        []string{"postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"},
 		Env: []string{
 			"POSTGRES_DB=" + postgresDb,
 			"POSTGRES_USER=" + postgresUser,
 			"POSTGRES_PASSWORD=" + postgresPassword,
 		},
+		Mounts:       []string{path.Dir(postgresConfigFilePath) + ":/etc/postgresql/"},
 		ExposedPorts: []string{"5432/tcp"},
 		Name:         networkAlias,
 		Networks:     []*dockertest.Network{network},
