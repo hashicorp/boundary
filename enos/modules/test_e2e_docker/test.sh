@@ -17,7 +17,7 @@ apt update
 # default-mysql-client is used for mysql tests
 # wget is used for downloading external dependencies and repository keys
 # apt-transport-https enables HTTPS transport for APT repositories
-# curl and ca-certificates are required for some repository setups (e.g., MongoDB)
+# curl and ca-certificates are required for some repository setups (e.g., MongoDB).
 apt install unzip pass lsb-release postgresql-client default-mysql-client wget apt-transport-https curl ca-certificates -y
 
 # Function to install Cassandra
