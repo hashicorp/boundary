@@ -27,7 +27,7 @@ The following are the various parts of the Boundary threat model:
 
 - **Eavesdropping on any Boundary communication**.
 All communication between clients, controllers, and workers is protected by TLS or mutually authenticated TLS, ensuring confidentiality and integrity.
-- **Tamerping with data at rest or in transit**.
+- **Tampering with data at rest or in transit**.
 Any unauthorized modification of session information, configuration, or persistent state should be detected, causing transaction abort or session termination.
 - **Access to targets or controls without authentication or authorization**.
 All requests must be authenticated and authorized according to defined granular policies.
@@ -54,9 +54,9 @@ This includes access to:
   - Brokered credentials may be returned to the user's device and displayed in plain text.
   - Boundary Client Agent specifics:
       - The Client Agent stores session credentials and related information in memory and in the user's OS-dependent keyring.
-      Boundary persists auth tokens to platform-specific keyring storage.
+      Boundary CLI persists auth tokens to platform-specific keyring storage.
       If an attacker can read the memory of the Client Agent process or has compromised the OS user account under which the Client Agent is running and authenticated, they may be able to access these active session credentials.
-      - The Client Agent's security relies on the OS user context; an OS user can only connect to sessions managed by the Client Agent if they are the same OS user that authenticated the agent.
+      - The Client Agent's security relies on the OS user context; an OS user can only connect to sessions managed by the Client Agent if they are the same OS user that initiated the DNS lookup that created the session.
       Compromise of this OS user account bypasses the local protection.
       - An attacker could subvert the Client Agent's DNS interception mechanism on the local host.
 - **Protecting against vulnerabilities in external credential sources**.
