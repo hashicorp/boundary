@@ -9,8 +9,8 @@ import (
 
 // TestCliTcpTargetConnectRedis uses the boundary cli to connect to a target using `connect redis`
 func TestCliTcpTargetConnectRedis(t *testing.T) {
-	t.Skip("Skipped. Test fails due to issues between redis-cli and pty. Will looked at in future.")
-	return
+	t.Skip("Skipped (TODO: ICU-17634). Test fails due to issues between redis-cli and pty.")
+	return //nolint
 
 	// e2e.MaybeSkipTest(t)
 
