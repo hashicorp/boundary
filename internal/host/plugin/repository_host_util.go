@@ -267,5 +267,5 @@ func getSetChanges(
 		}
 	}
 
-	return
+	return setMembershipsToAdd, setMembershipsToRemove
 }

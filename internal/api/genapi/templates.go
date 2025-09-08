@@ -33,7 +33,7 @@ func getArgsAndPaths(pluralResource, parentTypeName, action string) (colArg, col
 		action = fmt.Sprintf(":%s", action)
 	}
 	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", url.PathEscape(id))", colPath, action)
-	return
+	return colArg, colPath, resPath
 }
 
 type templateInput struct {

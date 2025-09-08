@@ -111,5 +111,5 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Cr
 			}
 		}
 	}
-	return
+	return args, envs, retCreds, retErr
 }

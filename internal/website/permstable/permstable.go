@@ -231,7 +231,7 @@ func (p *Page) MarshalTableOfContents() (ret []string) {
 		))
 	}
 
-	return
+	return ret
 }
 
 func (p *Page) MarshalBody() (ret []string) {
@@ -240,7 +240,7 @@ func (p *Page) MarshalBody() (ret []string) {
 		ret = append(ret, "")
 	}
 
-	return
+	return ret
 }
 
 func (r *Resource) Marshal() (ret []string) {
@@ -273,7 +273,7 @@ func (r *Resource) Marshal() (ret []string) {
 		ret = append(ret, v.Marshal()...)
 	}
 
-	return
+	return ret
 }
 
 func (e *Endpoint) Marshal() (ret []string) {
@@ -315,7 +315,7 @@ func (e *Endpoint) Marshal() (ret []string) {
 
 	ret = append(ret, fmt.Sprintf("| %s |", strings.Join(row, " | ")))
 
-	return
+	return ret
 }
 
 func toSentenceCase(s string) string {
