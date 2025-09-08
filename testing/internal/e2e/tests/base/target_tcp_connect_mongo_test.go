@@ -56,27 +56,6 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	})
 	require.NoError(t, err, "MongoDB container failed to start")
 
-	// Start Boundary database
-	boundaryDb := infra.StartBoundaryDatabase(t, pool, &network[0], "postgres", "15")
-	require.NotNil(t, boundaryDb, "Boundary database container should not be nil")
-	t.Cleanup(func() {
-		if err := pool.Purge(boundaryDb.Resource); err != nil {
-			t.Logf("Failed to purge Boundary database container: %v", err)
-		}
-	})
-
-	// Initialize Boundary database
-	_ = infra.GetDbInitInfoFromContainer(t, pool, boundaryDb)
-	
-	// Start Boundary server
-	boundaryContainer := infra.StartBoundary(t, pool, &network[0], "boundary", "latest", boundaryDb.UriNetwork)
-	require.NotNil(t, boundaryContainer, "Boundary container should not be nil")
-	t.Cleanup(func() {
-		if err := pool.Purge(boundaryContainer.Resource); err != nil {
-			t.Logf("Failed to purge Boundary container: %v", err)
-		}
-	})
-
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	orgId, err := boundary.CreateOrgCli(t, ctx)
