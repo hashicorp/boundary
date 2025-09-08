@@ -72,6 +72,51 @@ Prior to the expiration date, Boundary logs 5 warnings to the event stream at th
 | Fourth  | 1 hour before license expiration   |
 | Fifth   | 1 minute before license expiration |
 
+Refer to the following example of how the warnings appear in the log:
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+{
+  "id": "eRrnWonkuK",
+  "source": "https://hashicorp.com/boundary/nixos/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "licensing.StartWatching",
+    "data": {
+      "expiration_time": "2025-09-08T11:14:33-07:00",
+      "msg": "licensing status",
+      "time_left_seconds": 83
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2025-09-08T11:13:10.216888454-07:00"
+}
+{
+  "id": "ymFHcb1H1Z",
+  "source": "https://hashicorp.com/boundary/nixos/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "licensing.StartWatching",
+    "data": {
+      "expiration_time": "2025-09-08T11:14:33-07:00",
+      "msg": "licensing warning",
+      "time_left_seconds": 30
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2025-09-08T11:14:03.457471753-07:00"
+}
+```
+
+</CodeBlockConfig>
+
+If you use an external monitoring system, you can create alerts for `"msg": "license warning"` and `"op": "licensing.StartWatching"` to watch for license expiration warnings.
+
 When there is 1 minute left before license expiration, Boundary provides the following message:
 
 <CodeBlockConfig hideClipboard>
