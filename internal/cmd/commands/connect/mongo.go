@@ -21,9 +21,9 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		Name:       "style",
 		Target:     &c.flagMongoStyle,
 		EnvVar:     "BOUNDARY_CONNECT_MONGO_STYLE",
-		Completion: complete.PredictSet("mongo"),
-		Default:    "mongo",
-		Usage:      `Specifies how the CLI will attempt to invoke a MongoDB client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mongo".`,
+		Completion: complete.PredictSet("mongo", "mongosh"),
+		Default:    "mongosh",
+		Usage:      `Specifies how the CLI will attempt to invoke a MongoDB client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mongo" and "mongosh".`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -70,21 +70,21 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		if password != "" {
 			passfile, err := os.CreateTemp("", "*")
 			if err != nil {
-				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error saving MongoDB password to tmp file: %w", err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("error saving MongoDB password to tmp file: %w", err)
 			}
 			c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 				if err := os.Remove(passfile.Name()); err != nil {
-					return fmt.Errorf("Error removing temporary password file; consider removing %s manually: %w", passfile.Name(), err)
+					return fmt.Errorf("error removing temporary password file; consider removing %s manually: %w", passfile.Name(), err)
 				}
 				return nil
 			})
 			_, err = passfile.Write([]byte(password))
 			if err != nil {
 				_ = passfile.Close()
-				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {
-				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
 			// Set password file as environment variable for MongoDB client
 			envs = append(envs, "MONGODB_PASSWORD_FILE="+passfile.Name())
@@ -96,7 +96,7 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 
 		// Build MongoDB connection string
 		connectionString := "mongodb://"
-		
+
 		// Add username and password to connection string
 		if username != "" {
 			connectionString += username
@@ -124,6 +124,39 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		}
 
 		args = append(args, connectionString)
+	case "mongosh":
+		// Build MongoDB connection string for mongosh
+		connectionString := "mongodb://"
+
+		// Add username and password to connection string
+		if username != "" {
+			connectionString += username
+			if password != "" {
+				connectionString += ":" + password
+			}
+			connectionString += "@"
+		} else if c.flagUsername != "" {
+			connectionString += c.flagUsername
+			if password != "" {
+				connectionString += ":" + password
+			}
+			connectionString += "@"
+		}
+
+		// Add host and port
+		connectionString += ip
+		if port != "" {
+			connectionString += ":" + port
+		}
+
+		// Add database name
+		if c.flagDbname != "" {
+			connectionString += "/" + c.flagDbname
+		}
+
+		args = append(args, connectionString)
+	default:
+		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)
 	}
 	return
 }
