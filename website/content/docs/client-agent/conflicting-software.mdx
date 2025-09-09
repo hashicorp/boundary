@@ -203,6 +203,29 @@ As a workaround, you can configure Parallels Desktop to use a different network 
 Select an alternative network configuration such as **Host-Only**, **Default Adapter**, or **Wi-Fi** instead of **Shared Network**.
 Refer to the Parallels Desktop documentation for more information.
 
+## Cisco AnyConnect VPN
+
+When the Cisco AnyConnect VPN is active at the same time as the Boundary Client Agent, DNS resolution may fail for Boundary aliases.
+
+The Boundary Client Agent by default uses the IPv4 range `100.x.x.x` for its local proxies. The Cisco AnyConnect VPN treats this range as a **secured range**, which forces DNS queries to resolve through the VPN instead of the Boundary Client Agent. As a result, Boundary aliases cannot be resolved.
+
+You can configure the Boundary Client Agent to use a different IPv4 prefix by setting the `v4_prefix` option in the client configuration file. This setting overrides the default `100.x.x.x` range and avoids the conflict with Cisco AnyConnect VPN.
+
+For example:
+```hcl
+v4_prefix = "172.16.0.0/12"
+```
+<Note>
+
+You can set the `v4_prefix` to any valid RFC1918 private IPv4 range, as long as it does not overlap with ranges secured by the VPN. Common options include:
+
+-   `10.0.0.0/8`
+-   `172.16.0.0/12`
+
+Choose a range that best fits your environment.
+
+</Note>
+
 ## Uninstall the Client Agent on Mac
 
 If you used the Mac installer, you can run `/Library/Application Support/HashiCorp/Boundary Uninstaller.app` to uninstall Boundary.
