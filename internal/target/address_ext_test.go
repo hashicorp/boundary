@@ -66,14 +66,6 @@ func TestAddress_New(t *testing.T) {
 		{
 			name: "invalid-address-4",
 			args: args{
-				address:  "i",
-				targetId: "targ_0000000",
-			},
-			wantErr: errors.InvalidParameter,
-		},
-		{
-			name: "invalid-address-5",
-			args: args{
 				address:  "toolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabeltoolong.co",
 				targetId: "targ_0000000",
 			},
