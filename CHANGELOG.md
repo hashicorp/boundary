@@ -20,10 +20,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   This new helper command allows users to authorize sessions against Cassandra 
   targets and automatically invoke a Cassandra client with the appropriate 
   connection parameters and credentials. Currently only username/password credentials are automatically attached.
-* cli: Added `boundary connect redis` command for connecting to Redis targets.
-  This new helper command allows users to authorize sessions against Redis
-  targets and automatically invoke a Redis client with the appropriate
-  connection parameters and credentials. Currently only username/password credentials are automatically attached.
 * ui: Improved load times for resource tables with search and filtering capabilities by replacing indexeddb for local data storage with sqlite (WASM) and OPFS ([PR](https://github.com/hashicorp/boundary-ui/pull/2984))
 
 ### Bug fixes

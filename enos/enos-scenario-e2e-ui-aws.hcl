@@ -215,11 +215,7 @@ scenario "e2e_ui_aws" {
     }
   }
 
-  output "controller_ips" {
-    value = step.create_boundary_cluster.controller_ips
-  }
-
-  output "worker_ips" {
-    value = step.create_boundary_cluster.worker_ips
+  output "test_results" {
+    value = step.run_e2e_test.test_results
   }
 }
