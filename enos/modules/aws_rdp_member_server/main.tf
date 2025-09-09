@@ -61,6 +61,15 @@ resource "aws_instance" "member_server" {
 
   user_data = <<EOF
                 <powershell>
+                  # Configure the server to use reliable external NTP sources and mark itself as reliable
+                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
+                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
+                  # Restart the Windows Time service to apply the new configuration
+                  Stop-Service w32time
+                  Start-Service w32time
+                  # Force an immediate time synchronization
+                  w32tm /resync /force
+
                   %{if var.server_version != "2016"~}
                   # set variables for retry loops
                   $timeout = 300
