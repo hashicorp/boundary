@@ -5,6 +5,8 @@ package target
 
 import (
 	"context"
+	"net"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -31,6 +33,59 @@ var (
 	_ oplog.ReplayableMessage = (*Address)(nil)
 )
 
+var (
+	labelRegex   = regexp.MustCompile(`^[a-zA-Z0-9-]{1,63}$`)
+	numbersRegex = regexp.MustCompile(`^\d+$`)
+)
+
+// DNS names consists of at least one label joined together by a "."
+// Each label can consist of a-z 0-9 and "-" case insensitive
+// A label cannot start or end with a "-"
+// A label can be between 1 and 63 characters long
+// The final label in the dns name cannot be all numeric
+// See https://en.wikipedia.org/wiki/Domain_Name_System#Domain_name_syntax,_internationalization
+func isValidDnsName(name string) bool {
+	// Trim any trailing dot, otherwise a name like "thing." will split to ["thing", ""] and return false for the empty label
+	name = strings.Trim(name, ".")
+	labels := strings.Split(name, ".")
+	if len(labels) == 0 {
+		return false
+	}
+	for i, label := range labels {
+		if len(label) < 1 || len(label) > 63 {
+			return false
+		}
+		if strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
+			return false
+		}
+		if !labelRegex.MatchString(label) {
+			return false
+		}
+		// Last label cannot be all numeric
+		if i == len(labels)-1 {
+			if numbersRegex.MatchString(label) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Current addresses supported are IPv4, IPv6 addresses
+// or DNS names. More may be supported in the future.
+func isValidAddress(address string) bool {
+	// Try to split host and port
+	_, _, splitErr := net.SplitHostPort(address)
+	if splitErr == nil {
+		return true
+	}
+	ip := net.ParseIP(address)
+	if ip != nil {
+		return true
+	}
+	return isValidDnsName(address)
+}
+
 // NewAddress creates a new in memory address. No options are
 // currently supported.
 func NewAddress(ctx context.Context, targetId, address string, _ ...Option) (*Address, error) {
@@ -42,6 +97,9 @@ func NewAddress(ctx context.Context, targetId, address string, _ ...Option) (*Ad
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing address")
 	}
 	address = strings.TrimSpace(address)
+	if !isValidAddress(address) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid address")
+	}
 	t := &Address{
 		TargetAddress: &store.TargetAddress{
 			TargetId: targetId,
