@@ -278,22 +278,36 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 
 	// Create vault credentials
-	boundaryPolicyName, kvPolicyFilePath, _ := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	passwordSecretName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	passwordSecretName, passwordPolicyName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", passwordPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credential")
+
 	output = e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs(
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
+			"-policy="+passwordPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",

@@ -41,7 +41,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath, _ := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -61,11 +61,10 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	})
 
 	// Create credentials in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -76,7 +75,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -194,7 +193,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath, _ := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -214,11 +213,10 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	})
 
 	// Create credentials in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -229,7 +227,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",

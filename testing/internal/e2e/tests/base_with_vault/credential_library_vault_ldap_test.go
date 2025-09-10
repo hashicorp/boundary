@@ -65,7 +65,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure Vault for LDAP.
-	boundaryPolicyName, _, ldapPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(context.Background(), "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -73,7 +73,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath, ldapPolicyFilePath,
+	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath,
 		c.LdapAddress, c.LdapAdminDn, c.LdapAdminPassword,
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)
@@ -235,7 +235,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure Vault for LDAP.
-	boundaryPolicyName, _, ldapPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(context.Background(), "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -243,7 +243,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath, ldapPolicyFilePath,
+	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath,
 		c.LdapAddress, c.LdapAdminDn, c.LdapAdminPassword,
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)

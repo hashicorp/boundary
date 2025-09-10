@@ -54,7 +54,7 @@ func TestCliTcpTargetVaultGenericConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath, _ := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -74,11 +74,10 @@ func TestCliTcpTargetVaultGenericConnectTarget(t *testing.T) {
 	})
 
 	// Create credential in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -90,7 +89,7 @@ func TestCliTcpTargetVaultGenericConnectTarget(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			fmt.Sprintf("-policy=%s", boundaryPolicyName),
-			fmt.Sprintf("-policy=%s", kvPolicyName),
+			fmt.Sprintf("-policy=%s", privateKeyPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
