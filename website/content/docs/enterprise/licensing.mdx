@@ -8,7 +8,7 @@ description: >-
 # Boundary Enterprise licensing
 
 The Boundary Enterprise binaries require a license key to enforce entitlements and time restrictions according to your contractual agreement.
-Once purchased, your HashiCorp account team send you a valid Boundary license for environment activation.
+Once purchased, your HashiCorp account team sends you a valid Boundary license for environment activation.
 If you don't yet have an acccount team, but are interested in Boundary Enterprise, you can request access [here](https://www.hashicorp.com/contact-sales).
 
 ## Enable Boundary Enterprise
@@ -60,9 +60,9 @@ Refer to the sample configurations below:
 ## License expiration
 
 When the Boundary license expires, the controller performs a graceful shutdown.
-Ongoing sessions continue to run, but you will not be able to create any new sessions.
+Ongoing sessions continue to run, but you cannot create any new sessions.
 
-Prior to the expiration date, Boundary logs 5 warnings to the event stream at the following intervals:
+Prior to the expiration date, Boundary logs five warnings as system events to the event stream at the following intervals:
 
 | Warning | Interval                           |
 |---------| ---------------------------------- |
@@ -72,7 +72,8 @@ Prior to the expiration date, Boundary logs 5 warnings to the event stream at th
 | Fourth  | 1 hour before license expiration   |
 | Fifth   | 1 minute before license expiration |
 
-Refer to the following example of how the warnings appear in the log:
+Refer to the following example of how the warnings appear in the log.
+If you use an external monitoring system, you can create alerts for `"msg": "license warning"` and `"op": "licensing.StartWatching"` to watch for license expiration warnings.
 
 <CodeBlockConfig hideClipboard>
 
@@ -115,9 +116,7 @@ Refer to the following example of how the warnings appear in the log:
 
 </CodeBlockConfig>
 
-If you use an external monitoring system, you can create alerts for `"msg": "license warning"` and `"op": "licensing.StartWatching"` to watch for license expiration warnings.
-
-When there is 1 minute left before license expiration, Boundary provides the following message:
+When there is 1 minute left before license expiration, Boundary provides the following message as an error:
 
 <CodeBlockConfig hideClipboard>
 
@@ -150,3 +149,5 @@ There is no downtime associated with updating an expired license key.
 ## More information
 
 Refer to the [Upgrade and database migration](/boundary/tutorials/self-managed-deployment/upgrade-version) tutorial for step-by-step instructions to upgrade Boundary to its latest version, including database backup and data migration.
+
+Refer to [Monitor Boundary] for more information about configuring Boundary to monitor events.
