@@ -557,6 +557,15 @@
           "type": "outlined",
           "color": "neutral"
         }
+      },
+      {
+        "title": "RDP credential injection compatibility",
+        "path": "credentials/rdp-testing-and-compatibility-matrix",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
