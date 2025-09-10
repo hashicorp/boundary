@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -56,7 +57,7 @@ func Test_TestCredentialLibraries(t *testing.T) {
 	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 
 	count := 4
-	libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), count)
+	libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, count)
 	assert.Len(libs, count)
 	for _, lib := range libs {
 		assert.NotEmpty(lib.GetPublicId())

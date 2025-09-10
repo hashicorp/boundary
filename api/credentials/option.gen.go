@@ -143,6 +143,18 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithUsernamePasswordDomainCredentialDomain(inDomain string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["domain"] = inDomain
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
@@ -168,6 +180,18 @@ func WithJsonCredentialObject(inObject map[string]interface{}) Option {
 }
 
 func WithUsernamePasswordCredentialPassword(inPassword string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["password"] = inPassword
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithUsernamePasswordDomainCredentialPassword(inPassword string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -228,6 +252,18 @@ func WithSshPrivateKeyCredentialUsername(inUsername string) Option {
 }
 
 func WithUsernamePasswordCredentialUsername(inUsername string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["username"] = inUsername
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithUsernamePasswordDomainCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {

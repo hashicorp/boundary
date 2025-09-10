@@ -1,0 +1,9 @@
+This example shows enabling a TLS listener.
+
+```hcl
+listener "tcp" {
+  purpose = "api"
+  tls_cert_file = "/etc/certs/Boundary.crt"
+  tls_key_file  = "/etc/certs/Boundary.key"
+}
+```

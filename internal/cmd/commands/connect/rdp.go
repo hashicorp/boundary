@@ -5,6 +5,7 @@ package connect
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"strings"
 
@@ -58,7 +59,7 @@ func (r *rdpFlags) buildArgs(c *Command, port, ip, addr string) []string {
 	case "mstsc.exe":
 		args = append(args, "/v", addr)
 	case "open":
-		args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
+		args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s%s%s", "%20", "%3A", url.QueryEscape(addr)))
 	}
 	return args
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassworddomain"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -62,6 +63,8 @@ func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 		return baseToUsrPass(ctx, bc)
 	case globals.SshPrivateKeyCredentialType:
 		return baseToSshPriKey(ctx, bc)
+	case globals.UsernamePasswordDomainCredentialType:
+		return baseToUsrPassDomain(ctx, bc)
 	}
 	return bc, nil
 }
@@ -108,6 +111,57 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 		baseCred: bc,
 		username: username,
 		password: credential.Password(password),
+	}, nil
+}
+
+var _ credential.UsernamePasswordDomain = (*usrPassDomainCred)(nil)
+
+type usrPassDomainCred struct {
+	*baseCred
+	username string
+	password credential.Password
+	domain   string
+}
+
+func (c *usrPassDomainCred) Username() string              { return c.username }
+func (c *usrPassDomainCred) Password() credential.Password { return c.password }
+func (c *usrPassDomainCred) Domain() string                { return c.domain }
+
+func baseToUsrPassDomain(ctx context.Context, bc *baseCred) (*usrPassDomainCred, error) {
+	switch {
+	case bc == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
+	case bc.lib == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
+	case bc.Library().CredentialType() != globals.UsernamePasswordDomainCredentialType:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
+	}
+
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	uAttr, pAttr, dAttr := lib.UsernameAttribute, lib.PasswordAttribute, lib.DomainAttribute
+	if uAttr == "" {
+		uAttr = "username"
+	}
+	if pAttr == "" {
+		pAttr = "password"
+	}
+	if dAttr == "" {
+		dAttr = "domain"
+	}
+	username, password, domain := usernamepassworddomain.Extract(bc.secretData, uAttr, pAttr, dAttr)
+	if username == "" || password == "" || domain == "" {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
+	}
+
+	return &usrPassDomainCred{
+		baseCred: bc,
+		username: username,
+		password: credential.Password(password),
+		domain:   domain,
 	}, nil
 }
 
@@ -208,6 +262,7 @@ type genericIssuingCredentialLibrary struct {
 	ClientKeyId                   string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose
@@ -223,6 +278,7 @@ func (pl *genericIssuingCredentialLibrary) clone() *genericIssuingCredentialLibr
 		CredType:                      pl.CredType,
 		UsernameAttribute:             pl.UsernameAttribute,
 		PasswordAttribute:             pl.PasswordAttribute,
+		DomainAttribute:               pl.DomainAttribute,
 		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 		Name:                          pl.Name,
@@ -489,6 +545,7 @@ type privateCredentialLibraryAllTypes struct {
 	ClientKeyId                   string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose `gorm:"-"`
@@ -552,6 +609,7 @@ func (pl *privateCredentialLibraryAllTypes) clone() *privateCredentialLibraryAll
 		CredType:                      pl.CredType,
 		UsernameAttribute:             pl.UsernameAttribute,
 		PasswordAttribute:             pl.PasswordAttribute,
+		DomainAttribute:               pl.DomainAttribute,
 		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 		Name:                          pl.Name,
@@ -635,6 +693,7 @@ func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() is
 			CredType:                      pl.CredType,
 			UsernameAttribute:             pl.UsernameAttribute,
 			PasswordAttribute:             pl.PasswordAttribute,
+			DomainAttribute:               pl.DomainAttribute,
 			PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 			PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 			Name:                          pl.Name,

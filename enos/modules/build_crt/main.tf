@@ -6,8 +6,24 @@ variable "path" {
   default = "/tmp"
 }
 
+variable "build_target" {
+  default = "build-ui build"
+}
+
+variable "binary_name" {
+  default = "boundary"
+}
+
+variable "artifact_name" {
+  default = "boundary"
+}
+
 variable "edition" {
   default = "oss"
+}
+
+variable "goos" {
+  default = "linux"
 }
 
 output "artifact_path" {

@@ -1,0 +1,106 @@
+---
+layout: docs
+page_title: Multi-hop sessions
+description: >-
+  Learn how multi-hop sessions let you chain together two or more workers across multiple networks to reach a target without exposing private networks.
+---
+
+# Multi-hop sessions
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
+inbound traffic to route through multiple network enclaves to reach the target system.
+Multi-hop sessions allow you to chain together two or more workers
+across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
+
+## Inbound network rules
+
+With a multi-hop deployment, all connections are initiated outbound from the most downstream worker in the chain. After Boundary establishes the initial connection between the workers, it uses the established connection for any subsequent connections.
+These persistent TCP connections result in the requirement for only outbound connectivity.
+
+If you have one or more firewalls sitting between the ingress and egress workers, you do not need to create additional inbound networking rules to facilitate a Boundary multi-hop deployment. This not only helps to
+simplify your infrastructure configuration, but also ensures that your security posture is not weakened or compromised.
+
+## Multi-hop worker types
+
+In multi-hop scenarios, there are typically three types of workers:
+1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client initiates the connection to the ingress worker.
+1. **Intermediary worker** - An optional intermediary worker sits between ingress and egress workers as part of a multi-hop chain. There can be multiple intermediary workers as part of a multi-hop chain.
+1. **Egress worker** - An egress worker is a worker that can access the target. The egress worker initiates reverse proxy connections to intermediary or ingress workers.
+
+<Tip>
+“Ingress,” “intermediary,” and “egress” are general ways to describe how the respective worker interfaces with resources, and a worker can act as more than one of those
+at a time. For example in the diagram below, the intermediary worker is also an egress worker since it can access a target.
+</Tip>
+
+![Multi-hop session example showing ingress, intermediary, and egress workers](/img/concepts-multihop.png)
+
+After the persistent connection chain is established between the workers, when you attempt to connect to a target host, you are automatically proxied from:
+1. Boundary client to ingress worker
+1. Ingress worker to intermediary worker, where applicable
+1. Ingress worker to egress worker
+1. Egress worker to desired target
+
+## Multi-hop worker capabilities
+
+Multi-hop capabilities, including multi-hop sessions and Vault private access,
+is when a session or Vault credential request goes through more than one worker.
+To enable this, two or more workers must be connected to each other in some
+configuration. There are no limits on the number of workers allowed in a
+multi-hop session configuration.
+
+It helps to think of “upstream” and “downstream” nodes in the context of
+multi-hop. If you view controllers as the “top” node of a multi-hop chain, any
+worker connected to a node is "downstream" of that node; the node that any
+particular worker connects to (whether another worker or a controller) is the
+"upstream" of that node. For example, in the diagram below, Worker 2’s upstream
+is Worker 1, and its downstream is Worker 3.
+
+![multi-hop workers](/img/multi-hop-workers.png)
+
+You can deploy multi-hop workers in scenarios where inbound network traffic is
+not allowed. A worker in a private network can send outbound communication to
+its upstream worker, and create a reverse proxy to establish a session.
+
+You can configure target worker filters with multi-hop workers to allow for
+fine-grained control on which workers handle ingress and egress for session
+traffic to a target. Ingress worker filters determine which workers you
+connect with to initiate a session, and egress worker filters determine which
+workers are used to access targets.
+
+## Multi-hop worker requirements
+
+When you configure multi-hop sessions, there is an "ingress" worker, an "egress"
+worker, and any number of intermediary workers. Ingress, egress, and
+intermediary workers have the following requirements.
+
+### Ingress worker requirements
+
+To proxy target connections, ingress workers require outbound access to the
+Boundary control plane and inbound access from clients.
+
+HCP Boundary clusters automatically deploy HCP-managed workers which can be used as ingress workers. Using HCP-managed workers as ingress workers is helpful when organizations have strict networks security policies that prohibit any inbound access. In this scenario, intermediary or egress workers within the private network can establish a reverse proxy connection to the HCP-managed ingress worker.
+
+### Intermediary worker requirements
+
+Intermediary workers require outbound access to an upstream worker. The upstream
+worker may be an ingress worker or another intermediary worker. Intermediary
+workers also require inbound access from a downstream worker. The downstream
+worker may be an egress worker or another intermediary worker.
+
+### Egress worker requirements
+
+To proxy target connections, egress workers require outbound access to an
+upstream worker and outbound access to the destination host or service.
+
+## Complete worker configuration
+
+For the full set of worker parameters and a complete configuration example, refer to the [worker stanza](/boundary/docs/configuration/workers) documentation.
+
+## Next steps
+
+Refer to the following topics to configure multi-hop sessions:
+
+- [Configure multi-hop sessions for Boundary Enterprise](/boundary/docs/workers/multi-hop/enterprise)
+- [Configure multi-hop sessions for HCP Boundary](/boundary/docs/workers/multi-hop/hcp)

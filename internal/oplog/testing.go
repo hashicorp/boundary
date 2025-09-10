@@ -112,7 +112,7 @@ func testInitDbInDocker(t testing.TB) (cleanup func() error, retURL string, err 
 	cleanup, retURL, _, err = dbtest.StartUsingTemplate(dbtest.Postgres)
 	require.NoError(err)
 	testInitStore(t, cleanup, retURL)
-	return
+	return cleanup, retURL, err
 }
 
 // testInitStore will execute the migrations needed to initialize the store for tests

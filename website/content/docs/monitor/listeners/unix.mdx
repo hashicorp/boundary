@@ -1,0 +1,45 @@
+---
+layout: docs
+page_title: Unix domain socket listener configuration
+description: >-
+  Learn about using the Unix listener on a specified Unix domain socket, and view configurable parameters. View example Unix listener configurations.
+---
+
+# `unix` listener
+
+@include '/configuration-reference/listeners/unix-intro.mdx'
+
+## `unix` listener parameters
+
+Refer to the following sections for the supported `unix` listener parameters.
+
+### General
+
+@include '/configuration-reference/listeners/unix-general-parameters.mdx'
+
+### TLS
+
+@include '/configuration-reference/listeners/unix-tls-parameters.mdx'
+
+<!-- Not enabled yet
+### `telemetry` parameters
+
+@include '/configuration-reference/listeners/unix-telemetry.mdx'
+
+!-->
+
+## `unix` listener examples
+
+Refer to the following sections for examples of `unix` listeners.
+
+### Configure TLS
+
+@include '/configuration-reference/listeners/unix-configure-tls.mdx'
+
+### Listen on multiple interfaces
+
+@include '/configuration-reference/listeners/unix-listen-on-multiple-interfaces.mdx'
+
+[golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
+[api-addr]: /boundary/docs/configuration#api_addr
+[cluster-addr]: /boundary/docs/configuration#cluster_addr

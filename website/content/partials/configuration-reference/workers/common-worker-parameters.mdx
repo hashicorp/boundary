@@ -1,0 +1,78 @@
+The following fields apply to all registration mechanisms.
+
+```hcl
+worker {
+  public_addr = "5.1.23.198"
+
+  # Local storage path required if session recording is enabled
+  recording_storage_path = "tmp/boundary/"
+
+  # Minimum available disk space required in the local storage path if session recording is enabled
+  recording_storage_minimum_available_capacity = "500MB"
+
+  # Mutually exclusive with hcp_boundary_cluster_id
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+  ]
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+
+  # HCP Boundary only
+  # hcp_boundary_cluster_id = "....."
+}
+```
+
+- `public_addr` - Specifies the public host or IP address (and optionally port)
+   where clients can reach the worker for proxying. By default, it uses the
+   address of the listener marked for `proxy` purpose. This is useful for cloud
+   environments that do not bind a publicly accessible IP directly to a NIC on
+   the host, such as an Amazon EIP.
+
+   You should omit this parameter in multi-hop configurations if this self-managed worker connects to an upstream HCP-managed worker.
+
+   This value can reference any of the following:
+   - a direct address string
+   - read an address from a file on disk (file://)
+   - read an address from an environment variable (env://)
+
+- `initial_upstreams` - A list of hosts/IP addresses and optionally ports for
+  reaching the Boundary cluster. The port will default to `:9201` if not
+  specified. This value can be a direct access string array with the addresses,
+  or it can refer to a file on disk (`file://`) from which the addresses will be
+  read, or an environment variable (`env://`) from which to read the addresses. When
+  using environment variable or file, their contents must formatted as a JSON array:
+  `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
+
+  Self-managed workers connecting to HCP Boundary require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`, unless you are configuring an HCP-managed worker as an ingress worker.
+  If you configure a self-managed worker with both `initial_upstreams` and `hcp_boundary_cluster_id`, the worker configuration fails.
+
+- `hcp_boundary_cluster_id` - A string required to configure workers using worker-led or controller-led registration
+  to connect to your HCP Boundary cluster rather than specifying
+`initial_upstreams`. This parameter is valid only for workers using the worker-led or controller-led
+  registration method and for workers directly connected to HCP Boundary.
+
+- `recording_storage_path` - A path to the local storage for recorded sessions.
+   Boundary stores session recordings in the local storage while they are in progress.
+   When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
+
+- `recording_storage_minimum_available_capacity` - A value measured in bytes that
+   defines the worker's local storage state.  Boundary compares this value to the available local disk space found in the `recording_storage_path` and determines if a worker can perform session recording operations.
+   The supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which are not case sensitive. Example: 2GB, 2gb, 2GiB, 2gib.
+   The possible storage states based on the `recording_storage_minimum_available_capacity` are:
+    - Available - The worker has storage above the threshold and can proxy sessions that have session recording enabled.
+    - Low storage - The worker has storage below the threshold. It allows existing sessions to continue without interruption but prevents proxying new sessions that have session recording enabled. The worker cannot record new sessions or play back existing recordings.
+    - Critically low storage - The worker falls below half the storage threshold. It forcefully closes existing sessions with session recording. The worker cannot record new sessions or play back existing recordings.
+    - Out of storage - The worker is out of local disk space. It cannot record new sessions or play back existing recordings. The worker enters an unrecoverable state, requiring an administrator to intervene and resolve the issue.
+    - Not configured - The worker lacks a configured local storage path.
+    - Unknown - The worker starts with this default local storage state. This state indicates that the worker's local storage state is not yet known.
+
+- `tags` - A map of key-value pairs where values are an array of strings. Most
+  commonly used for [filtering](/boundary/docs/filtering) targets a
+  worker can proxy via [worker
+  tags](/boundary/docs/workers/worker-tags). On `SIGHUP`, the tags
+  set here will be re-parsed and new values used. It can also be a string
+  referring to a file on disk (`file://`) or an environment variable (`env://`).

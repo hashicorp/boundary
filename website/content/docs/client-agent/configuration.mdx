@@ -1,0 +1,159 @@
+---
+layout: docs
+page_title: Configure the Client Agent
+description: >-
+  Learn how to configure the Boundary Client Agent to intercept DNS requests, allowing Boundary to proxy connections transparently.
+---
+
+# Configure the Client Agent
+
+@include 'alerts/enterprise-only.mdx'
+
+The default configuration included with the Boundary Client Agent upon installation will be suitable for most users. If you want to make changes to the configuration, the configuration file is located in the following directory:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+
+</Tab>
+</Tabs>
+
+## Configuration settings
+
+The configuration file contains the following fields:
+
+- `alias_refresh_interval` - Specifies how often to refresh the alias cache. The default value is 1 minute.
+
+   Example:
+   ```hcl
+   alias_refresh_interval="60s"
+   ```
+
+- `dns_request_timeout` - Specifies for how long the Client Agent DNS request handling, including any recursion, is allowed to run before it is canceled.
+
+   Example:
+   ```hcl
+   dns_request_timeout="300s"
+   ```
+
+- `interface_to_use` - Specifies the interface to use instead of the default.
+
+   Example:
+   ```hcl
+   interface_to_use="en1"
+   ```
+
+- `log_file` - Specifies where to write the Boundary Client Agent log file to.
+
+   Example:
+   ```hcl
+   log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
+   ```
+
+- `log_level` - Specifies the verbosity of the Client Agent logs.
+
+   Example:
+   ```hcl
+   log_level="DEBUG"
+   ```
+
+- `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
+
+   Example:
+   ```hcl
+   log_to_stdout=false
+   ```
+
+- `override_upstream_dns_servers` - Lists the DNS servers that should be used for recursing non-Boundary requests, overriding those configured on the system.
+
+   Example:
+   ```hcl
+   override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
+   ```
+
+- `state_file` - Specifies where to write the Boundary Client Agent state file to. This is an ephemeral file which is removed on successful shutdown.
+
+   Example:
+   ```hcl
+   state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
+   ```
+
+- `v4_prefix` - Specifies an alternate prefix to use for generating IPs. Currently must be between /8 and /16
+
+   Example:
+   ```hcl
+   v4_prefix=1.1.1.1/8
+   ```
+
+## Change the configuration
+
+Complete the following steps to change the configuration of the Client Agent:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Change the configuration settings, and save the file.
+
+   <Note>
+
+   You must restart the Client Agent to update some configuration settings.
+   However, when you restart the Client Agent, it closes any existing sessions.
+   Other configuration settings can be updated by only reloading the configuration file, which does not affect any existing sessions.
+
+   </Note>
+
+1. Either reload the configuration file or restart the Client Agent.
+
+   You can change the following configuration values by reloading the configuration file, which will not disrupt any existing sessions:
+
+   - `dns_request_timeout`
+   - `log_file`
+   - `log_level`
+   - `state_file`
+   - `override_upstream_dns_servers`
+   - `v4_prefix`
+
+   Run the following command to reload the configuration file:
+
+   ```shell-session
+   $ sudo pkill -1 boundary-client-agent
+   ```
+
+   If you want to update another configuration value, you can restart the Client Agent using the following commands, however it will close any existing sessions:
+
+   ```shell-session
+   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+
+1. Change the configuration settings, and save the file.
+1. Run the following commands to restart the Client Agent.
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+   Note that when you restart the Client Agent, it closes any existing sessions.
+
+</Tab>
+</Tabs>

@@ -1,0 +1,200 @@
+---
+layout: docs
+page_title: Filtering
+description: >-
+  Learn how to create filter expressions and use filters to match and find data or to reduce the set of resources returned when you list resources.
+---
+
+# Filtering and listing resources
+
+Filter expressions can be used by various parts of Boundary to provide useful functionality.
+Each filter expression has matching operators composed with selectors and values.
+This page describes the overall syntax and provides information on the specific values available for filtering for various features, including examples.
+
+For more information about creating filters for events, workers, targets, and credential stores, refer to the following topics:
+
+- [Filter events](/boundary/docs/monitor/events/filter-events)
+- [Route traffic through a worker](/boundary/docs/workers/worker-tags)
+- [Configure a worker filter](/boundary/docs/workers/filters)
+- [Filter managed groups](/boundary/docs/rbac/users/managed-groups)
+
+## Create expressions
+
+A single expression is a matching operator with a selector and value. They are
+written in plain text format, and Boolean logic and parenthesization are
+supported. In general whitespace is ignored, except within literal strings.
+
+### Matching operators
+
+All matching operators use a selector or value to choose what data should be
+matched. Each endpoint that supports filtering accepts a potentially different
+list of selectors and is detailed in the API documentation for those endpoints.
+
+```text
+// Equality & Inequality checks
+<Selector> == "<Value>"
+<Selector> != "<Value>"
+
+// Emptiness checks
+<Selector> is empty
+<Selector> is not empty
+
+// Contains checks or Substring Matching
+"<Value>" in <Selector>
+"<Value>" not in <Selector>
+<Selector> contains "<Value>"
+<Selector> not contains "<Value>"
+
+// Regular Expression Matching
+<Selector> matches "<Value>"
+<Selector> not matches "<Value>"
+```
+
+### Selectors
+
+Selectors are used by matching operators to create an expression. Inputs to
+filter expressions are JSON (or JSON-derived); selectors therefore use [JSON
+Pointer](https://tools.ietf.org/html/rfc6901) to select values from the input.
+Each selector must be enclosed in quotes and contain a valid JSON Pointer path,
+including leading slash (`/`).
+
+```text
+// Selects the value `zipzap` from the input `{ "foo": { "bar": "zipzap" } }`
+"/foo/bar"
+```
+
+### Values
+
+Values are used by matching operators to create an expression. Values can be any
+valid selector, a number, or a string. It is best practice to quote values.
+
+Numbers can be base 10 integers or floating point numbers.
+
+When quoting strings, they may either be enclosed in double quotes or backticks.
+When enclosed in backticks they are treated as raw strings and escape sequences
+such as `\n` will not be expanded.
+
+## Connect expressions
+
+There are several methods for connecting expressions, including
+
+- Logical `or`
+- Logical `and`
+- Logical `not`
+- Grouping with parenthesis
+- Matching expressions
+
+```text
+// Logical Or - evaluates to true if either sub-expression does
+<Expression 1> or <Expression 2>
+
+// Logical And - evaluates to true if both sub-expressions do
+<Expression 1 > and <Expression 2>
+
+// Logical Not - evaluates to true if the sub-expression does not
+not <Expression 1>
+
+// Grouping - Overrides normal precedence rules
+( <Expression 1> )
+
+// Inspects data to check for a match
+<Matching Expression 1>
+```
+
+Standard operator precedence can be expected for the various forms. For example,
+the following two expressions would be equivalent.
+
+```text
+<Expression 1> and not <Expression 2> or <Expression 3>
+
+( <Expression 1> and (not <Expression 2> )) or <Expression 3>
+```
+
+## Performance
+
+Filters are executed on the controllers and therefore will consume some amount
+of CPU time on the controller.
+
+## Listing resources
+
+This section describes how to use filters when listing resources. This can be used
+to reduce the returned set of resources when performing a list operation.
+
+<Note>
+
+This feature is intended to provide a userful service to clients; it does not
+affect the database queries generated for the operation and as such is not
+designed to provide greater efficiency.
+
+</Note>
+
+When you run a list action, you can specify a filter. It uses the standard filter syntax used
+elsewhere in Boundary. Unless otherwise specified for a given list endpoint, the
+list of items being returned is looped through and the filter is run on the JSON
+representation of that item. A good way to see what that data looks like is by
+looking at representative JSON output on the command line; for example, the
+following is the output of `boundary targets list -scope-id p_1234567890 -format json` on a dev instance (piped through `jq` for readability):
+
+```json
+[
+  {
+    "id": "ttcp_1234567890",
+    "scope_id": "p_1234567890",
+    "scope": {
+      "id": "p_1234567890",
+      "type": "project",
+      "name": "Generated project scope",
+      "description": "Provides an initial project scope in Boundary",
+      "parent_scope_id": "o_1234567890"
+    },
+    "name": "Generated target",
+    "description": "Provides an initial target in Boundary",
+    "created_time": "2021-02-24T22:19:50.640476Z",
+    "updated_time": "2021-02-24T22:19:50.640476Z",
+    "version": 1,
+    "type": "tcp",
+    "session_max_seconds": 28800,
+    "session_connection_limit": -1,
+    "attributes": {
+      "default_port": 22
+    },
+    "authorized_actions": [
+      "read",
+      "update",
+      "delete",
+      "add-host-sources",
+      "set-host-sources",
+      "remove-host-sources",
+      "authorize-session"
+    ]
+  }
+]
+```
+
+As the filter tests each entry being returned, it places the data under test
+within the filter at `/item`.
+
+On the CLI a filter can be given via `-filter`.
+
+Double quotes are part of the filter syntax; when using the CLI, it is likely
+easier to surround the filter with single quotes than to deal with escaping
+double quotes.
+
+When using the HTTP API, it is a `filter` query parameter.
+
+Ensure that the query parameter is properly escaped! Most HTTP libraries will
+do this for you. If you're having trouble, try using the `-output-curl-string`
+flag with the Boundary CLI:
+
+```
+$ boundary targets list -scope-id p_1234567890 -format json -filter '"authorize-session" in "/item/authorized_actions"' -output-curl-string
+curl -H "Authorization: Bearer $(boundary config get-token -keyring-type pass -token-name default)" -H "Content-Type: application/json" 'http://127.0.0.1:9200/v1/targets?filter=%22authorize-session%22+in+%22%2Fitem%2Fauthorized_actions%22&scope_id=p_1234567890'
+```
+
+Following are some examples.
+
+- Resources in which the user is allowed to run an "update" action:
+  `"update" in "/item/authorized_actions"`
+
+- Resources matching a name pattern, but only those within an organization
+  scope: `"/item/name" matches "groupa-*" and "/item/scope/type" == "org"`

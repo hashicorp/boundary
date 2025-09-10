@@ -1,0 +1,200 @@
+---
+layout: docs
+page_title: Azure dynamic host catalogs
+description: >-
+  Use dynamic host catalogs to automatically discover Azure resources and add them as hosts. Create a host catalog and host set for Azure resources.
+---
+# Azure dynamic host catalogs
+Boundary uses dynamic host catalogs to automatically discover Azure resources available through Azure Resource Manager (ARM) and add them as hosts.
+
+The Azure plugin supports Azure Virtual Machines and Azure Virtual Machine Scale Sets in both Flexible and Uniform orchestration modes.
+It automatically discovers any individual virtual machines included in the scale sets and adds them as hosts.
+
+## Create a host catalog to connect with Azure
+Boundary uses plugins to integrate with a variety of providers.   To use a
+dynamic host catalog to integrate with Azure, you create a host catalog of the
+`plugin` type and set the `plugin-name` value to `azure`.  You must also provide the
+specific fields needed for Boundary to authenticate with Azure.
+
+Complete the following steps to create a dynamic host catalog for Azure:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host catalog for.
+1. Select **Host Catalogs**.
+1. Select **New Host Catalog**.
+1. Complete the following fields:
+   - **Name**: (Optional) An optional name for identification purposes.
+   If you enter a name, it must be unique.
+   - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+   - **Type**: (Required) Select **Dynamic** to create a dynamic host catalog.
+   - **Provider**: (Required) Select **Azure** to create a dynamic host catalog for your Azure resources.
+   - **Tenant/Directory ID**: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+   - **Subscription ID**: (Required) The ARM subscription ID for the subscription that has read access.
+   - **Client/Application ID**: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+   - **Client Secret Value**: (Required) The ARM client secret value that Azure generates for authentication.
+   - **Disable credential rotation**: When enabled, Boundary does not rotate the credentials with Azure automatically.
+   Azure host catalogs do not currently support credential rotation.
+1. Select **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog for Azure:
+
+  ```shell-session
+  $ boundary host-catalogs create plugin \
+    -scope-id $PROJECT_ID \
+    -plugin-name azure \
+    -attr disable_credential_rotation=true \
+    -attr tenant_id=env://ARM_TENANT_ID \
+    -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+    -attr client_id=env://ARM_CLIENT_ID \
+    -secret secret_value=env://ARM_CLIENT_SECRET
+  ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+
+  The fields following the `attr` and `secret` flags are specific to Azure and are required by Boundary for authentication.
+
+    - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials automatically.
+    Azure host catalogs do not currently support credential rotation.
+    - `tenant_id`: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+    - `subscription_id`: (Required) The ARM subscription ID for the subscription that has read access.
+    - `client_id`: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+    - `secret_value`: (Required) The ARM client secret value that Azure generates for authentication.
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_host_catalog_plugin" "azure_host_catalog" {
+  name        = "Azure Catalog"
+  description = "Azure Host Catalog"
+  scope_id    = boundary_scope.project.id
+  plugin_name = "azure"
+
+  # recommended to pass in aws secrets using a file() or using environment variables
+  attributes_json = jsonencode({
+    "tenant_id"       = "ARM_TENANT_ID",
+    "subscription_id" = "ARM_SUBSCRIPTION_ID"
+    "client_id"       = "ARM_CLIENT_ID"
+    "disable_credential_rotation" = true })
+  secrets_json = jsonencode({
+    "secret_value" = "ARM_CLIENT_SECRET"})
+}
+```
+
+The `scope_id` and `plugin_name` fields are required when you create a
+dynamic host catalog.
+
+The fields following the `attributes_json` and `secrets_json` flags are specific to Azure and are required by
+  Boundary for authentication.
+
+- `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials automatically.
+Azure host catalogs do not currently support credential rotation.
+- `tenant_id`: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+- `subscription_id`: (Required) The ARM subscription ID for the subscription that has read access.
+- `client_id`: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+- `secret_value`: (Required) The ARM client secret value that Azure generates for authentication.
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+## Create a host set to connect with Azure
+[Host sets](/boundary/docs/domain-model/host-sets) specify which Azure
+Resource Manager (ARM) filters should be used to identify the discovered hosts that should be added as members.
+
+Complete the following steps to create a host set:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host set for.
+1. Select **Host Catalogs**.
+1. Select the dynamic host catalog to which you want add a host set.
+1. Click the **Host Sets** tab, and then click **New**.
+1. Complete the following fields:
+    - **Name**: (Optional) An optional name for identification purposes.
+    If you enter a name, it must be unique.
+    - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+1. Click **Save**.
+
+</Tab>
+
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create a host set:
+
+  ```shell-session
+  $ boundary host-sets create plugin \
+    -name database \
+    -host-catalog-id $HOST_CATALOG_ID \
+    -attr filter="tagName eq 'service-type' and tagValue eq 'database'"
+  ```
+
+  The `host-catalog-id` value is a required field that specifies in which host catalog to create this host set.
+
+  The fields following the `attr` flag are specific to Azure.
+
+  The `filter` field represents the ARM filter used to select resources that should be a part of this host set.
+  There are some limitations with the filtering syntax.
+  Specifically, when you use tags, other types of filters (such as on resource type) are not allowed.
+  As a result, it is generally useful to filter directly on tag names or values as in the following examples:
+    - `tagName eq 'application'`
+    - `tagName eq 'application' and tagValue eq 'app2'`
+
+  Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Terraform" group="terraform">
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Apply the following Terraform policy:
+
+```hcl
+  resource "boundary_host_set_plugin" "azure_host_set" {
+  name        = "Azure Set"
+  description = "Azure Host Set"
+  host_catalog_id  = boundary_scope.azure_host_catalog.id
+  attributes_json = jsonencode({
+    "filter" = "tagName eq 'service-type' and tagValue eq 'database'" })
+}
+```
+
+The `host_catalog_id` value is a required field that specifies in which host catalog to
+  create this host set.
+
+The fields following the `attributes_json` flag are specific to Azure.
+
+The `filter` field represents the ARM filter used to select resources that should be a part of
+  this host set.  There are some limitations with the filtering syntax.
+  Specifically, when you use tags, other types of filters (such as on resource
+  type) are not allowed. As a result, it is generally useful to filter
+  directly on tag names or values as in the following examples:
+    - `tagName eq 'application'`
+    - `tagName eq 'application' and tagValue eq 'app2'`
+
+Refer to the [host catalogs](/boundary/docs/domain-model/host-catalogs) domain model documentation for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+## More information
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.

@@ -41,6 +41,11 @@ func TestValidMappingOverrides(t *testing.T) {
 			want: true,
 		},
 		{
+			m:    nil,
+			ct:   globals.UsernamePasswordDomainCredentialType,
+			want: true,
+		},
+		{
 			m:    unknownMapper(1),
 			ct:   globals.UnspecifiedCredentialType,
 			want: false,
@@ -51,6 +56,11 @@ func TestValidMappingOverrides(t *testing.T) {
 			want: false,
 		},
 		{
+			m:    unknownMapper(1),
+			ct:   globals.UsernamePasswordDomainCredentialType,
+			want: false,
+		},
+		{
 			m:    allocUsernamePasswordOverride(),
 			ct:   globals.UnspecifiedCredentialType,
 			want: false,
@@ -58,6 +68,16 @@ func TestValidMappingOverrides(t *testing.T) {
 		{
 			m:    allocUsernamePasswordOverride(),
 			ct:   globals.UsernamePasswordCredentialType,
+			want: true,
+		},
+		{
+			m:    allocUsernamePasswordDomainOverride(),
+			ct:   globals.UnspecifiedCredentialType,
+			want: false,
+		},
+		{
+			m:    allocUsernamePasswordDomainOverride(),
+			ct:   globals.UsernamePasswordDomainCredentialType,
 			want: true,
 		},
 		{

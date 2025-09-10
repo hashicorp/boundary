@@ -722,7 +722,7 @@ func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, 
 	case hostplugin.Subtype:
 		hs, hosts, plg, err = s.updatePluginInRepo(ctx, projectId, req)
 	}
-	return
+	return hs, hosts, plg, err
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool, error) {

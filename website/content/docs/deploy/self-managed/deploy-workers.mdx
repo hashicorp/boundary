@@ -1,0 +1,278 @@
+---
+layout: docs
+page_title: Deploy workers
+description: >-
+ Configure Boundary workers for a self-managed deployment, including environment files and KMS keys. Set up ingress, intermediary, and egress roles for multi-hop.
+---
+
+# Deploy workers
+
+Before you deploy workers, you should have completed the following steps:
+
+- Installed Boundary on at least three [controller nodes](/boundary/docs/deploy/self-managed/configure-controllers).
+- Prepared or have three existing network boundaries:
+   - Public/DMZ network
+   - Intermediary network
+   - Private network
+- Prepared three virtual machines for Boundary workers, one in each network boundary with the Boundary binary installed on it.
+
+In the following configuration files, there are common configuration components as well as some unique components depending on the role the Boundary worker performs.
+There are three files, one for each worker in a unique network boundary.
+Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/workers/multi-hop) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
+
+## Prepare the environment files
+
+HashiCorp recommends using either the `env://` or `file://` notation within the configuration files, to securely provide secret configuration components to the Boundary worker binaries.
+The following configuration example uses `env://` to secure AWS KMS configuration items.
+
+When you install the Boundary binary using a package manager, it includes a unit file which configures an environment file at `/etc/boundar.d/boundary.env`.
+You can use this file to set the sensitive values that are used to configure the Boundary workers.
+The following file is an example of how this environment file could be configured:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/boundary.env">
+
+```shell-session
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+</CodeBlockConfig>
+
+In the example above, the proper IAM roles and permissions for the given `AWS_ACCESS_KEY` and `AWS_SECRET_ACCESS_KEY` must be in place so that Boundary can use them to access the different KMS keys.
+
+## Prepare the worker KMS keys
+
+The worker-auth storage KMS key is used by a Worker for the encrypted storage of authentication keys.
+This is recommended Workers using controller-led or worker-led methods. If it is not specified, the authentication keys are not encrypted on disk.
+Optionally, if you deploy KMS authentication-driven Boundary workers, an additional KMS key must be generated to authenticate the Boundary worker with the controller.
+
+HashiCorp strongly recommends using the Key Management System (KMS) of the cloud provider where you deploy your Boundary workers.
+Keep in mind that Boundary workers must have the correct level of permissions for interacting with the cloud provider's KMS.
+Refer to your cloud provider's documentation, for more information.
+
+## Create the worker configurations
+
+After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
+
+The following configuration examples all employ the worker-led authorization flow.
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/workers/registration#kms-configuration).
+
+If you use Boundary Enterprise, you can configure multiple workers to act in three different roles: ingress, intermediary, and egress.
+For Community Edition, workers only serve one role, acting as both the point of ingress and egress.
+Select your Boundary edition, and complete the following steps to configure workers.
+
+<Tabs>
+<Tab heading="Enterprise">
+
+For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/workers#multi-hop-sessions).
+
+Note that "ingress," "intermediary," and "egress" are general ways to describe how the respective worker interacts with resources.
+A worker can serve more than one of those roles at a time.
+Refer to [Multi-hop sessions](/boundary/docs/workers/multi-hop) for more information.
+
+Complete the steps below to configure workers for Boundary Enterprise.
+
+### Ingress worker configuration
+
+@include '/workers/ingress-worker-config.mdx'
+
+### Intermediate worker configuration
+
+@include '/workers/intermediate-worker-config.mdx'
+
+### Egress worker configuration
+
+@include '/workers/egress-worker-config.mdx'
+
+</Tab>
+<Tab heading="Community Edition">
+
+For the Community Edition of Boundary, you must configure a worker server that communicates with the controller and is responsible for storage-related tasks.
+
+Boundary Community Edition only supports egress workers. To configure workers for multi-hop sessions, check the Boundary Enterprise configuration.
+
+Complete the following steps to configure the worker.
+
+### Worker configuration
+
+@include '/workers/single-worker-config.mdx'
+
+
+</Tab>
+</Tabs>
+
+## Start the Boundary service
+
+When the configuration files are in place on each Boundary controller, you can proceed to enable and start the binary on each of the Boundary worker nodes using `systemd`.
+Run the following commands to start the service:
+
+1. `sudo systemctl enable boundary`
+1. `sudo systemctl start boundary`
+
+## Adopt the workers (optional)
+
+If you use the workers as outlined above, you must adopt the Boundary workers.
+Complete the following steps to adopt the workers:
+
+<Tabs>
+
+<Tab heading="Admin UI">
+
+Complete the following steps to adopt the worker using the UI:
+
+1. Log in to Boundary as the admin user.
+
+1. Select **Workers** in the navigation pane.
+
+1. Click **New**.
+
+1. (Optional) You can use the workers page to construct the contents of the `worker.hcl` file, if you did not [create the configuration file](/boundary/docs/deploy/self-managed/deploy-workers#create-the-worker-configurations) as part of the installation process above.
+Provide the following details, and Boundary constructs the worker configuration file for you:
+   - Boundary Cluster ID
+   - Worker Public Address
+   - Config file path
+   - Worker Tags
+
+1. Scroll to the bottom of the **New Worker** page, and paste the **Worker Auth Registration Request** key.
+Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
+You can also locate this value in the `auth_request_token` file.
+
+1. Click **Register Worker**.
+
+1. Click **Done**.
+
+  The new worker appears on the **Workers** page.
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
+
+</Tab>
+
+<Tab heading="CLI">
+
+Complete the following steps to adopt the worker using the CLI:
+
+1. Use the following command to ensure that the `BOUNDARY_ADDR` is set as an environment variable:
+
+  ```hcl
+  $ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b3625.boundary.hashicorp.cloud"
+  ```
+
+1. Log into the CLI as the admin user, providing the Auth Method ID, admin login name, and admin password when prompted.
+
+  ```hcl
+  $ boundary authenticate password \
+    -auth-method-id=ampw_KfLAjMS2CG \
+    -login-name=admin
+  ```
+
+  Example:
+
+  <CodeBlockConfig hideClipboard>
+
+  ```hcl
+  $ boundary authenticate password \
+    -auth-method-id=ampw_KfLAjMS2CG \
+    -login-name=admin
+  Please enter the password (it will be hidden):
+
+  Authentication information:
+    Account ID:      acctpw_r6crEm0FgM
+    Auth Method ID:  ampw_KfLAjMS2CG
+    Expiration Time: Mon, 27 Jun 2022 22:03:28 MDT
+    User ID:         u_ysJd0LXX9T
+
+   The token was successfully stored in the chosen keyring and is not displayed here.
+  ```
+
+  </CodeBlockConfig>
+
+1. Next, use the following command to export the **Worker Auth Request Token** value as an environment variable:
+
+  ```shell-session
+  $ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+  ```
+
+  Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
+  You can also locate this value in the `auth_request_token` file.
+
+  The token is used to issue a create worker request that authorizes the worker to Boundary and makes it available.
+  Currently worker creation is only supported for workers with an authorization token (worker-led and controller-led).
+
+1. Create a new worker using the worker-led registration method with the following command:
+
+  ```shell-session
+  $ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+  Worker information:
+    Active Connection Count:   0
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Local Storage State:       unknown
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:52:04 MST
+    Version:                   1
+
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+  ```
+
+  Confirm the worker registration and view its details by executing the following command and supplying the new worker's id:
+
+  ```shell-session
+  $ boundary workers read -id w_zLGjAbYx1h
+
+  Worker information:
+    Active Connection Count:   0
+    Address:                   127.0.0.1:9202
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Last Status Time:          2025-01-03 20:58:41.346537 +0000 UTC
+    Local Storage State:       not configured
+    Release Version:           Boundary v0.18.1+ent
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:58:41 MST
+    Version:                   1
+
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+
+    Tags:
+      Configuration:
+        type: ["worker1" "upstream"]
+      Canonical:
+        type: ["upstream" "worker1"]
+
+    Authorized Actions:
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+      no-op
+      read
+      update
+      delete
+  ```
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
+
+</Tab>
+</Tabs>
+
+## Next steps
+
+After you configure workers, you should:
+
+1. [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize)
+1. [Install the Boundary Clients](/boundary/docs/deploy/self-managed/install-clients)

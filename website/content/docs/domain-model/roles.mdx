@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: Role resource
+description: >-
+  Learn about using the role resource to group permissions which are then granted to any principal assigned to the role. Understand role attributes.
+---
+
+# Roles
+
+A role is a resource
+that contains a collection of [permissions][]
+which are granted to any principal assigned to the role.
+[Users][], [groups][], and [managed groups][] are principals
+which allows either to be assigned to a role.
+A role can be defined within any [scope][].
+A role can be assigned to principals from any scope.
+
+## Attributes
+
+A role has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the role's [project][].
+
+- `description` - (optional)
+
+## Referenced by
+
+- [Group][]
+- [Managed group][]
+- [Project][]
+- [User][]
+
+[group]: /boundary/docs/domain-model/groups
+[groups]: /boundary/docs/domain-model/groups
+[managed group]: /boundary/docs/domain-model/managed-groups
+[managed groups]: /boundary/docs/domain-model/managed-groups
+[permissions]: /boundary/docs/rbac
+[project]: /boundary/docs/domain-model/scopes#projects
+[scope]: /boundary/docs/domain-model/scopes
+[user]: /boundary/docs/domain-model/users
+[users]: /boundary/docs/domain-model/users
+
+## Service API docs
+
+The following services are relevant to this resource:
+
+- [Role service](/boundary/api-docs/role-service)
+
+## Tutorial
+
+Refer to the [Managed Roles and Permissions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-roles) tutorial to learn how to create a role in Boundary.

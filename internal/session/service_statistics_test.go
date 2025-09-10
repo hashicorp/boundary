@@ -44,7 +44,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 		{
 			name: "missing connection repository",
 			setup: func() (workerId string, conns []*Connection, expectedClosedConnections []string) {
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 			wantErrMsg: "session.CloseOrphanedConnections: missing connection repository: parameter violation: error #100",
 		},
@@ -52,7 +52,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 			name:     "empty worker id",
 			connRepo: &ConnectionRepository{},
 			setup: func() (workerId string, conns []*Connection, expectedClosedConnections []string) {
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 			wantErrMsg: "session.CloseOrphanedConnections: missing worker id: parameter violation: error #100",
 		},
@@ -62,7 +62,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 			setup: func() (workerId string, conns []*Connection, expectedClosedConnections []string) {
 				w := server.TestKmsWorker(t, conn, wrapper)
 				workerId = w.GetPublicId()
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -72,7 +72,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 				w := server.TestKmsWorker(t, conn, wrapper)
 				workerId = w.GetPublicId()
 				conns = make([]*Connection, 0)
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 						PublicId: "c_dne",
 					},
 				}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -126,7 +126,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 				require.NoError(t, err)
 				workerId = w.GetPublicId()
 				conns = []*Connection{}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -167,7 +167,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 						PublicId: c1.GetPublicId(),
 					},
 				}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -211,7 +211,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 						PublicId: c1.GetPublicId(),
 					},
 				}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -275,7 +275,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 						PublicId: c2.GetPublicId(),
 					},
 				}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -336,7 +336,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 					},
 				}
 				expectedClosedConnections = []string{c1.PublicId}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 		{
@@ -407,7 +407,7 @@ func TestCloseOrphanedConnections(t *testing.T) {
 					},
 				}
 				expectedClosedConnections = []string{c3.PublicId}
-				return
+				return workerId, conns, expectedClosedConnections
 			},
 		},
 	}

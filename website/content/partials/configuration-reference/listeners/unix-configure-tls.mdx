@@ -1,0 +1,10 @@
+This example shows enabling a TLS listener.
+
+```hcl
+listener "unix" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+  tls_cert_file = "/etc/certs/Boundary.crt"
+  tls_key_file  = "/etc/certs/Boundary.key"
+}
+```

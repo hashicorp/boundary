@@ -1,0 +1,102 @@
+Create the `egress-worker.hcl` file with the relevant configuration information:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/egress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<intermediate_worker_address>:9202"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker3", "egress"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "egress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication PKI material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey5"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+Refer to the list below for explanations of the parameters used in the example above:
+
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+This is fine for local development and testing.
+However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
+Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
+
+   On Linux, to give the Boundary executable the ability to use `mlock` syscall without running the process as root, run the following command:
+
+   `sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))`
+
+   If you use a Linux distribution with a modern version of systemd, you can add the following directive to the **"[Service]"** configuration section:
+
+   `LimitMEMLOCK=infinity`
+
+- `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
+- `worker` - Configures the worker.
+If present, `boundary server` starts a worker subprocess.
+- `events` - Configures event-specific parameters.
+
+   The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
+   This configuration may or may not work for your organization's logging solution.
+
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/secure/encryption/data-encryption).
+
+   Refer to the links below for configuration information for the different cloud KMS blocks:
+
+   - [AWS](/boundary/docs/configuration/kms/awskms)
+   - [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+   - [GCP](/boundary/docs/configuration/kms/gcpckms)
+   - [OCI](/boundary/docs/configuration/kms/ocikms)
+   - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+   - [Vault Transit](/boundary/docs/configuration/kms/transit)
+
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [worker-specific options](/boundary/docs/configuration/workers).

@@ -1,0 +1,319 @@
+---
+layout: docs
+page_title: Manage users and groups
+description: How to manage Boundary users and groups
+---
+
+# Managing principals
+
+Users and Groups in Boundary are collectively known as principals. Assigning
+[grants](/boundary/docs/rbac#grant-strings) on
+[roles](/boundary/docs/domain-model/roles) is performed through principal IDs;
+that is, the unique IDs of either users, groups, or both.
+
+This page will walk you through managing users within Boundary. (Groups will be
+added at a later time.)
+
+## Users
+
+Users in Boundary represent an _internal_ notion of a particular entity (human,
+machine, etc.). Users can be correlated with one or more
+[account](/boundary/docs/domain-model/accounts) resources via [auth
+methods](/boundary/docs/domain-model/auth-methods). Accounts represent
+_external_ notions of a particular entity. Among other use-cases, this mechanism
+allows for an easy way to switch users to new IdPs within the organization
+deploying Boundary.
+
+In this example, we're going to show you how to create an account and user for
+an auth method to allow that user to login to Boundary. Because an auth method
+can be at the org and global scopes, we're going to create an org-scoped auth
+method in the default generated org in a `dev` mode server. (If you're not
+running `dev` mode, you'll need to substitute appropriate generated IDs in the
+steps below.)
+
+~> Currently, all auth methods auto-vivify users on authentication; that is, on
+successful authentication against an account, if there is no user already linked
+with that account, a user will be automatically created. This may be a nice
+time-saver, but in other situations (such as when you want Terraform to fully
+describe the Boundary resources) this may be undesirable, so the steps below
+walk you through manually making these resources and linking them. A future
+Boundary update will allow turning off auto-vivification on a per-auth-method
+basis.
+
+## Create an auth method
+
+Create a password-type auth method in the generated default org:
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+$ boundary auth-methods create password -scope-id o_1234567890 -name org_auth_method -description 'Org auth method'
+
+Auth Method information:
+  Created Time:                Tue, 29 Sep 2020 08:32:04 PDT
+  Description:                 Org auth method
+  ID:                          ampw_PbE6nNT72a
+  Name:                        org_auth_method
+  Type:                        password
+  Updated Time:                Tue, 29 Sep 2020 08:32:04 PDT
+  Version:                     1
+
+  Scope:
+    ID:                        o_1234567890
+    Name:                      Generated org scope
+    Parent Scope ID:           global
+    Type:                      org
+
+  Attributes:
+    Minimum Login Name Length: 3
+    Minimum Password Length:   8
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+1. Navigate to an org, then to auth methods.
+1. Choose the **New** button.
+1. Fill in the auth method details.
+1. Choose **Save** and view the auth method edit form page.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261000-boundary-clickthrough-manage-identities-create-auth-method.mp4"
+  />
+</video>
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_auth_method" "password" {
+  name        = "org_auth_method"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = "o_1234567890"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create an account
+
+Create an account for the org-scoped auth method. Note that by default, user
+names must be all lowercase alphanumeric of at least 3 characters and the
+password must be 8 or more characters. (The minimum lengths can be changed in
+the attributes for the auth method, if desired.)
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+boundary accounts create password -auth-method-id ampw_PbE6nNT72a -login-name 'myuser' -name my_account -description 'My password account'
+
+Account information:
+  Auth Method ID:      ampw_PbE6nNT72a
+  Created Time:        Tue, 29 Sep 2020 08:35:02 PDT
+  Description:         My password account
+  ID:                  acctpw_BOn3EcqQfe
+  Name:                my_account
+  Type:                password
+  Updated Time:        Tue, 29 Sep 2020 08:35:02 PDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Attributes:
+    Login Name:        myuser
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+1. Navigate to orgs > auth methods > auth method, then to the **Accounts** tab.
+1. Choose the **New** button.
+1. Fill the account details.
+1. Choose **Save** and view the account edit form page.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602260998-boundary-clickthrough-manage-identities-create-account.mp4"
+  />
+</video>
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_account" "my_user" {
+  name           = "myuser"
+  description    = "Login account for my user"
+  type           = "password"
+  login_name     = "myuser"
+  password       = "supersecure"
+  auth_method_id = "ampw_PbE6nNT72a"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create a user
+
+Next, create a user at the org scope.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+First, create the user resource:
+
+```bash
+$ boundary users create -name "myuser" -description "My user resource" -scope-id o_1234567890
+
+User information:
+  Created Time:        Tue, 29 Sep 2020 06:37:12 PDT
+  Description:         My user resource
+  ID:                  u_yXhZpt5PX3
+  Name:                myuser
+  Updated Time:        Tue, 29 Sep 2020 06:37:12 PDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+```
+
+Then associate the user with the account previously created:
+
+```bash
+$ boundary users set-accounts -id u_yXhZpt5PX3 -account acctpw_BOn3EcqQfe
+
+User information:
+  Created Time:        Tue, 29 Sep 2020 08:43:43 PDT
+  Description:         My org user
+  ID:                  u_yXhZpt5PX3
+  Name:                my_user
+  Updated Time:        Tue, 29 Sep 2020 08:54:11 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Accounts:
+    ID:                acctpw_BOn3EcqQfe
+    Scope ID:          o_1234567890
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+1. Navigate to an org, then to users.
+1. Choose the **New** button.
+1. Fill the user details.
+1. Choose **Save** and view the user edit form page.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261002-boundary-clickthrough-manage-identities-create-user.mp4"
+  />
+</video>
+
+Then associate the user with an account:
+
+1. From the user edit form, navigate to the **Accounts** tab.
+1. Choose **Add Accounts** from the **Manage** dropdown.
+1. Select one or more accounts to associate with the user.
+1. Choose the **Add Accounts** button and view the user accounts list.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602260997-boundary-clickthrough-manage-identities-assign-account-to-user.mp4"
+  />
+</video>
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_user" "myuser" {
+  name        = "myuser"
+  description = "My user resource"
+
+  # taken from the example account resource defined above
+  account_ids = [ boundary_account.myuser.id ]
+  scope_id    = "o_1234567890"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Log in
+
+Now you can test logging in.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+$ boundary authenticate password -auth-method-id ampw_PbE6nNT72a
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+1. Navigate to the authenticate page.
+1. Choose an org scope with which to authenticate.
+1. Fill the credentials.
+1. Choose **Authenticate** and view the projects overview for the org.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261004-boundary-clickthrough-manage-identities-login.mp4"
+  />
+</video>
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+provider "boundary" {
+  addr                            = "http://127.0.0.1:9200"
+  auth_method_id                  = "ampw_PbE6nNT72a"
+  password_auth_method_login_name = "myuser"
+  password_auth_method_password   = "supersecure"
+}
+```
+
+</Tab>
+</Tabs>

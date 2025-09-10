@@ -55,7 +55,9 @@ type options struct {
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
 	WithStartPageAfterItem     pagination.Item
+	WithAlias                  *talias.Alias
 	withAliases                []*talias.Alias
+	withTargetId               string
 }
 
 func getDefaultOptions() options {
@@ -83,6 +85,7 @@ func getDefaultOptions() options {
 		WithIngressWorkerFilter:    "",
 		WithAddress:                "",
 		WithNetResolver:            net.DefaultResolver,
+		withTargetId:               "",
 	}
 }
 
@@ -282,5 +285,19 @@ func WithStartPageAfterItem(item pagination.Item) Option {
 func WithAliases(in []*talias.Alias) Option {
 	return func(o *options) {
 		o.withAliases = in
+	}
+}
+
+// WithAlias provides an option to provide a single alias.
+func WithAlias(in *talias.Alias) Option {
+	return func(o *options) {
+		o.WithAlias = in
+	}
+}
+
+// WithTargetId provides an option to provide a target ID.
+func WithTargetId(in string) Option {
+	return func(o *options) {
+		o.withTargetId = in
 	}
 }

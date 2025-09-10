@@ -173,6 +173,30 @@ func DefaultBrokeredCredentialSourceIds() Option {
 	}
 }
 
+func WithRdpTargetDefaultClientPort(inDefaultClientPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["default_client_port"] = inDefaultClientPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultRdpTargetDefaultClientPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["default_client_port"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithSshTargetDefaultClientPort(inDefaultClientPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -217,6 +241,30 @@ func DefaultTcpTargetDefaultClientPort() Option {
 		}
 		val := raw.(map[string]any)
 		val["default_client_port"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithRdpTargetDefaultPort(inDefaultPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["default_port"] = inDefaultPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultRdpTargetDefaultPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["default_port"] = nil
 		o.postMap["attributes"] = val
 	}
 }

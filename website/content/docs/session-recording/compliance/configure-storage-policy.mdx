@@ -1,0 +1,699 @@
+---
+layout: docs
+page_title: Configure storage bucket policies
+description: >-
+  Configure storage bucket policies to manage the lifecycles of session recordings. Specify retention and deletion policies to codify compliance periods.
+---
+
+# Configure storage bucket policies
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
+
+Retention policies can codify storage bucket lifecycle management for [session recordings][].
+A Boundary resource known as a [storage bucket][] is used to store recorded sessions.
+A resource known as a [storage policy][] is used to codify how long session recordings must be kept and when they should be deleted.
+
+A storage policy exists in either the global scope or an org scope.
+Storage policies that are created in the global scope can be associated with any org scope.
+However, a storage policy created in an org scope can only be associated with that org scope.
+Any storage policies associated with an org scope are deleted when you delete the org itself.
+
+For more information about using session recording to audit user sessions, refer to [Session recording](/boundary/docs/session-recording).
+
+## Requirements
+
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements. Session recording requires specific configuration for both the external storage provider and the Boundary worker.
+
+A Boundary worker configured for local storage is also required to set up session recording and configure recording bucket policies.
+
+Refer to [Create a storage bucket](/boundary/docs/session-recording/configuration/create-storage-bucket) to learn more about setting up storage for session recordings.
+
+## Example storage policies
+
+A storage policy defines how long the recording within a scope should retain its session recordings. Storage policy examples include:
+
+- Keep forever
+- Do not delete
+- Do not retain
+- Custom retention period
+
+## Create a storage policy
+
+Complete the following steps to create a storage policy in Boundary for session recording:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Click **Storage Policies** in the navigation panel in the `global` scope.
+1. Click **Create a new storage policy**.
+1. Complete the following fields to create the Boundary storage policy:
+   - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
+   - **Description**: (Optional) An optional description of the Boundary storage policy for identification purposes.
+   - **Retention Policy**: (Required) Specifies how long a recording must be stored, in days.
+   Policy values include:
+     - `Forever`: If enabled, the **Deletion Policy** field is disabled.
+     - `Custom`: Specify a custom retention policy in days.
+     - `Do not protect, allow deletion at any time`
+     - `SOC 2 (7 years)`
+     - `HIPPA (6 years)`
+   - **Deletion Policy**: (Required) Specifies when to delete a recording, in days.
+   Policy values include:
+   - `Do not delete`: Do not delete recordings, even after the retention policy is met.
+   - `Custom`: Specifies the number of days after creation when a session recording should be deleted.
+
+   As an example, the following settings would create a SOC 2 compliant policy:
+
+   - **Name**: `soc2-policy`
+   - **Description**: `SOC 2 compliant storage policy for session recordings`
+   - **Retention Policy**: `SOC 2 (7 years)`
+   - **Deletion Policy**: `Custom`
+   Delete after: `2657` days
+   Toggle the switch beside **Allow orgs to override**.
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create a storage policy in Boundary:
+
+   ```shell-session
+   $ boundary policies create storage \
+       -name soc2-policy \
+       -description 'SOC 2 compliant storage policy for session recordings' \
+       -scope-id global \
+       -retain-for-days 2557 \
+       -retain-for-overridable false \
+       -delete-after-days 2657 \
+       -delete-after-overridable true
+   ```
+
+   The following [attributes](/boundary/docs/domain-model/storage-policy) can be used when defining a storage policy:
+
+   - `name`: (Optional) An optional human readable name.
+   - `description`: (Optional) An optional human readable description.
+   - `scope-id`: (Optional) The ID of the scope (global or an org) that owns the policy. Defaults to `global`.
+   - `retain-for-days`: (Optional) The number of days a session recording must be kept. A value of `-1` indicates an infinite retention.
+   - `retain-for-overridable`: (Optional) Indicates that a lower scope can override the `retain_for_days` attribute value. Defaults to `true`.
+   - `delete-after-days`: (Optional) The number of days after creation when a session recording should be deleted.
+   - `delete-after-overridable`: (Optional) Indicates that a lower scope can override the  `delete_after_days` attribute value. Defaults to `true`.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_policy_storage" "example" {
+  name = "soc2-policy"
+  description = "SOC 2 compliant storage policy for session recordings"
+  scope_id = data.boundary_scope.org.id
+
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2657
+  delete_after_overridable = true
+}
+```
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+The following API call is an example of creating a storage policy in Boundary:
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request POST \
+    --data '{"attributes":{"retain_for":{"days":2557,"overridable":false},"delete_after":{"days":2657,"overridable":true}},"scope_id":"global","description":"SOC 2 compliant storage policy for session recordings","name":"soc2-policy","type":"storage"}' \
+    $BOUNDARY_ADDR/v1/policies | jq
+```
+
+<Note>
+
+  This example uses [jq](https://stedolan.github.io/jq/download/) to process the JSON output for readability.
+
+</Note>
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+{
+  "id": "pst_wV4bWSYYwL",
+  "scope_id": "global",
+  "scope": {
+    "id": "global",
+    "type": "global",
+    "name": "global",
+    "description": "Global Scope"
+  },
+  "name": "soc2-api-test",
+  "description": "SOC 2 compliant storage policy for session recordings",
+  "created_time": "2024-01-26T03:44:58.119640Z",
+  "updated_time": "2024-01-26T03:44:58.119640Z",
+  "type": "storage",
+  "version": 1,
+  "attributes": {
+    "delete_after": {
+      "days": 2657,
+      "overridable": true
+    },
+    "retain_for": {
+      "days": 2557,
+      "overridable": false
+    }
+  },
+  "authorized_actions": [
+    "no-op",
+    "read",
+    "update",
+    "delete"
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+In this example, recordings stored within the global scope must be retained for 7 years (2557 days), and will be automatically deleted 100 days later (at 2657 days). Scopes beneath `global` will not be able to override this retention policy, but are able to override the deletion policy.
+
+<Warning>
+
+  Boundary does not support an undo action. Storage policies are meant to enforce compliance to a specific law or regulation. Updating the storage policy of a session recording can have immediate and possibly unexpected results such as the immediate deletion of session recordings.
+
+</Warning>
+
+## Attach storage policies to a scope
+
+You must apply storage policies to a scope (`global` or a specific org) to take effect. Once attached, all recordings within the child scopes inherit the storage policy, unless overridden by a policy applied to the child scope.
+
+The following example applies the policy created above to an org named `prod-databases` with the org ID `o_aDkVBCDTvY`.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Click **Orgs** in the navigation panel and select the `prod-databases` org.
+1. Click **Org Settings** in the navigation panel for the `prod-databases` org.
+1. Under **Storage Policy**, click **Add Storage Policy**.
+1. Select the `soc2-policy`.
+1. Click **Save**. This applies the policy to this scope and its children.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Obtain the storage policy ID:
+
+   <CodeBlockConfig highlight="1,3">
+
+   ```shell-session
+   $ boundary policies list
+   Policy information:
+     ID:                    pst_WZ3SQSSYJY
+       Version:             1
+       Type:                storage
+       Name:                soc2-policy
+       Description:         SOC 2 compliant storage policy for session recordings
+       Authorized Actions:
+         read
+         update
+         delete
+         no-op
+   ```
+
+   </CodeBlockConfig>
+
+1. Use the following command to apply the storage policy to the `prod-databases` org:
+
+   ```shell-session
+   $ boundary scopes attach-storage-policy \
+       -id o_aDkVBCDTvY \
+       -storage-policy-id pst_WZ3SQSSYJY
+   ```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_scope_policy_attachment" "example" {
+  policy_id = boundary_policy_storage.example.id
+  scope_id = data.boundary_scope.org.id
+}
+```
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+The following API call is an example of attaching a storage policy to a scope.
+
+First, obtain the storage policy ID.
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request POST \
+    $BOUNDARY_ADDR/v1/policies?scope_id=global' | jq
+```
+
+In this example, the storage policy ID is `pst_WZ3SQSSYJY`.
+
+Now attach the policy to the org.
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request POST \
+    --data '{"storage_policy_id":"pst_WZ3SQSSYJY","version":2}'' \
+    $BOUNDARY_ADDR/v1/scopes/o_aDkVBCDTvY:attach-storage-policy' | jq
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+{
+  "id": "o_aDkVBCDTvY",
+  "scope_id": "global",
+  "scope": {
+    "id": "global",
+    "type": "global",
+    "name": "global",
+    "description": "Global Scope"
+  },
+  "name": "prod-databases",
+  "created_time": "2024-01-26T04:22:45.891800Z",
+  "updated_time": "2024-01-26T05:00:27.333892Z",
+  "version": 3,
+  "type": "org",
+  "authorized_actions": [
+    "delete",
+    "attach-storage-policy",
+    "detach-storage-policy",
+    "no-op",
+    "read",
+    "update"
+  ],
+  "authorized_collection_actions": {
+    "auth-methods": [
+      "create",
+      "list"
+    ],
+    "auth-tokens": [
+      "list"
+    ],
+    "groups": [
+      "create",
+      "list"
+    ],
+    "policies": [
+      "list",
+      "create"
+    ],
+    "roles": [
+      "list",
+      "create"
+    ],
+    "scopes": [
+      "list",
+      "list-keys",
+      "rotate-keys",
+      "list-key-version-destruction-jobs",
+      "destroy-key-version",
+      "create"
+    ],
+    "session-recordings": [
+      "list"
+    ],
+    "storage-buckets": [
+      "list",
+      "create"
+    ],
+    "users": [
+      "create",
+      "list"
+    ]
+  },
+  "storage_policy_id": "pst_WZ3SQSSYJY"
+}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+### Verify attached policies
+
+Check that the storage policy was successfully attached to the `prod-databases` scope.
+
+<Tabs>
+<Tab heading="UI">
+
+1. Log in to Boundary.
+1. Click **Orgs** in the navigation panel and select the `prod-databases` org.
+1. Click **Org Settings** in the navigation panel for the `prod-databases` org.
+1. Verify that the `soc2-policy` is listed under **Storage Policy**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Read the details of the `prod-databases` org:
+
+   <CodeBlockConfig highlight="1,5-6">
+
+   ```shell-session
+   $ boundary scopes read -id o_aDkVBCDTvY
+   Scope information:
+     Created Time:        Thu, 25 Jan 2024 21:22:45 MST
+     ID:                  o_aDkVBCDTvY
+     Name:                prod-databases
+     Storage Policy ID:   pst_WZ3SQSSYJY
+     Updated Time:        Thu, 25 Jan 2024 22:00:27 MST
+     Version:             7
+
+     Scope (parent):
+       ID:                global
+       Name:              global
+       Type:              global
+
+     Authorized Actions:
+       detach-storage-policy
+       no-op
+       read
+       update
+       delete
+       attach-storage-policy
+    ...
+    ... More Output ...
+    ...
+   ```
+
+   </CodeBlockConfig>
+
+   Verify that the `soc2-policy` ID (`pst_WZ3SQSSYJY` in this example) is listed under **Storage Policy ID**.
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+The following API call is an example of reading the details of the `prod-databases` scope by ID (`o_aDkVBCDTvY` in this example).
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request GET \
+    $BOUNDARY_ADDR/v1/scopes/o_aDkVBCDTvY | jq
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="2-3,63">
+
+```plaintext
+{
+  "id": "o_aDkVBCDTvY",
+  "scope_id": "global",
+  "scope": {
+    "id": "global",
+    "type": "global",
+    "name": "global",
+    "description": "Global Scope"
+  },
+  "name": "prod-databases",
+  "created_time": "2024-01-26T04:22:45.891800Z",
+  "updated_time": "2024-01-26T05:00:27.333892Z",
+  "version": 7,
+  "type": "org",
+  "authorized_actions": [
+    "update",
+    "delete",
+    "attach-storage-policy",
+    "detach-storage-policy",
+    "no-op",
+    "read"
+  ],
+  "authorized_collection_actions": {
+    "auth-methods": [
+      "create",
+      "list"
+    ],
+    "auth-tokens": [
+      "list"
+    ],
+    "groups": [
+      "create",
+      "list"
+    ],
+    "policies": [
+      "list",
+      "create"
+    ],
+    "roles": [
+      "list",
+      "create"
+    ],
+    "scopes": [
+      "list",
+      "list-keys",
+      "rotate-keys",
+      "list-key-version-destruction-jobs",
+      "destroy-key-version",
+      "create"
+    ],
+    "session-recordings": [
+      "list"
+    ],
+    "storage-buckets": [
+      "create",
+      "list"
+    ],
+    "users": [
+      "create",
+      "list"
+    ]
+  },
+  "storage_policy_id": "pst_WZ3SQSSYJY"
+}
+```
+
+</CodeBlockConfig>
+
+Verify that the `soc2-policy` ID (`pst_WZ3SQSSYJY` in this example) is listed under `storage_policy_id`.
+
+</Tab>
+</Tabs>
+
+### Read and list session recordings
+
+New session recordings under the `prod-databases` scope should now show a `retain_until` and `delete_after` date corresponding to the `soc2-policy` storage policy.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Create a new session recording on a target within the `prod-databases` org.
+1. Log in to Boundary.
+1. Click **Session Recordings** in the navigation panel.
+1. Click **View** for a new recording that was made after the storage policy was attached to the `prod-databases` scope.
+1. Under **Session details**, verify that the *Retain until* and *Delete after* dates match the durations defined in the `soc2-policy`.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Create a new session recording on a target within the `prod-databases` org.
+1. Log in to Boundary.
+1. List the available session recordings:
+
+   <CodeBlockConfig highlight="1,4">
+
+   ```shell-session
+   $ boundary session-recordings list
+
+   Session Recording information:
+     ID:                    sr_nt5dFeBYdh
+       Storage Bucket ID:   sb_DC8SPb9uc2
+       Created Time:        Mon, 29 Jan 2024 23:25:31 MST
+       Updated Time:        Tue, 30 Jan 2024 00:26:01 MST
+       Start Time:          Mon, 29 Jan 2024 23:25:32 MST
+       End Time:            Mon, 29 Jan 2024 23:25:53 MST
+       Type:                ssh
+       State:               available
+       Retain Until:        Wed, 29 Jan 2031 23:25:53 MST
+       Delete After:        Sat, 10 May 2031 00:25:53 MDT
+       Authorized Actions:
+         reapply-storage-policy
+         no-op
+         read
+         download
+         delete
+   ```
+
+   </CodeBlockConfig>
+
+   Copy the recording **ID** (such as `sr_nt5dFeBYdh`).
+
+1. Read the recording details by ID.
+
+   <CodeBlockConfig highlight="1,3,6-7,11">
+
+   ```shell-session
+   $ boundary session-recordings read -id sr_nt5dFeBYdh
+
+   Session Recording information:
+     Bytes Down:           710
+     Bytes Up:             36
+     Created Time:         Mon, 29 Jan 2024 23:25:31 MST
+     Delete After:         Sat, 10 May 2031 00:25:53 MDT
+     Duration (Seconds):   21.01881
+     Endpoint:             ssh://xx.xxx.xxx.xxx:22
+     ID:                   sr_nt5dFeBYdh
+     Retain Until:         Wed, 29 Jan 2031 23:25:53 MST
+     Scope ID:             global
+     Start Time:           Mon, 29 Jan 2024 23:25:32 MST
+     State:                available
+     Storage Bucket ID:    sb_DC8SPb9uc2
+     Type:                 ssh
+     Updated Time:         Mon, 29 Jan 2024 23:25:53 MST
+
+     ...
+     ... More Output ...
+     ...
+   ```
+
+   </CodeBlockConfig>
+
+   Verify that the `Retain Until` and `Delete After` dates match the durations defined in the 'soc2-policy'.
+
+</Tab>
+<Tab heading="API call using cURL" group="api">
+
+1. Create a new session recording on a target within the `prod-databases` org.
+1. The following API call is an example of reading the details of a session recording with the `soc2-policy` storage policy applied to the `prod-databases` scope.
+
+   List the available session recordings. This example recursively lists all recordings    within the global scope.
+
+   ```shell-session
+   $ curl --header "Content-Type: application/json" \
+       --header "Authorization: Bearer $(boundary config get-token)" \
+       --request GET \
+       $BOUNDARY_ADDR/v1/session-recordings?recursive=true&scope_id=global | jq
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard highlight="4,57-58">
+
+   ```plaintext
+   {
+     "items": [
+       {
+         "id": "sr_nt5dFeBYdh",
+         "scope": {
+           "id": "global",
+           "type": "global",
+           "name": "global",
+           "description": "Global Scope"
+         },
+         "storage_bucket_id": "sb_DC8SPb9uc2",
+         "created_time": "2024-01-30T06:25:31.873628Z",
+         "updated_time": "2024-01-30T07:26:01.182513Z",
+         "start_time": "2024-01-30T06:25:32.412373Z",
+         "end_time": "2024-01-30T06:25:53.431183Z",
+         "duration": "21.018810s",
+         "type": "ssh",
+         "state": "available",
+         "endpoint": "ssh://xx.xxx.xxx.xxx:22",
+         "create_time_values": {
+           "user": {
+             "id": "u_lLWuYy70Wo",
+             "name": "admin_user",
+             "description": "Global admin user",
+             "scope": {
+               "id": "global",
+               "type": "global",
+               "name": "global",
+               "description": "Global Scope"
+             }
+           },
+           "target": {
+             "id": "tssh_cjTsFSU10p",
+             "name": "recording-target",
+             "scope": {
+               "id": "p_ocJPxzrz2p",
+               "type": "project",
+               "name": "recording-project",
+               "parent_scope_id": "o_aDkVBCDTvY"
+             },
+             "session_max_seconds": 28800,
+             "session_connection_limit": -1,
+             "egress_worker_filter": "\"recording-worker\" in \"/tags/type\"",
+             "type": "ssh",
+             "attributes": {
+               "default_port": 22
+             }
+           }
+         },
+         "authorized_actions": [
+           "reapply-storage-policy",
+           "no-op",
+           "read",
+           "download",
+           "delete"
+         ],
+         "retain_until": "2031-01-30T06:25:53.431183Z",
+         "delete_after": "2031-05-10T06:25:53.431183Z"
+       }
+     ],
+     "response_type": "complete",
+     "list_token":    "GnJNt3mPNy6Cp62MUBCnZPdrQF7cvh4udEoW4CjL5k2ufvesMfKAheSJyNHmKf3zwL5aVKHT4P6q",
+     "sort_by": "created_time",
+     "sort_dir": "desc",
+     "est_item_count": 1
+   }
+   ```
+
+   </CodeBlockConfig>
+
+1. Verify that the `retain_until` and `delete_after` dates match the durations defined in the `soc2-policy`.
+
+Alternatively, the recording details can also be queried directly by ID:
+
+```shell-session
+$ curl --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $(boundary config get-token)" \
+    --request GET \
+    $BOUNDARY_ADDR/v1/session-recordings/sr_nt5dFeBYdh | jq
+```
+
+</Tab>
+</Tabs>
+
+<Note>
+
+  Existing recordings within a scope or its children do not automatically have new or updated polices applied to them. Policies must be re-applied to existing recordings to take effect. Refer to the [Update storage bucket policies](/boundary/docs/session-recording/compliance/update-storage-policy) page for more details.
+
+</Note>
+
+### Manual deletion
+
+Deleting a session recording will set the `delete_after` field of a session recording to the current database time. Deleting a session recording will fail if the retention duration has not been met.
+
+If `delete_after` or `delete_time` is after the current time, the session recording will no longer be included in list responses; it also cannot be read, downloaded or played back.
+
+## Next steps
+
+After the storage policy is configured in Boundary, new recordings within the applied scope adhere to the defined policy. To retroactively apply the configured policy to existing recordings, refer to [update storage bucket policies](/boundary/docs/session-recording/compliance/update-storage-policy).
+
+[storage bucket]: /boundary/docs/domain-model/storage-buckets
+[storage policy]: /boundary/docs/domain-model/storage-policy
+[session recordings]: /boundary/docs/domain-model/session-recordings

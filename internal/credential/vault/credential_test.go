@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
@@ -28,7 +29,7 @@ func TestCredential_New(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
-	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
+	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, globals.UnspecifiedCredentialType, 1)[0]
 	token := cs.Token()
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

@@ -127,7 +127,7 @@ func (c *ClientCertificate) insertQuery() (query string, queryValues []any) {
 		sql.Named("certificate_key_hmac", c.CertificateKeyHmac),
 		sql.Named("key_id", c.KeyId),
 	}
-	return
+	return query, queryValues
 }
 
 func (c *ClientCertificate) deleteQuery() (query string, queryValues []any) {
@@ -135,7 +135,7 @@ func (c *ClientCertificate) deleteQuery() (query string, queryValues []any) {
 	queryValues = []any{
 		c.StoreId,
 	}
-	return
+	return query, queryValues
 }
 
 func (c *ClientCertificate) oplogMessage(opType db.OpType) *oplog.Message {

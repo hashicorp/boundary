@@ -121,7 +121,7 @@ func (c *Credential) updateExpirationQuery() (query string, queryValues []any) {
 		c.PublicId,
 	}
 	query = updateCredentialExpirationQuery
-	return
+	return query, queryValues
 }
 
 func (c *Credential) updateStatusQuery(status CredentialStatus) (query string, queryValues []any) {
@@ -130,5 +130,5 @@ func (c *Credential) updateStatusQuery(status CredentialStatus) (query string, q
 		c.PublicId,
 	}
 	query = updateCredentialStatusQuery
-	return
+	return query, queryValues
 }

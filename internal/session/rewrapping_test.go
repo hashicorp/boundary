@@ -235,3 +235,82 @@ func TestRewrap_sessionRewrapFn(t *testing.T) {
 		assert.Empty(t, got.KeyId)
 	})
 }
+
+func TestRewrap_sessionProxyCertificateRewrapFn(t *testing.T) {
+	ctx := t.Context()
+	t.Run("errors-on-query-error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		wrapper := db.TestWrapper(t)
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT \$1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT \$1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		kmsCache := kms.TestKms(t, conn, wrapper)
+		rw := db.New(conn)
+		mock.ExpectQuery(
+			`SELECT \* FROM "session_proxy_certificate" WHERE key_id=\$1`,
+		).WillReturnError(errors.New("Query error"))
+		err := sessionProxyCertificateRewrapFn(ctx, "some_id", "some_scope", rw, rw, kmsCache)
+		require.Error(t, err)
+	})
+	t.Run("success", func(t *testing.T) {
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, wrapper)
+		iam.TestScopes(t, iam.TestRepo(t, conn, wrapper)) // despite not looking like it, this is necessary for some reason
+		org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		kmsWrapper, err := kmsCache.GetWrapper(context.Background(), proj.PublicId, kms.KeyPurposeSessions)
+		require.NoError(t, err)
+
+		at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+		uId := at.GetIamUserId()
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+		session := TestSession(t, conn, wrapper, ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ProjectId:   proj.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		encryptedKeyValue := []byte("fake-encrypted-key")
+		cert, err := NewProxyCertificate(ctx, session.PublicId, encryptedKeyValue, []byte("fake-cert"))
+		require.NoError(t, err)
+		require.NotNil(t, cert)
+
+		err = cert.Encrypt(ctx, kmsWrapper)
+		require.NoError(t, err)
+		err = rw.Create(ctx, cert)
+		require.NoError(t, err)
+
+		// now things are stored in the db, we can rotate and rewrap
+		assert.NoError(t, kmsCache.RotateKeys(ctx, proj.PublicId))
+		assert.NoError(t, sessionProxyCertificateRewrapFn(ctx, cert.KeyId, proj.PublicId, rw, rw, kmsCache))
+
+		// now we pull it from the db, decrypt it with the new key, and ensure things match
+		got := allocProxyCertificate()
+		got.SessionId = cert.SessionId
+		assert.NoError(t, rw.LookupById(ctx, got))
+
+		kmsWrapper2, err := kmsCache.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeSessions, kms.WithKeyId(got.KeyId))
+		assert.NoError(t, err)
+		newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+		assert.NoError(t, err)
+
+		// decrypt with the new key version and check to make sure things match
+		assert.NoError(t, got.Decrypt(ctx, kmsWrapper2))
+		assert.NotEmpty(t, got.KeyId)
+		assert.Equal(t, newKeyVersionId, got.KeyId)
+		assert.Equal(t, cert.PrivateKey, got.PrivateKey)
+		assert.Equal(t, cert.Certificate, got.Certificate)
+	})
+}

@@ -1,0 +1,283 @@
+---
+layout: docs
+page_title: Troubleshoot the Client Agent
+description: >-
+  Troubleshoot issues with the Boundary Client Agent to ensure it is functioning properly.
+---
+
+# Troubleshoot issues with the Client Agent
+
+The following sections can help you to troubleshoot the Client Agent's behavior. You should proceed through these steps from top to bottom.
+
+## Check the status of the Client Agent
+
+If you experience unexpected behavior, you should first check on the status of the Client Agent.
+You can check the status using the Boundary CLI or the Desktop Client. To check the Client Agent status through the Boundary CLI, use the following command:
+
+```shell-session
+$ boundary client-agent status
+
+Status:
+  Address:
+  https://boundary.corp.com
+  Auth Token Expiration:   167h58m9s
+  Auth Token Id:           at_GBqZUK2ihv
+  Status:                  running
+  Version:                 0.0.1-e561e69839cce148ee5045684bce5b7168c65026
+```
+
+In the Desktop Client, you can find the status of the Client Agent by navigating to **Settings**, and then scrolling to the **Boundary Client Agent** section.
+
+The status command includes various information about the Client Agent, including the runtime status.
+In this example, the runtime status is "running".
+If the status is "paused", the Client Agent is not currently intercepting DNS requests and must be resumed.
+Users can pause the Client Agent, and it will also pause itself if it detects a large number of network failures in a short period of time.
+
+The status also allows you to see whether the current user is authenticated.
+If the response looks like the example above, including showing an auth token ID and expiration, your current user is authenticated.
+If not, you may need to first authenticate to the Client Agent using the CLI or Desktop Client.
+
+The status also sometimes contains a list of errors that have been encountered by the Client Agent.
+The list is ordered by most recent first.
+These errors can help you understand why the Client Agent may not be behaving as expected.
+Please see the section below on common error messages to help diagnose specific errors.
+Note that this list of errors will not be cleared until the next reboot, so it may not necessarily be a sign of something being wrong.
+
+If the status command returns an error, the Client Agent may not be running.
+You can attempt to start the Client Agent using the following commands:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+   ```shell-session
+   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+   ```shell-session
+   net start BoundaryClientAgent
+   ```
+</Tab>
+</Tabs>
+
+## Resume the Client Agent
+
+You can resume the Client Agent using either the Boundary CLI or the Desktop Client. In the CLI, run the following command to resume the Client Agent:
+
+```shell-session
+$ boundary client-agent resume
+The Client Agent has been successfully resumed.
+```
+
+In the Desktop Client, you can resume the Client Agent by selecting the **Resume** button in the **Boundary Client Agent** section of the settings.
+Once the Client Agent has resumed, test if it has started working as expected again.
+
+## Inspect the log file
+
+If you are not able to diagnose the problem by looking at the status or resuming the Client Agent, another step can be to inspect the log file produced by the Client Agent.
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+The log file should be located in `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+The log file should be located in `C:\Windows\Logs\boundary-client-agent.log`.
+
+</Tab>
+</Tabs>
+
+Once you have found the log file, you can look through it to see if you can understand why the Client Agent is not working as expected.
+The list below provides some common errors and explanations.
+
+It may be necessary to increase the logging verbosity of the Client Agent.
+You can increase the verbosity by setting the `log_level` option in the configuration file to `"DEBUG"`.
+See the section on changing the configuration for more information.
+
+## Establish the behavior of the local DNS configuration
+
+The Client Agent works by intercepting DNS requests before they are sent to your regular DNS server.
+If the DNS requests on your system are not sent to the right place, or they are not being answered appropriately, transparent sessions will not work.
+
+You can use the `nslookup` command to understand where the DNS requests are being sent.
+Start by sending a DNS request for `hashicorp.com`:
+
+```shell-session
+$ nslookup hashicorp.com
+;; Truncated, retrying in TCP mode.
+Server:		100.88.241.86
+Address:	100.88.241.86#53
+
+Non-authoritative answer:
+Name:	hashicorp.com
+Address: 76.76.21.21
+```
+
+The important part here is the `Server` field, which contains an IP in the CGNAT range (from `100.64.0.0` to `100.127.255.255`).
+This is a good indication that the Client Agent DNS server is being used as expected.
+
+Next, you can try to make a DNS request to an alias that you expect to work. The following example makes a DNS request to an alias with a value of `mytarget.boundary.dev`:
+
+```shell-session
+$ nslookup mytarget.boundary.dev
+;; Truncated, retrying in TCP mode.
+Server:         fc00:a20a::d7bf:c059
+Address:        fc00:a20a::d7bf:c059#53
+
+Name:    mytarget.boundary.dev
+Address: 100.84.164.9
+```
+
+You can tell two things from this:
+1. The Client Agent is likely able to intercept the DNS request, because the server is a local IPv6 address in the [ULA](https://en.wikipedia.org/wiki/Unique_local_address) range.
+   Both an IPv4 CGNAT range or IPv6 ULA range IP address are indications of this.
+2. The Client Agent is able to identify `mytarget.boundary.dev` as an alias with a target that the requesting user is authorized to connect to, because it responded with a valid DNS response pointing to a local IPv4 address in the CGNAT range.
+   Similarly to above, the IP address in the response may also be an IPv6 address in the ULA range.
+
+If you do not see this kind of response, it may be that the alias you are trying to connect to doesn't exist, or your user is not authorized to connect to it.
+Double check that you are using the correct alias and that your user is authorized to connect to it.
+
+## Flush OS DNS cache
+
+If you still do not see the expected behavior, it can be useful to flush the operating system's DNS cache.
+The exact steps depend on the operating system you use:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+```shell-session
+$ sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+```shell-session
+ipconfig /flushdns
+```
+
+</Tab>
+</Tabs>
+
+After you flush the DNS cache, try connecting to the alias again, or repeat the steps above.
+
+If you are still not able to understand what is wrong, submit a support ticket. Include the `boundary client-agent status` output and the log file in the ticket.
+
+## Common error messages
+
+Refer to the following common error messages for more information about their possible causes and resolutions.
+
+### nodename nor servname provided, or not known / No such host is known
+
+This is a generic error for a failed DNS resolution.
+It can mean a number of different things:
+- The alias doesn't exist or is misspelled.
+- Your user isn't authenticated or doesn't have permission to connect to the target.
+- The Client Agent is not able to intercept DNS requests, it could shut down or paused.
+- The OS DNS cache is interfering with the operation of the Client Agent.
+- The Client Agent may not yet know about the alias.
+   It takes around 2 minutes for the Client Agent to learn about new aliases.
+
+Follow the troubleshooting steps above to resolve the issue.
+
+### failed to listen for DNS on either IPv4 or IPv6
+
+This error happens when some other application on the local machine occupies the ports used by the Boundary Client Agent.
+The Client Agent requires access to port 53 for IPv4 and IPv6, both UDP and TCP.
+Diagnosing what causes the error differs per operating system:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+As a privileged user, you can use the `lsof` program to find what applications are occupying a port, for example:
+
+```shell-session
+$ sudo lsof -nP | grep ":53"
+```
+
+If anything is occupying port 53, you may need to terminate the application before the Client Agent is able to start.
+
+Applications that make use of the Apple Virtualization Framework are known to sometimes occupy this port under
+the name `_mdnsresponder`. If you have any virtualization software, you may need to turn it off before using
+the Client Agent.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+As a privileged user, you can open the **Resource Monitor** and inspect the **Network** > **Listening Ports** section to find any applications that use port 53.
+
+</Tab>
+</Tabs>
+
+Once you have identified which other software is using the port, you can stop it and try to start the Client Agent again.
+
+### failed to refresh alias cache: error="fetching resolvable aliases: error performing client request during List call"
+
+This usually implies that there is a problem reaching the internet or the Boundary controller.
+The error is related to the periodic updating of aliases used by the Client Agent to know whether a DNS request matches an alias or not.
+
+HashiCorp recommends that you pause the Client Agent and examine the status and logs for further errors:
+
+```shell-session
+$ boundary client-agent pause
+```
+
+Follow the troubleshooting steps to understand why the Client Agent is not able to reach the controller.
+
+### sendmsg: broken pipe
+
+On MacOS versions 15.1 and 15.2, the firewall may incorrectly block the Client Agent from sending DNS responses. To resolve this issue,
+upgrade to MacOS version 15.3 or later.
+
+It may be neccessary to explicitly allow the `boundary-client-agent` process access to incoming network connections.
+
+From the Firewall options in System Settings, toggle the `boundary-client-agent` to **Allow incoming connections**.
+
+### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
+
+This error arises when you use an alias to connect to an SSH target after the first successful connection using that alias. The issue occurs because Boundary workers generate a new host key on every new SSH connection. You can safely ignore the warning using the `StrictHostKeyChecking=no` command line option:
+
+```shell-session
+$ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
+```
+
+You can also remove the existing server host key from the `~/.ssh/known_hosts` file to avoid the error.
+
+### This site can't be reached... DNS_PROBE_FINISHED_NXDOMAIN
+
+This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
+When you copy the alias from the **Target** page and paste it in the browser, you receive the error.
+The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
+
+A conflicting service may be preventing the Client Agent from receiving DNS requests.
+The service may be bound to port 53.
+Restarting your computer may resolve the conflict.
+
+### error when attempting to resume... bind address already in use: invalid state transition
+
+This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
+When you attempt to use the alias to connect to the target, you receive the error message in Boundary Desktop.
+The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
+
+A conflicting service may be preventing the Client Agent from receiving DNS requests.
+The service may be bound to port 53.
+Restarting your computer may resolve the conflict.
+
+## Transparent sessions known issues
+
+Refer to the following table for known issues with the Client Agent that may affect transparent sessions:
+
+| Issue | Description |
+| ----- | ----------- |
+| SSH connection fails with man-in-the-middle warning | On Linux systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. <br /><br /> For more information, refer to [WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!](/boundary/docs/api-clients/client-agent#warning-remote-host-indentification-has-changed-it-is-possible-that-someone-is-doing-something-nasty) in the **Common error messages** section.|
+| Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the Client Agent before you can use transparent sessions. |
+| Windows installer prompts for restart | When you install Boundary, the Windows installer occasionally prompts you to restart your computer, however it is not necessary. |
+| Boundary Client Agent resumes on reboot | If the Client Agent is paused and the machine is rebooted, the Client Agent will be resumed after the reboot. |
+| Single-word aliases do not work on Windows | If you create an alias consisting of a single word without a dot (`.`), the alias will not work on Windows. |
+| Windows installer does not support partial installations | The Windows installer fails to start the Client Agent if the Desktop client is not installed at the same time. |
+| Alias connection failures inside containers/VMs | Using transparent sessions rely on network access to the local network of the computer the Client Agent is running on. Network enclaves such as those created by Docker containers and VMs cannot reach this network. |
+| DNS lookup is broken on MacOS 15.1 and 15.2 | MacOS 15.1 and 15.2 may incorrectly block DNS lookups for the Client Agent. This issue is resolved in MacOS 15.3 and later. |
