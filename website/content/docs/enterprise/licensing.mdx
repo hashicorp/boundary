@@ -13,7 +13,7 @@ If you don't yet have an acccount team, but are interested in Boundary Enterpris
 
 ## Enable Boundary Enterprise
 
-Once you have received your valid Boundary license, there are two options for enabling Boundary Enterprise:
+Once you receive your valid Boundary license, there are two options for enabling Boundary Enterprise:
 
 1. You may set the enterprise license for Boundary using an environment variable.
 Set the `BOUNDARY_LICENSE` environment variable to the license key value you received:
@@ -55,14 +55,14 @@ Refer to the sample configurations below:
   }
   ```
 
-  Refer to the [controller](/boundary/docs/configuration/controller) configuration  documentation for more information.
+  Refer to the [controller](/boundary/docs/configuration/controller) configuration documentation for more information.
 
 ## License expiration
 
 When the Boundary license expires, the controller performs a graceful shutdown.
 Ongoing sessions continue to run, but you cannot create any new sessions.
 
-Prior to the expiration date, Boundary logs five warnings as system events to the event stream at the following intervals:
+Prior to the expiration date, Boundary logs five system event warnings to the event stream at the following intervals:
 
 | Warning | Interval                           |
 |---------| ---------------------------------- |
@@ -150,4 +150,4 @@ There is no downtime associated with updating an expired license key.
 
 Refer to the [Upgrade and database migration](/boundary/tutorials/self-managed-deployment/upgrade-version) tutorial for step-by-step instructions to upgrade Boundary to its latest version, including database backup and data migration.
 
-Refer to [Monitor Boundary] for more information about configuring Boundary to monitor events.
+Refer to [Monitor Boundary](/boundary/docs/monitor) for more information about configuring Boundary to monitor events.
