@@ -19,12 +19,12 @@ $newPath = $existingPath + ";" + $destination
 )
 
 # create a trigger that will run boundary at startup
-$trigger = New-ScheduledTaskTrigger -AtStartup;
+$trigger = New-ScheduledTaskTrigger -AtStartup
 $configPath = Join-path ${test_dir} -ChildPath "worker.hcl"
 $jobLog = Join-path ${test_dir} -ChildPath "worker.out"
 
-New-Item -Path C:/Test/worker_task.ps1 -ItemType File -Value "boundary server -config $configPath *> $jobLog;"
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-File C:/Test/worker_task.ps1';
+New-Item -Path C:/Test/worker_task.ps1 -ItemType File -Value "boundary server -config $configPath *> $jobLog"
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-File C:/Test/worker_task.ps1'
 Register-ScheduledTask -TaskName "boundary" -Action $action -Trigger $trigger -User "SYSTEM" -RunLevel Highest -Force
 
 # set the task to have no execution time limit
