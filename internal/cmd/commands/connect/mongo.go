@@ -40,6 +40,15 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		Completion: complete.PredictNothing,
 		Usage:      `Specifies the database name to pass through to the client.`,
 	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "auth-source",
+		Target:     &c.flagAuthSource,
+		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
+		Completion: complete.PredictNothing,
+		Default:    "admin",
+		Usage:      `Specifies the authentication database for MongoDB. Defaults to "admin" for root-style users.`,
+	})
 }
 
 type mongoFlags struct {
@@ -92,6 +101,15 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		// Add database name
 		if c.flagDbname != "" {
 			connectionString += "/" + c.flagDbname
+		}
+
+		// Add authSource parameter if not already present
+		authSource := c.flagAuthSource
+
+		if !strings.Contains(connectionString, "?") {
+			connectionString += "?authSource=" + authSource
+		} else if !strings.Contains(strings.ToLower(connectionString), "authsource=") {
+			connectionString += "&authSource=" + authSource
 		}
 
 		args = append(args, connectionString)

@@ -67,6 +67,7 @@ type Command struct {
 	flagExec       string
 	flagUsername   string
 	flagDbname     string
+	flagAuthSource string
 
 	// HTTP
 	httpFlags

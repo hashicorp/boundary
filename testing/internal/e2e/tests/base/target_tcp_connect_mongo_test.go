@@ -41,7 +41,7 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 		}
 	})
 
-	u, err := url.Parse(c.UriNetwork)
+	u, err := url.Parse(c.UriLocalhost)
 	require.NoError(t, err, "Failed to parse MongoDB URL")
 
 	user, hostname, port, db := u.User.Username(), u.Hostname(), u.Port(), u.Path[1:]
@@ -49,10 +49,15 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	t.Logf("MongoDB info: user=%s, db=%s, host=%s, port=%s, password-set:%t",
 		user, db, hostname, port, pwSet)
 
-	// Wait for MongoDB to be ready
+	networkUrl, err := url.Parse(c.UriNetwork)
+	require.NoError(t, err)
+	containerName := networkUrl.Hostname()
+
 	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", hostname,
-			"mongosh", "--eval", "db.runCommand('ping')").Run()
+		cmd := exec.CommandContext(ctx, "docker", "exec", containerName,
+			"mongosh", "-u", user, "-p", pw, "--authenticationDatabase", "admin",
+			"--eval", "db.runCommand('ping')")
+		return cmd.Run()
 	})
 	require.NoError(t, err, "MongoDB container failed to start")
 
@@ -99,6 +104,7 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 		"connect", "mongo",
 		"-target-id", targetId,
 		"-dbname", db,
+		"-auth-source", "admin",
 	)
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
@@ -107,10 +113,12 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = f.Write([]byte("show collections\n"))
+	_, err = f.Write([]byte("db.runCommand('ping')\n"))
 	require.NoError(t, err)
+
 	_, err = f.Write([]byte("db.getName()\n"))
 	require.NoError(t, err)
+
 	_, err = f.Write([]byte("exit\n"))
 	require.NoError(t, err)
 	_, err = f.Write([]byte{4})
@@ -122,6 +130,9 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	output := buf.String()
 	t.Logf("MongoDB session output: %s", output)
 
-	require.Contains(t, output, db, "Session did not return expected database query result")
+	require.Contains(t, output, `ok:`, "MongoDB ping command should succeed")
+	require.Contains(t, output, `1`, "MongoDB ping should return ok: 1")
+	require.Contains(t, output, db, "Database name should appear in the session")
+	require.NotContains(t, output, "MongoServerSelectionError", "Should not have connection errors")
 	t.Log("Successfully connected to MongoDB target")
 }

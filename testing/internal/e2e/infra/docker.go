@@ -364,7 +364,7 @@ func StartMongo(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	err = pool.Client.PullImage(docker.PullImageOptions{
 		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
 		Tag:        tag,
- 	}, docker.AuthConfiguration{})
+	}, docker.AuthConfiguration{})
 	require.NoError(t, err)
 
 	networkAlias := "e2emongo"
@@ -379,19 +379,30 @@ func StartMongo(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 			"MONGO_INITDB_ROOT_USERNAME=" + mongoUser,
 			"MONGO_INITDB_ROOT_PASSWORD=" + mongoPassword,
 			"MONGO_INITDB_DATABASE=" + mongoDb,
- 		},
- 		ExposedPorts: []string{"27017/tcp"},
- 		Name:         networkAlias,
- 		Networks:     []*dockertest.Network{network},
- 	})
+		},
+		ExposedPorts: []string{"27017/tcp"},
+		Name:         networkAlias,
+		Networks:     []*dockertest.Network{network},
+	})
 	require.NoError(t, err)
 
 	return &Container{
- 		Resource:     resource,
- 		// Root user authenticates against the admin database by default
- 		UriLocalhost: fmt.Sprintf("mongodb://%s:%s@localhost:27017/%s?authSource=admin", mongoUser, mongoPassword, mongoDb),
- 		UriNetwork:   fmt.Sprintf("mongodb://%s:%s@%s:27017/%s?authSource=admin", mongoUser, mongoPassword, networkAlias, mongoDb),
- 	}
+		Resource: resource,
+		UriLocalhost: fmt.Sprintf(
+			"mongodb://%s:%s@%s/%s?authSource=admin",
+			mongoUser,
+			mongoPassword,
+			resource.GetHostPort("27017/tcp"),
+			mongoDb,
+		),
+		UriNetwork: fmt.Sprintf(
+			"mongodb://%s:%s@%s:27017/%s?authSource=admin",
+			mongoUser,
+			mongoPassword,
+			networkAlias,
+			mongoDb,
+		),
+	}
 }
 
 // StartCassandra starts a Cassandra database in a docker container.
