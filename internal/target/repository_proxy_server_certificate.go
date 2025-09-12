@@ -102,7 +102,7 @@ func fetchTargetProxyServerCertificate(ctx context.Context, r db.Reader, w db.Wr
 
 	// If a cert is not found, this target type does not support proxy server certificates/ it was not generated during target creation.
 	if targetCert.Certificate == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, "target proxy server certificate not found")
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "target proxy server certificate not found", errors.WithoutEvent())
 	}
 
 	return maybeRegenerateCert(ctx, targetCert, w, wrapper, sessionMaxSeconds)
@@ -135,7 +135,7 @@ func fetchTargetAliasProxyServerCertificate(ctx context.Context, r db.Reader, w 
 	}
 
 	if targetCert.Certificate == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, "target proxy server certificate not found")
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "target proxy server certificate not found", errors.WithoutEvent())
 	}
 
 	aliasCert := allocTargetAliasProxyCertificate()
