@@ -10,6 +10,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   This new helper command allows users to authorize sessions against MySQL
   targets and automatically invoke a MySQL client with the appropriate
   connection parameters and credentials.
+* cli: Added `boundary connect mongo` command for connecting to MongoDB targets.
+  This new helper command allows users to authorize sessions against MongoDB
+  targets and automatically invoke a MongoDB client with the appropriate
+  connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 * cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
