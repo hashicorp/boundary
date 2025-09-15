@@ -372,7 +372,7 @@ func Test_FetchCertsWithinLookupTargetForSessionAuthorization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := repo.LookupTargetForSessionAuthorization(ctx, tt.publicId, tt.opt...)
+			got, err := repo.LookupTargetForSessionAuthorization(ctx, tt.publicId, proj.PublicId, tt.opt...)
 			require.NoError(err)
 			assert.NotNil(got)
 			if tt.wantCert {

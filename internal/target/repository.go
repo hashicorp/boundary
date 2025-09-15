@@ -93,12 +93,19 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 // with its host source ids, credential source ids, and server certificate, if applicable.  If the target is not
 // found, it will return nil, nil.
 // Supported option: WithAlias if the session authorization uses a target alias
-func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, publicId string, opt ...Option) (Target, error) {
+func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, publicId string, projectId string, opt ...Option) (Target, error) {
 	const op = "target.(Repository).LookupTargetForSessionAuthorization"
 	opts := GetOpts(opt...)
-
-	if publicId == "" {
+	switch {
+	case publicId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case projectId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	target := allocTargetView()
@@ -107,7 +114,7 @@ func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, pu
 	var hostSources []HostSource
 	var credSources []CredentialSource
 	var cert *ServerCertificate
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -131,11 +138,6 @@ func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, pu
 			}
 			if targetAddress != nil {
 				address = targetAddress.GetAddress()
-			}
-
-			databaseWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeDatabase)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 			}
 
 			if opts.WithAlias != nil {
