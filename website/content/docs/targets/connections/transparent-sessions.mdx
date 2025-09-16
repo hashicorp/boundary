@@ -37,13 +37,25 @@ Alternatively, you can use the Boundary Desktop Client to start a session, and c
 $ ssh 127.0.0.1 -p 55374
 ```
 
-With transparent sessions, you use the target alias as the address to establish a session. If the Client Agent is runningand you have authenticated using the CLI or Boundary Desktop Client, you can use the alias to start a session:
+With transparent sessions, you use the target alias as the address to establish a session. If the Client Agent is running and you have authenticated using the CLI or Boundary Desktop Client, you can use the alias to start a session:
 
 ```shell-session
 $ ssh my.alias.name
 ```
 
 Boundary starts the session as usual, and brokers or injects any credentials you have configured.
+
+### RDP targets (BETA)
+
+@include 'alerts/beta.mdx'
+
+Due to a port conflict on modern Windows operating systems (Windows 11+, Windows Server 2025), transparent sessions cannot use the default RDP port, 3389.
+To connect to an RDP target from a Windows client using a transparent session, you must use a custom port.
+Refer to [RDP credential injection compatibility](/boundary/docs/credentials/rdp-testing-and-compatibility-matrix) for more information.
+
+When you connect to the RDP target using transparent sessions, you must specify the custom port with the alias in the RDP client, for example:
+
+`my.alias.name:33890`
 
 ## Next steps
 
@@ -60,3 +72,5 @@ To establish transparent sessions to other services:
 ## More information
 
 Refer to [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot) for a list of [known issues](/boundary/docs/client-agent/troubleshoot#transparent-sessions-known-issues) involving transparent sessions.
+
+Refer to [RDP credential injection compatibility](/boundry/docs/credentials/rdp-testing-and-compatibility-matrix) for more information about what is supported for the beta RDP release.
