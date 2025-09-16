@@ -110,9 +110,11 @@ Complete the following steps to create a new target and new alias at the same ti
    - **Name**: Enter the target name for identification purposes.
    - **Description**: (Optional) Enter an optional description for identification purposes.
    - **Type**: Select the target type.
-   You can create SSH or TCP targets.
+    You can create RDP (BETA), SSH, or TCP targets.
    - **Target Address**: (Optional) Enter a valid IP address or DNS name.
-   Alternatively, you can configure host catalogs and host sets.
+    Alternatively, you can configure host catalogs and host sets.
+
+    If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
    - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
    - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
    - **Maximum Duration**: (Required) Enter a maximum duration for sessions on this target, in seconds.
@@ -153,6 +155,9 @@ Complete the following steps to create a new target and new alias at the same ti
      You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
    - `-address=<string>` - An optional valid network address for the target to connect to.
      You cannot use an address alongside host sources.
+
+     If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`.
+     For RDP targets that use NTLM authentication, you can use the IP address.
    - `-default-client-port=<string>` - The default client port on the target.
    - `-default-port=<string>` - The default port on the target.
      If you do not specify a default port, Boundary uses port 22.
@@ -171,7 +176,7 @@ A value of `-1` means the connections are unlimited.
    - `-with-alias-value=<string>` - The value of the alias that you want to use to represent the target.
      Use this parameter to create the alias and target, and associate them with each other, at the same time.
 
-     Note that you can create SSH or TCP [target types](/boundary/docs/domain-model/targets#target-types).
+     You can create RDP (BETA), SSH, or TCP [target types](/boundary/docs/domain-model/targets#target-types).
      The example command in this section creates an SSH target.
 
 </Tab>
@@ -313,6 +318,12 @@ Target aliases point directly to the target they are associated with. You can as
 [Host sets](/boundary/docs/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale.  When Boundary authorizes a session, a target assigned a host set will select a host from the host set at random to use for all connections for the session.
 
 You assign [direct target addresses](/boundary/docs/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
+
+<Note>
+
+If you set a target address for RDP targets (BETA) that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
+
+</Note>
 
 When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses.
 
@@ -460,7 +471,7 @@ $ boundary targets add-host-sources -id tssh_lhH5pa425G -host-sourchsst_56oiL0Wa
 
 <Note>
 
-  In the following examples, Terraform resources are named with underscores instead of dashes, such as `linux_dev_servers`. The target alias values use dashes, such as `dev-041.linux-dev.app-servers.eng`. You do not need to follow these naming conventions. 
+  In the following examples, Terraform resources are named with underscores instead of dashes, such as `linux_dev_servers`. The target alias values use dashes, such as `dev-041.linux-dev.app-servers.eng`. You do not need to follow these naming conventions.
 
 </Note>
 
