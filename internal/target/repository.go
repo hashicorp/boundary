@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // RepositoryFactory enables `target.Repository` object instantiation,
@@ -49,6 +50,12 @@ type Repository struct {
 	// These are passed in on the repository constructor using `WithPermissions`, meaning the
 	// `Repository` object is contextualized to whatever the request context is.
 	permissions []perms.Permission
+}
+
+// getTargetProxyServerCertificateFn can be overridden for testing or extension purposes.
+// By default, it returns nil, nil.
+var getTargetProxyServerCertificateFn = func(ctx context.Context, r *Repository, target targetView, databaseWrapper wrapping.Wrapper, opts options) (*ServerCertificate, error) {
+	return nil, nil
 }
 
 // NewRepository creates a new target Repository.
@@ -140,16 +147,9 @@ func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, pu
 				address = targetAddress.GetAddress()
 			}
 
-			if opts.WithAlias != nil {
-				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds())
-				if err != nil && !errors.IsNotFoundError(err) {
-					return errors.Wrap(ctx, err, op)
-				}
-			} else {
-				cert, err = fetchTargetProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, databaseWrapper, target.GetSessionMaxSeconds())
-				if err != nil && !errors.IsNotFoundError(err) {
-					return errors.Wrap(ctx, err, op)
-				}
+			cert, err = getTargetProxyServerCertificateFn(ctx, r, target, databaseWrapper, opts)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},

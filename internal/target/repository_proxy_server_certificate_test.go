@@ -302,7 +302,10 @@ func TestFetchTargetAliasProxyServerCertificate(t *testing.T) {
 	}
 }
 
-func Test_FetchCertsWithinLookupTargetForSessionAuthorization(t *testing.T) {
+// Test_LookupTargetForSessionAuthorization tests looking up a target for session both with and without an alias.
+// The target used in this test does not have a proxy server certificate because CE targets do not support proxy server certificates.
+// Fetching the proxy server certificate is tested in other enterprise tests.
+func Test_LookupTargetForSessionAuthorization(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -312,74 +315,50 @@ func Test_FetchCertsWithinLookupTargetForSessionAuthorization(t *testing.T) {
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
-	databaseWrapper, err := testKms.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeDatabase)
-	require.NoError(t, err)
 
 	tar := targettest.TestNewTestTarget(ctx, t, conn, proj.PublicId, "test-target")
-	tar2 := targettest.TestNewTestTarget(ctx, t, conn, proj.PublicId, "test-target2")
 
 	// Create an alias
 	aliasValue := "test-alias"
 	alias := talias.TestAlias(t, rw, aliasValue, talias.WithDestinationId(tar.GetPublicId()))
-	require.NoError(t, err)
 	require.NotNil(t, alias)
-
-	// Create our default localhost target cert
-	cer, err := target.NewTargetProxyCertificate(ctx, target.WithTargetId(tar.GetPublicId()))
-	require.NoError(t, err)
-	require.NotNil(t, cer)
-	id, err := db.NewPublicId(ctx, globals.ProxyServerCertificatePrefix)
-	require.NoError(t, err)
-	cer.PublicId = id
-	err = cer.Encrypt(ctx, databaseWrapper)
-	require.NoError(t, err)
-	err = rw.Create(ctx, cer)
-	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
 		publicId string
 		opt      []target.Option
-		wantCert bool
+		wantErr  bool
 	}{
 		{
-			name:     "success-get-target-with-certificate",
-			publicId: tar.GetPublicId(),
-			wantCert: true,
-		},
-		{
-			name:     "success-get-target-with-alias-certificate",
-			publicId: tar.GetPublicId(),
-			opt: []target.Option{
-				target.WithAlias(alias),
-			},
-			wantCert: true,
-		},
-		{
 			name:     "success-get-target-no-cert",
-			publicId: tar2.GetPublicId(),
-			wantCert: false,
+			publicId: tar.GetPublicId(),
+			wantErr:  false,
 		},
 		{
 			name:     "success-get-target-no-cert-with-alias",
-			publicId: tar2.GetPublicId(),
+			publicId: tar.GetPublicId(),
 			opt: []target.Option{
 				target.WithAlias(alias),
 			},
-			wantCert: false,
+			wantErr: false,
+		},
+		{
+			name:     "fail-missing-target-id",
+			publicId: "",
+			wantErr:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.LookupTargetForSessionAuthorization(ctx, tt.publicId, proj.PublicId, tt.opt...)
-			require.NoError(err)
-			assert.NotNil(got)
-			if tt.wantCert {
-				assert.NotNil(got.GetProxyServerCertificate())
-			} else {
-				assert.Nil(got.GetProxyServerCertificate())
+			if tt.wantErr {
+				require.Error(err)
+				return
 			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Nil(got.GetProxyServerCertificate())
 		})
 	}
 }
