@@ -350,12 +350,20 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), opts.withSessionTeardownTimeout)
+	return p.CloseSession(opts.withSessionTeardownTimeout)
+}
+
+// CloseSession attempts to close the currently proxied session by sending a
+// request to do so to the worker proxying the connection
+func (p *ClientProxy) CloseSession(sessionTeardownTimeout time.Duration) error {
+	if sessionTeardownTimeout == 0 {
+		sessionTeardownTimeout = sessionCancelTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), sessionTeardownTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)
 	}
-
 	return nil
 }
 
