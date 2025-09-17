@@ -10,7 +10,7 @@ description: >-
 Boundary brokers secure, auditable connections to infrastructure targets while keeping credentials hidden and enforcing least-privilege policy.
 The security model ensures [confidentiality, integrity, authentication, and accountability](http://www.wikipedia.org/wiki/Information_security) for all access and session brokering operations.
 
-Defense in depth is crucial for secure pivileged access management, and deployment requirements may differ dramatically depending on your use case.
+Defense in depth is crucial for secure privileged access management, and deployment requirements may differ dramatically depending on your use case.
 This documentation may need to be adapted to your situation, but the general mechanisms for a secure Boundary deployment revolve around:
 
 - [mTLS](/boundary/docs/secure/encryption/connections-tls) - Mutual TLS authentication between client, controller, and worker components prevents unauthorized access by requiring all parties to present valid certificates.
@@ -43,7 +43,7 @@ Boundary supports highly available deployments to maintain access in case of inf
 The following are explicitly not considered part of the Boundary threat model:
 
 - **Protecting against compromise of Boundary hosts (controllers, workers)**.
-An attacker with arbitrary code execution or privileged access on controller or worker hosts can undermine security guaranteees.
+An attacker with arbitrary code execution or privileged access on controller or worker hosts can undermine security guarantees.
 This includes access to:
   - The Boundary data directory containing configuration and state
   - Memory of running Boundary controller or worker processes
