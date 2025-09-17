@@ -53,7 +53,7 @@ This includes access to:
   - If an attacker compromises a user's device and obtains valid Boundary credentials, they can perform actions with those credentials' privileges.
   - Brokered credentials may be returned to the user's device and displayed in plain text.
   - Boundary Client Agent specifics:
-      - The Client Agent stores session credentials and related information in memory and in the user's OS-dependent keyring.
+      - The Client Agent stores session credentials and related information in memory.
       Boundary CLI persists auth tokens to platform-specific keyring storage.
       If an attacker can read the memory of the Client Agent process or has compromised the OS user account under which the Client Agent is running and authenticated, they may be able to access these active session credentials.
       - The Client Agent's security relies on the OS user context; an OS user can only connect to sessions managed by the Client Agent if they are the same OS user that initiated the DNS lookup that created the session.
