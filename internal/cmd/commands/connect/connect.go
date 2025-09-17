@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/util"
@@ -336,6 +337,19 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
+	var addr netip.Addr
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
+	}
+	addr, err := netip.ParseAddr(c.flagListenAddr)
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
+		return base.CommandCliError
+	}
+	listenAddr := netip.AddrPortFrom(addr, uint16(c.flagListenPort))
+
+	var clientProxy *apiproxy.ClientProxy
+
 	authzString := c.flagAuthzToken
 	switch {
 	case authzString != "":
@@ -431,28 +445,35 @@ func (c *Command) Run(args []string) (retCode int) {
 			HostId:          sa.HostId,
 			Credentials:     sa.Credentials,
 		}
+
+		// the session was created specifically for this `boundary connect`
+		// command, and should be closed as soon as the command has exited
+		defer func() {
+			var err error
+			switch {
+			case clientProxy != nil:
+				err = clientProxy.CloseSession(0)
+			default:
+				// this is a weird special case. normally we let the client proxy end
+				// the session, but it failed to be inited, so we need to create the
+				// session client to ensure we don't leave hanging sessions
+				sClient := sessions.NewClient(client)
+				_, err = sClient.Cancel(c.Context, sa.SessionId, 0, sessions.WithAutomaticVersioning(true))
+			}
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("Error closing session after command end: %w", err))
+			}
+		}()
+
 		authzString = sa.AuthorizationToken
 	}
-
-	var listenAddr netip.AddrPort
-	var addr netip.Addr
-	if c.flagListenAddr == "" {
-		c.flagListenAddr = "127.0.0.1"
-	}
-	addr, err := netip.ParseAddr(c.flagListenAddr)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
-		return base.CommandCliError
-	}
-
-	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
 	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
 	if listenAddr.IsValid() {
 		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
 	}
-	clientProxy, err := apiproxy.New(
+	clientProxy, err = apiproxy.New(
 		c.proxyCtx,
 		authzString,
 		apiProxyOpts...,
