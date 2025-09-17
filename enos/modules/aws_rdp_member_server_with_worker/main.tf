@@ -75,6 +75,7 @@ resource "aws_instance" "worker" {
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
   iam_instance_profile   = var.iam_name
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
