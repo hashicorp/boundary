@@ -303,7 +303,7 @@ func TestFetchTargetAliasProxyServerCertificate(t *testing.T) {
 }
 
 // Test_LookupTargetForSessionAuthorization tests looking up a target for session both with and without an alias.
-// The target used in this test does not have a proxy server certificate because CE targets do not support proxy server certificates.
+// The target used in this test does not have a proxy server certificate because TCP targets do not currently support proxy server certificates.
 // Fetching the proxy server certificate is tested in other enterprise tests.
 func Test_LookupTargetForSessionAuthorization(t *testing.T) {
 	t.Parallel()

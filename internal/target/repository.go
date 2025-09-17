@@ -53,7 +53,7 @@ type Repository struct {
 }
 
 // getTargetProxyServerCertificateFn can be overridden for testing or extension purposes.
-// By default, it returns nil, nil.
+// By default, it returns nil, nil because TCP targets do not currently use a proxy server certificate.
 var getTargetProxyServerCertificateFn = func(ctx context.Context, r *Repository, target targetView, databaseWrapper wrapping.Wrapper, opts options) (*ServerCertificate, error) {
 	return nil, nil
 }
