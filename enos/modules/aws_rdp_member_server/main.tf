@@ -132,10 +132,16 @@ resource "aws_instance" "member_server" {
                   $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
                   $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
                   New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+                  # Set the correct permissions on the authorized_keys file
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
 
                   ## Ensure the SSH agent pulls in the new key.
                   Set-Service -Name ssh-agent -StartupType "Automatic"
                   Restart-Service -Name ssh-agent
+                  Restart-Service -Name sshd
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
