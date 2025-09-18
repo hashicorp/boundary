@@ -67,6 +67,8 @@ $ boundary targets update rdp [options] [args]
 
 - `-address=<string>` - An optional valid network address for the target to connect to.
 You cannot use an address alongside host sources.
+
+  If you set a target address for RDP targets (BETA) that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
 - `-default-client-port=<string>` - The default client port on the target.
 - `-default-port=<string>` - The default port on the target.
 If you do not specify a default port, Boundary uses port 3389.
