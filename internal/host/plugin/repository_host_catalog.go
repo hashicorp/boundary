@@ -111,12 +111,12 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
 	// If secrets were passed in, HMAC 'em
 	if c.Secrets != nil && len(c.Secrets.GetFields()) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-		}
 		if err := c.hmacSecrets(ctx, databaseWrapper); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
 		}
@@ -188,11 +188,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				dbWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-				}
-				if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+				if err := hcSecret.encrypt(ctx, databaseWrapper); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				if hcSecret != nil {
@@ -280,6 +276,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
 	}
 
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
 	var updateAttributes bool
@@ -318,10 +319,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				nullFields = append(nullFields, "SecretsHmac")
 			default:
 				// If secrets were passed in, HMAC 'em
-				databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-				}
 				if err := newCatalog.hmacSecrets(ctx, databaseWrapper); err != nil {
 					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
 				}
@@ -386,10 +383,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		}
 	}
 
-	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeDatabase)
-	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-	}
 	// Get the oplog.
 	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -479,7 +472,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+					if err := hcSecret.encrypt(ctx, databaseWrapper); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
 
