@@ -160,8 +160,8 @@ resource "aws_instance" "client" {
 
                   # Set up SSH so we can remotely manage the instance
                   ## Install OpenSSH Server and Client
-                  # Loop to make sure that SSH installs correctly                       
-                  $elapsed = 0          
+                  # Loop to make sure that SSH installs correctly
+                  $elapsed = 0
                   do {
                     try {
                       Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
@@ -215,10 +215,16 @@ resource "aws_instance" "client" {
                   $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
                   $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
                   New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+                  # Set the correct permissions on the authorized_keys file
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
 
                   ## Ensure the SSH agent pulls in the new key.
                   Set-Service -Name ssh-agent -StartupType "Automatic"
                   Restart-Service -Name ssh-agent
+                  Restart-Service -Name sshd
 
                   ## Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
