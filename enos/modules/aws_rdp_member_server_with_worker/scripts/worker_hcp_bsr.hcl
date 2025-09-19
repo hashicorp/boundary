@@ -13,15 +13,18 @@ listener "tcp" {
   purpose = "proxy"
 }
 
+hcp_boundary_cluster_id = "${hcp_boundary_cluster_id}"
+
 # worker block for configuring the specifics of the
 # worker service
 worker {
   public_addr = "${worker_public_ip}"
-  name = "win-worker-0"
-  initial_upstreams = ["[${controller_ip}]:9201"]
   tags {
     type = ["worker", "rdp", "windows"]
   }
+
+  auth_storage_path = "${test_dir}/worker"
+  recording_storage_path = "${test_dir}/recordings"
 }
 
 # Events (logging) configuration. This
@@ -53,10 +56,4 @@ events {
       }
     }
   }
-}
-
-kms "awskms" {
-  purpose    = "worker-auth"
-  region     = "${aws_region}"
-  kms_key_id = "${aws_kms_key}"
 }
