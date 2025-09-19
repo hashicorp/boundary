@@ -112,19 +112,11 @@ Injected credentials allow users to securely connect to remote hosts using RDP, 
 
 For more information about known limitations, configuration requirements, and software compatibility for the RDP credential injection beta, refer to [RDP credential injection compatibiity](/boundary/docs/credentials/rdp-testing-and-compatibility-matrix).
 
-RDP targets have the following additional attributes:
+RDP targets have the following additional attribute:
 
 - `default_port` - (optional)
   The default port to set on this target.
   If this is not specified the default port will be 3389.
-
-- `enable_session_recording` - (optional)
-  Set to `true` to enable [session recordings][] for a target.
-  If you enable session recording, the `storage_bucket_id` is required.
-
-- `storage_bucket_id` - (optional)
-  Designates the storage bucket to be used for session recording.
-  This attribute is required if you set `enable_session_recording` to `true`.
 
 ### SSH target attributes
 
