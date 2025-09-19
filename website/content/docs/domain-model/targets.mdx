@@ -91,7 +91,7 @@ A target has the following configurable attributes:
 
 ## Target types
 
-Boundary supports RDP (BETA), SSH, and TCP target types.
+Boundary supports RDP, SSH, and TCP target types.
 RDP and SSH targets **must** have at least one injected application credential to establish the connection.
 A TCP target **cannot** have any injected application credentials.
 
@@ -103,11 +103,9 @@ Note the following target type requirements:
 
 You can configure brokered credentials for use with SSH targets for purposes other than establishing the initial SSH connection.
 
-### RDP target attributes (BETA)
+### RDP target attributes
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
-
-@include 'alerts/beta.mdx'
 
 RDP targets use injected application credentials to authenticate an RDP session between the client and end host in Windows environments that use Active Directory authentication.
 Injected credentials allow users to securely connect to remote hosts using RDP, while never being in the possession of a valid credential for that target host.

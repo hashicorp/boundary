@@ -45,9 +45,7 @@ $ ssh my.alias.name
 
 Boundary starts the session as usual, and brokers or injects any credentials you have configured.
 
-### RDP targets (BETA)
-
-@include 'alerts/beta.mdx'
+### RDP targets
 
 Due to a port conflict on modern Windows operating systems (Windows 11+, Windows Server 2025), transparent sessions cannot use the default RDP port, 3389.
 To connect to an RDP target from a Windows client using a transparent session, you must use a custom port.
@@ -72,5 +70,3 @@ To establish transparent sessions to other services:
 ## More information
 
 Refer to [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot) for a list of [known issues](/boundary/docs/client-agent/troubleshoot#transparent-sessions-known-issues) involving transparent sessions.
-
-Refer to [RDP credential injection compatibility](/boundary/docs/credentials/rdp-testing-and-compatibility-matrix) for more information about what is supported for the beta RDP release.
