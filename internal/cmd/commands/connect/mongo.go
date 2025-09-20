@@ -1,0 +1,120 @@
+package connect
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/posener/complete"
+)
+
+const (
+	mongoSynopsis = "Authorize a session against a target and invoke a MongoDB client to connect"
+)
+
+func mongoOptions(c *Command, set *base.FlagSets) {
+	f := set.NewFlagSet("MongoDB Options")
+
+	f.StringVar(&base.StringVar{
+		Name:       "style",
+		Target:     &c.flagMongoStyle,
+		EnvVar:     "BOUNDARY_CONNECT_MONGO_STYLE",
+		Completion: complete.PredictSet("mongosh"),
+		Default:    "mongosh",
+		Usage:      `Specifies how the CLI will attempt to invoke a MongoDB client. Currently only "mongosh" is supported.`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "username",
+		Target:     &c.flagUsername,
+		EnvVar:     "BOUNDARY_CONNECT_USERNAME",
+		Completion: complete.PredictNothing,
+		Usage:      `Specifies the username to pass through to the client. May be overridden by credentials sourced from a credential store.`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "dbname",
+		Target:     &c.flagDbname,
+		EnvVar:     "BOUNDARY_CONNECT_DBNAME",
+		Completion: complete.PredictNothing,
+		Usage:      `Specifies the database name to pass through to the client.`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "auth-source",
+		Target:     &c.flagAuthSource,
+		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
+		Completion: complete.PredictNothing,
+		Default:    "admin",
+		Usage:      `Specifies the authentication database for MongoDB. Defaults to "admin" for root-style users.`,
+	})
+}
+
+type mongoFlags struct {
+	flagMongoStyle string
+}
+
+func (m *mongoFlags) defaultExec() string {
+	return strings.ToLower(m.flagMongoStyle)
+}
+
+func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Credentials) (args, envs []string, retCreds proxy.Credentials, retErr error) {
+	var username, password string
+
+	retCreds = creds
+	if len(retCreds.UsernamePassword) > 0 {
+		// Mark credential as consumed so it is not printed to user
+		retCreds.UsernamePassword[0].Consumed = true
+
+		// For now just grab the first username password credential brokered
+		username = retCreds.UsernamePassword[0].Username
+		password = retCreds.UsernamePassword[0].Password
+	}
+
+	switch m.flagMongoStyle {
+	case "mongosh":
+		// Build MongoDB connection string for mongosh
+		connectionString := "mongodb://"
+
+		// Add username and password to connection string
+		if username != "" {
+			connectionString += username
+			if password != "" {
+				connectionString += ":" + password
+			}
+			connectionString += "@"
+		} else if c.flagUsername != "" {
+			connectionString += c.flagUsername
+			if password != "" {
+				connectionString += ":" + password
+			}
+			connectionString += "@"
+		}
+
+		// Add host and port
+		connectionString += ip
+		if port != "" {
+			connectionString += ":" + port
+		}
+
+		// Add database name
+		if c.flagDbname != "" {
+			connectionString += "/" + c.flagDbname
+		}
+
+		// Add authSource parameter if not already present
+		authSource := c.flagAuthSource
+
+		if !strings.Contains(connectionString, "?") {
+			connectionString += "?authSource=" + authSource
+		} else if !strings.Contains(strings.ToLower(connectionString), "authsource=") {
+			connectionString += "&authSource=" + authSource
+		}
+
+		args = append(args, connectionString)
+	default:
+		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)
+	}
+	return
+}
