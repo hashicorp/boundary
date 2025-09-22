@@ -311,11 +311,12 @@ resource "local_file" "worker_config" {
     enos_local_exec.add_boundary_cli,
   ]
   content = templatefile("${path.module}/scripts/worker.hcl", {
-    controller_ip    = var.controller_ip
-    aws_kms_key      = data.aws_kms_key.kms_key.id
-    aws_region       = var.aws_region
-    worker_public_ip = aws_instance.worker.public_ip
-    test_dir         = local.test_dir
+    controller_ip           = var.controller_ip
+    aws_kms_key             = data.aws_kms_key.kms_key.id
+    aws_region              = var.aws_region
+    worker_public_ip        = aws_instance.worker.public_ip
+    test_dir                = local.test_dir
+    hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
   })
   filename = "${path.root}/.terraform/tmp/worker.hcl"
 }
