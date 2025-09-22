@@ -71,7 +71,10 @@ You cannot use an address alongside host sources.
   If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
 - `-default-client-port=<string>` - The default client port on the target.
 - `-default-port=<string>` - The default port on the target.
-If you do not specify a default port, Boundary uses port 3389.
+Due to a port conflict on modern Windows operating systems (Windows 11+, Windows Server 2025), transparent sessions cannot use the default RDP port `3389`.
+You must configure a custom port to use transparent sessions with RDP targets.
+
+  Refer to [Using transparent sessions with RDP on Windows](/boundary/docs/credentials/rdp-testing-and-compatibility-matrix#using-transparent-sessions-with-rdp-on-windows) for more information about configuring a custom port for transparent sessions.
 - `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
 - `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
 - `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
