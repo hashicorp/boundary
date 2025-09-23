@@ -287,6 +287,7 @@ func TestCliSearch(t *testing.T) {
 		e2e.WithArgs(
 			"search",
 			"-resource", "sessions",
+			"-query", fmt.Sprintf(`scope_id = "%s"`, projectId),
 			"-force-refresh", "true",
 			"-format", "json",
 		),
