@@ -310,7 +310,7 @@ resource "local_file" "worker_config" {
   depends_on = [
     enos_local_exec.add_boundary_cli,
   ]
-  content = templatefile("${path.module}/scripts/worker.hcl", {
+  content = templatefile("${path.module}/${var.worker_config_file_path}", {
     controller_ip           = var.controller_ip
     aws_kms_key             = data.aws_kms_key.kms_key.id
     aws_region              = var.aws_region
