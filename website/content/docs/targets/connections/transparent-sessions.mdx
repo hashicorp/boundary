@@ -47,7 +47,8 @@ Boundary starts the session as usual, and brokers or injects any credentials you
 
 ### RDP targets
 
-Due to a port conflict on modern Windows operating systems (Windows 11+, Windows Server 2025), transparent sessions cannot use the default RDP port, 3389.
+Due to a port conflict with the Windows Remote Desktop Connection app on modern Windows operating systems (Windows 11+, Windows Server 2025), transparent sessions fail when you use the default port (`3389`) to establish an RDP connection.
+The port conflict is an issue even if you enable Remote Desktop.
 To connect to an RDP target from a Windows client using a transparent session, you must use a custom port.
 Refer to [RDP credential injection compatibility](/boundary/docs/credentials/rdp-testing-and-compatibility-matrix) for more information.
 
