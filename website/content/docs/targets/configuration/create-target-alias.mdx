@@ -114,7 +114,7 @@ Complete the following steps to create a new target and new alias at the same ti
    - **Target Address**: (Optional) Enter a valid IP address or DNS name.
     Alternatively, you can configure host catalogs and host sets.
 
-    If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
+    If you set a target address for RDP targets that use Kerberos authentication, use the target's hostname and append the domain to it, for example `target-hostname.mydomain.com`. For RDP targets that use NTLM authentication, set the target address to the target's IP address.
    - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
    - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
    - **Maximum Duration**: (Required) Enter a maximum duration for sessions on this target, in seconds.
@@ -156,8 +156,7 @@ Complete the following steps to create a new target and new alias at the same ti
    - `-address=<string>` - An optional valid network address for the target to connect to.
      You cannot use an address alongside host sources.
 
-     If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`.
-     For RDP targets that use NTLM authentication, you can use the IP address.
+     If you set a target address for RDP targets that use Kerberos authentication, use the target's hostname and append the domain to it, for example `target-hostname.mydomain.com`. For RDP targets that use NTLM authentication, set the target address to the target's IP address.
    - `-default-client-port=<string>` - The default client port on the target.
    - `-default-port=<string>` - The default port on the target.
      If you do not specify a default port, Boundary uses port 22.
@@ -321,7 +320,7 @@ You assign [direct target addresses](/boundary/docs/domain-model/targets#address
 
 <Note>
 
-If you set a target address for RDP targets that use Kerberos authentication, set the target address to the target name within the domain, with the domain appended to it, for example `my-target.mydomain.com`. For RDP targets that use NTLM authentication, you can use the IP address.
+If you set a target address for RDP targets that use Kerberos authentication, use the target's hostname and append the domain to it, for example `target-hostname.mydomain.com`. For RDP targets that use NTLM authentication, set the target address to the target's IP address.
 
 </Note>
 
