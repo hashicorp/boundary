@@ -24,37 +24,6 @@ description: >-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-      Role creation
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
-    </td>
-  </tr>
-
-  <tr>
-    <td style={{verticalAlign: 'middle'}}>
-    Docker image no longer contains <code>curl</code>
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary. The image now includes <code>wget</code>, which you can alternatively use to check the health endpoint for a worker. If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
-    <br /><br />
-    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
-    </td>
-  </tr>
-
-<tr>
-    <td style={{verticalAlign: 'middle'}}>
-    Go version 1.23 TLS handshake behavior changes
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x and later controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
-    <br /><br />
-    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
-    </td>
-  </tr>
-
-  <tr>
-    <td style={{verticalAlign: 'middle'}}>
     Error when sending requests to aliases using HCP Boundary
     </td>
     <td style={{verticalAlign: 'middle'}}>
