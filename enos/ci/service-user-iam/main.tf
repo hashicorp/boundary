@@ -220,6 +220,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBInstance",
       "rds:DeleteDBSubnetGroup",
+      "rds:DescribeDBEngineVersions",
       "rds:DescribeDBInstances",
       "rds:DescribeDBSubnetGroups",
       "rds:ListTagsForResource",
