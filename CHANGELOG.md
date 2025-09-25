@@ -2,10 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.20.0 (2025/09/25)
 
 ### New and Improved
 
+* Added support for RDP targets and RDP credential injection for connecting to
+  Windows machines. RDP credential injection supports both NTLM and Kerberos
+  authentication.
+* Added new credential type for username, password, and domain credentials.
 * cli: Added `boundary connect mysql` command for connecting to MySQL targets.
   This new helper command allows users to authorize sessions against MySQL
   targets and automatically invoke a MySQL client with the appropriate
@@ -25,7 +29,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### Bug fixes
 * ui: Fixed rendering bug where header for the Host details page rendered multiple times ([PR](https://github.com/hashicorp/boundary-ui/pull/2980))
 * ui: Fixed bug where worker tags could not be removed when creating a new worker ([PR](https://github.com/hashicorp/boundary-ui/pull/2928))
-
 
 ### Deprecations/Changes
 
