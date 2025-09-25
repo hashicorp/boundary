@@ -1,0 +1,212 @@
+---
+layout: docs
+page_title: v0.20.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.20.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary 0.20.0 release notes
+
+**GA date:** September 25, 2025
+
+@include 'release-notes/intro.mdx'
+
+## Important changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Change</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Error when sending requests to aliases using HCP Boundary
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A known issue that was caused by the way default grants were previously configured in HCP Boundary could cause you to receive 500 errors when you attempted to list resolvable aliases. The issue has been resolved. Any clusters that you created on or after April 26, 2025 should not have the issue.
+    <br /><br />
+    You can add grants to resolve the error for any older clusters that exhibit this behavior.
+    <br /><br />
+    Learn more:&nbsp; <a href="#hcp-grants">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary client version number realignment
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Previously, the Boundary Client Agent and installer used a numbering scheme that was inconsistent with Boundary's release numbers. This inconsistency could make it difficult to understand version support and compatibility.
+    <br /><br />
+    On May 27, 2025 new versions of the Boundary Client Agent and installer were released with a new numbering scheme that more closely follows Boundary's release numbers. Those versions were released as 0.19.5 to match the major Boundary version 0.19.x. Going forward, the Client Agent and installer will use the same major number as the current Boundary release. Any patches or updates will be reflected in the minor number.
+    <br /><br />
+    Learn more about control plane and client compatibility:&nbsp; <a href="/boundary/docs/enterprise/supported-versions">Boundary Enterprise supported versions policy </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Redundant grant scopes are no longer permitted
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    You may have redundant grant scopes if you applied a grant to a scope and the scope also inherited the grant from the <code>this</code>, <code>children</code>, or <code>descendants</code> options. As of Boundary version 0.19.3, redundant grant scopes are no longer permitted.
+    <br /><br />
+    When you upgrade a Boundary Enterprise or Community edition cluster to version 0.19.3 or later, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides a command that automatically removes any redundant grant scopes so that you can proceed with the upgrade.
+    <br /><br />
+    For HCP Boundary users, the redundant grant scopes are automatically removed as part of the migration process.
+    <br /><br />
+    Learn more about removing redundant grant scopes and upgrading to version 0.19.3 or later:&nbsp; <a href="#redundant-grants">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Update</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      RDP targets
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary now supports a new RDP target type. RDP targets let you use injected credentials to authenticate an RDP session between the client and end host in Windows environments that use Active Directory authentication. RDP targets use the new username password domain credential type.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/domain-model/targets#target-types">Target types</a> and <a href="/boundary/docs/commands/targets/create">targets create command</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Username password domain credentials
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    There is a new username password domain credential type for Windows environments that use Active Directory authentication. You can use username password domain credentials for credential injection when you connect to an RDP target.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/credential-management">Credential management</a>, <a href="/boundary/docs/credentials">Credentials in Boundary</a>, and <a href="/boundary/docs/commands/credentials/create">credentials create command</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      RDP credential injection
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      BETA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary now supports RDP credential injection as a beta feature. When users connect to RDP targets, Boundary can automatically inject credentials into the RDP session on behalf of the user.
+    <br /><br />The initial beta release supports static credentials from Boundary's built-in static credential store or Vault's KV store. Refer to the documentation for known limitations, configuration requirements, and Windows compatibility.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/credentials/rdp-testing-and-compatibility-matrix">RDP credential injection compatibility</a>.
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.1+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary.
+    <br /><br />
+    The image now includes <code>wget</code>. You can use <code>wget</code> to check the health endpoint for workers.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/operations/health#check-the-health-endpoint-using-wget">Check the health endpoint using <code>wget</code></a>
+    <br /><br />
+    If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>. Refer to the following commands for examples of using <code>apk</code> to install <code>curl</code>:
+    <br /><br />
+    <code>&lt;CONTAINER-ID&gt; apk add curl</code>
+    <br /><br />
+    or
+    <br /><br />
+    <code>kubectl exec -ti &lt;NAME&gt; -- apk add curl</code>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.18.x+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x and later CLI is unable to establish connections using the <code>boundary connect</code> command
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x and later controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
+    <br /><br />
+    To revert back to the previous TLS handshake behavior, add the <code>tlskyber=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect</code> command. For example:
+    <br /><br />
+    <code>GODEBUG=tlskyber=0 boundary connect ssh -target-id &lt;ID&gt;</code>
+    <br /><br />
+    Learn more: <a href="https://github.com/golang/go/issues/70047">Go issue #70047</a> and <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  </tbody>
+</table>
