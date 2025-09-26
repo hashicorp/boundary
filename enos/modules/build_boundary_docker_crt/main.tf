@@ -32,10 +32,7 @@ locals {
 }
 
 resource "enos_local_exec" "load_docker_image" {
-  inline = [
-    "docker load -i ${var.path}",
-    "echo `Generated image name: ${local.boundary_docker_image_name}`"
-  ]
+  inline = ["docker load -i ${var.path}"]
 }
 
 output "cli_zip_path" {
