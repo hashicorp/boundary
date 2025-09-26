@@ -15,9 +15,6 @@ on:
       go-version:
         required: true
         type: string
-      docker-image-name:
-        required: false
-        type: string
       docker-image-file:
         required: false
         type: string
@@ -96,7 +93,6 @@ jobs:
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
-      ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
