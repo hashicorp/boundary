@@ -6,6 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Update cap/ldap pkg to latest version to address possible concurreny issue ([PR](https://github.com/hashicorp/boundary/pull/6107))
 * Added support for RDP targets and RDP credential injection for connecting to
   Windows machines. RDP credential injection supports both NTLM and Kerberos
   authentication.

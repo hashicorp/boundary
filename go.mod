@@ -24,7 +24,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
 	github.com/hashicorp/boundary/api v0.0.54
 	github.com/hashicorp/boundary/sdk v0.0.55
-	github.com/hashicorp/cap v0.10.0
+	github.com/hashicorp/cap v0.11.0
 	github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744
 	github.com/hashicorp/dawdle v0.5.0
 	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
