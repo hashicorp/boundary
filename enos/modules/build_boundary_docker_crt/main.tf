@@ -27,6 +27,21 @@ resource "enos_local_exec" "load_docker_image" {
   inline = ["docker load -i ${var.path}"]
 }
 
+locals {
+  boundary_docker_image_name = replace(
+    element(
+      split("\n", trimspace(enos_local_exec.load_docker_image.stdout)),
+      -1
+    ),
+    "Loaded image: ",
+    ""
+  )
+}
+
 output "cli_zip_path" {
   value = var.cli_build_path
+}
+
+output "image_name" {
+  value = local.boundary_docker_image_name
 }
