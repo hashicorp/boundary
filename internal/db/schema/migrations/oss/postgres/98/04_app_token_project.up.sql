@@ -16,18 +16,10 @@ begin;
         on update cascade,
     name text,
     description text,
-    status text not null default 'active'
-      constraint app_token_status_enm_fkey
-        references app_token_status_enm(name)
-        on delete restrict
-        on update cascade,
-    created_time wt_timestamp,
-    updated_time wt_timestamp,
-    created_by_user_hst_id wt_url_safe_id not null
-      constraint app_token_created_by_fkey
-        references iam_user_hst(history_id)
-        on delete restrict
-        on update cascade,
+    revoked boolean not null default false,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    created_by_user_id wt_user_id not null,
     approximate_last_access_time wt_timestamp
       constraint last_access_time_must_not_be_after_expiration_time
       check(
@@ -37,9 +29,9 @@ begin;
       constraint time_to_stale_seconds_must_be_non_negative
         check(time_to_stale_seconds >= 0),
     expiration_time wt_timestamp
-      constraint created_time_must_not_be_after_expiration_time
+      constraint create_time_must_not_be_after_expiration_time
       check(
-        created_time <= expiration_time
+        create_time <= expiration_time
       ),
     key_id text not null
       constraint kms_data_key_version_fkey
@@ -54,9 +46,6 @@ begin;
   comment on table app_token_project is
     'app_token_project is the table for application tokens in project scope';
 
-  -- Add index for querying app_token by created_by (user)
-  create index app_token_project_created_by_idx on app_token_project (created_by_user_hst_id);
-
   -- Add triggers for app_token
   create trigger default_create_time_column before insert on app_token_project
     for each row execute procedure default_create_time();
@@ -68,10 +57,13 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on app_token_project
-    for each row execute procedure immutable_columns('public_id', 'created_time', 'scope_id');
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
   create trigger insert_app_token_subtype before insert on app_token_project
     for each row execute procedure insert_app_token_subtype();
+
+  create trigger validate_app_token_global_created_by_user_trigger before insert on app_token_project
+    for each row execute function validate_app_token_created_by_user();
 
   -- App token permissions project table
   create table app_token_permission_project (
@@ -81,18 +73,16 @@ begin;
         references app_token_project(public_id)
         on delete cascade
         on update cascade,
-    scope_id wt_scope_id not null
-      constraint iam_scope_project_fkey
-        references iam_scope_project(scope_id)
-        on delete cascade
-        on update cascade,
-    label text,
-    grant_this_role_scope boolean not null default false,
+    description text,
+    grant_this_scope boolean not null default false,
     version wt_version,
-    created_time wt_timestamp
+    create_time wt_timestamp
   );
   comment on table app_token_permission_project is
     'app_token_permission_project is a subtype table of the app_token_permission table. It is used to store permissions that are scoped to a project.';
+
+  -- Create index on app_token_id for better query performance
+  create index app_token_permission_project_app_token_id_idx on app_token_permission_project (app_token_id);
 
   -- Add triggers for app_token_permission_project
   create trigger default_create_time_column before insert on app_token_permission_project
@@ -105,27 +95,9 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on app_token_permission_project
-    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_role_scope', 'grant_scope', 'version', 'created_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_scope', 'grant_scope', 'version', 'create_time');
 
-  create table app_token_permission_project_grant (
-    permission_id wt_private_id
-      constraint app_token_permission_project_grant_fkey
-      references app_token_permission_project(private_id)
-        on delete cascade
-        on update cascade,
-    canonical_grant wt_canonical_grant not null
-      constraint app_token_permission_resource_grant_fkey
-        references app_token_permission_resource_grant(canonical_grant)
-        on delete cascade
-        on update cascade,
-    raw_grant text not null
-      constraint raw_grant_must_not_be_empty
-      check(
-        length(trim(raw_grant)) > 0
-      ),
-    primary key(permission_id, canonical_grant)
-  );
-  comment on table app_token_permission_project_grant is
-    'app_token_permission_project_grant contains grants assigned to app tokens in project scope.';
+  create trigger insert_app_token_permission_subtype before insert on app_token_permission_project
+    for each row execute procedure insert_app_token_permission_subtype();
 
 commit;

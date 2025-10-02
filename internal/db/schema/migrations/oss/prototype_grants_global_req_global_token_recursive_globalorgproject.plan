@@ -1,0 +1,60 @@
+                                                                                                                QUERY PLAN                                                                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=141.79..142.22 rows=13 width=169) (actual time=26.159..28.922 rows=1530 loops=1)
+   Group Key: filtered_permissions.private_id, filtered_permissions.description, filtered_permissions.create_time, filtered_permissions.grant_this_scope, filtered_permissions.grant_scope, filtered_permissions.public_id
+   CTE filtered_permissions
+     ->  Unique  (cost=99.31..99.33 rows=1 width=137) (actual time=9.535..10.059 rows=1530 loops=1)
+           ->  Sort  (cost=99.31..99.32 rows=1 width=137) (actual time=9.533..9.624 rows=1530 loops=1)
+                 Sort Key: app_token_permission_global.private_id, app_token_permission_global.description, app_token_permission_global.create_time, app_token_permission_global.grant_this_scope, app_token_permission_global.grant_scope
+                 Sort Method: quicksort  Memory: 455kB
+                 ->  Nested Loop  (cost=16.33..99.30 rows=1 width=137) (actual time=0.328..8.990 rows=1530 loops=1)
+                       ->  Nested Loop  (cost=16.19..91.13 rows=1 width=137) (actual time=0.314..7.396 rows=1530 loops=1)
+                             ->  Nested Loop  (cost=15.91..88.66 rows=7 width=32) (actual time=0.134..1.731 rows=4091 loops=1)
+                                   ->  Hash Join  (cost=15.63..36.75 rows=2 width=32) (actual time=0.095..0.113 rows=3 loops=1)
+                                         Hash Cond: (iam_grant.resource = iam_grant_resource_enm.name)
+                                         ->  Seq Scan on iam_grant  (cost=0.00..18.80 rows=880 width=64) (actual time=0.018..0.022 rows=25 loops=1)
+                                         ->  Hash  (cost=15.59..15.59 rows=3 width=32) (actual time=0.050..0.051 rows=3 loops=1)
+                                               Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                               ->  Bitmap Heap Scan on iam_grant_resource_enm  (cost=8.48..15.59 rows=3 width=32) (actual time=0.031..0.033 rows=3 loops=1)
+                                                     Recheck Cond: (name = ANY ('{*,role,unknown}'::text[]))
+                                                     Heap Blocks: exact=1
+                                                     ->  Bitmap Index Scan on iam_grant_resource_enm_pkey  (cost=0.00..8.48 rows=3 width=0) (actual time=0.023..0.024 rows=3 loops=1)
+                                                           Index Cond: (name = ANY ('{*,role,unknown}'::text[]))
+                                   ->  Index Only Scan using app_token_permission_grant_pkey on app_token_permission_grant  (cost=0.28..25.79 rows=17 width=64) (actual time=0.043..0.427 rows=1364 loops=3)
+                                         Index Cond: (canonical_grant = (iam_grant.canonical_grant)::text)
+                                         Heap Fetches: 4091
+                             ->  Index Scan using app_token_permission_global_pkey on app_token_permission_global  (cost=0.28..0.35 rows=1 width=137) (actual time=0.001..0.001 rows=0 loops=4091)
+                                   Index Cond: ((private_id)::text = (app_token_permission_grant.permission_id)::text)
+                                   Filter: ((app_token_id)::text = 'at_global_comprehensive'::text)
+                                   Rows Removed by Filter: 0
+                       ->  Index Only Scan using app_token_global_pkey on app_token_global  (cost=0.15..8.17 rows=1 width=32) (actual time=0.001..0.001 rows=1 loops=1530)
+                             Index Cond: (public_id = 'at_global_comprehensive'::text)
+                             Heap Fetches: 1530
+   ->  Sort  (cost=42.47..42.50 rows=13 width=169) (actual time=26.128..26.238 rows=1530 loops=1)
+         Sort Key: filtered_permissions.private_id, filtered_permissions.description, filtered_permissions.create_time, filtered_permissions.grant_this_scope, filtered_permissions.grant_scope, filtered_permissions.public_id
+         Sort Method: quicksort  Memory: 455kB
+         ->  Append  (cost=4.32..42.23 rows=13 width=169) (actual time=9.568..23.360 rows=1530 loops=1)
+               ->  Nested Loop  (cost=4.32..12.07 rows=3 width=169) (actual time=9.567..12.455 rows=30 loops=1)
+                     ->  Nested Loop  (cost=4.17..11.33 rows=3 width=169) (actual time=9.554..12.405 rows=30 loops=1)
+                           ->  CTE Scan on filtered_permissions  (cost=0.00..0.02 rows=1 width=137) (actual time=9.538..10.484 rows=1530 loops=1)
+                           ->  Bitmap Heap Scan on app_token_permission_global_individual_org_grant_scope org_grants  (cost=4.17..11.28 rows=3 width=64) (actual time=0.001..0.001 rows=0 loops=1530)
+                                 Recheck Cond: ((permission_id)::text = (filtered_permissions.private_id)::text)
+                                 Heap Blocks: exact=30
+                                 ->  Bitmap Index Scan on app_token_permission_global_individual_org_grant_scope_pkey  (cost=0.00..4.17 rows=3 width=0) (actual time=0.001..0.001 rows=0 loops=1530)
+                                       Index Cond: ((permission_id)::text = (filtered_permissions.private_id)::text)
+                     ->  Index Only Scan using iam_scope_org_pkey on iam_scope_org  (cost=0.15..0.25 rows=1 width=32) (actual time=0.001..0.001 rows=1 loops=30)
+                           Index Cond: (scope_id = (org_grants.scope_id)::text)
+                           Heap Fetches: 30
+               ->  Nested Loop  (cost=4.63..29.96 rows=10 width=169) (actual time=0.027..10.719 rows=1500 loops=1)
+                     ->  Nested Loop  (cost=4.36..26.50 rows=10 width=169) (actual time=0.015..6.639 rows=1500 loops=1)
+                           ->  CTE Scan on filtered_permissions filtered_permissions_1  (cost=0.00..0.02 rows=1 width=137) (actual time=0.001..0.214 rows=1530 loops=1)
+                           ->  Bitmap Heap Scan on app_token_permission_global_individual_project_grant_scope project_grants  (cost=4.36..26.38 rows=10 width=64) (actual time=0.003..0.003 rows=1 loops=1530)
+                                 Recheck Cond: ((permission_id)::text = (filtered_permissions_1.private_id)::text)
+                                 Heap Blocks: exact=1500
+                                 ->  Bitmap Index Scan on app_token_permission_global_individual_project_grant_scope_pkey  (cost=0.00..4.35 rows=10 width=0) (actual time=0.002..0.002 rows=1 loops=1530)
+                                       Index Cond: ((permission_id)::text = (filtered_permissions_1.private_id)::text)
+                     ->  Index Only Scan using iam_scope_project_scope_id_uq on iam_scope_project  (cost=0.28..0.35 rows=1 width=32) (actual time=0.002..0.002 rows=1 loops=1500)
+                           Index Cond: (scope_id = (project_grants.scope_id)::text)
+                           Heap Fetches: 1500
+ Planning Time: 2.961 ms
+ Execution Time: 29.575 ms
