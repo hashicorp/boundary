@@ -2098,7 +2098,8 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
+			globals.JsonCredentialPrefix,
+			globals.PasswordAccountPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2110,7 +2111,8 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
-			globals.SshPrivateKeyCredentialPrefix) {
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.PasswordAccountPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2140,7 +2142,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
+			globals.JsonCredentialPrefix,
+			globals.PasswordAccountPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2153,7 +2156,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
+			globals.JsonCredentialPrefix,
+			globals.PasswordAccountPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
