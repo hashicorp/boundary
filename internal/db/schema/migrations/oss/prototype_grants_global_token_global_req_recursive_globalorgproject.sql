@@ -1,7 +1,10 @@
--- Recursive request at global scope         filtered_permissions.public_id,
-         filtered_permissions.canonical_grants,
-         iam_scope_project.scope_id as scope_iding global token with global&org*project resources (e.g. Roles, Groups)
+-- Recursive request at global scope
 -- Lookup all permissions with grant scopes 'descendants', 'children', and 'individual' for orgs and projects
+
+-- request scope: global
+-- request resources: role, *, unknown
+-- request token: at_global_children_per_org
+
 with filtered_permissions as (
   -- Get permissions filtered by resource type
   select distinct app_token_permission_global.private_id,
@@ -21,7 +24,7 @@ with filtered_permissions as (
   join iam_grant_resource_enm
     on iam_grant.resource = iam_grant_resource_enm.name
   where iam_grant_resource_enm.name in ('*', 'role', 'unknown')
-    and app_token_global.public_id = 'at_global_children_per_org'
+    and app_token_global.public_id = 'at_global_comprehensive'
   group by app_token_permission_global.private_id,
            app_token_permission_global.description,
            app_token_permission_global.create_time,

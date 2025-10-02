@@ -16,7 +16,7 @@ with token_permissions as (
     join app_token_permission_grant
       on app_token_permission_global.private_id = app_token_permission_grant.permission_id
    where app_token_global.public_id = 'at_global_comprehensive'
-     and app_token_permission_global.grant_this_scope -- only need 
+     and app_token_permission_global.grant_this_scope -- only need grant this = true
    group by app_token_permission_global.private_id,
             app_token_permission_global.description,
             app_token_permission_global.create_time,

@@ -1,6 +1,8 @@
 -- Non-Recursive request at global scope using global token with specific org scope
 -- Lookup all permissions with grant scopes 'descendants', and 'individual' for the specific project
-
+-- request scope: o__________10 (an org)
+-- request resources: user, *, unknown
+-- request token: at_global_children_per_org
 with filtered_permissions as (
   select distinct app_token_permission_global.private_id,
          app_token_permission_global.create_time,

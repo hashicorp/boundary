@@ -1,5 +1,10 @@
 -- Non-Recursive request at global scope using global token with specific project scope
 -- Lookup all permissions with grant scopes 'descendants', and 'individual' for the specific project
+
+-- request scope: o__________10 (an org)
+-- request resources: target, *, unknown
+-- request token: at_global_children_per_org
+
 with filtered_permissions as (
   select distinct app_token_permission_global.private_id,
          app_token_permission_global.create_time,
@@ -16,7 +21,7 @@ with filtered_permissions as (
       on app_token_permission_grant.canonical_grant = iam_grant.canonical_grant
     join iam_grant_resource_enm
       on iam_grant.resource = iam_grant_resource_enm.name
-   where iam_grant_resource_enm.name in ('*', 'user', 'unknown')
+   where iam_grant_resource_enm.name in ('*', 'target', 'unknown')
      and app_token_global.public_id = 'at_global_children_per_org'
    group by app_token_permission_global.private_id,
             app_token_permission_global.create_time,
