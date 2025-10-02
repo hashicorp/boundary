@@ -26,6 +26,17 @@ select distinct upd.public_id,
             and upd.key_id = ?;
 `
 
+	credStaticPasswordRewrapQuery = `
+select distinct pass.public_id,
+                pass.password_encrypted,
+                pass.key_id
+           from credential_static_password_credential pass
+     inner join credential_static_store store
+             on store.public_id = pass.store_id
+          where store.project_id = ?
+            and pass.key_id = ?;
+`
+
 	credStaticSshPrivKeyRewrapQuery = `
 select distinct ssh.public_id,
                 ssh.private_key_encrypted,

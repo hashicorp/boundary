@@ -471,6 +471,157 @@ func (x *UsernamePasswordDomainCredential) GetDomain() string {
 	return ""
 }
 
+type PasswordCredential struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// public_id is a surrogate key suitable for use in a public API.
+	// @inject_tag: `gorm:"primary_key"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
+	// create_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// update_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// name is optional. If set, it must be unique within project_id.
+	// @inject_tag: `gorm:"default:null"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// description is optional.
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
+	// store_id of the owning static credential store.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	StoreId string `protobuf:"bytes,6,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty" gorm:"not_null"`
+	// version allows optimistic locking of the resource.
+	// @inject_tag: `gorm:"default:null"`
+	Version uint32 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
+	// password is the plain-text of the password associated with the credential. We are
+	// not storing this plain-text password in the database.
+	// @inject_tag: `gorm:"-" wrapping:"pt,password_data"`
+	Password []byte `protobuf:"bytes,8,opt,name=password,proto3" json:"password,omitempty" gorm:"-" wrapping:"pt,password_data"`
+	// ct_password is the ciphertext of the password. It
+	// is stored in the database.
+	// @inject_tag: `gorm:"column:password_encrypted;not_null" wrapping:"ct,password_data"`
+	CtPassword []byte `protobuf:"bytes,9,opt,name=ct_password,json=ctPassword,proto3" json:"ct_password,omitempty" gorm:"column:password_encrypted;not_null" wrapping:"ct,password_data"`
+	// password_hmac is a sha256-hmac of the unencrypted password.  It is recalculated
+	// everytime the password is updated.
+	// @inject_tag: `gorm:"not_null"`
+	PasswordHmac []byte `protobuf:"bytes,10,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty" gorm:"not_null"`
+	// The key_id of the kms database key used for encrypting this entry.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	KeyId         string `protobuf:"bytes,11,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PasswordCredential) Reset() {
+	*x = PasswordCredential{}
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PasswordCredential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PasswordCredential) ProtoMessage() {}
+
+func (x *PasswordCredential) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PasswordCredential.ProtoReflect.Descriptor instead.
+func (*PasswordCredential) Descriptor() ([]byte, []int) {
+	return file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PasswordCredential) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *PasswordCredential) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *PasswordCredential) GetUpdateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *PasswordCredential) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PasswordCredential) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *PasswordCredential) GetStoreId() string {
+	if x != nil {
+		return x.StoreId
+	}
+	return ""
+}
+
+func (x *PasswordCredential) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *PasswordCredential) GetPassword() []byte {
+	if x != nil {
+		return x.Password
+	}
+	return nil
+}
+
+func (x *PasswordCredential) GetCtPassword() []byte {
+	if x != nil {
+		return x.CtPassword
+	}
+	return nil
+}
+
+func (x *PasswordCredential) GetPasswordHmac() []byte {
+	if x != nil {
+		return x.PasswordHmac
+	}
+	return nil
+}
+
+func (x *PasswordCredential) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
 type SshPrivateKeyCredential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// public_id is a surrogate key suitable for use in a public API.
@@ -534,7 +685,7 @@ type SshPrivateKeyCredential struct {
 
 func (x *SshPrivateKeyCredential) Reset() {
 	*x = SshPrivateKeyCredential{}
-	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[3]
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +697,7 @@ func (x *SshPrivateKeyCredential) String() string {
 func (*SshPrivateKeyCredential) ProtoMessage() {}
 
 func (x *SshPrivateKeyCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[3]
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +710,7 @@ func (x *SshPrivateKeyCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SshPrivateKeyCredential.ProtoReflect.Descriptor instead.
 func (*SshPrivateKeyCredential) Descriptor() ([]byte, []int) {
-	return file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP(), []int{3}
+	return file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SshPrivateKeyCredential) GetPublicId() string {
@@ -713,7 +864,7 @@ type JsonCredential struct {
 
 func (x *JsonCredential) Reset() {
 	*x = JsonCredential{}
-	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[4]
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -725,7 +876,7 @@ func (x *JsonCredential) String() string {
 func (*JsonCredential) ProtoMessage() {}
 
 func (x *JsonCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[4]
+	mi := &file_controller_storage_credential_static_store_v1_static_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +889,7 @@ func (x *JsonCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JsonCredential.ProtoReflect.Descriptor instead.
 func (*JsonCredential) Descriptor() ([]byte, []int) {
-	return file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP(), []int{4}
+	return file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *JsonCredential) GetPublicId() string {
@@ -881,7 +1032,27 @@ const file_controller_storage_credential_static_store_v1_static_proto_rawDesc = 
 	"\fPasswordHmac\x12\x18attributes.password_hmacR\fpasswordHmac\x12\x15\n" +
 	"\x06key_id\x18\f \x01(\tR\x05keyId\x127\n" +
 	"\x06domain\x18\r \x01(\tB\x1f\xc2\xdd)\x1b\n" +
-	"\x06Domain\x12\x11attributes.domainR\x06domain\"\xe7\a\n" +
+	"\x06Domain\x12\x11attributes.domainR\x06domain\"\xb4\x04\n" +
+	"\x12PasswordCredential\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12K\n" +
+	"\vcreate_time\x18\x02 \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
+	"createTime\x12K\n" +
+	"\vupdate_time\x18\x03 \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
+	"updateTime\x12$\n" +
+	"\x04name\x18\x04 \x01(\tB\x10\xc2\xdd)\f\n" +
+	"\x04Name\x12\x04nameR\x04name\x12@\n" +
+	"\vdescription\x18\x05 \x01(\tB\x1e\xc2\xdd)\x1a\n" +
+	"\vDescription\x12\vdescriptionR\vdescription\x12\x19\n" +
+	"\bstore_id\x18\x06 \x01(\tR\astoreId\x12\x18\n" +
+	"\aversion\x18\a \x01(\rR\aversion\x12?\n" +
+	"\bpassword\x18\b \x01(\fB#\xc2\xdd)\x1f\n" +
+	"\bPassword\x12\x13attributes.passwordR\bpassword\x12\x1f\n" +
+	"\vct_password\x18\t \x01(\fR\n" +
+	"ctPassword\x12Q\n" +
+	"\rpassword_hmac\x18\n" +
+	" \x01(\fB,\xc2\xdd)(\n" +
+	"\fPasswordHmac\x12\x18attributes.password_hmacR\fpasswordHmac\x12\x15\n" +
+	"\x06key_id\x18\v \x01(\tR\x05keyId\"\xe7\a\n" +
 	"\x17SshPrivateKeyCredential\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12K\n" +
 	"\vcreate_time\x18\x02 \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
@@ -944,31 +1115,34 @@ func file_controller_storage_credential_static_store_v1_static_proto_rawDescGZIP
 	return file_controller_storage_credential_static_store_v1_static_proto_rawDescData
 }
 
-var file_controller_storage_credential_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_controller_storage_credential_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_storage_credential_static_store_v1_static_proto_goTypes = []any{
 	(*CredentialStore)(nil),                  // 0: controller.storage.credential.static.store.v1.CredentialStore
 	(*UsernamePasswordCredential)(nil),       // 1: controller.storage.credential.static.store.v1.UsernamePasswordCredential
 	(*UsernamePasswordDomainCredential)(nil), // 2: controller.storage.credential.static.store.v1.UsernamePasswordDomainCredential
-	(*SshPrivateKeyCredential)(nil),          // 3: controller.storage.credential.static.store.v1.SshPrivateKeyCredential
-	(*JsonCredential)(nil),                   // 4: controller.storage.credential.static.store.v1.JsonCredential
-	(*timestamp.Timestamp)(nil),              // 5: controller.storage.timestamp.v1.Timestamp
+	(*PasswordCredential)(nil),               // 3: controller.storage.credential.static.store.v1.PasswordCredential
+	(*SshPrivateKeyCredential)(nil),          // 4: controller.storage.credential.static.store.v1.SshPrivateKeyCredential
+	(*JsonCredential)(nil),                   // 5: controller.storage.credential.static.store.v1.JsonCredential
+	(*timestamp.Timestamp)(nil),              // 6: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_credential_static_store_v1_static_proto_depIdxs = []int32{
-	5,  // 0: controller.storage.credential.static.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 1: controller.storage.credential.static.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 2: controller.storage.credential.static.store.v1.UsernamePasswordCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 3: controller.storage.credential.static.store.v1.UsernamePasswordCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 4: controller.storage.credential.static.store.v1.UsernamePasswordDomainCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 5: controller.storage.credential.static.store.v1.UsernamePasswordDomainCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 6: controller.storage.credential.static.store.v1.SshPrivateKeyCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 7: controller.storage.credential.static.store.v1.SshPrivateKeyCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 8: controller.storage.credential.static.store.v1.JsonCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 9: controller.storage.credential.static.store.v1.JsonCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	6,  // 0: controller.storage.credential.static.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 1: controller.storage.credential.static.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 2: controller.storage.credential.static.store.v1.UsernamePasswordCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 3: controller.storage.credential.static.store.v1.UsernamePasswordCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 4: controller.storage.credential.static.store.v1.UsernamePasswordDomainCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 5: controller.storage.credential.static.store.v1.UsernamePasswordDomainCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 6: controller.storage.credential.static.store.v1.PasswordCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 7: controller.storage.credential.static.store.v1.PasswordCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 8: controller.storage.credential.static.store.v1.SshPrivateKeyCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 9: controller.storage.credential.static.store.v1.SshPrivateKeyCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 10: controller.storage.credential.static.store.v1.JsonCredential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 11: controller.storage.credential.static.store.v1.JsonCredential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_credential_static_store_v1_static_proto_init() }
@@ -982,7 +1156,7 @@ func file_controller_storage_credential_static_store_v1_static_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_storage_credential_static_store_v1_static_proto_rawDesc), len(file_controller_storage_credential_static_store_v1_static_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
