@@ -6,6 +6,7 @@ select  app_token_permission_global.private_id as permission_id,
         app_token_permission_global.grant_this_scope,
         app_token_permission_global.grant_scope,
         app_token_global.public_id as app_token_id,
+        array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
         array_agg(distinct iam_scope.public_id) as active_grant_scopes
 from app_token_global
 join app_token_permission_global

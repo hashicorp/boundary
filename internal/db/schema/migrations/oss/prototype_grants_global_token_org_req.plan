@@ -1,0 +1,51 @@
+                                                                                                                             QUERY PLAN                                                                                                                             
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=107.61..107.64 rows=1 width=169) (actual time=12.703..12.756 rows=30 loops=1)
+   Group Key: filtered_permissions.private_id, filtered_permissions.create_time, filtered_permissions.grant_this_scope, filtered_permissions.grant_scope, filtered_permissions.public_id, filtered_permissions.canonical_grants
+   CTE filtered_permissions
+     ->  Unique  (cost=99.35..99.36 rows=1 width=137) (actual time=12.549..12.576 rows=30 loops=1)
+           ->  Sort  (cost=99.35..99.35 rows=1 width=137) (actual time=12.547..12.552 rows=30 loops=1)
+                 Sort Key: app_token_permission_global.private_id, app_token_permission_global.create_time, app_token_permission_global.grant_this_scope, app_token_permission_global.grant_scope, (array_agg(DISTINCT app_token_permission_grant.canonical_grant))
+                 Sort Method: quicksort  Memory: 32kB
+                 ->  GroupAggregate  (cost=99.31..99.34 rows=1 width=137) (actual time=12.353..12.523 rows=30 loops=1)
+                       Group Key: app_token_permission_global.private_id, app_token_global.public_id
+                       ->  Sort  (cost=99.31..99.32 rows=1 width=137) (actual time=12.237..12.243 rows=30 loops=1)
+                             Sort Key: app_token_permission_global.private_id
+                             Sort Method: quicksort  Memory: 29kB
+                             ->  Nested Loop  (cost=16.33..99.30 rows=1 width=137) (actual time=0.190..12.198 rows=30 loops=1)
+                                   ->  Nested Loop  (cost=16.19..91.13 rows=1 width=137) (actual time=0.171..12.118 rows=30 loops=1)
+                                         ->  Nested Loop  (cost=15.91..88.66 rows=7 width=64) (actual time=0.143..2.791 rows=4091 loops=1)
+                                               ->  Hash Join  (cost=15.63..36.75 rows=2 width=32) (actual time=0.096..0.130 rows=3 loops=1)
+                                                     Hash Cond: (iam_grant.resource = iam_grant_resource_enm.name)
+                                                     ->  Seq Scan on iam_grant  (cost=0.00..18.80 rows=880 width=64) (actual time=0.015..0.024 rows=25 loops=1)
+                                                     ->  Hash  (cost=15.59..15.59 rows=3 width=32) (actual time=0.053..0.055 rows=3 loops=1)
+                                                           Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                           ->  Bitmap Heap Scan on iam_grant_resource_enm  (cost=8.48..15.59 rows=3 width=32) (actual time=0.034..0.035 rows=3 loops=1)
+                                                                 Recheck Cond: (name = ANY ('{*,user,unknown}'::text[]))
+                                                                 Heap Blocks: exact=1
+                                                                 ->  Bitmap Index Scan on iam_grant_resource_enm_pkey  (cost=0.00..8.48 rows=3 width=0) (actual time=0.025..0.025 rows=3 loops=1)
+                                                                       Index Cond: (name = ANY ('{*,user,unknown}'::text[]))
+                                               ->  Index Only Scan using app_token_permission_grant_pkey on app_token_permission_grant  (cost=0.28..25.79 rows=17 width=64) (actual time=0.050..0.670 rows=1364 loops=3)
+                                                     Index Cond: (canonical_grant = (iam_grant.canonical_grant)::text)
+                                                     Heap Fetches: 4091
+                                         ->  Index Scan using app_token_permission_global_pkey on app_token_permission_global  (cost=0.28..0.35 rows=1 width=105) (actual time=0.002..0.002 rows=0 loops=4091)
+                                               Index Cond: ((private_id)::text = (app_token_permission_grant.permission_id)::text)
+                                               Filter: ((app_token_id)::text = 'at_global_children_per_org'::text)
+                                               Rows Removed by Filter: 0
+                                   ->  Index Only Scan using app_token_global_pkey on app_token_global  (cost=0.15..8.17 rows=1 width=32) (actual time=0.002..0.002 rows=1 loops=30)
+                                         Index Cond: (public_id = 'at_global_children_per_org'::text)
+                                         Heap Fetches: 30
+   ->  Sort  (cost=8.24..8.25 rows=1 width=169) (actual time=12.693..12.712 rows=30 loops=1)
+         Sort Key: filtered_permissions.private_id, filtered_permissions.create_time, filtered_permissions.grant_this_scope, filtered_permissions.grant_scope, filtered_permissions.public_id, filtered_permissions.canonical_grants
+         Sort Method: quicksort  Memory: 32kB
+         ->  Nested Loop Left Join  (cost=0.15..8.23 rows=1 width=169) (actual time=12.580..12.659 rows=30 loops=1)
+               Filter: ((filtered_permissions.grant_scope = ANY ('{children,individual}'::text[])) OR (app_token_permission_global_individual_org_grant_scope.scope_id IS NOT NULL))
+               ->  CTE Scan on filtered_permissions  (cost=0.00..0.02 rows=1 width=137) (actual time=12.556..12.588 rows=30 loops=1)
+               ->  Nested Loop  (cost=0.15..8.20 rows=1 width=64) (actual time=0.001..0.002 rows=0 loops=30)
+                     Join Filter: ((app_token_permission_global_individual_org_grant_scope.permission_id)::text = (filtered_permissions_1.private_id)::text)
+                     ->  Index Only Scan using app_token_permission_global_individual_org_grant_scope_pkey on app_token_permission_global_individual_org_grant_scope  (cost=0.15..8.17 rows=1 width=64) (actual time=0.001..0.001 rows=0 loops=30)
+                           Index Cond: ((permission_id = (filtered_permissions.private_id)::text) AND (scope_id = 'o__________10'::text))
+                           Heap Fetches: 0
+                     ->  CTE Scan on filtered_permissions filtered_permissions_1  (cost=0.00..0.02 rows=1 width=32) (never executed)
+ Planning Time: 1.704 ms
+ Execution Time: 13.051 ms

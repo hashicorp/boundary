@@ -8,12 +8,21 @@ with token_permissions as (
          app_token_permission_global.create_time,
          app_token_permission_global.grant_this_scope,
          app_token_permission_global.grant_scope,
-         app_token_global.public_id as app_token_id
+         app_token_global.public_id as app_token_id,
+         array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants
     from app_token_global
     join app_token_permission_global
       on app_token_global.public_id = app_token_permission_global.app_token_id
+    join app_token_permission_grant
+      on app_token_permission_global.private_id = app_token_permission_grant.permission_id
    where app_token_global.public_id = 'at_global_comprehensive'
      and app_token_permission_global.grant_this_scope -- only need 
+   group by app_token_permission_global.private_id,
+            app_token_permission_global.description,
+            app_token_permission_global.create_time,
+            app_token_permission_global.grant_this_scope,
+            app_token_permission_global.grant_scope,
+            app_token_global.public_id
 )
 select  token_permissions.private_id as permission_id,
         token_permissions.description,
@@ -21,6 +30,7 @@ select  token_permissions.private_id as permission_id,
         token_permissions.grant_this_scope,
         token_permissions.grant_scope,
         token_permissions.app_token_id,
+        token_permissions.canonical_grants,
         '{}'::text[] as active_grant_scopes
      from token_permissions token_permissions
  group by token_permissions.private_id,
@@ -28,4 +38,5 @@ select  token_permissions.private_id as permission_id,
           token_permissions.create_time,
           token_permissions.grant_this_scope,
           token_permissions.grant_scope,
-          token_permissions.app_token_id;
+          token_permissions.app_token_id,
+          token_permissions.canonical_grants;

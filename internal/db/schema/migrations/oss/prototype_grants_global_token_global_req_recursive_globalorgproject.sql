@@ -1,4 +1,6 @@
--- Recursive request at global scope using global token with global&org*project resources (e.g. Roles, Groups)
+-- Recursive request at global scope         filtered_permissions.public_id,
+         filtered_permissions.canonical_grants,
+         iam_scope_project.scope_id as scope_iding global token with global&org*project resources (e.g. Roles, Groups)
 -- Lookup all permissions with grant scopes 'descendants', 'children', and 'individual' for orgs and projects
 with filtered_permissions as (
   -- Get permissions filtered by resource type
@@ -7,7 +9,8 @@ with filtered_permissions as (
          app_token_permission_global.create_time,
          app_token_permission_global.grant_this_scope,
          app_token_permission_global.grant_scope,
-         app_token_global.public_id
+         app_token_global.public_id,
+         array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants
   from app_token_global
   join app_token_permission_global
     on app_token_global.public_id = app_token_permission_global.app_token_id
@@ -18,7 +21,13 @@ with filtered_permissions as (
   join iam_grant_resource_enm
     on iam_grant.resource = iam_grant_resource_enm.name
   where iam_grant_resource_enm.name in ('*', 'role', 'unknown')
-    and app_token_global.public_id = 'at_global_comprehensive'
+    and app_token_global.public_id = 'at_global_children_per_org'
+  group by app_token_permission_global.private_id,
+           app_token_permission_global.description,
+           app_token_permission_global.create_time,
+           app_token_permission_global.grant_this_scope,
+           app_token_permission_global.grant_scope,
+           app_token_global.public_id
 ),
 individual_grant_scopes as (
   -- Union of individual grant scope types, filtered by permissions with correct resource enm
@@ -28,6 +37,7 @@ individual_grant_scopes as (
          filtered_permissions.grant_this_scope,
          filtered_permissions.grant_scope,
          filtered_permissions.public_id,
+         filtered_permissions.canonical_grants,
          iam_scope_org.scope_id as scope_id
   from app_token_permission_global_individual_org_grant_scope org_grants
   join filtered_permissions
@@ -41,6 +51,7 @@ individual_grant_scopes as (
          filtered_permissions.grant_this_scope,
          filtered_permissions.grant_scope,
          filtered_permissions.public_id,
+         filtered_permissions.canonical_grants,
          iam_scope_project.scope_id as scope_id
   from app_token_permission_global_individual_project_grant_scope project_grants
   join filtered_permissions
@@ -54,6 +65,7 @@ select  individual_grant_scopes.private_id as permission_id,
         individual_grant_scopes.grant_this_scope,
         individual_grant_scopes.grant_scope,
         individual_grant_scopes.public_id as app_token_id,
+        individual_grant_scopes.canonical_grants,
         array_agg(distinct individual_grant_scopes.scope_id) as active_grant_scopes
 from individual_grant_scopes
 group by individual_grant_scopes.private_id,
@@ -61,4 +73,5 @@ group by individual_grant_scopes.private_id,
          individual_grant_scopes.create_time,
          individual_grant_scopes.grant_this_scope,
          individual_grant_scopes.grant_scope,
-         individual_grant_scopes.public_id
+         individual_grant_scopes.public_id,
+         individual_grant_scopes.canonical_grants
