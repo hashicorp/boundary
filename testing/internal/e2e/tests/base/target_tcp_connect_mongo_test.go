@@ -41,7 +41,7 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 		}
 	})
 
-	u, err := url.Parse(c.UriLocalhost)
+	u, err := url.Parse(c.UriNetwork)
 	require.NoError(t, err, "Failed to parse MongoDB URL")
 
 	user, hostname, port, db := u.User.Username(), u.Hostname(), u.Port(), u.Path[1:]
@@ -49,9 +49,8 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	t.Logf("MongoDB info: user=%s, db=%s, host=%s, port=%s, password-set:%t",
 		user, db, hostname, port, pwSet)
 
-	networkUrl, err := url.Parse(c.UriNetwork)
-	require.NoError(t, err)
-	containerName := networkUrl.Hostname()
+	// For readiness checks, use the container hostname on the e2e_cluster network
+	containerName := hostname
 
 	err = pool.Retry(func() error {
 		cmd := exec.CommandContext(ctx, "docker", "exec", containerName,
