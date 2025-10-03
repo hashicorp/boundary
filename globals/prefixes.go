@@ -81,6 +81,8 @@ const (
 	// UsernamePasswordCredentialPreviousPrefix is the previous prefix for
 	// username/password creds
 	UsernamePasswordCredentialPreviousPrefix = "cred"
+	// PasswordCredentialPrefix is the prefix for password creds
+	PasswordCredentialPrefix = "credp"
 	// SshPrivateKeyCredentialPrefix is the prefix for SSH private key creds
 	SshPrivateKeyCredentialPrefix = "credspk"
 	// JsonCredentialPrefix is the prefix for generic JSON creds
@@ -257,6 +259,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 	UsernamePasswordCredentialPreviousPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	PasswordCredentialPrefix: {
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
 	},
