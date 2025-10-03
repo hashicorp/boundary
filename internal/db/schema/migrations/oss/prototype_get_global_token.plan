@@ -1,0 +1,46 @@
+                                                                                                   QUERY PLAN                                                                                                   
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=116.34..271.20 rows=7 width=233) (actual time=6.617..10.378 rows=30 loops=1)
+   Group Key: app_token_permission_global.private_id, app_token_global.public_id
+   ->  Sort  (cost=116.34..116.37 rows=10 width=215) (actual time=6.496..6.595 rows=1500 loops=1)
+         Sort Key: app_token_permission_global.private_id
+         Sort Method: quicksort  Memory: 447kB
+         ->  Nested Loop Left Join  (cost=44.02..116.18 rows=10 width=215) (actual time=0.638..5.197 rows=1500 loops=1)
+               ->  Nested Loop  (cost=43.76..112.65 rows=10 width=208) (actual time=0.617..1.702 rows=1500 loops=1)
+                     ->  Index Only Scan using app_token_global_pkey on app_token_global  (cost=0.15..8.17 rows=1 width=32) (actual time=0.019..0.020 rows=1 loops=1)
+                           Index Cond: (public_id = 'at_global_children_per_org'::text)
+                           Heap Fetches: 1
+                     ->  Hash Right Join  (cost=43.61..104.39 rows=10 width=208) (actual time=0.595..1.451 rows=1500 loops=1)
+                           Hash Cond: ((project_grants.permission_id)::text = (app_token_permission_global.private_id)::text)
+                           ->  Seq Scan on app_token_permission_global_individual_project_grant_scope project_grants  (cost=0.00..53.13 rows=2013 width=64) (actual time=0.005..0.374 rows=3000 loops=1)
+                           ->  Hash  (cost=43.52..43.52 rows=7 width=176) (actual time=0.129..0.131 rows=30 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                 ->  Nested Loop Left Join  (cost=22.45..43.52 rows=7 width=176) (actual time=0.090..0.115 rows=30 loops=1)
+                                       ->  Hash Right Join  (cost=22.19..39.89 rows=7 width=169) (actual time=0.083..0.093 rows=30 loops=1)
+                                             Hash Cond: ((org_grants.permission_id)::text = (app_token_permission_global.private_id)::text)
+                                             ->  Seq Scan on app_token_permission_global_individual_org_grant_scope org_grants  (cost=0.00..16.10 rows=610 width=64) (actual time=0.006..0.009 rows=30 loops=1)
+                                             ->  Hash  (cost=22.10..22.10 rows=7 width=137) (actual time=0.057..0.058 rows=30 loops=1)
+                                                   Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                   ->  Bitmap Heap Scan on app_token_permission_global  (cost=4.33..22.10 rows=7 width=137) (actual time=0.028..0.038 rows=30 loops=1)
+                                                         Recheck Cond: ((app_token_id)::text = 'at_global_children_per_org'::text)
+                                                         Heap Blocks: exact=2
+                                                         ->  Bitmap Index Scan on app_token_permission_global_app_token_id_idx  (cost=0.00..4.33 rows=7 width=0) (actual time=0.015..0.015 rows=30 loops=1)
+                                                               Index Cond: ((app_token_id)::text = 'at_global_children_per_org'::text)
+                                       ->  Index Only Scan using iam_scope_pkey on iam_scope org_scope  (cost=0.26..0.52 rows=1 width=7) (actual time=0.000..0.000 rows=0 loops=30)
+                                             Index Cond: (public_id = (org_grants.scope_id)::text)
+                                             Heap Fetches: 0
+               ->  Index Only Scan using iam_scope_pkey on iam_scope project_scope  (cost=0.26..0.35 rows=1 width=7) (actual time=0.002..0.002 rows=1 loops=1500)
+                     Index Cond: (public_id = (project_grants.scope_id)::text)
+                     Heap Fetches: 1450
+   SubPlan 1
+     ->  Limit  (cost=15.45..15.46 rows=1 width=8) (actual time=0.035..0.035 rows=1 loops=50)
+           ->  Sort  (cost=15.45..15.46 rows=4 width=8) (actual time=0.032..0.032 rows=1 loops=50)
+                 Sort Key: (upper(iam_scope_hst.valid_range)) DESC
+                 Sort Method: quicksort  Memory: 25kB
+                 ->  Bitmap Heap Scan on iam_scope_hst  (cost=4.17..15.43 rows=4 width=8) (actual time=0.029..0.029 rows=1 loops=50)
+                       Recheck Cond: ((public_id)::text = (COALESCE(org_grants.scope_id, project_grants.scope_id))::text)
+                       Heap Blocks: exact=100
+                       ->  Bitmap Index Scan on iam_scope_hst_valid_range_excl  (cost=0.00..4.17 rows=4 width=0) (actual time=0.026..0.027 rows=2 loops=50)
+                             Index Cond: ((public_id)::text = (COALESCE(org_grants.scope_id, project_grants.scope_id))::text)
+ Planning Time: 0.993 ms
+ Execution Time: 10.649 ms
