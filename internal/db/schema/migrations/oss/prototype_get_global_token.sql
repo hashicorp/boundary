@@ -1,5 +1,8 @@
--- Get Global - Flattened query without CTEs
+-- Get Global 
 -- Query to get app token permissions with scope existence and delete times
+
+-- delete a scopoe to test 
+-- delete from iam_scope where public_id = 'o__________14';
 
 select app_token_permission_global.private_id       as permission_id,
        app_token_permission_global.description      as description,
