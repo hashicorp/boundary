@@ -66,7 +66,7 @@ permission_insert as (
   from permission_data
   returning private_id, app_token_id, grant_scope, grant_this_scope
 )
--- Insert grants for all permissions
+-- Insert grants for all permissions - one for each resource type
 insert into app_token_permission_grant (
   permission_id,
   canonical_grant,
@@ -74,9 +74,35 @@ insert into app_token_permission_grant (
 )
 select 
   pd.private_id,
-  'ids=*;type=*;actions=*',
-  'ids=*;type=*;actions=*'
-from permission_data pd;
+  'ids=*;type=' || resource_types.type_name || ';actions=*',
+  'ids=*;type=' || resource_types.type_name || ';actions=*'
+from permission_data pd
+cross join (
+  values 
+    ('alias'),
+    ('auth-method'),
+    ('auth-token'),
+    ('account'),
+    ('billing'),
+    ('controller'),
+    ('credential'),
+    ('credential-library'),
+    ('credential-store'),
+    ('group'),
+    ('host'),
+    ('host-catalog'),
+    ('host-set'),
+    ('managed-group'),
+    ('policy'),
+    ('role'),
+    ('scope'),
+    ('session'),
+    ('session-recording'),
+    ('storage-bucket'),
+    ('target'),
+    ('user'),
+    ('worker')
+) as resource_types(type_name);
 
 -- Insert individual org grant scopes
 insert into app_token_permission_global_individual_org_grant_scope (
