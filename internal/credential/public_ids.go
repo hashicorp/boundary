@@ -16,6 +16,7 @@ func init() {
 	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
 	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordDomainCredentialPrefix, resource.Credential, Domain, UsernamePasswordDomainSubtype)
 	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPreviousPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordCredentialPrefix, resource.Credential, Domain, PasswordSubtype)
 	globals.RegisterPrefixToResourceInfo(globals.SshPrivateKeyCredentialPrefix, resource.Credential, Domain, SshPrivateKeySubtype)
 	globals.RegisterPrefixToResourceInfo(globals.JsonCredentialPrefix, resource.Credential, Domain, JsonSubtype)
 }
@@ -24,6 +25,8 @@ const (
 	UsernamePasswordSubtype = globals.Subtype("username_password")
 
 	UsernamePasswordDomainSubtype = globals.Subtype("username_password_domain")
+
+	PasswordSubtype = globals.Subtype("password")
 
 	SshPrivateKeySubtype = globals.Subtype("ssh_private_key")
 
@@ -44,6 +47,15 @@ func NewUsernamePasswordDomainCredentialId(ctx context.Context) (string, error) 
 	id, err := db.NewPublicId(ctx, globals.UsernamePasswordDomainCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewUsernamePasswordDomainCredentialId")
+	}
+	return id, nil
+}
+
+// PasswordCredentialId generates a new public ID for a password credential.
+func PasswordCredentialId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.PasswordCredentialPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "credential.PasswordCredentialId")
 	}
 	return id, nil
 }
