@@ -179,6 +179,18 @@ func WithJsonCredentialObject(inObject map[string]interface{}) Option {
 	}
 }
 
+func WithPasswordCredentialPassword(inPassword string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["password"] = inPassword
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithUsernamePasswordCredentialPassword(inPassword string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
