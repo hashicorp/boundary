@@ -143,9 +143,9 @@ type UsernamePasswordDomain interface {
 	Domain() string
 }
 
-// PasswordCredential is a credential containing a username and a password.
+// PasswordOnly is a credential containing a password.
 // Does not follow naming convention to avoid conflict with existing Password type.
-type PasswordCredential interface {
+type PasswordOnly interface {
 	Credential
 	Password() Password
 }
