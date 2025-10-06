@@ -406,6 +406,14 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 			upd.sanitize()
 			cl.MappingOverride = upd
 		}
+	case string(globals.PasswordCredentialType):
+		if pl.PasswordAttribute != "" {
+			p := allocPasswordOverride()
+			p.LibraryId = pl.PublicId
+			p.PasswordAttribute = pl.PasswordAttribute
+			p.sanitize()
+			cl.MappingOverride = p
+		}
 	case string(globals.SshPrivateKeyCredentialType):
 		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" || pl.PrivateKeyPassphraseAttribute != "" {
 			pk := allocSshPrivateKeyOverride()

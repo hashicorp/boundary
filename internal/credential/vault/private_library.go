@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/password"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassworddomain"
@@ -65,6 +66,8 @@ func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 		return baseToSshPriKey(ctx, bc)
 	case globals.UsernamePasswordDomainCredentialType:
 		return baseToUsrPassDomain(ctx, bc)
+	case globals.PasswordCredentialType:
+		return baseToPass(ctx, bc)
 	}
 	return bc, nil
 }
@@ -162,6 +165,45 @@ func baseToUsrPassDomain(ctx context.Context, bc *baseCred) (*usrPassDomainCred,
 		username: username,
 		password: credential.Password(password),
 		domain:   domain,
+	}, nil
+}
+
+var _ credential.PasswordCredential = (*passCred)(nil)
+
+type passCred struct {
+	*baseCred
+	password credential.Password
+}
+
+func (c *passCred) Password() credential.Password { return c.password }
+
+func baseToPass(ctx context.Context, bc *baseCred) (*passCred, error) {
+	switch {
+	case bc == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
+	case bc.lib == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
+	case bc.Library().CredentialType() != globals.PasswordCredentialType:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
+	}
+
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	pAttr := lib.PasswordAttribute
+	if pAttr == "" {
+		pAttr = "password"
+	}
+	password := password.Extract(bc.secretData, pAttr)
+	if password == "" {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
+	}
+
+	return &passCred{
+		baseCred: bc,
+		password: credential.Password(password),
 	}, nil
 }
 
