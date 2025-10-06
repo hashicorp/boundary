@@ -61,13 +61,23 @@ resource "aws_instance" "member_server" {
 
   user_data = <<EOF
                 <powershell>
+                  # Configure the server to use reliable external NTP sources and mark itself as reliable
+                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
+                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
+                  # Restart the Windows Time service to apply the new configuration
+                  Stop-Service w32time
+                  Start-Service w32time
+                  # Force an immediate time synchronization
+                  w32tm /resync /force
+
+                  # Set up SSH so we can remotely manage the instance
+                  # Note: Windows Server 2016 does not support OpenSSH
                   %{if var.server_version != "2016"~}
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
 
-                  # Set up SSH so we can remotely manage the instance
-                  ## Install OpenSSH Server and Client
+                  # Install OpenSSH Server and Client
                   # Loop to make sure that SSH installs correctly
                   $elapsed = 0
                   do {
@@ -113,24 +123,41 @@ resource "aws_instance" "member_server" {
                     }
                   } while ($true)
 
-                  ## Set PowerShell as the default SSH shell
+                  # Set PowerShell as the default SSH shell
                   New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
 
-                  ## Configure SSH server to use private key authentication so that scripts don't have to use passwords
-                  ## Save the private key from instance metadata
+                  # Configure SSH server to use private key authentication so that scripts don't have to use passwords
+                  # Save the private key from instance metadata
                   $ImdsToken = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/api/token' -Method 'PUT' -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = 2160} -UseBasicParsing).Content
                   $ImdsHeaders = @{'X-aws-ec2-metadata-token' = $ImdsToken}
                   $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
                   $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
                   New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+                  # Set the correct permissions on the authorized_keys file
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
 
-                  ## Ensure the SSH agent pulls in the new key.
+                  # Ensure the SSH agent pulls in the new key.
                   Set-Service -Name ssh-agent -StartupType "Automatic"
                   Restart-Service -Name ssh-agent
+                  Restart-Service -Name sshd
 
-                  ## Open the firewall for SSH connections
+                  # Open the firewall for SSH connections
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
                   %{endif~}
+
+                  # Open firewall ports for RDP functionality
+                  New-NetFirewallRule -Name kerberostcp -DisplayName 'Kerberos TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name kerberosudp -DisplayName 'Kerberos UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name rpctcp -DisplayName 'RPC TCP ' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name rpcudp -DisplayName 'RPC UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name ldaptcp -DisplayName 'LDAP TCP ' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name ldapudp -DisplayName 'LDAP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name smbtcp -DisplayName 'SMB TCP ' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 445
+                  New-NetFirewallRule -Name rdptcp -DisplayName 'RDP TCP ' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
+                  New-NetFirewallRule -Name rdpudp -DisplayName 'RDP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 3389
 
                   # Adds member server to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
@@ -207,6 +234,7 @@ ${var.domain_admin_password}
 
   metadata_options {
     http_endpoint          = "enabled"
+    http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
   get_password_data = true

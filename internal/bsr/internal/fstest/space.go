@@ -169,7 +169,7 @@ func (l *LimitedSpaceFile) WriteAndClose(p []byte) (n int, err error) {
 	}
 	n, err = l.MemFile.Write(p)
 	if err != nil {
-		return
+		return n, err
 	}
 	return n, l.MemFile.Close()
 }

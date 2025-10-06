@@ -271,9 +271,30 @@ resource "aws_instance" "domain_controller" {
 
   user_data = <<EOF
                 <powershell>
-                  $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
-                  Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
+                  # Configure the server to use reliable external NTP sources and mark itself as reliable
+                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
+                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
+                  # Restart the Windows Time service to apply the new configuration
+                  Stop-Service w32time
+                  Start-Service w32time
+                  # Force an immediate time synchronization
+                  w32tm /resync /force
 
+                  # Open firewall ports for RDP functionality
+                  New-NetFirewallRule -Name kerberostcp -DisplayName 'Kerberos TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name kerberosudp -DisplayName 'Kerberos UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name rpctcp -DisplayName 'RPC TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name rpcudp -DisplayName 'RPC UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name ldaptcp -DisplayName 'LDAP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name ldapudp -DisplayName 'LDAP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name smbtcp -DisplayName 'SMB TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 445
+                  New-NetFirewallRule -Name rdptcp -DisplayName 'RDP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
+                  New-NetFirewallRule -Name rdpudp -DisplayName 'RDP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 3389
+
+                  # Add computer to the domain and promote to a domain
+                  # controller
+                  Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
+                  $password = ConvertTo-SecureString ${random_string.DSRMPassword.result} -AsPlainText -Force
                   # causes the instance to reboot
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode 7 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${local.domain_sld} -ForestMode 7 -InstallDns:$true -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $password -Force:$true
                 </powershell>
@@ -281,6 +302,7 @@ resource "aws_instance" "domain_controller" {
 
   metadata_options {
     http_endpoint          = "enabled"
+    http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
   get_password_data = true

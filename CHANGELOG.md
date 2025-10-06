@@ -2,10 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.20.0 (2025/09/25)
 
 ### New and Improved
 
+* Update cap/ldap pkg to latest version to address possible concurreny issue ([PR](https://github.com/hashicorp/boundary/pull/6107))
+* Added support for RDP targets and RDP credential injection for connecting to
+  Windows machines. RDP credential injection supports both NTLM and Kerberos
+  authentication.
+* Added new credential type for username, password, and domain credentials.
 * cli: Added `boundary connect mysql` command for connecting to MySQL targets.
   This new helper command allows users to authorize sessions against MySQL
   targets and automatically invoke a MySQL client with the appropriate
@@ -20,6 +25,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   This new helper command allows users to authorize sessions against Cassandra 
   targets and automatically invoke a Cassandra client with the appropriate 
   connection parameters and credentials. Currently only username/password credentials are automatically attached.
+* cli: Added `boundary connect redis` command for connecting to Redis targets.
+  This new helper command allows users to authorize sessions against Redis
+  targets and automatically invoke a Redis client with the appropriate
+  connection parameters and credentials. Currently only username/password credentials are automatically attached.
+* ui: Improved load times for resource tables with search and filtering capabilities by replacing indexeddb for local data storage with sqlite (WASM) and OPFS ([PR](https://github.com/hashicorp/boundary-ui/pull/2984))
+
+### Bug fixes
+* ui: Fixed rendering bug where header for the Host details page rendered multiple times ([PR](https://github.com/hashicorp/boundary-ui/pull/2980))
+* ui: Fixed bug where worker tags could not be removed when creating a new worker ([PR](https://github.com/hashicorp/boundary-ui/pull/2928))
 
 ### Deprecations/Changes
 

@@ -36,7 +36,7 @@ func Setup(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName 
 	_, err = os.Create(kvPolicyFilePath)
 	require.NoError(t, err)
 
-	return
+	return boundaryPolicyName, kvPolicyFilePath
 }
 
 // CreateKvPrivateKeyCredential creates a private key credential in vault and creates a vault policy
@@ -98,7 +98,7 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kv
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	return
+	return secretName, password
 }
 
 // CreateKvPasswordDomainCredential creates a username/password/domain credential in vault and creates a vault
@@ -131,7 +131,7 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	return
+	return secretName, password
 }
 
 // WritePolicy adds a policy to vault. Provide a name for the policy that you want to create as well

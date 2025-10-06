@@ -110,3 +110,20 @@ variable "domain_controller_sec_group_id_list" {
   type        = list(any)
   description = "ID's of AWS Network Security Groups created during creation of the domain controller."
 }
+
+# =================================================================
+# Boundary Worker Configuration
+# =================================================================
+variable "worker_config_file_path" {
+  description = "Path to config file to use (relative to module directory)"
+  type        = string
+  default     = "scripts/worker.hcl"
+}
+
+variable "hcp_boundary_cluster_id" {
+  description = "ID of the Boundary cluster in HCP"
+  type        = string
+  default     = ""
+  // If using HCP int, ensure that the cluster id starts with "int-"
+  // Example: "int-19283a-123123-..."
+}

@@ -429,6 +429,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "cassandra",
 			}
 		}),
+		"connect redis": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "redis",
+			}
+		}),
 		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),

@@ -75,6 +75,7 @@ resource "aws_instance" "worker" {
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
   iam_instance_profile   = var.iam_name
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -87,12 +88,21 @@ resource "aws_instance" "worker" {
 
   user_data = <<EOF
                 <powershell>
+                  # Configure the server to use reliable external NTP sources and mark itself as reliable
+                  # We use pool.ntp.org, a public cluster of time servers. 0x9 flag means Client + SpecialInterval.
+                  w32tm /config /manualpeerlist:"pool.ntp.org,0x9" /syncfromflags:manual /reliable:yes /update
+                  # Restart the Windows Time service to apply the new configuration
+                  Stop-Service w32time
+                  Start-Service w32time
+                  # Force an immediate time synchronization
+                  w32tm /resync /force
+
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
 
                   # Set up SSH so we can remotely manage the instance
-                  ## Install OpenSSH Server and Client
+                  # Install OpenSSH Server and Client
                   # Loop to make sure that SSH installs correctly
                   $elapsed = 0
                   do {
@@ -148,15 +158,34 @@ resource "aws_instance" "worker" {
                   $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
                   $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
                   New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+                  # Set the correct permissions on the authorized_keys file
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
 
                   # Ensure the SSH agent pulls in the new key.
                   Set-Service -Name ssh-agent -StartupType "Automatic"
                   Restart-Service -Name ssh-agent
+                  Restart-Service -Name sshd
 
-                  ## Open the firewall for SSH and boundary connections
+                  # Open the firewall for SSH
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+
+                  # Open firewall for boundary connections
                   New-NetFirewallRule -Name boundary_in -DisplayName 'Boundary inbound' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 9202
                   New-NetFirewallRule -Name boundary_out -DisplayName 'Boundary outbound' -Enabled True -Direction Outbound -Protocol TCP -Action Allow -LocalPort 9202
+
+                  # Open firewall ports for RDP functionality
+                  New-NetFirewallRule -Name kerberostcp -DisplayName 'Kerberos TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name kerberosudp -DisplayName 'Kerberos UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 88
+                  New-NetFirewallRule -Name rpctcp -DisplayName 'RPC TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name rpcudp -DisplayName 'RPC UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 135
+                  New-NetFirewallRule -Name ldaptcp -DisplayName 'LDAP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name ldapudp -DisplayName 'LDAP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 389
+                  New-NetFirewallRule -Name smbtcp -DisplayName 'SMB TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 445
+                  New-NetFirewallRule -Name rdptcp -DisplayName 'RDP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
+                  New-NetFirewallRule -Name rdpudp -DisplayName 'RDP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 3389
 
                   # Add computer to the domain
                   [int]$intix = Get-NetAdapter | % { Process { If ( $_.Status -eq "up" ) { $_.ifIndex } }}
@@ -222,6 +251,7 @@ ${var.domain_admin_password}
 
   metadata_options {
     http_endpoint          = "enabled"
+    http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
   get_password_data = true
@@ -281,12 +311,13 @@ resource "local_file" "worker_config" {
   depends_on = [
     enos_local_exec.add_boundary_cli,
   ]
-  content = templatefile("${path.module}/scripts/worker.hcl", {
-    controller_ip    = var.controller_ip
-    aws_kms_key      = data.aws_kms_key.kms_key.id
-    aws_region       = var.aws_region
-    worker_public_ip = aws_instance.worker.public_ip
-    test_dir         = local.test_dir
+  content = templatefile("${path.module}/${var.worker_config_file_path}", {
+    controller_ip           = var.controller_ip
+    aws_kms_key             = data.aws_kms_key.kms_key.id
+    aws_region              = var.aws_region
+    worker_public_ip        = aws_instance.worker.public_ip
+    test_dir                = local.test_dir
+    hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
   })
   filename = "${path.root}/.terraform/tmp/worker.hcl"
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/util"
@@ -87,6 +88,9 @@ type Command struct {
 	// Cassandra
 	cassandraFlags
 
+	// Redis
+	redisFlags
+
 	// RDP
 	rdpFlags
 
@@ -119,6 +123,8 @@ func (c *Command) Synopsis() string {
 		return mongoSynopsis
 	case "cassandra":
 		return cassandraSynopsis
+	case "redis":
+		return redisSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -247,6 +253,9 @@ func (c *Command) Flags() *base.FlagSets {
 	case "cassandra":
 		cassandraOptions(c, set)
 
+	case "redis":
+		redisOptions(c, set)
+
 	case "rdp":
 		rdpOptions(c, set)
 
@@ -340,12 +349,27 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.mongoFlags.defaultExec()
 		case "cassandra":
 			c.flagExec = c.cassandraFlags.defaultExec()
+		case "redis":
+			c.flagExec = c.redisFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
 			c.flagExec = c.kubeFlags.defaultExec()
 		}
 	}
+
+	var addr netip.Addr
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
+	}
+	addr, err := netip.ParseAddr(c.flagListenAddr)
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
+		return base.CommandCliError
+	}
+	listenAddr := netip.AddrPortFrom(addr, uint16(c.flagListenPort))
+
+	var clientProxy *apiproxy.ClientProxy
 
 	authzString := c.flagAuthzToken
 	switch {
@@ -442,28 +466,35 @@ func (c *Command) Run(args []string) (retCode int) {
 			HostId:          sa.HostId,
 			Credentials:     sa.Credentials,
 		}
+
+		// the session was created specifically for this `boundary connect`
+		// command, and should be closed as soon as the command has exited
+		defer func() {
+			var err error
+			switch {
+			case clientProxy != nil:
+				err = clientProxy.CloseSession(0)
+			default:
+				// this is a weird special case. normally we let the client proxy end
+				// the session, but it failed to be inited, so we need to create the
+				// session client to ensure we don't leave hanging sessions
+				sClient := sessions.NewClient(client)
+				_, err = sClient.Cancel(c.Context, sa.SessionId, 0, sessions.WithAutomaticVersioning(true))
+			}
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("Error closing session after command end: %w", err))
+			}
+		}()
+
 		authzString = sa.AuthorizationToken
 	}
-
-	var listenAddr netip.AddrPort
-	var addr netip.Addr
-	if c.flagListenAddr == "" {
-		c.flagListenAddr = "127.0.0.1"
-	}
-	addr, err := netip.ParseAddr(c.flagListenAddr)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
-		return base.CommandCliError
-	}
-
-	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
 	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
 	if listenAddr.IsValid() {
 		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
 	}
-	clientProxy, err := apiproxy.New(
+	clientProxy, err = apiproxy.New(
 		c.proxyCtx,
 		authzString,
 		apiProxyOpts...,
@@ -593,7 +624,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	return
+	return retCode
 }
 
 func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
@@ -713,6 +744,16 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, cassandraArgs...)
 		envs = append(envs, cassandraEnvs...)
 		creds = cassandraCreds
+
+	case "redis":
+		redisArgs, redisEnvs, redisCreds, redisErr := c.redisFlags.buildArgs(c, port, host, addr, creds)
+		if redisErr != nil {
+			argsErr = redisErr
+			break
+		}
+		args = append(args, redisArgs...)
+		envs = append(envs, redisEnvs...)
+		creds = redisCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)

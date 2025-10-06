@@ -805,7 +805,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err := repo.LookupTargetForSessionAuthorization(ctx, roundTripTarget.GetPublicId(), target.WithAlias(targetAlias))
+	t, err := repo.LookupTargetForSessionAuthorization(ctx, roundTripTarget.GetPublicId(), roundTripTarget.GetProjectId(), target.WithAlias(targetAlias))
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())

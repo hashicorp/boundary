@@ -4,7 +4,7 @@
 # disable memory from being swapped to disk
 disable_mlock = true
 
-# Increase log level for debuggin
+# Increase log level for debugging
 log_level = "debug"
 
 # listener denoting this is a worker proxy
@@ -20,7 +20,7 @@ worker {
   name = "win-worker-0"
   initial_upstreams = ["[${controller_ip}]:9201"]
   tags {
-    type = ["worker", "egress", "windows"]
+    type = ["worker", "rdp", "windows"]
   }
 }
 

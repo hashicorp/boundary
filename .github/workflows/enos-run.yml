@@ -15,9 +15,6 @@ on:
       go-version:
         required: true
         type: string
-      docker-image-name:
-        required: false
-        type: string
       docker-image-file:
         required: false
         type: string
@@ -35,7 +32,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -50,7 +47,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -96,7 +93,6 @@ jobs:
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
-      ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
@@ -107,12 +103,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Set up Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -141,7 +137,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -173,7 +169,7 @@ jobs:
           echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2

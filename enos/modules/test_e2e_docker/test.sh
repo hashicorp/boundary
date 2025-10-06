@@ -42,6 +42,8 @@ install_cassandra() {
 # Install Cassandra
 install_cassandra
 
+# Install Redis
+apt install redis-server -y
 
 # Create a GPG key
 export KEY_PW=boundary

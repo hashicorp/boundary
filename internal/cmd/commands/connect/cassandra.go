@@ -113,5 +113,5 @@ func (m *cassandraFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.C
 			args = append(args, port)
 		}
 	}
-	return
+	return args, envs, retCreds, retErr
 }
