@@ -33,13 +33,6 @@ begin;
       check(
         create_time <= expiration_time
       ),
-    key_id text not null
-      constraint kms_data_key_version_fkey
-        references kms_data_key_version (private_id)
-        on delete restrict
-        on update cascade,
-    token bytea not null unique,
-    version wt_version,
     constraint app_token_global_name_scope_id_uq
       unique(name, scope_id)
   );
@@ -52,11 +45,14 @@ begin;
   create trigger update_time_column before update on app_token_global
     for each row execute procedure update_time_column();
 
-  create trigger update_version_column before update on app_token_global
-    for each row execute procedure update_version_column();
+  create trigger revocation_check before update on app_token_global
+    for each row execute procedure validate_app_token_revocation();
+
+  create trigger approximate_last_access_time_column before update on app_token_global
+    for each row execute procedure update_app_token_table_approximate_last_access_time();
 
   create trigger immutable_columns before update on app_token_global
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id', 'created_by_user_id', 'expiration_time', 'time_to_stale_seconds');
 
   create trigger insert_app_token_subtype before insert on app_token_global
     for each row execute procedure insert_app_token_subtype();

@@ -7,9 +7,7 @@ insert into app_token_global (
   name,
   description,
   created_by_user_id,
-  expiration_time,
-  key_id,
-  token
+  expiration_time
 )
 values (
   'at_global_descendants',
@@ -17,10 +15,20 @@ values (
   'Global Token - Descendants',
   'Token with descendants permission for all orgs and projects',
   'u_recovery',
-  now() + interval '1 year',
+  now() + interval '1 year'
+);
+
+insert into app_token_cipher (
+  app_token_id,
+  key_id,
+  token
+)
+values (
+  'at_global_descendants',
   'kms_key_id_global',
   decode('64657363656e64616e74735f746f6b656e', 'hex')
 );
+
 
 -- Create individual permissions for each resource type with descendants grant scope
 with resource_types as (

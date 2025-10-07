@@ -7,9 +7,7 @@ insert into app_token_global (
   name,
   description,
   created_by_user_id,
-  expiration_time,
-  key_id,
-  token
+  expiration_time
 )
 values (
   'at_global_children_per_org',
@@ -17,7 +15,16 @@ values (
   'Global Token - Children Per Org',
   'Token with one children permission per org and individual project grants',
   'u_recovery',
-  now() + interval '1 year',
+  now() + interval '1 year'
+);
+
+insert into app_token_cipher (
+  app_token_id,
+  key_id,
+  token
+)
+values (
+  'at_global_children_per_org',
   'kms_key_id_global',
   decode('636869326472656e5f7065725f6f7267', 'hex')
 );

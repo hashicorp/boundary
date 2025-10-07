@@ -10,27 +10,37 @@ with test_token_data as (
     'kms_key_id_global' as key_id,
     decode('746573745f746f6b656e5f6279746573' || lpad(to_hex(generate_series), 8, '0'), 'hex') as token
   from generate_series(1, 1000)
+),
+token_insert as (
+  insert into app_token_org (
+    public_id,
+    scope_id,
+    name,
+    description,
+    created_by_user_id,
+    expiration_time
+  )
+  select 
+    public_id,
+    scope_id,
+    name,
+    description,
+    created_by_user_id,
+    now() + interval '1 year'
+  from test_token_data
+  returning public_id
 )
-insert into app_token_org (
-  public_id,
-  scope_id,
-  name,
-  description,
-  created_by_user_id,
-  expiration_time,
+insert into app_token_cipher (
+  app_token_id,
   key_id,
   token
 )
 select 
   public_id,
-  scope_id,
-  name,
-  description,
-  created_by_user_id,
-  now() + interval '1 year',
   key_id,
   token
 from test_token_data;
+
 
 -- Create permissions for the 1000 test org tokens
 with test_permission_data as (

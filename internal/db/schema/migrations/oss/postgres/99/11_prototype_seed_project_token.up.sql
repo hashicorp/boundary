@@ -9,27 +9,38 @@ with project_token_data as (
     'Token for project ' || public_id || ' with individual permissions' as description
   from iam_scope
   where type = 'project'
+),
+token_insert as (
+  insert into app_token_project (
+    public_id,
+    scope_id,
+    name,
+    description,
+    created_by_user_id,
+    expiration_time
+  )
+  select 
+    public_id,
+    scope_id,
+    name,
+    description,
+    'u_recovery' as created_by_user_id,
+    now() + interval '1 year' as expiration_time
+  from project_token_data
+  returning public_id
 )
-insert into app_token_project (
-  public_id,
-  scope_id,
-  name,
-  description,
-  created_by_user_id,
-  expiration_time,
+insert into app_token_cipher (
+  app_token_id,
   key_id,
   token
 )
 select 
   public_id,
-  scope_id,
-  name,
-  description,
-  'u_recovery' as created_by_user_id,
-  now() + interval '1 year' as expiration_time,
   'kms_key_id_global' as key_id,
   decode('70726f6a5f746f6b656e5f' || encode(digest(public_id, 'sha256'), 'hex')::text, 'hex') as token
 from project_token_data;
+
+
 
 -- Create one permission per project token with individual grant scope
 with project_permission_data as (

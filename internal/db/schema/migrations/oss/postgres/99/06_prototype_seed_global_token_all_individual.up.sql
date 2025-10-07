@@ -7,8 +7,6 @@ insert into app_token_global (
   public_id,
   scope_id,
   created_by_user_id,
-  key_id,
-  token,
   name,
   description,
   expiration_time
@@ -17,12 +15,22 @@ values (
   'at_global_comprehensive',
   'global',
   'u_recovery',
-  'kms_key_id_global',
-  decode('deadbeefcafebabe0123456789abcdef', 'hex'),
   'Comprehensive Global Token',
   'Token with individual permissions for every org and project',
   now() + interval '1 year'
 );
+
+insert into app_token_cipher (
+  app_token_id,
+  key_id,
+  token
+)
+values (
+  'at_global_comprehensive',
+  'kms_key_id_global',
+  decode('deadbeefcafebabe0123456789abcdef', 'hex')
+);
+
 
 -- Then insert permissions for each org and project
 with 

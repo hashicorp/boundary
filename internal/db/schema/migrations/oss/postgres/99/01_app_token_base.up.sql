@@ -56,24 +56,62 @@ begin;
         on update cascade,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version
+    approximate_last_access_time wt_timestamp,
+    expiration_time wt_timestamp,
+    time_to_stale_seconds integer not null default 0
+      constraint time_to_stale_seconds_must_be_non_negative
+        check(time_to_stale_seconds >= 0)
   );
   comment on table app_token is
     'app_token is the base table for application tokens that can be scoped to global, org, or project levels.';
+
+  create trigger immutable_columns before update on app_token
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id', 'expiration_time', 'time_to_stale_seconds');
 
   create function insert_app_token_subtype() returns trigger
   as $$
   begin
     insert into app_token
-      (public_id, scope_id)
+      (public_id, scope_id, expiration_time, time_to_stale_seconds)
     values
-      (new.public_id, new.scope_id);
+      (new.public_id, new.scope_id, new.expiration_time, new.time_to_stale_seconds);
     return new;
   end;
   $$ language plpgsql;
   comment on function insert_app_token_subtype() is
     'insert_app_token_subtype is used to automatically insert a row into the app_token table '
     'whenever a row is inserted into the subtype table';
+
+-- Add trigger to update the new update_time column on every app_token subtype update.
+  create function update_app_token_table_update_time() returns trigger
+  as $$
+  begin
+    update app_token 
+       set update_time = new.update_time 
+     where public_id = new.public_id;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function update_app_token_table_update_time() is
+    'update_app_token_table_update_time is used to automatically update the update_time '
+      'of the base table whenever one of the subtype app_token tables are updated';
+
+-- Add trigger to update the new approximate_last_access_time column on every app_token subtype update.
+  create function update_app_token_table_approximate_last_access_time() returns trigger
+  as $$
+  begin
+    -- Only update if approximate_last_access_time has actually changed
+    if old.approximate_last_access_time is distinct from new.approximate_last_access_time then
+      update app_token 
+         set approximate_last_access_time = new.approximate_last_access_time 
+       where public_id = new.public_id;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function update_app_token_table_approximate_last_access_time() is
+    'update_app_token_table_approximate_last_access_time is used to automatically update the approximate_last_access_time '
+      'of the base table whenever one of the subtype app_token tables are updated';
 
   -- Function to validate that created_by_user_id exists in iam_user
   create or replace function validate_app_token_created_by_user() returns trigger
@@ -90,6 +128,26 @@ begin;
   $$ language plpgsql;
   comment on function validate_app_token_created_by_user() is
     'validate_app_token_created_by_user is used to enforce that created_by_user_id exists in iam_user table';
+
+  -- Function to validate that revoked can only be updated from false to true
+  create or replace function validate_app_token_revocation() returns trigger
+  as $$
+  begin
+    -- For updates, check revoked field changes
+    if old.revoked is distinct from new.revoked then
+      -- Only allow change from false to true
+      if not (old.revoked = false and new.revoked = true) then
+        raise exception 'App token cannot be unrevoked. revoked value. Current: %, Attempted: %', 
+          old.revoked, new.revoked;
+      end if;
+    end if;
+    
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function validate_app_token_revocation() is
+    'validate_app_token_revocation ensures that the revoked field can only be updated from false to true, '
+    'preventing tokens from being un-revoked or other invalid state transitions';
 
   -- App token deleted tracking table
   create table app_token_deleted (
@@ -160,6 +218,24 @@ begin;
   create trigger upsert_canonical_grant_trigger before insert on app_token_permission_grant
     for each row execute procedure upsert_canonical_grant();
 
+
+  create table app_token_cipher (
+    app_token_id wt_public_id primary key
+      constraint app_token_cipher_app_token_fkey
+        references app_token(public_id)
+          on delete cascade
+          on update cascade,
+    key_id text not null
+      constraint kms_data_key_version_fkey
+        references kms_data_key_version (private_id)
+        on delete restrict
+        on update cascade,
+    token bytea not null unique
+  );
+  comment on table app_token_cipher is
+    'app_token_cipher is the table for application token encryption keys. '
+    'This was split out from the app_token table to avoid re-encrypting tokens when tokens are no longer valid. '
+    'When an app token becomes invalid, the associated row in this table may be deleted.';
 
   -- Add oplog entries for tracking changes (similar to IAM role tables)
   insert into oplog_ticket (name, version)
