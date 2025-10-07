@@ -26,6 +26,14 @@ worker {
 }
 ```
 
+- `name` - Specifies a unique name for the worker. The `name` field is not used for controller-led or worker-led registration, but it is required for KMS-led authorization. The name value can be:
+  - an all lowercase direct name string
+  - a reference to a file on disk (`file://`) from which Boundary reads the name
+  - an environment variable (`env://`) from which Boundary reads the name
+- `description` - Specifies an optional description of the worker for workers that use KMS-led authorization. The `description` field is not used for controller-led or worker-led registration. The description value can be:
+  - a direct description string
+  - a reference to a file on disk (`file://`) from which Boundary reads the description
+  - an environment variable (`env://`) from which Boundary reads the description
 - `public_addr` - Specifies the public host or IP address (and optionally port)
    where clients can reach the worker for proxying. By default, it uses the
    address of the listener marked for `proxy` purpose. This is useful for cloud
