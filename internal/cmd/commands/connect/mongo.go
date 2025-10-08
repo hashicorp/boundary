@@ -2,7 +2,6 @@ package connect
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/boundary/api/proxy"
@@ -75,57 +74,32 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 
 	switch m.flagMongoStyle {
 	case "mongosh":
-		u := &url.URL{Scheme: "mongodb"}
-
-		var userInfo *url.Userinfo
-		if username != "" {
-			if password != "" {
-				userInfo = url.UserPassword(username, password)
-			} else {
-				userInfo = url.User(username)
-			}
-		} else if c.flagUsername != "" {
-			if password != "" {
-				userInfo = url.UserPassword(c.flagUsername, password)
-			} else {
-				userInfo = url.User(c.flagUsername)
-			}
-		}
-		if userInfo != nil {
-			u.User = userInfo
-		}
-
-		host := ip
 		if port != "" {
-			host = host + ":" + port
+			args = append(args, "--port", port)
 		}
-		u.Host = host
+		args = append(args, "--host", ip)
 
 		if c.flagDbname != "" {
-			u.Path = "/" + c.flagDbname
+			args = append(args, c.flagDbname)
 		}
 
-		if c.flagDbname == "" {
-			c.UI.Warn("No -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
+		switch {
+		case username != "":
+			args = append(args, "-u", username)
+		case c.flagUsername != "":
+			args = append(args, "-u", c.flagUsername)
+		}
+
+		if password != "" {
+			args = append(args, "-p", password)
+			if c.flagDbname == "" {
+				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
+			}
 		}
 
 		if c.flagAuthSource != "" {
-			q := u.Query()
-			// do not overwrite if already present (defensive, though we control construction)
-			hasAuthSource := false
-			for key := range q {
-				if strings.EqualFold(key, "authSource") {
-					hasAuthSource = true
-					break
-				}
-			}
-			if !hasAuthSource {
-				q.Set("authSource", c.flagAuthSource)
-				u.RawQuery = q.Encode()
-			}
+			args = append(args, "--authenticationDatabase", c.flagAuthSource)
 		}
-
-		args = append(args, u.String())
 	default:
 		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)
 	}
