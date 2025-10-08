@@ -187,6 +187,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/architecture/:slug*',
+    destination: '/boundary/docs/:version/architecture/:slug*',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/system-requirements',
     destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
@@ -328,6 +334,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/deploy/self-managed',
     destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary',
+    destination: '/boundary/docs/:version/deploy/self-managed',
     permanent: true,
   },
   {
@@ -486,6 +497,12 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/terraform-patterns',
     destination: '/boundary/docs/deploy/terraform-patterns',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/terraform-patterns/:slug*',
+    destination: '/boundary/docs/:version/deploy/terraform-patterns/:slug*',
     permanent: true,
   },
   {
