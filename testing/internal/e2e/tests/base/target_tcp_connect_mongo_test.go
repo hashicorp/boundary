@@ -49,11 +49,8 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	t.Logf("MongoDB info: user=%s, db=%s, host=%s, port=%s, password-set:%t",
 		user, db, hostname, port, pwSet)
 
-	// For readiness checks, use the container hostname on the e2e_cluster network
-	containerName := hostname
-
 	err = pool.Retry(func() error {
-		cmd := exec.CommandContext(ctx, "docker", "exec", containerName,
+		cmd := exec.CommandContext(ctx, "docker", "exec", hostname,
 			"mongosh", "-u", user, "-p", pw, "--authenticationDatabase", "admin",
 			"--eval", "db.runCommand('ping')")
 		return cmd.Run()

@@ -49,8 +49,8 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		Target:     &c.flagAuthSource,
 		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
 		Completion: complete.PredictNothing,
-		Default:    "admin",
-		Usage:      `Specifies the authentication database for MongoDB. Defaults to "admin" for root-style users.`,
+		Default:    "",
+		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database specified in the connection string (dbname); if none is specified, it defaults to "admin".`,
 	})
 }
 
@@ -77,45 +77,32 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 
 	switch m.flagMongoStyle {
 	case "mongosh":
-		// Build MongoDB connection string for mongosh
-		connectionString := "mongodb://"
-
-		// Add username and password to connection string
-		if username != "" {
-			connectionString += username
-			if password != "" {
-				connectionString += ":" + password
-			}
-			connectionString += "@"
-		} else if c.flagUsername != "" {
-			connectionString += c.flagUsername
-			if password != "" {
-				connectionString += ":" + password
-			}
-			connectionString += "@"
-		}
-
-		// Add host and port
-		connectionString += ip
 		if port != "" {
-			connectionString += ":" + port
+			args = append(args, "--port", port)
 		}
+		args = append(args, "--host", ip)
 
-		// Add database name
 		if c.flagDbname != "" {
-			connectionString += "/" + c.flagDbname
+			args = append(args, c.flagDbname)
 		}
 
-		// Add authSource parameter if not already present
-		authSource := c.flagAuthSource
-
-		if !strings.Contains(connectionString, "?") {
-			connectionString += "?authSource=" + authSource
-		} else if !strings.Contains(strings.ToLower(connectionString), "authsource=") {
-			connectionString += "&authSource=" + authSource
+		switch {
+		case username != "":
+			args = append(args, "-u", username)
+		case c.flagUsername != "":
+			args = append(args, "-u", c.flagUsername)
 		}
 
-		args = append(args, connectionString)
+		if password != "" {
+			args = append(args, "-p", password)
+			if c.flagDbname == "" {
+				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
+			}
+		}
+
+		if c.flagAuthSource != "" {
+			args = append(args, "--authenticationDatabase", c.flagAuthSource)
+		}
 	default:
 		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)
 	}

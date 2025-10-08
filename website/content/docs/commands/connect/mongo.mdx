@@ -77,8 +77,8 @@ You can also specify how the CLI attempts to invoke a MongoDB client using the *
 This value may be overridden by credentials sourced from a credential store.
 You can also specify a username using the **BOUNDARY_CONNECT_USERNAME** environment variable.
 
-- `-auth-source` `(string: "admin")` - The authentication database for MongoDB.
-Defaults to "admin" for root-style users initialized via MONGO_INITDB_ROOT_USERNAME.
+- `-auth-source` `(string: "")` - The authentication database for MongoDB.
+If omitted, mongosh defaults `authSource` to the database specified in the connection string (`-dbname`). If no database is specified, it defaults to `admin`.
 You can also specify the authentication database using the **BOUNDARY_CONNECT_MONGO_AUTH_SOURCE** environment variable.
 
 @include 'cmd-option-note.mdx' 
