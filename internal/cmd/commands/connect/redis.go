@@ -69,12 +69,14 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		case username != "":
 			args = append(args, "--user", username)
 		case c.flagUsername != "":
-			args = append(args, "--user", c.flagUsername, "--askpass")
+			args = append(args, "--user", c.flagUsername)
 		}
 
-		// Password is read by redis-cli via environment variable. The password disappears after the command exits.
 		if password != "" {
 			envs = append(envs, fmt.Sprintf("REDISCLI_AUTH=%s", password))
+		} else {
+			// prompt for password if it wasn't provided
+			envs = append(envs, "--askpass")
 		}
 	}
 

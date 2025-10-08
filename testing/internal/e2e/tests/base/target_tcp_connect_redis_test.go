@@ -19,14 +19,126 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliTcpTargetConnectRedis uses the boundary cli to connect to a target using `connect redis`
-func TestCliTcpTargetConnectRedis(t *testing.T) {
+type RedisContainerInfo struct {
+	Hostname string
+	Port     string
+	Username string
+	Password string
+}
+
+type BoundaryResources struct {
+	TargetId string
+	StoreId  string
+}
+
+// TestCliTcpTargetConnectRedisWithUsernamePassword uses the boundary cli to connect
+// to a target using `connect redis` with a username and password
+func TestCliTcpTargetConnectRedisWithUsernamePassword(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	pool, err := dockertest.NewPool("")
+	ctx := context.Background()
+	redisInfo := setupRedisContainer(t, ctx)
+	resources := setupBoundaryResources(t, ctx, redisInfo)
+
+	credentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(
+		t,
+		ctx,
+		resources.StoreId,
+		redisInfo.Username,
+		redisInfo.Password,
+	)
 	require.NoError(t, err)
 
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, resources.TargetId, credentialId)
+	require.NoError(t, err)
+
+	// Validation logic
+	t.Logf("Attempting to connect to Redis target %s", resources.TargetId)
+
+	cmd := exec.CommandContext(ctx,
+		"boundary",
+		"connect", "redis",
+		"-target-id", resources.TargetId,
+	)
+
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
+	require.NoError(t, cmd.Start())
+
+	output, err := sendRedisCommand(stdin, stdout, "SET e2etestkey e2etestvalue\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "OK", output)
+
+	output, err = sendRedisCommand(stdin, stdout, "GET e2etestkey\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "e2etestvalue", output)
+
+	output, err = sendRedisCommand(stdin, stdout, "QUIT\r\n")
+	require.Equal(t, io.EOF, err)
+	require.Empty(t, output)
+
+	// Confirm that boundary connect has closed
+	err = cmd.Wait()
+	require.NoError(t, err)
+}
+
+// TestCliTcpTargetConnectRedisWithPassword uses the boundary cli to connect
+// to a target using `connect redis` with a password
+func TestCliTcpTargetConnectRedisWithPassword(t *testing.T) {
+	e2e.MaybeSkipTest(t)
+
 	ctx := context.Background()
+	redisInfo := setupRedisContainer(t, ctx)
+	resources := setupBoundaryResources(t, ctx, redisInfo)
+
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
+		t,
+		ctx,
+		resources.StoreId,
+		redisInfo.Password,
+	)
+	require.NoError(t, err)
+
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, resources.TargetId, credentialId)
+	require.NoError(t, err)
+
+	t.Logf("Attempting to connect to Redis target %s", resources.TargetId)
+
+	cmd := exec.CommandContext(ctx,
+		"boundary",
+		"connect", "redis",
+		"-target-id", resources.TargetId,
+	)
+
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
+	require.NoError(t, cmd.Start())
+
+	output, err := sendRedisCommand(stdin, stdout, "SET e2etestkey e2etestvalue\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "OK", output)
+
+	output, err = sendRedisCommand(stdin, stdout, "GET e2etestkey\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "e2etestvalue", output)
+
+	output, err = sendRedisCommand(stdin, stdout, "QUIT\r\n")
+	require.Equal(t, io.EOF, err)
+	require.Empty(t, output)
+
+	// Confirm that boundary connect has closed
+	err = cmd.Wait()
+	require.NoError(t, err)
+}
+
+// setupRedisContainer starts a Redis container and returns its connection info
+func setupRedisContainer(t *testing.T, ctx context.Context) *RedisContainerInfo {
+	pool, err := dockertest.NewPool("")
+	require.NoError(t, err)
 
 	network, err := pool.NetworksByName("e2e_cluster")
 	require.NoError(t, err, "Failed to get e2e_cluster network")
@@ -57,7 +169,17 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 		return e
 	})
 	require.NoError(t, err, "Redis container failed to start")
+	return &RedisContainerInfo{
+		Hostname: hostname,
+		Port:     port,
+		Username: user,
+		Password: pw,
+	}
+}
 
+// setupBoundaryResources sets up the following Boundary resources:
+// Org, Project, Target, Credential Store
+func setupBoundaryResources(t *testing.T, ctx context.Context, redisInfo *RedisContainerInfo) *BoundaryResources {
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	orgId, err := boundary.CreateOrgCli(t, ctx)
@@ -76,55 +198,18 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 		t,
 		ctx,
 		projectId,
-		port,
-		target.WithAddress(hostname),
+		redisInfo.Port,
+		target.WithAddress(redisInfo.Hostname),
 	)
 	require.NoError(t, err)
 
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 
-	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
-		t,
-		ctx,
-		storeId,
-		user,
-		pw,
-	)
-	require.NoError(t, err)
-
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
-	require.NoError(t, err)
-
-	t.Logf("Attempting to connect to Redis target %s", targetId)
-
-	cmd := exec.CommandContext(ctx,
-		"boundary",
-		"connect", "redis",
-		"-target-id", targetId,
-	)
-
-	stdin, err := cmd.StdinPipe()
-	require.NoError(t, err)
-	stdout, err := cmd.StdoutPipe()
-	require.NoError(t, err)
-	require.NoError(t, cmd.Start())
-
-	output, err := sendRedisCommand(stdin, stdout, "SET e2etestkey e2etestvalue\r\n")
-	require.NoError(t, err)
-	require.Equal(t, "OK", output)
-
-	output, err = sendRedisCommand(stdin, stdout, "GET e2etestkey\r\n")
-	require.NoError(t, err)
-	require.Equal(t, "e2etestvalue", output)
-
-	output, err = sendRedisCommand(stdin, stdout, "QUIT\r\n")
-	require.Equal(t, io.EOF, err)
-	require.Empty(t, output)
-
-	// Confirm that boundary connect has closed
-	err = cmd.Wait()
-	require.NoError(t, err)
+	return &BoundaryResources{
+		TargetId: targetId,
+		StoreId:  storeId,
+	}
 }
 
 func sendRedisCommand(stdin io.WriteCloser, stdout io.ReadCloser, cmdStr string) (string, error) {
