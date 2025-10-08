@@ -50,7 +50,7 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
 		Completion: complete.PredictNothing,
 		Default:    "",
-		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database specified in the connection string (dbname); if none is specified, it defaults to "admin".`,
+		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database name (dbname); if none is specified, it defaults to "admin".`,
 	})
 }
 
@@ -96,7 +96,7 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		if password != "" {
 			args = append(args, "-p", password)
 			if c.flagDbname == "" {
-				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
+				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'.")
 			}
 		}
 
