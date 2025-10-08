@@ -49,14 +49,6 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 	var username, password string
 
 	retCreds = creds
-	if len(retCreds.UsernamePassword) > 0 {
-		// Mark credential as consumed, such that it is not printed to the user
-		retCreds.UsernamePassword[0].Consumed = true
-
-		// Grab the first available username/password credential brokered
-		username = retCreds.UsernamePassword[0].Username
-		password = retCreds.UsernamePassword[0].Password
-	}
 
 	switch r.flagRedisStyle {
 	case "redis-cli":
@@ -66,15 +58,37 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		}
 
 		switch {
-		case username != "":
-			args = append(args, "--user", username)
-		case c.flagUsername != "":
-			args = append(args, "--user", c.flagUsername, "--askpass")
-		}
+		// first check for a username/password credential
+		case len(retCreds.UsernamePassword) > 0:
+			// Mark credential as consumed, such that it is not printed to the user
+			retCreds.UsernamePassword[0].Consumed = true
 
-		// Password is read by redis-cli via environment variable. The password disappears after the command exits.
-		if password != "" {
-			envs = append(envs, fmt.Sprintf("REDISCLI_AUTH=%s", password))
+			// Grab the first available username/password credential brokered
+			username = retCreds.UsernamePassword[0].Username
+			password = retCreds.UsernamePassword[0].Password
+
+			switch {
+			case username != "":
+				args = append(args, "--user", username)
+			case c.flagUsername != "":
+				args = append(args, "--user", c.flagUsername)
+			}
+			if password != "" {
+				envs = append(envs, fmt.Sprintf("REDISCLI_AUTH=%s", password))
+			} else {
+				// prompt for password if it wasn't provided
+				envs = append(envs, "--askpass")
+			}
+		// next check for a password credential (older versions of redis don't support username)
+		case len(retCreds.Password) > 0:
+			// Mark credential as consumed, such that it is not printed to the user
+			retCreds.Password[0].Consumed = true
+
+			// Grab the first available password credential brokered
+			password = retCreds.Password[0].Password
+			if password != "" {
+				envs = append(envs, fmt.Sprintf("REDISCLI_AUTH=%s", password))
+			}
 		}
 	}
 

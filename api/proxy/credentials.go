@@ -12,12 +12,22 @@ import (
 
 const (
 	usernamePasswordCredentialType = "username_password"
+	passwordCredentialType         = "password"
 	sshPrivateKeyCredentialType    = "ssh_private_key"
 )
 
 // UsernamePassword contains username and password credentials
 type UsernamePassword struct {
 	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+
+	Raw *targets.SessionCredential
+	// Consumed can be set by the caller to indicate that the credential has
+	// been used, e.g. displayed to the user
+	Consumed bool
+}
+
+type Password struct {
 	Password string `mapstructure:"password"`
 
 	Raw *targets.SessionCredential
@@ -41,6 +51,7 @@ type SshPrivateKey struct {
 
 type Credentials struct {
 	UsernamePassword []UsernamePassword
+	Password         []Password
 	SshPrivateKey    []SshPrivateKey
 	// Unspecified are credentials that do not match one of the types above
 	Unspecified []*targets.SessionCredential
@@ -76,6 +87,7 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 		}
 
 		var upCred UsernamePassword
+		var pCred Password
 		var spkCred SshPrivateKey
 		switch cred.CredentialSource.CredentialType {
 		case usernamePasswordCredentialType:
@@ -87,6 +99,18 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 			if upCred.Username != "" && upCred.Password != "" {
 				upCred.Raw = cred
 				out.UsernamePassword = append(out.UsernamePassword, upCred)
+				continue
+			}
+
+		case passwordCredentialType:
+			// Decode attributes from credential struct
+			if err := mapstructure.Decode(cred.Credential, &pCred); err != nil {
+				return Credentials{}, err
+			}
+
+			if pCred.Password != "" {
+				pCred.Raw = cred
+				out.Password = append(out.Password, pCred)
 				continue
 			}
 
