@@ -47,7 +47,7 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
 		Completion: complete.PredictNothing,
 		Default:    "",
-		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database specified in the connection string (dbname); if none is specified, it defaults to "admin".`,
+		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database name (dbname); if none is specified, it defaults to "admin".`,
 	})
 }
 
