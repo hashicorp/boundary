@@ -25,6 +25,7 @@ kms "azurekeyvault" {
   client_secret  = "DUJDS3..."
   vault_name     = "hc-vault"
   key_name       = "vault_key"
+  key_id         = "global_worker-auth"
 }
 ```
 
@@ -52,6 +53,10 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
 
 - `key_name` `(string: <required>)`: The Key Vault key to use for encryption and decryption. May also be specified by the
   `AZUREKEYVAULT_WRAPPER_KEY_NAME` environment variable.
+
+- `key_id` - The unique name of this key.
+It is used to identify the key when you perform a root key migration.
+You can use the `key_id` field with all KMS stanzas.
 
 ## Authentication
 

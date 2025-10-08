@@ -1251,10 +1251,6 @@
             "path": "commands/connect/postgres"
           },
           {
-            "title": "redis",
-            "path": "commands/connect/redis"
-          },
-          {
             "title": "rdp",
             "path": "commands/connect/rdp"
           },
