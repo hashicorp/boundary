@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/boundary/api/proxy"
@@ -46,8 +47,8 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 		Target:     &c.flagAuthSource,
 		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
 		Completion: complete.PredictNothing,
-		Default:    "admin",
-		Usage:      `Specifies the authentication database for MongoDB. Defaults to "admin" for root-style users.`,
+		Default:    "",
+		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database specified in the connection string (dbname); if none is specified, it defaults to "admin".`,
 	})
 }
 
@@ -74,45 +75,57 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 
 	switch m.flagMongoStyle {
 	case "mongosh":
-		// Build MongoDB connection string for mongosh
-		connectionString := "mongodb://"
+		u := &url.URL{Scheme: "mongodb"}
 
-		// Add username and password to connection string
+		var userInfo *url.Userinfo
 		if username != "" {
-			connectionString += username
 			if password != "" {
-				connectionString += ":" + password
+				userInfo = url.UserPassword(username, password)
+			} else {
+				userInfo = url.User(username)
 			}
-			connectionString += "@"
 		} else if c.flagUsername != "" {
-			connectionString += c.flagUsername
 			if password != "" {
-				connectionString += ":" + password
+				userInfo = url.UserPassword(c.flagUsername, password)
+			} else {
+				userInfo = url.User(c.flagUsername)
 			}
-			connectionString += "@"
+		}
+		if userInfo != nil {
+			u.User = userInfo
 		}
 
-		// Add host and port
-		connectionString += ip
+		host := ip
 		if port != "" {
-			connectionString += ":" + port
+			host = host + ":" + port
 		}
+		u.Host = host
 
-		// Add database name
 		if c.flagDbname != "" {
-			connectionString += "/" + c.flagDbname
+			u.Path = "/" + c.flagDbname
 		}
 
-		// Add authSource parameter if not already present
-		authSource := c.flagAuthSource
-
-		if !strings.Contains(connectionString, "?") {
-			connectionString += "?authSource=" + authSource
-		} else if !strings.Contains(strings.ToLower(connectionString), "authsource=") {
-			connectionString += "&authSource=" + authSource
+		if c.flagDbname == "" {
+			c.UI.Warn("No -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
 		}
 
-		args = append(args, connectionString)
+		if c.flagAuthSource != "" {
+			q := u.Query()
+			// do not overwrite if already present (defensive, though we control construction)
+			hasAuthSource := false
+			for key := range q {
+				if strings.EqualFold(key, "authSource") {
+					hasAuthSource = true
+					break
+				}
+			}
+			if !hasAuthSource {
+				q.Set("authSource", c.flagAuthSource)
+				u.RawQuery = q.Encode()
+			}
+		}
+
+		args = append(args, u.String())
 	default:
 		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)
 	}
