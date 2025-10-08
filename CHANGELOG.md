@@ -6,7 +6,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* Update cap/ldap pkg to latest version to address possible concurreny issue ([PR](https://github.com/hashicorp/boundary/pull/6107))
 * Added support for RDP targets and RDP credential injection for connecting to
   Windows machines. RDP credential injection supports both NTLM and Kerberos
   authentication.
@@ -20,10 +19,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
   This new helper command allows users to authorize sessions against Cassandra 
   targets and automatically invoke a Cassandra client with the appropriate 
-  connection parameters and credentials. Currently only username/password credentials are automatically attached.
-* cli: Added `boundary connect redis` command for connecting to Redis targets.
-  This new helper command allows users to authorize sessions against Redis
-  targets and automatically invoke a Redis client with the appropriate
   connection parameters and credentials. Currently only username/password credentials are automatically attached.
 * ui: Improved load times for resource tables with search and filtering capabilities by replacing indexeddb for local data storage with sqlite (WASM) and OPFS ([PR](https://github.com/hashicorp/boundary-ui/pull/2984))
 

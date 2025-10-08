@@ -10,11 +10,6 @@ pushd "${root_dir}" > /dev/null
 
 # make docker image
 export DEV_DOCKER_GOARCH=$(uname -m)
-# x86_64 is the output of `uname -m` on github actions runners
-# but the go requires goarch to be amd64
-if [[ $DEV_DOCKER_GOARCH == "x86_64" ]]; then
-   export DEV_DOCKER_GOARCH="amd64"
-fi
 export IMAGE_TAG_DEV="${IMAGE_NAME}"
 make build-ui docker-build-dev
 
