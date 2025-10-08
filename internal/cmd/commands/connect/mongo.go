@@ -93,7 +93,7 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		if password != "" {
 			args = append(args, "-p", password)
 			if c.flagDbname == "" {
-				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'. You may need to run 'use <db>' or pass -dbname.")
+				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mongosh will default the database to 'test'.")
 			}
 		}
 
