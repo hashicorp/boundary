@@ -360,6 +360,57 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	}
 }
 
+// StartMongo starts a MongoDB database in a docker container.
+// Returns information about the container
+func StartMongo(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
+	t.Log("Starting MongoDB database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
+
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+
+	networkAlias := "e2emongo"
+	mongoDb := "e2eboundarydb"
+	mongoUser := "e2eboundary"
+	mongoPassword := "e2eboundary"
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+		Env: []string{
+			"MONGO_INITDB_ROOT_USERNAME=" + mongoUser,
+			"MONGO_INITDB_ROOT_PASSWORD=" + mongoPassword,
+			"MONGO_INITDB_DATABASE=" + mongoDb,
+		},
+		ExposedPorts: []string{"27017/tcp"},
+		Name:         networkAlias,
+		Networks:     []*dockertest.Network{network},
+	})
+	require.NoError(t, err)
+
+	return &Container{
+		Resource: resource,
+		UriLocalhost: fmt.Sprintf(
+			"mongodb://%s:%s@%s/%s?authSource=admin",
+			mongoUser,
+			mongoPassword,
+			resource.GetHostPort("27017/tcp"),
+			mongoDb,
+		),
+		UriNetwork: fmt.Sprintf(
+			"mongodb://%s:%s@%s:27017/%s?authSource=admin",
+			mongoUser,
+			mongoPassword,
+			networkAlias,
+			mongoDb,
+		),
+	}
+}
+
 // StartCassandra starts a Cassandra database in a docker container.
 // Returns information about the container
 func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
