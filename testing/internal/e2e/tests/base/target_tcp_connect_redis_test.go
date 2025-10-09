@@ -20,7 +20,7 @@ import (
 )
 
 // TestCliTcpTargetConnectRedis uses the boundary cli to connect to a target using `connect redis`
-func TestCliTcpTargetConnectRedis(t *testing.T) {
+func TestCliTcpTargetConnectRedisWithUsernamePassword(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	pool, err := dockertest.NewPool("")
@@ -84,7 +84,7 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 
-	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
+	credentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(
 		t,
 		ctx,
 		storeId,
