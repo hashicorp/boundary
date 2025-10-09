@@ -417,6 +417,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "mysql",
 			}
 		}),
+		"connect mongo": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "mongo",
+			}
+		}),
 		"connect cassandra": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),
