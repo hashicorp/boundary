@@ -456,6 +456,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Paused,
 		},
 		{
+			name: "WindowsRDPClientEarlyDisconnection",
+			c:    WindowsRDPClientEarlyDisconnection,
+			want: WindowsRDPClientEarlyDisconnection,
+		},
+		{
 			name: "ImmutableColumn",
 			c:    ImmutableColumn,
 			want: ImmutableColumn,
