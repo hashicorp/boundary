@@ -100,7 +100,7 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 		"connect", "mongo",
 		"-target-id", targetId,
 		"-dbname", db,
-		"-auth-source", "admin",
+		"-authentication-database", "admin",
 	)
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
