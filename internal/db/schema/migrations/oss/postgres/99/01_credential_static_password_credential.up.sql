@@ -115,4 +115,98 @@ begin;
 
   create index credential_static_password_credential_deleted_delete_time_idx on credential_static_password_credential_deleted (delete_time);
 
+  create view credential_static_password_credential_hst_aggregate as
+    select
+      rsc.recording_id,
+      spc.public_id,
+      spc.name,
+      spc.description,
+      spc.password_hmac,
+      css.public_id as store_public_id,
+      css.project_id as store_project_id,
+      css.name as store_name,
+      css.description as store_description,
+      string_agg(distinct rsc.credential_purpose, '|') as purposes
+    from
+      credential_static_password_credential_hst as spc
+        left join recording_static_credential as rsc on spc.history_id = rsc.credential_static_hst_id
+        join credential_static_store_hst as css on rsc.credential_static_store_hst_id = css.history_id
+    group by spc.history_id, rsc.recording_id, css.history_id;
+  comment on view credential_static_password_credential_hst_aggregate is
+    'credential_static_password_credential_hst_aggregate contains the password credential history data along with its store and purpose data.';
+
+    -- This constraint replaces the previous constraint created in 98/01_credential_static_username_password_domain_credential.up.sql
+  alter table credential_type_enm
+    drop constraint only_predefined_credential_types_allowed;
+
+  alter table credential_type_enm
+    add constraint only_predefined_credential_types_allowed
+      check (
+        name in (
+          'unspecified',
+          'username_password',
+          'ssh_private_key',
+          'ssh_certificate',
+          'username_password_domain',
+          'password'
+        )
+      );
+
+  insert into credential_type_enm (name)
+    values ('password');
+
+  -- This function replaces the previous function created in 98/01_credential_static_username_password_domain_credential.up.sql
+  create or replace function insert_recording_static_credentials() returns trigger
+    as $$
+    begin
+      with
+      session_recording(session_id, recording_id) as (
+        select session_id, public_id
+          from recording_session
+        where session_id = new.session_id
+      ),
+      session_static_creds(cred_id, purpose, recording_id) as (
+        select credential_static_id, credential_purpose, recording_id
+          from session_credential_static
+        join session_recording using (session_id)
+      ),
+      static_cred_history(public_id, store_id, cred_hst_id, valid_range) as (
+        select public_id, store_id, history_id, valid_range
+          from credential_static_json_credential_hst
+        union
+        select public_id, store_id, history_id, valid_range
+          from credential_static_ssh_private_key_credential_hst
+        union
+        select public_id, store_id, history_id, valid_range
+          from credential_static_username_password_credential_hst
+        union
+        select public_id, store_id, history_id, valid_range
+          from credential_static_username_password_domain_credential_hst
+        union
+        select public_id, store_id, history_id, valid_range
+          from credential_static_password_credential_hst
+      ),
+      final(recording_id, cred_id, store_id, cred_hst_id, store_hst_id, cred_purpose) as (
+        select ssc.recording_id, sc.public_id, sc.store_id, sc.cred_hst_id, store_hst.history_id, ssc.purpose
+          from static_cred_history as sc
+          join credential_static_store_hst as store_hst on sc.store_id = store_hst.public_id
+            and store_hst.valid_range @> current_timestamp
+          join session_static_creds as ssc on sc.public_id = ssc.cred_id
+          where sc.public_id in (select cred_id from session_static_creds)
+            and sc.valid_range @> current_timestamp
+      )
+      insert into recording_static_credential
+            (recording_id, credential_static_store_hst_id, credential_static_hst_id, credential_purpose)
+      select recording_id, store_hst_id, cred_hst_id, cred_purpose
+        from final;
+
+      return new;
+    end;
+    $$ language plpgsql;
+  
+  comment on function insert_recording_static_credentials is
+    'insert_recording_static_credentials is an after insert trigger for the recording_session table.';
+
+  insert into oplog_ticket (name, version)
+    values ('credential_static_password_credential', 1);
 commit;
