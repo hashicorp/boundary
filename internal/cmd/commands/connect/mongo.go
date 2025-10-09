@@ -45,9 +45,9 @@ func mongoOptions(c *Command, set *base.FlagSets) {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "auth-source",
-		Target:     &c.flagAuthSource,
-		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTH_SOURCE",
+		Name:       "authentication-database",
+		Target:     &c.flagMongoDbAuthenticationDatabase,
+		EnvVar:     "BOUNDARY_CONNECT_MONGO_AUTHENTICATION_DATABASE",
 		Completion: complete.PredictNothing,
 		Default:    "",
 		Usage:      `Specifies the authentication database for MongoDB. If omitted, mongosh defaults authSource to the database name (dbname); if none is specified, it defaults to "admin".`,
@@ -100,8 +100,8 @@ func (m *mongoFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 			}
 		}
 
-		if c.flagAuthSource != "" {
-			args = append(args, "--authenticationDatabase", c.flagAuthSource)
+		if c.flagMongoDbAuthenticationDatabase != "" {
+			args = append(args, "--authenticationDatabase", c.flagMongoDbAuthenticationDatabase)
 		}
 	default:
 		return nil, nil, proxy.Credentials{}, fmt.Errorf("unsupported MongoDB style: %s", m.flagMongoStyle)

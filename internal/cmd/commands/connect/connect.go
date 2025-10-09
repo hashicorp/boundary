@@ -59,16 +59,16 @@ var (
 type Command struct {
 	*base.Command
 
-	flagAuthzToken string
-	flagListenAddr string
-	flagListenPort int64
-	flagTargetId   string
-	flagTargetName string
-	flagHostId     string
-	flagExec       string
-	flagUsername   string
-	flagDbname     string
-	flagAuthSource string
+	flagAuthzToken                    string
+	flagListenAddr                    string
+	flagListenPort                    int64
+	flagTargetId                      string
+	flagTargetName                    string
+	flagHostId                        string
+	flagExec                          string
+	flagUsername                      string
+	flagDbname                        string
+	flagMongoDbAuthenticationDatabase string
 
 	// HTTP
 	httpFlags

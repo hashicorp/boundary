@@ -23,7 +23,7 @@ The following example shows how to connect to a target with the ID `ttcp_eTcMueU
 $ boundary connect mongo -target-id=ttcp_eTcZMueUYv \
    -dbname=northwind \
    -username=superuser \
-   -auth-source=admin \
+   -authentication-database=admin \
    -format=table
 ```
 
@@ -77,8 +77,9 @@ You can also specify how the CLI attempts to invoke a MongoDB client using the *
 This value may be overridden by credentials sourced from a credential store.
 You can also specify a username using the **BOUNDARY_CONNECT_USERNAME** environment variable.
 
-- `-auth-source` `(string: "")` - The authentication database for MongoDB.
+- `-authentication-database` `(string: "")` - The authentication database for MongoDB.
 If omitted, mongosh defaults `authSource` to the database name (`-dbname`). If no database is specified, it defaults to `admin`.
-You can also specify the authentication database using the **BOUNDARY_CONNECT_MONGO_AUTH_SOURCE** environment variable.
+You can also specify the authentication database using the **BOUNDARY_CONNECT_MONGO_AUTHENTICATION_DATABASE** environment variable.
+
 
 @include 'cmd-option-note.mdx' 
