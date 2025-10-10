@@ -59,15 +59,16 @@ var (
 type Command struct {
 	*base.Command
 
-	flagAuthzToken string
-	flagListenAddr string
-	flagListenPort int64
-	flagTargetId   string
-	flagTargetName string
-	flagHostId     string
-	flagExec       string
-	flagUsername   string
-	flagDbname     string
+	flagAuthzToken                    string
+	flagListenAddr                    string
+	flagListenPort                    int64
+	flagTargetId                      string
+	flagTargetName                    string
+	flagHostId                        string
+	flagExec                          string
+	flagUsername                      string
+	flagDbname                        string
+	flagMongoDbAuthenticationDatabase string
 
 	// HTTP
 	httpFlags
@@ -80,6 +81,9 @@ type Command struct {
 
 	// MySQL
 	mysqlFlags
+
+	// MongoDB
+	mongoFlags
 
 	// Cassandra
 	cassandraFlags
@@ -115,6 +119,8 @@ func (c *Command) Synopsis() string {
 		return postgresSynopsis
 	case "mysql":
 		return mysqlSynopsis
+	case "mongo":
+		return mongoSynopsis
 	case "cassandra":
 		return cassandraSynopsis
 	case "redis":
@@ -241,6 +247,9 @@ func (c *Command) Flags() *base.FlagSets {
 	case "mysql":
 		mysqlOptions(c, set)
 
+	case "mongo":
+		mongoOptions(c, set)
+
 	case "cassandra":
 		cassandraOptions(c, set)
 
@@ -336,6 +345,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.postgresFlags.defaultExec()
 		case "mysql":
 			c.flagExec = c.mysqlFlags.defaultExec()
+		case "mongo":
+			c.flagExec = c.mongoFlags.defaultExec()
 		case "cassandra":
 			c.flagExec = c.cassandraFlags.defaultExec()
 		case "redis":
@@ -713,6 +724,16 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, mysqlArgs...)
 		envs = append(envs, mysqlEnvs...)
 		creds = mysqlCreds
+
+	case "mongo":
+		mongoArgs, mongoEnvs, mongoCreds, mongoErr := c.mongoFlags.buildArgs(c, port, host, addr, creds)
+		if mongoErr != nil {
+			argsErr = mongoErr
+			break
+		}
+		args = append(args, mongoArgs...)
+		envs = append(envs, mongoEnvs...)
+		creds = mongoCreds
 
 	case "cassandra":
 		cassandraArgs, cassandraEnvs, cassandraCreds, cassandraErr := c.cassandraFlags.buildArgs(c, port, host, addr, creds)

@@ -69,6 +69,9 @@ const (
 	InvalidListToken         Code = 136 // InvalidListToken represents an error where the provided list token is invalid
 	Paused                   Code = 137 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
 
+	// Note: Currently unused in OSS
+	WindowsRDPClientEarlyDisconnection Code = 138 // WindowsRDPClientEarlyDisconnection represents an error when a Windows RDP client disconnects early, a known behavior with Windows Remote Desktop clients
+
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
 
