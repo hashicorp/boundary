@@ -49,7 +49,7 @@ variable "boundary_src_path" {
 }
 
 variable "github_token" {
-  description = "github token needed to run automated tests"
+  description = "Github token needed to run automated tests. Token requires read access to hashicorp repositories"
   type        = string
   default     = ""
 }
