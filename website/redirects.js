@@ -204,6 +204,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/system-requirements',
+    destination: '/boundary/docs/:version/architecture/system-requirements',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/architecture/system-requirements',
     destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
@@ -263,6 +269,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/recommended-architecture',
+    destination:
+      '/boundary/docs/:version/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/architecture/fault-tolerance',
     destination: '/boundary/docs/architecture/fault-tolerance',
     permanent: true,
@@ -283,6 +296,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/architecture/fault-tolerance',
     destination: '/boundary/docs/:version/install-boundary/fault-tolerance',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/fault-tolerance',
+    destination: '/boundary/docs/:version/architecture/fault-tolerance',
     permanent: true,
   },
   {
@@ -326,6 +345,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/high-availability',
+    destination: '/boundary/docs/:version/architecture/high-availability',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary',
     destination: '/boundary/docs/deploy/self-managed',
     permanent: true,
@@ -353,6 +378,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/install',
+    destination: '/boundary/docs/:version/deploy/self-managed/install',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/deploy',
     destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
@@ -361,6 +391,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:18)\\.x)/deploy/self-managed/install',
     destination: '/boundary/docs/:version/install-boundary/deploy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/deploy',
+    destination: '/boundary/docs/:version/deploy/self-managed/install',
     permanent: true,
   },
   {
@@ -381,6 +416,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/configure-controllers',
+    destination:
+      '/boundary/docs/:version/deploy/self-managed/configure-controllers',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/configure-workers',
     destination: '/boundary/docs/deploy/self-managed/deploy-workers',
     permanent: true,
@@ -392,6 +434,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/configure-workers',
+    destination: '/boundary/docs/:version/deploy/self-managed/deploy-workers',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/initialize',
     destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
@@ -400,6 +448,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/self-managed/initialize',
     destination: '/boundary/docs/:version/install-boundary/initialize',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/initialize',
+    destination: '/boundary/docs/:version/deploy/self-managed/initialize',
     permanent: true,
   },
   {
@@ -426,6 +480,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/:version/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8)\\.x)/deploy/self-managed/initialize',
     destination: '/boundary/docs/:version/installing/no-gen-resources',
     permanent: true,
@@ -439,6 +499,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:18)\\.x)/deploy/self-managed/install-clients',
     destination: '/boundary/docs/:version/install-boundary/install-clients',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/install-clients',
+    destination: '/boundary/docs/:version/deploy/self-managed/install-clients',
     permanent: true,
   },
   {
