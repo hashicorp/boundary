@@ -17,7 +17,8 @@ apt update
 # default-mysql-client is used for mysql tests
 # wget is used for downloading external dependencies and repository keys
 # apt-transport-https enables HTTPS transport for APT repositories
-apt install unzip pass lsb-release postgresql-client default-mysql-client wget apt-transport-https  -y
+# curl and ca-certificates are required for some repository setups (e.g., MongoDB).
+apt install unzip pass lsb-release postgresql-client default-mysql-client wget apt-transport-https curl ca-certificates -y
 
 # Function to install Cassandra
 install_cassandra() {
@@ -117,6 +118,13 @@ echo \
   tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt update
 apt install docker-ce-cli -y
+
+# Install MongoDB client (mongosh)
+# Reference: https://www.mongodb.com/docs/mongodb-shell/install/#debian
+curl -fsSL https://pgp.mongodb.com/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+apt update
+apt install -y mongodb-mongosh
 
 # Run Tests
 unzip /boundary.zip -d /usr/local/bin/
