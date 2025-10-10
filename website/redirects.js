@@ -670,6 +670,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations',
+    destination: '/boundary/docs/:version/monitor',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/listener',
     destination: '/boundary/docs/monitor/listeners',
     permanent: true,
@@ -724,6 +729,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations/metrics',
+    destination: '/boundary/docs/:version/monitor/metrics',
+    permanent: true,
+  },
+  {
     source:
       '/boundary/docs/:version(v0\\.(?:8|13|14|15|16|17|18)\\.x)/monitor/metrics',
     destination: '/boundary/docs/:version/operations/metrics',
@@ -738,6 +748,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:8|13|14|15|16|17|18)\\.x)/monitor/health',
     destination: '/boundary/docs/:version/operations/health',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations/health',
+    destination: '/boundary/docs/:version/monitor/health',
     permanent: true,
   },
   {
@@ -1653,6 +1668,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/integrations',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/integrations/vault',
     destination: '/boundary/docs/vault',
     permanent: true,
@@ -1660,6 +1680,11 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/vault',
     destination: '/boundary/docs/:version/integrations/vault',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/integrations/vault',
+    destination: '/boundary/docs/:version/vault',
     permanent: true,
   },
   {
