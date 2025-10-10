@@ -22,6 +22,7 @@ kms "transit" {
   address            = "https://vault:8200"
   token              = "s.Qf1s5zigZ4OX6akYjQXJC1jY"
   disable_renewal    = "false"
+  key_id             = "global_worker-auth"
 
   // Key configuration
   key_name           = "transit_key_name"
@@ -86,6 +87,10 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
   Using this option is highly discouraged and decreases the security of data
   transmissions to and from the Vault server. This may also be specified using the
   `VAULT_SKIP_VERIFY` environment variable.
+
+- `key_id` - The unique name of this key.
+It is used to identify the key when you perform a root key migration.
+You can use the `key_id` field with all KMS stanzas.
 
 ## Authentication
 
