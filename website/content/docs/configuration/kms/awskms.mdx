@@ -22,6 +22,7 @@ kms "awskms" {
   secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
   kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey"
   endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+  key_id     = "global_worker-auth"
 }
 ```
 
@@ -77,6 +78,10 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
   variable. This is useful, for example, when connecting to KMS over a [VPC
   Endpoint](https://docs.aws.amazon.com/kms/latest/developerguide/kms-vpc-endpoint.html).
   If not set, Boundary will use the default API endpoint for your region.
+
+- `key_id` - The unique name of this key.
+It is used to identify the key when you perform a root key migration.
+You can use the `key_id` field with all KMS stanzas.
 
 ## Authentication
 
