@@ -135,7 +135,7 @@ begin;
   comment on view credential_static_password_credential_hst_aggregate is
     'credential_static_password_credential_hst_aggregate contains the password credential history data along with its store and purpose data.';
 
-    -- This constraint replaces the previous constraint created in 98/01_credential_static_username_password_domain_credential.up.sql
+  -- This constraint replaces the previous constraint created in 98/01_credential_static_username_password_domain_credential.up.sql
   alter table credential_type_enm
     drop constraint only_predefined_credential_types_allowed;
 
