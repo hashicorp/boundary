@@ -30,7 +30,7 @@ refreshenv
 # install mremoteng
 choco install mremoteng -y
 
-# powershell script
+# install go, git, mingw, cmake
 choco install golang -y --version ${go_version}
 refreshenv
 choco install git -y
@@ -43,5 +43,5 @@ refreshenv
 
 # Set the github token if provided
 if (${github_token} -ne "") {
-    git config --global url."https://oauth2:$env:GITHUB_TOKEN@github.com".insteadOf "https://github.com"
+    git config --global url."https://oauth2:${github_token}@github.com".insteadOf "https://github.com"
 }
