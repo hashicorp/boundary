@@ -47,3 +47,9 @@ variable "boundary_src_path" {
   type        = string
   default     = ""
 }
+
+variable "github_token" {
+  description = "github token needed to run automated tests"
+  type        = string
+  default     = ""
+}
