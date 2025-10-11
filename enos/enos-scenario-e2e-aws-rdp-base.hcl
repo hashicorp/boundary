@@ -112,6 +112,7 @@ scenario "e2e_aws_rdp_base" {
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
       boundary_src_path     = local.local_boundary_src_dir
+      github_token          = var.github_token
     }
   }
 

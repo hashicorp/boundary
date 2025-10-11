@@ -285,6 +285,10 @@ resource "enos_local_exec" "wait_for_ssh" {
   inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.client.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
+resource "enos_local_exec" "get_go_version" {
+  inline = ["cat $(echo $(git rev-parse --show-toplevel))/.go-version | xargs"]
+}
+
 resource "enos_local_exec" "make_dir" {
   count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
@@ -333,6 +337,8 @@ resource "local_file" "powershell_script" {
   content = templatefile("${path.module}/scripts/setup.ps1", {
     boundary_cli_zip_path = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
     boundary_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
+    go_version            = "${enos_local_exec.get_go_version.stdout}"
+    github_token          = "${var.github_token}"
   })
   filename = "${path.root}/.terraform/tmp/setup_windows_client.ps1"
 }

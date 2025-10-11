@@ -271,3 +271,9 @@ variable "windows_instance_type" {
   type        = string
   default     = "m7i-flex.xlarge"
 }
+
+variable "github_token" {
+  description = "Github token"
+  type        = string
+  default     = null
+}
