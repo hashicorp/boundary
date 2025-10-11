@@ -187,6 +187,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/architecture/:slug*',
+    destination: '/boundary/docs/:version/architecture/:slug*',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/system-requirements',
     destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
@@ -195,6 +201,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/architecture/system-requirements',
     destination: '/boundary/docs/:version/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/system-requirements',
+    destination: '/boundary/docs/:version/architecture/system-requirements',
     permanent: true,
   },
   {
@@ -257,6 +269,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/recommended-architecture',
+    destination:
+      '/boundary/docs/:version/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/architecture/fault-tolerance',
     destination: '/boundary/docs/architecture/fault-tolerance',
     permanent: true,
@@ -277,6 +296,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/architecture/fault-tolerance',
     destination: '/boundary/docs/:version/install-boundary/fault-tolerance',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/fault-tolerance',
+    destination: '/boundary/docs/:version/architecture/fault-tolerance',
     permanent: true,
   },
   {
@@ -320,6 +345,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/high-availability',
+    destination: '/boundary/docs/:version/architecture/high-availability',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary',
     destination: '/boundary/docs/deploy/self-managed',
     permanent: true,
@@ -328,6 +359,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/deploy/self-managed',
     destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary',
+    destination: '/boundary/docs/:version/deploy/self-managed',
     permanent: true,
   },
   {
@@ -342,6 +378,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/install',
+    destination: '/boundary/docs/:version/deploy/self-managed/install',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/deploy',
     destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
@@ -350,6 +391,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:18)\\.x)/deploy/self-managed/install',
     destination: '/boundary/docs/:version/install-boundary/deploy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/deploy',
+    destination: '/boundary/docs/:version/deploy/self-managed/install',
     permanent: true,
   },
   {
@@ -370,6 +416,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/configure-controllers',
+    destination:
+      '/boundary/docs/:version/deploy/self-managed/configure-controllers',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/configure-workers',
     destination: '/boundary/docs/deploy/self-managed/deploy-workers',
     permanent: true,
@@ -381,6 +434,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/configure-workers',
+    destination: '/boundary/docs/:version/deploy/self-managed/deploy-workers',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/initialize',
     destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
@@ -389,6 +448,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/self-managed/initialize',
     destination: '/boundary/docs/:version/install-boundary/initialize',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/initialize',
+    destination: '/boundary/docs/:version/deploy/self-managed/initialize',
     permanent: true,
   },
   {
@@ -415,6 +480,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/:version/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8)\\.x)/deploy/self-managed/initialize',
     destination: '/boundary/docs/:version/installing/no-gen-resources',
     permanent: true,
@@ -428,6 +499,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:18)\\.x)/deploy/self-managed/install-clients',
     destination: '/boundary/docs/:version/install-boundary/install-clients',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/install-clients',
+    destination: '/boundary/docs/:version/deploy/self-managed/install-clients',
     permanent: true,
   },
   {
@@ -486,6 +563,12 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/terraform-patterns',
     destination: '/boundary/docs/deploy/terraform-patterns',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/terraform-patterns/:slug*',
+    destination: '/boundary/docs/:version/deploy/terraform-patterns/:slug*',
     permanent: true,
   },
   {
@@ -617,8 +700,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/security/data-encryption',
+    destination: '/boundary/docs/:version/secure/encryption/data-encryption',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/security',
     destination: '/boundary/docs/secure/encryption/data-encryption',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/security',
+    destination: '/boundary/docs/:version/secure/encryption/data-encryption',
     permanent: true,
   },
   {
@@ -630,6 +724,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/secure/encryption/connections-tls',
     destination: '/boundary/docs/:version/concepts/security/connections-tls',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/security/connections-tls',
+    destination: '/boundary/docs/:version/secure/encryption/connections-tls',
     permanent: true,
   },
   {
@@ -653,8 +753,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations',
+    destination: '/boundary/docs/:version/monitor',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/listener',
     destination: '/boundary/docs/monitor/listeners',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/listener/:slug*',
+    destination: '/boundary/docs/:version/monitor/listeners/:slug*',
     permanent: true,
   },
   {
@@ -701,6 +812,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations/metrics',
+    destination: '/boundary/docs/:version/monitor/metrics',
+    permanent: true,
+  },
+  {
     source:
       '/boundary/docs/:version(v0\\.(?:8|13|14|15|16|17|18)\\.x)/monitor/metrics',
     destination: '/boundary/docs/:version/operations/metrics',
@@ -718,6 +834,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/operations/health',
+    destination: '/boundary/docs/:version/monitor/health',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/oss/operations/health',
     destination: '/boundary/docs/monitor/health',
     permanent: true,
@@ -730,6 +851,17 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/events',
     destination: '/boundary/docs/monitor/events/events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/events',
+    destination: '/boundary/docs/:version/monitor/events/events',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/events/overview',
+    destination: '/boundary/docs/:version/monitor/events/events',
     permanent: true,
   },
   {
@@ -756,8 +888,20 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering/events',
+    destination: '/boundary/docs/:version/monitor/events/filter-events',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/events/common',
     destination: '/boundary/docs/monitor/events/common',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/events/common',
+    destination: '/boundary/docs/:version/monitor/events/common',
     permanent: true,
   },
   {
@@ -778,6 +922,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/events/file',
+    destination: '/boundary/docs/:version/monitor/events/file',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/events/stderr',
     destination: '/boundary/docs/monitor/events/stderr',
     permanent: true,
@@ -786,6 +936,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/monitor/events/stderr',
     destination: '/boundary/docs/:version/configuration/events/stderr',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/events/stderr',
+    destination: '/boundary/docs/:version/monitor/events/stderr',
     permanent: true,
   },
   {
@@ -802,6 +958,11 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|10|11|12|13|14|15|16|17|18)\\.x)/workers',
     destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/worker',
+    destination: '/boundary/docs/:version/workers',
     permanent: true,
   },
   {
@@ -822,13 +983,31 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/worker/worker-configuration',
+    destination: '/boundary/docs/:version/workers/registration',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/worker/kms-worker',
     destination: '/boundary/docs/workers/registration',
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/worker/kms-worker',
+    destination: '/boundary/docs/:version/workers/registration',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/worker/pki-worker',
     destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/worker/pki-worker',
+    destination: '/boundary/docs/:version/workers/registration',
     permanent: true,
   },
   {
@@ -844,6 +1023,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/connection-workflows/multi-hop',
+    destination: '/boundary/docs/:version/workers/multi-hop',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/worker-tags',
     destination: '/boundary/docs/workers/worker-tags',
     permanent: true,
@@ -852,6 +1037,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/workers/worker-tags',
     destination: '/boundary/docs/:version/concepts/filtering/worker-tags',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering/worker-tags',
+    destination: '/boundary/docs/:version/workers/worker-tags',
     permanent: true,
   },
   {
@@ -865,6 +1056,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/service-discovery',
+    destination: '/boundary/docs/:version/hosts',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/host-discovery',
     destination: '/boundary/docs/hosts',
     permanent: true,
@@ -872,6 +1069,12 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/hosts',
     destination: '/boundary/docs/:version/concepts/host-discovery',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/host-discovery/:slug*',
+    destination: '/boundary/docs/:version/hosts/:slug*',
     permanent: true,
   },
   {
@@ -911,6 +1114,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/target-aliases',
+    destination: '/boundary/docs/:version/targets/configuration',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/target-aliases/connect-target-alias',
     destination: '/boundary/docs/targets/connections/connect-target-alias',
     permanent: true,
@@ -923,6 +1132,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/target-aliases/connect-target-alias',
+    destination:
+      '/boundary/docs/:version/targets/connections/connect-target-alias',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/target-aliases/create-target-alias',
     destination: '/boundary/docs/targets/configuration/create-target-alias',
     permanent: true,
@@ -932,6 +1148,13 @@ module.exports = [
       '/boundary/docs/:version(v0\\.(?:18)\\.x)/targets/configuration/create-target-alias',
     destination:
       '/boundary/docs/:version/configuration/target-aliases/create-target-alias',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/target-aliases/create-target-alias',
+    destination:
+      '/boundary/docs/:version/targets/configuration/create-target-alias',
     permanent: true,
   },
   {
@@ -948,6 +1171,13 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/target-aliases/transparent-sessions',
+    destination:
+      '/boundary/docs/:version/targets/configuration/configure-transparent-sessions',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/connection-workflows',
     destination: '/boundary/docs/targets/connections',
     permanent: true,
@@ -956,6 +1186,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/targets/connections',
     destination: '/boundary/docs/:version/concepts/connection-workflows',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/connection-workflows',
+    destination: '/boundary/docs/:version/targets/connections',
     permanent: true,
   },
   {
@@ -971,6 +1207,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/connection-workflows/connect-helpers',
+    destination: '/boundary/docs/:version/targets/connections/connect-helpers',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/connection-workflows/exec-flag',
     destination: '/boundary/docs/targets/connections/exec-flag',
     permanent: true,
@@ -980,6 +1222,12 @@ module.exports = [
       '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/targets/connections/exec-flag',
     destination:
       '/boundary/docs/:version/concepts/connection-workflows/exec-flag',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/connection-workflows/exec-flag',
+    destination: '/boundary/docs/:version/targets/connections/exec-flag',
     permanent: true,
   },
   {
@@ -1001,8 +1249,21 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/connection-workflows/workflow-ssh-proxycommand',
+    destination:
+      '/boundary/docs/:version/targets/connections/workflow-ssh-proxycommand',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/credential-management',
     destination: '/boundary/docs/credentials',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/credential-management/:slug*',
+    destination: '/boundary/docs/:version/credentials/:slug*',
     permanent: true,
   },
   {
@@ -1074,6 +1335,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording',
+    destination: '/boundary/docs/:version/session-recording',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/operations/session-recordings',
     destination: '/boundary/docs/session-recording',
     permanent: true,
@@ -1094,6 +1361,13 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/configure-worker-storage',
+    destination:
+      '/boundary/docs/:version/session-recording/configuration/configure-worker-storage',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:13|14|15)\\.x)/session-recording/configuration/configure-worker-storage',
     destination:
       '/boundary/docs/:version/configuration/session-recording/create-storage-bucket',
@@ -1103,6 +1377,13 @@ module.exports = [
     source: '/boundary/docs/configuration/session-recording/storage-providers',
     destination:
       '/boundary/docs/session-recording/configuration/storage-providers',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/storage-providers/:slug*',
+    destination:
+      '/boundary/docs/:version/session-recording/configuration/storage-providers/:slug*',
     permanent: true,
   },
   {
@@ -1163,6 +1444,13 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/create-storage-bucket',
+    destination:
+      '/boundary/docs/:version/session-recording/configuration/create-storage-bucket',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/configuration/session-recording/enable-session-recording',
     destination:
       '/boundary/docs/session-recording/configuration/enable-session-recording',
@@ -1173,6 +1461,13 @@ module.exports = [
       '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/session-recording/configuration/enable-session-recording',
     destination:
       '/boundary/docs/:version/configuration/session-recording/enable-session-recording',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/enable-session-recording',
+    destination:
+      '/boundary/docs/:version/session-recording/configuration/enable-session-recording',
     permanent: true,
   },
   {
@@ -1218,6 +1513,13 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/configure-storage-policy',
+    destination:
+      '/boundary/docs/:version/session-recording/compliance/configure-storage-policy',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/configuration/session-recording/update-storage-policy',
     destination:
       '/boundary/docs/session-recording/compliance/update-storage-policy',
@@ -1228,6 +1530,13 @@ module.exports = [
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/session-recording/compliance/update-storage-policy',
     destination:
       '/boundary/docs/:version/configuration/session-recording/update-storage-policy',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/session-recording/update-storage-policy',
+    destination:
+      '/boundary/docs/:version/session-recording/compliance/update-storage-policy',
     permanent: true,
   },
   {
@@ -1263,6 +1572,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/identity-access-management/:slug*',
+    destination: '/boundary/docs/:version/rbac/:slug*',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:17|18)\\.x)/rbac',
     destination:
       '/boundary/docs/:version/configuration/identity-access-management',
@@ -1271,6 +1586,12 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/security/permissions',
     destination: '/boundary/docs/rbac',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/security/permissions/:slug*',
+    destination: '/boundary/docs/:version/rbac/:slug*',
     permanent: true,
   },
   {
@@ -1343,6 +1664,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/common-workflows/manage-roles',
+    destination: '/boundary/docs/:version/rbac/manage-roles',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/security/permissions/resource-table',
     destination: '/boundary/docs/rbac/resource-table',
     permanent: true,
@@ -1378,6 +1705,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/common-workflows/manage-users-groups',
+    destination: '/boundary/docs/:version/rbac/users/manage-users-groups',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/oidc-managed-groups',
     destination: '/boundary/docs/rbac/users/managed-groups',
     permanent: true,
@@ -1387,6 +1720,12 @@ module.exports = [
       '/boundary/docs/:version(v0\\.(?:4|5|6|7|8|9|10|11|12|13|14|15)\\.x)/rbac/users/managed-groups',
     destination:
       '/boundary/docs/:version/concepts/filtering/oidc-managed-groups',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering/oidc-managed-groups',
+    destination: '/boundary/docs/:version/rbac/users/managed-groups',
     permanent: true,
   },
   {
@@ -1401,8 +1740,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering/managed-groups',
+    destination: '/boundary/docs/:version/rbac/users/managed-groups',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/integrations',
     destination: '/boundary/docs',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/integrations',
+    destination: '/boundary/docs/:version',
     permanent: true,
   },
   {
@@ -1413,6 +1763,11 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/vault',
     destination: '/boundary/docs/:version/integrations/vault',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/integrations/vault',
+    destination: '/boundary/docs/:version/vault',
     permanent: true,
   },
   {
@@ -1427,6 +1782,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/go-sdk',
+    destination: '/boundary/docs/:version/go-sdk',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/api-clients/client-agent',
     destination: '/boundary/docs/client-agent',
     permanent: true,
@@ -1437,6 +1797,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/client-agent',
+    destination: '/boundary/docs/:version/client-agent',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/api-clients/client-cache',
     destination: '/boundary/docs/client-cache',
     permanent: true,
@@ -1444,6 +1809,11 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/client-cache',
     destination: '/boundary/docs/:version/api-clients/client-cache',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/client-cache',
+    destination: '/boundary/docs/:version/client-cache',
     permanent: true,
   },
   {
@@ -1458,6 +1828,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/api',
+    destination: '/boundary/docs//api',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/api-clients/api/pagination',
     destination: '/boundary/docs/api/pagination',
     permanent: true,
@@ -1465,6 +1840,12 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/api/pagination',
     destination: '/boundary/docs/:version/api-clients/api/pagination',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/api/pagination',
+    destination: '/boundary/docs/:version/api/pagination',
     permanent: true,
   },
   {
@@ -1479,6 +1860,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/api/rate-limiting',
+    destination: '/boundary/docs/:version/api/rate-limiting',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/api-clients/cli',
     destination: '/boundary/docs/commands/',
     permanent: true,
@@ -1490,6 +1877,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/cli',
+    destination: '/boundary/docs/:version/commands',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/domain-model',
     destination: '/boundary/docs/domain-model',
     permanent: true,
@@ -1498,6 +1890,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/domain-model',
     destination: '/boundary/docs/:version/concepts/domain-model',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/domain-model/:slug*',
+    destination: '/boundary/docs/:version/domain-model/:slug*',
     permanent: true,
   },
   {
@@ -1737,8 +2135,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering',
+    destination: '/boundary/docs/:version/filtering',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/resource-listing',
     destination: '/boundary/docs/filtering',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/concepts/filtering/resource-listing',
+    destination: '/boundary/docs/:version/filtering',
     permanent: true,
   },
   {
