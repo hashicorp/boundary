@@ -13,7 +13,14 @@ if [ -z "$UI_VERSION_FILE" ]; then
 	echo "Must set UI_VERSION_FILE"; exit 1
 fi
 
-UI_EDITION=$(make --no-print-directory edition)
+UI_EDITION_SRC=$(make --no-print-directory edition)
+
+# UI_EDITION_SRC_OVERRIDE="oss"
+if UI_EDITION_SRC_OVERRIDE is set
+  UI_EDITION = UI_EDITION_SRC_OVERRIDE
+else
+  UI_EDITION = UI_EDITION_SRC
+fi
 
 if [ "$UI_EDITION" == "oss" ]; then
   UI_REPO=https://github.com/hashicorp/boundary-ui
@@ -82,5 +89,5 @@ git pull --ff-only origin "${UI_COMMITISH}"
 git reset --hard "${UI_COMMITISH}"
 
 pnpm install
-EDITION=${UI_EDITION} pnpm build
+EDITION=${UI_EDITION_SRC} pnpm build
 popd
