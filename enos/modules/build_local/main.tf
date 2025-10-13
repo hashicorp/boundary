@@ -47,7 +47,7 @@ resource "enos_local_exec" "build" {
     "BINARY_NAME"   = var.binary_name
     "BUILD_TARGET"  = var.build_target
     "EDITION"       = var.edition
-    "UI_BUILD_OVERRIDE = var.ui_build_override
+    "UI_BUILD_OVERRIDE" = var.ui_build_override
   }
   scripts = ["${path.module}/templates/build.sh"]
 }
