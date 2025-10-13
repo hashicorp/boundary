@@ -7,7 +7,7 @@ project "boundary" {
   team = "#proj-boundary-release-engineering"
 
   slack {
-    notification_channel = "C01BWLSMJ03"
+    notification_channel = "C09LCN8EY0H"
   }
 
   github {
