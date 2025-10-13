@@ -15,11 +15,10 @@ fi
 
 UI_EDITION_SRC=$(make --no-print-directory edition)
 
-# UI_EDITION_SRC_OVERRIDE="oss"
-if UI_EDITION_SRC_OVERRIDE is set; then
-  UI_EDITION = UI_EDITION_SRC_OVERRIDE
+if [ -n "$UI_EDITION_SRC_OVERRIDE" ]; then
+  UI_EDITION=$UI_EDITION_SRC_OVERRIDE
 else
-  UI_EDITION = UI_EDITION_SRC
+  UI_EDITION=$UI_EDITION_SRC
 fi
 
 if [ "$UI_EDITION" == "oss" ]; then
