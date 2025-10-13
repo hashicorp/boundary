@@ -271,3 +271,9 @@ variable "windows_instance_type" {
   type        = string
   default     = "m7i-flex.xlarge"
 }
+
+variable "ui_build_override" {
+  description = "Override for build for UI automation"
+  type = string"
+  default = null
+}
