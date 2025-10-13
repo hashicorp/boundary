@@ -69,6 +69,7 @@ type Command struct {
 	flagUsername                      string
 	flagDbname                        string
 	flagMongoDbAuthenticationDatabase string
+	flagInactiveTimeout               time.Duration
 
 	// HTTP
 	httpFlags
@@ -218,6 +219,14 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar:     "BOUNDARY_CONNECT_TARGET_SCOPE_NAME",
 		Completion: complete.PredictAnything,
 		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
+	})
+
+	f.DurationVar(&base.DurationVar{
+		Name:       "inactive-timeout",
+		Target:     &c.flagInactiveTimeout,
+		Completion: complete.PredictAnything,
+		Usage:      "How long to wait between connections before closing the session. Increase this value if the proxy closes during long-running processes.",
+		Default:    -1,
 	})
 
 	switch c.Func {
@@ -508,11 +517,31 @@ func (c *Command) Run(args []string) (retCode int) {
 	clientProxyCloseCh := make(chan struct{})
 	connCountCloseCh := make(chan struct{})
 
+	if c.flagInactiveTimeout >= 0 {
+		apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(c.flagInactiveTimeout))
+	} else {
+		switch c.Func {
+		case "connect":
+			// connect is when there is no subcommand specified, this case should
+			// have the most generous timeout
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(30*time.Second))
+		case "rdp":
+			// rdp has a gui, so give the user a chance to click "reconnect"
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(5*time.Second))
+		case "ssh":
+			// one second is probably enough for ssh
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(time.Second))
+		default:
+			// for other protocols, give some extra leeway just in case
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(3*time.Second))
+		}
+	}
+
 	proxyError := new(atomic.Error)
 	go func() {
 		defer close(clientProxyCloseCh)
-		if err = clientProxy.Start(); err != nil {
-			c.proxyCancel()
+		defer c.proxyCancel()
+		if err = clientProxy.Start(apiProxyOpts...); err != nil {
 			proxyError.Store(err)
 		}
 	}()
@@ -825,10 +854,9 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmdExit := make(chan struct{})
 
-	if err := cmd.Run(); err != nil {
-		exitCode := 2
-
+	cmdError := func(err error) {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if exitError.Success() {
 				c.execCmdReturnValue.Store(0)
@@ -841,8 +869,28 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		}
 
 		c.PrintCliError(fmt.Errorf("Failed to run command: %w", err))
-		c.execCmdReturnValue.Store(int32(exitCode))
+		c.execCmdReturnValue.Store(2)
 		return
 	}
-	c.execCmdReturnValue.Store(0)
+
+	go func() {
+		defer close(cmdExit)
+		if err := cmd.Start(); err != nil {
+			cmdError(err)
+		} else if err := cmd.Wait(); err != nil {
+			cmdError(err)
+		} else {
+			c.execCmdReturnValue.Store(0)
+		}
+	}()
+
+	for {
+		select {
+		case <-c.proxyCtx.Done():
+			// the proxy exited for some reason, end the cmd since connections are no longer possible
+			cmd.Process.Signal(syscall.SIGTERM)
+		case <-cmdExit:
+			return
+		}
+	}
 }

@@ -37,12 +37,16 @@ type ClientProxy struct {
 	tofuToken               string
 	cachedListenerAddress   *ua.String
 	connectionsLeft         *atomic.Int32
+	activeConns             *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
 	apiClient               *api.Client
 	sessionAuthzData        *targets.SessionAuthorizationData
 	createTime              time.Time
 	expiration              time.Time
+	inactiveSince           time.Time
+	proxyStartTime          time.Time
+	beenActive              *atomic.Bool
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	transport               *http.Transport
@@ -93,6 +97,8 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		cachedListenerAddress:   ua.NewString(""),
 		connsLeftCh:             make(chan int32),
 		connectionsLeft:         new(atomic.Int32),
+		activeConns:             new(atomic.Int32),
+		beenActive:              new(atomic.Bool),
 		listener:                new(atomic.Value),
 		listenerCloseOnce:       new(sync.Once),
 		connWg:                  new(sync.WaitGroup),
@@ -211,6 +217,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 
 	// Ensure closing the listener runs on any other return condition
 	defer listenerCloseFunc()
+	p.proxyStartTime = time.Now()
 
 	fin := make(chan error, 10)
 	p.connWg.Add(1)
@@ -243,8 +250,11 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					return
 				}
 			}
+			p.activeConns.Add(1)
+			p.beenActive.CompareAndSwap(false, true)
 			p.connWg.Add(1)
 			go func() {
+				defer p.activeConns.Add(-1)
 				defer listeningConn.Close()
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
@@ -256,6 +266,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					p.cancel()
 					return
 				}
+				// this is where the connections actually occur. if we want to count conns, it's here
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
 					fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
 					// No reason to think we can successfully handle the next
@@ -304,8 +315,8 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 			}
 		}()
 		defer p.connWg.Done()
+		defer p.cancel()
 		defer listenerCloseFunc()
-
 		for {
 			select {
 			case <-p.ctx.Done():
@@ -320,12 +331,37 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// connections
 					return
 				}
+			default:
+			}
+			switch {
+			case !p.beenActive.Load():
+				if time.Since(p.proxyStartTime) >= 10*time.Minute {
+					// Proxy has been inactive for 10 minutes, close it.
+					return
+				}
+			// nothing has happened yet, don't mark inactive
+			case opts.withInactivityTimeout == 0:
+				// no timeout was set, proxy should not be closed for inactivity
+			case p.inactiveSince.IsZero():
+				if p.activeConns.Load() == 0 {
+					// connections are currently inactive
+					p.inactiveSince = time.Now()
+				}
+			default:
+				if p.activeConns.Load() == 0 {
+					if time.Since(p.inactiveSince) >= opts.withInactivityTimeout {
+						// connections have been inactive for longer than timeout
+						return
+					}
+				} else {
+					// connections are currently active, set inactive to zero
+					p.inactiveSince = time.Time{}
+				}
 			}
 		}
 	}()
 
 	p.connWg.Wait()
-	defer p.cancel()
 
 	{
 		// the go funcs are done, so we can safely close the chan and range over any errors
