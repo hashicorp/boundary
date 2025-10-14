@@ -274,6 +274,6 @@ variable "windows_instance_type" {
 
 variable "ui_build_override" {
   description = "Override for build for UI automation"
-  type = string
-  default = null
+  type        = string
+  default     = null
 }

@@ -14,7 +14,10 @@ if [ -z "$UI_VERSION_FILE" ]; then
 fi
 
 UI_EDITION_SRC=$(make --no-print-directory edition)
-
+# allow override for the source of ui files
+# used by end-to-end tests to build enterprise edition from community files
+# UI_EDITION_SRC_OVERRIDE will override which edition is pulled
+# but UI_EDITION_SRC will still determine the build version
 if [ -n "$UI_EDITION_SRC_OVERRIDE" ]; then
   UI_EDITION=$UI_EDITION_SRC_OVERRIDE
 else
