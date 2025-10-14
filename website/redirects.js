@@ -616,6 +616,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/installing/no-gen-resources',
+    destination: '/boundary/docs/:version/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/no-gen-resources',
     destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
@@ -2080,7 +2086,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/api-clients/api',
-    destination: '/boundary/docs//api',
+    destination: '/boundary/docs/:version/api',
     permanent: true,
   },
   {
