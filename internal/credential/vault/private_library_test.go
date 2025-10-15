@@ -346,6 +346,37 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
+					WithCredentialType(globals.PasswordCredentialType),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(globals.PasswordCredentialType),
+					WithMappingOverride(NewPasswordOverride(
+						WithOverridePasswordAttribute("test-password"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
 					WithCredentialType(globals.SshPrivateKeyCredentialType),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
@@ -460,6 +491,8 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
 						assert.Equal(w.DomainAttribute, got.DomainAttribute)
+					case *PasswordOverride:
+						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
 					case *SshPrivateKeyOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PrivateKeyAttribute, got.PrivateKeyAttribute)
@@ -1411,6 +1444,211 @@ func TestBaseToUsrPassDomain(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToUsrPassDomain(context.Background(), tt.given)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			want := tt.want
+			want.baseCred = tt.given
+			assert.Equal(want, got)
+		})
+	}
+}
+
+func TestBaseToPass(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		given   *baseCred
+		want    *passCred
+		wantErr errors.Code
+	}{
+		{
+			name:    "nil-input",
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name:    "nil-library",
+			given:   &baseCred{},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "library-not-password-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.UnspecifiedCredentialType),
+				},
+			},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "invalid-no-password-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-default-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"password": "my-password",
+				},
+			},
+			want: &passCred{
+				password: credential.Password("my-password"),
+			},
+		},
+		{
+			name: "valid-override-attributes",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.PasswordCredentialType),
+					PasswordAttribute: "test-password",
+				},
+				secretData: map[string]any{
+					"password":      "default-password",
+					"test-password": "override-password",
+				},
+			},
+			want: &passCred{
+				password: credential.Password("override-password"),
+			},
+		},
+		{
+			name: "invalid-password-override",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.PasswordCredentialType),
+					PasswordAttribute: "missing-password",
+				},
+				secretData: map[string]any{
+					"password":      "default-password",
+					"test-password": "override-password",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-metadata-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"data": map[string]any{
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-data-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": "hello",
+					"data": map[string]any{
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data":     "hello",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-additional-field",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"bad-field": "hello",
+					"metadata":  map[string]any{},
+					"data": map[string]any{
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-kv2-default-password-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType: string(globals.PasswordCredentialType),
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"password": "my-password",
+					},
+				},
+			},
+			want: &passCred{
+				password: credential.Password("my-password"),
+			},
+		},
+		{
+			name: "valid-kv2-override-password-attribute",
+			given: &baseCred{
+				lib: &genericIssuingCredentialLibrary{
+					CredType:          string(globals.PasswordCredentialType),
+					PasswordAttribute: "test-password",
+				},
+				secretData: map[string]any{
+					"metadata": map[string]any{},
+					"data": map[string]any{
+						"password":      "default-password",
+						"test-password": "override-password",
+					},
+				},
+			},
+			want: &passCred{
+				password: credential.Password("override-password"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := baseToPass(context.Background(), tt.given)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

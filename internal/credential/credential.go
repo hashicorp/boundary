@@ -143,6 +143,13 @@ type UsernamePasswordDomain interface {
 	Domain() string
 }
 
+// PasswordCredential is a credential containing a username and a password.
+// Does not follow naming convention to avoid conflict with existing Password type.
+type PasswordCredential interface {
+	Credential
+	Password() Password
+}
+
 // SshPrivateKey is a credential containing a username an SSH private key and
 // an optional private key passphrase.
 type SshPrivateKey interface {
