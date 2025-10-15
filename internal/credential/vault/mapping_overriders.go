@@ -21,6 +21,8 @@ func validMappingOverride(m MappingOverride, ct globals.CredentialType) bool {
 		return ct == globals.UsernamePasswordCredentialType
 	case *UsernamePasswordDomainOverride:
 		return ct == globals.UsernamePasswordDomainCredentialType
+	case *PasswordOverride:
+		return ct == globals.PasswordCredentialType
 	case *SshPrivateKeyOverride:
 		return ct == globals.SshPrivateKeyCredentialType
 	default:
@@ -168,6 +170,65 @@ func (o *UsernamePasswordDomainOverride) TableName() string {
 
 // SetTableName sets the table name.
 func (o *UsernamePasswordDomainOverride) SetTableName(n string) {
+	o.tableName = n
+}
+
+// A PasswordOverride contains optional values for overriding the
+// default mappings used to map a Vault secret to a Password credential
+// type for the credential library that owns it.
+type PasswordOverride struct {
+	*store.PasswordOverride
+	tableName string `gorm:"-"`
+}
+
+var _ MappingOverride = (*PasswordOverride)(nil)
+
+// NewPasswordOverride creates a new in memory PasswordOverride.
+// WithOverrideAttribute and WithOverridePasswordAttribute are the
+// only valid options. All other options are ignored.
+func NewPasswordOverride(opt ...Option) *PasswordOverride {
+	opts := getOpts(opt...)
+	o := &PasswordOverride{
+		PasswordOverride: &store.PasswordOverride{
+			PasswordAttribute: sanitize.String(opts.withOverridePasswordAttribute),
+		},
+	}
+	return o
+}
+
+func allocPasswordOverride() *PasswordOverride {
+	return &PasswordOverride{
+		PasswordOverride: &store.PasswordOverride{},
+	}
+}
+
+func (o *PasswordOverride) clone() MappingOverride {
+	cp := proto.Clone(o.PasswordOverride)
+	return &PasswordOverride{
+		PasswordOverride: cp.(*store.PasswordOverride),
+	}
+}
+
+func (o *PasswordOverride) setLibraryId(i string) {
+	o.LibraryId = i
+}
+
+func (o *PasswordOverride) sanitize() {
+	if sentinel.Is(o.PasswordAttribute) {
+		o.PasswordAttribute = ""
+	}
+}
+
+// TableName returns the table name.
+func (o *PasswordOverride) TableName() string {
+	if o.tableName != "" {
+		return o.tableName
+	}
+	return "credential_vault_library_password_mapping_override"
+}
+
+// SetTableName sets the table name.
+func (o *PasswordOverride) SetTableName(n string) {
 	o.tableName = n
 }
 
