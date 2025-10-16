@@ -13,18 +13,18 @@ if [ -z "$UI_VERSION_FILE" ]; then
 	echo "Must set UI_VERSION_FILE"; exit 1
 fi
 
-UI_EDITION_SRC=$(make --no-print-directory edition)
+UI_EDITION=$(make --no-print-directory edition)
 # allow override for the source of ui files
 # used by end-to-end tests to build enterprise edition from community files
 # UI_EDITION_SRC_OVERRIDE will override which edition is pulled
 # but UI_EDITION_SRC will still determine the build version
 if [ -n "$UI_EDITION_SRC_OVERRIDE" ]; then
-  UI_EDITION=$UI_EDITION_SRC_OVERRIDE
+  UI_SRC=$UI_EDITION_SRC_OVERRIDE
 else
-  UI_EDITION=$UI_EDITION_SRC
+  UI_SCR=$UI_EDITION
 fi
 
-if [ "$UI_EDITION" == "oss" ]; then
+if [ "$UI_SRC" == "oss" ]; then
   UI_REPO=https://github.com/hashicorp/boundary-ui
   REPO_NAME=boundary-ui
 else
@@ -91,5 +91,5 @@ git pull --ff-only origin "${UI_COMMITISH}"
 git reset --hard "${UI_COMMITISH}"
 
 pnpm install
-EDITION=${UI_EDITION_SRC} pnpm build
+EDITION=${UI_EDITION} pnpm build
 popd
