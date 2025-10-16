@@ -271,3 +271,9 @@ variable "windows_instance_type" {
   type        = string
   default     = "m7i-flex.xlarge"
 }
+
+variable "github_token" {
+  description = "github token needed to run automated tests (requires read access to hashicorp repos)"
+  type        = string
+  default     = null
+}

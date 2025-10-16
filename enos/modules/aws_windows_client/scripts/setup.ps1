@@ -5,6 +5,11 @@
 $destination = Split-Path -Path ${boundary_cli_zip_path}
 Expand-Archive -Path ${boundary_cli_zip_path} -DestinationPath $destination -Force
 
+# Unzip boundary src to new directory
+$base = [System.IO.Path]::GetFileNameWithoutExtension("${boundary_src_zip_path}")
+$src_destination = Join-Path (Split-Path ${boundary_src_zip_path}) $base
+Expand-Archive -Path ${boundary_src_zip_path} -DestinationPath $src_destination -Force
+
 # Add Boundary CLI to PATH
 $existingPath = [Environment]::GetEnvironmentVariable(
     "Path",
@@ -29,3 +34,18 @@ refreshenv
 
 # install mremoteng
 choco install mremoteng -y
+
+choco install golang -y --version ${go_version}
+refreshenv
+choco install git -y
+refreshenv
+choco install mingw -y
+refreshenv
+# needs cmake >3.7 and <4.0
+choco install cmake --version 3.31.8 -y
+refreshenv
+
+# Set the github token if provided
+if ("${github_token}" -ne "") {
+    git config --system url."https://oauth2:${github_token}@github.com".insteadOf "https://github.com"
+}
