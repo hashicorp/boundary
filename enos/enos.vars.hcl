@@ -73,7 +73,7 @@
 // if running GCP scenarios. This should not be used in combination with gcp_private_key_path.
 // gcp_private_key = ""
 
-// The GCP private_key_id. Only needed if running GCP scenarios. 
+// The GCP private_key_id. Only needed if running GCP scenarios.
 // gcp_private_key_id = ""
 
 // The GCP client_email used to authenticate with GCP
@@ -91,3 +91,8 @@
 // The directory that contains the source code of boundary-ui. This is used for
 // front-end e2e testing (UI scenarios) in CI. Only needed if e2e_debug_no_run = false.
 // local_boundary_ui_src_dir = "/Users/<user>/Developer/boundary-ui"
+
+// Github token to load go modules on windows client
+// only required for running automation on RDP e2e test cases
+// Token requires read access to hashicorp repositories
+// github_token = ""
