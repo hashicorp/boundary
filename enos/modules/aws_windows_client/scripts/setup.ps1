@@ -8,7 +8,7 @@ Expand-Archive -Path ${boundary_cli_zip_path} -DestinationPath $destination -For
 # Unzip boundary src to new directory
 $src_destination = "C:/Test/boundary-src"
 New-Item -Path $src_destination -ItemType Directory
-Expand-Archive -Path C:/Test//boundary-src.zip -DestinationPath $destination -Force
+Expand-Archive -Path C:/Test//boundary-src.zip -DestinationPath $src_destination -Force
 
 # Add Boundary CLI to PATH
 $existingPath = [Environment]::GetEnvironmentVariable(
@@ -48,5 +48,5 @@ refreshenv
 
 # Set the github token if provided
 if ("${github_token}" -ne "") {
-    git config --global url."https://oauth2:${github_token}@github.com".insteadOf "https://github.com"
+    git config --system url."https://oauth2:${github_token}@github.com".insteadOf "https://github.com"
 }
