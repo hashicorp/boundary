@@ -273,7 +273,7 @@ variable "windows_instance_type" {
 }
 
 variable "github_token" {
-  description = "Github token"
+  description = "github token needed to run automated tests (requires read access to hashicorp repos)"
   type        = string
   default     = null
 }
