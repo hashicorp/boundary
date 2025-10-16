@@ -488,6 +488,8 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+	case credential.PasswordSubtype.String():
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unimplemented, "Password credential creation is not yet implemented")
 	default:
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, fmt.Sprintf("Unsupported credential type %q", item.GetType()))
 	}
@@ -921,6 +923,7 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 		globals.UsernamePasswordDomainCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 	)
 }
 
@@ -986,6 +989,8 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				badFields[objectField] = "Unable to parse given json value"
 			}
 
+		case credential.PasswordSubtype.String():
+			badFields[passwordField] = "Password credential creation is not yet implemented"
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
@@ -1061,6 +1066,9 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				}
 			}
 
+		case credential.PasswordSubtype:
+			badFields[passwordField] = "Password credential updates are not yet implemented"
+
 		default:
 			badFields[globals.IdField] = "Unknown credential type."
 		}
@@ -1072,6 +1080,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		globals.UsernamePasswordDomainCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 	)
 }
 
@@ -1084,6 +1093,7 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 		globals.UsernamePasswordDomainCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 	)
 }
 
