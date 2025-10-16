@@ -24,7 +24,7 @@ else
   UI_SRC=$UI_EDITION
 fi
 
-if [ "$UI_SRC" == "oss" ]; then
+if [ $UI_SRC == "oss" ]; then
   UI_REPO=https://github.com/hashicorp/boundary-ui
   REPO_NAME=boundary-ui
 else
