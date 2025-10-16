@@ -35,6 +35,58 @@ type cassandraConfig struct {
 	NetworkAlias string
 }
 
+type redisConfig struct {
+	User         string
+	Password     string
+	NetworkAlias string
+}
+
+func StartRedis(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
+	t.Log("Starting Redis database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
+
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+
+	config := redisConfig{
+		User:         "e2eboundary",
+		Password:     "e2eboundary",
+		NetworkAlias: "e2eredis",
+	}
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+		// Env: []string{
+		// },
+		ExposedPorts: []string{"6379/tcp"},
+		Name:         config.NetworkAlias,
+		Networks:     []*dockertest.Network{network},
+	})
+	require.NoError(t, err)
+
+	// TODO: setup redis user and auth via commands (see cassandra for example)
+
+	return &Container{
+		Resource: resource,
+		UriLocalhost: fmt.Sprintf(
+			"redis://%s:%s@localhost:6379",
+			config.User,
+			config.Password,
+		),
+		UriNetwork: fmt.Sprintf(
+			"redis://%s:%s@%s:6379",
+			config.User,
+			config.Password,
+			config.NetworkAlias,
+		),
+	}
+}
+
 // StartBoundaryDatabase spins up a postgres database in a docker container.
 // Returns information about the container
 func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
