@@ -8,7 +8,7 @@ Expand-Archive -Path ${boundary_cli_zip_path} -DestinationPath $destination -For
 # Unzip boundary src to new directory
 $src_destination = $destination + "boundary-src"
 New-Item -Path $src_destination -ItemType Directory
-Expand-Archive -Path C:/Test//boundary-src.zip -DestinationPath $src_destination -Force
+Expand-Archive -Path ${boundary_src_zip_path} -DestinationPath $src_destination -Force
 
 # Add Boundary CLI to PATH
 $existingPath = [Environment]::GetEnvironmentVariable(
