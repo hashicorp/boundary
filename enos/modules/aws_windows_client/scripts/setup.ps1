@@ -35,7 +35,6 @@ refreshenv
 # install mremoteng
 choco install mremoteng -y
 
-# powershell script
 choco install golang -y --version ${go_version}
 refreshenv
 choco install git -y
