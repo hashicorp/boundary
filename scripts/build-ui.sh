@@ -46,12 +46,12 @@ if which gh &> /dev/null;  then
     echo "Found gh cli, attempting to download ui assets"
 
     artifact_id=$(gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts" --paginate | \
-        jq ".artifacts[] | select(.workflow_run.head_sha == \"${UI_COMMITISH}f\" and .name == \"admin-ui-${UI_EDITION}\")" | \
+        jq ".artifacts[] | select(.workflow_run.head_sha == \"${UI_COMMITISH}f\" and .name == \"admin-ui-${UI_SRC}\")" | \
         jq --slurp '.[0]' | \
         jq -r '.id')
 
     if [[ "${artifact_id}" != "null" ]]; then
-        echo "Downloading artifact: ${artifact_id} for admin-ui-${UI_EDITION} ${UI_COMMITISH}"
+        echo "Downloading artifact: ${artifact_id} for admin-ui-${UI_SRC} ${UI_COMMITISH}"
         tmp_dir=$(mktemp -d)
         gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts/${artifact_id}/zip" > "${tmp_dir}/boundary-ui.zip"
         trap 'rm -rf ${tmp_dir}' EXIT
@@ -63,7 +63,7 @@ if which gh &> /dev/null;  then
         unzip "${tmp_dir}/boundary-ui.zip" -d "${UI_CLONE_DIR}/ui/admin/dist"
         exit $?
     else
-        echo "could not find artifact: admin-ui-${UI_EDITION} ${UI_COMMITISH}, falling back to git clone"
+        echo "could not find artifact: admin-ui-${UI_SRC} ${UI_COMMITISH}, falling back to git clone"
     fi
 fi
 
