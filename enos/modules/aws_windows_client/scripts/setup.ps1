@@ -6,7 +6,7 @@ $destination = Split-Path -Path ${boundary_cli_zip_path}
 Expand-Archive -Path ${boundary_cli_zip_path} -DestinationPath $destination -Force
 
 # Unzip boundary src to new directory
-$base = [System.IO.Path]::GetFileNameWithoutExtension(${boundary_src_zip_path})
+$base = [System.IO.Path]::GetFileNameWithoutExtension("${boundary_src_zip_path}")
 $src_destination = Join-Path (Split-Path ${boundary_src_zip_path}) $base
 Expand-Archive -Path ${boundary_src_zip_path} -DestinationPath $src_destination -Force
 
