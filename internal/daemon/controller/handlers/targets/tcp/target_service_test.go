@@ -4211,6 +4211,44 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
+	defaultPassword := v.CreateKVSecret(t, "default-password", []byte(`{"data": {"password": "my-default-password"}}`))
+	require.NotNil(t, defaultPassword)
+	nonDefaultPassword := v.CreateKVSecret(t, "non-default-password", []byte(`{"data": {"non-default-password": "my-non-default-password"}}`))
+	require.NotNil(t, nonDefaultPassword)
+
+	clsRespPassword, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+		CredentialStoreId: vaultStore.GetPublicId(),
+		Name:              wrapperspb.String("Password Library"),
+		Description:       wrapperspb.String("Password Library Description"),
+		Type:              vault.GenericLibrarySubtype.String(),
+		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "default-password")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
+		CredentialType: "password",
+	}})
+	require.NoError(t, err)
+
+	clsRespPasswordWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+		CredentialStoreId: vaultStore.GetPublicId(),
+		Name:              wrapperspb.String("Password Mapping Library"),
+		Description:       wrapperspb.String("Password Mapping Library Description"),
+		Type:              vault.GenericLibrarySubtype.String(),
+		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-password")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
+		CredentialType: "password",
+		CredentialMappingOverrides: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"password_attribute": structpb.NewStringValue("non-default-password"),
+		}},
+	}})
+	require.NoError(t, err)
+
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
 	credService, err := credentials.NewService(ctx, iamRepoFn, staticCredRepoFn, 1000)
 	require.NoError(t, err)
@@ -4435,6 +4473,58 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					data := map[string]any{
 						"password": "my-pass",
 						"username": "my-user",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			wantedConnectionLimit: 100,
+		},
+		{
+			name:           "vault-password",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   clsRespPassword.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                clsRespPassword.GetItem().GetId(),
+					Name:              clsRespPassword.GetItem().GetName().GetValue(),
+					Description:       clsRespPassword.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: vaultStore.GetPublicId(),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(globals.PasswordCredentialType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]any{
+						"password": "my-default-password",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			wantedConnectionLimit: 10,
+		},
+		{
+			name:           "vault-password-with-mapping",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   clsRespPasswordWithMapping.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                clsRespPasswordWithMapping.GetItem().GetId(),
+					Name:              clsRespPasswordWithMapping.GetItem().GetName().GetValue(),
+					Description:       clsRespPasswordWithMapping.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: vaultStore.GetPublicId(),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(globals.PasswordCredentialType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]any{
+						"password": "my-non-default-password",
 					}
 					st, err := structpb.NewStruct(data)
 					require.NoError(t, err)

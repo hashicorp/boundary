@@ -127,6 +127,17 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
 			}
 
+		case credential.PasswordOnly:
+			credData, err = handlers.ProtoToStruct(
+				ctx,
+				&pb.PasswordCredential{
+					Password: string(c.Password()),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
 		case credential.SshPrivateKey:
 			credData, err = handlers.ProtoToStruct(
 				ctx,
