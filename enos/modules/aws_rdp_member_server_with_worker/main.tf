@@ -215,7 +215,7 @@ ${var.domain_admin_password}
                     }
                   } while ($true)
 
-                  #logging to troubleshoot domain issues
+                  # Logging to troubleshoot domain issues
                   Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
                   Get-Service -Name LanmanWorkstation, Netlogon, RpcSs | Select-Object Name, DisplayName, Status
 

@@ -320,6 +320,78 @@ resource "aws_instance" "domain_controller" {
                   # Force an immediate time synchronization
                   w32tm /resync /force
 
+                  # Set up SSH so we can remotely manage the instance
+                  # Note: Windows Server 2016 does not support OpenSSH
+                  %{if var.server_version != "2016" && var.server_version != "2019"~}
+                  # set variables for retry loops
+                  $timeout = 300
+                  $interval = 30
+                  # Install OpenSSH Server and Client
+                  # Loop to make sure that SSH installs correctly
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                      Set-Service -Name sshd -StartupType 'Automatic'
+                      Start-Service sshd
+                      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
+                      if ($result) {
+                        Write-Host "Successfully added and started openSSH server"
+                        break
+                      }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                        exit 1
+                    }
+                  } while ($true)
+                  $elapsed = 0
+                  do {
+                    try {
+                      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+                      Set-Service -Name ssh-agent -StartupType Automatic
+                      Start-Service ssh-agent
+                      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
+                      if ($result) {
+                          Write-Host "Successfully added and started openSSH agent"
+                          break
+                    }
+                    } catch {
+                        Write-Host "SSH server was not installed, retrying"
+                        Start-Sleep -Seconds $interval
+                        $elapsed += $interval
+                    }
+                    if ($elapsed -ge $timeout) {
+                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+                        exit 1
+                    }
+                  } while ($true)
+                  # Set PowerShell as the default SSH shell
+                  New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
+                  # Configure SSH server to use private key authentication so that scripts don't have to use passwords
+                  # Save the private key from instance metadata
+                  $ImdsToken = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/api/token' -Method 'PUT' -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = 2160} -UseBasicParsing).Content
+                  $ImdsHeaders = @{'X-aws-ec2-metadata-token' = $ImdsToken}
+                  $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
+                  $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
+                  New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+                  # Set the correct permissions on the authorized_keys file
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
+                  # Ensure the SSH agent pulls in the new key.
+                  Set-Service -Name ssh-agent -StartupType "Automatic"
+                  Restart-Service -Name ssh-agent
+                  Restart-Service -Name sshd
+                  # Open the firewall for SSH connections
+                  New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+                  %{endif~}
+
                   # Open firewall ports for RDP functionality
                   New-NetFirewallRule -Name kerberostcp -DisplayName 'Kerberos TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 88
                   New-NetFirewallRule -Name kerberosudp -DisplayName 'Kerberos UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 88
@@ -369,4 +441,64 @@ resource "local_sensitive_file" "private_key" {
 resource "time_sleep" "wait_10_minutes" {
   depends_on      = [aws_instance.domain_controller]
   create_duration = "10m"
+}
+
+# wait for the SSH service to be available on the instance. We specifically use
+# BatchMode=Yes to prevent SSH from prompting for a password to ensure that we
+# can just SSH using the private key
+resource "enos_local_exec" "wait_for_ssh" {
+  depends_on = [time_sleep.wait_10_minutes]
+  count      = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.domain_controller.public_ip} \"echo ready\"; do sleep 10; done'"]
+}
+
+locals {
+  test_dir        = "C:/Test"
+  vault_ldap_user = "VaultLDAP"
+}
+
+resource "enos_local_exec" "make_dir" {
+  depends_on = [
+    enos_local_exec.wait_for_ssh,
+  ]
+
+  count  = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.domain_controller.public_ip} mkdir -Force ${local.test_dir}"]
+}
+
+resource "local_file" "ldaps_script" {
+  depends_on = [
+    enos_local_exec.make_dir,
+  ]
+  count = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  content = templatefile("${path.module}/scripts/setup_ldaps.ps1", {
+    active_directory_domain = var.active_directory_domain
+    vault_ldap_user         = local.vault_ldap_user
+  })
+  filename = "${path.root}/.terraform/tmp/setup_ldaps.ps1"
+}
+
+resource "enos_local_exec" "add_ldaps_script" {
+  depends_on = [
+    local_file.ldaps_script,
+  ]
+
+  count  = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${abspath(local_file.ldaps_script[0].filename)} Administrator@${aws_instance.domain_controller.public_ip}:${local.test_dir}"]
+}
+
+resource "enos_local_exec" "run_ldaps_script" {
+  depends_on = [
+    enos_local_exec.add_ldaps_script,
+  ]
+
+  count  = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.domain_controller.public_ip} ${local.test_dir}/${basename(local_file.ldaps_script[0].filename)}"]
+}
+
+resource "local_file" "ldaps_script_output" {
+  depends_on = [enos_local_exec.run_ldaps_script]
+  count      = var.server_version != "2016" && var.server_version != "2019" ? 1 : 0
+  content    = enos_local_exec.run_ldaps_script[0].stdout
+  filename   = "${path.root}/.terraform/tmp/setup_ldaps.out"
 }
