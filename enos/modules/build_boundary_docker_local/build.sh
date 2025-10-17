@@ -15,6 +15,7 @@ export DEV_DOCKER_GOARCH=$(uname -m)
 if [[ $DEV_DOCKER_GOARCH == "x86_64" ]]; then
    export DEV_DOCKER_GOARCH="amd64"
 fi
+export UI_SRC_OVERRIDE="${UI_BUILD_OVERRIDE}"
 export IMAGE_TAG_DEV="${IMAGE_NAME}"
 make build-ui docker-build-dev
 
