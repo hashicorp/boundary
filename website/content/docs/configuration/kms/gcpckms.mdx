@@ -24,6 +24,7 @@ kms "gcpckms" {
   region      = "global"
   key_ring    = "boundary-keyring"
   crypto_key  = "boundary-key"
+  key_id      = "global_worker-auth"
 }
 ```
 
@@ -52,6 +53,10 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
 - `crypto_key` `(string: <required>)`: The GCP CKMS crypto key to use for
   encryption and decryption. May also be specified by the `GCPCKMS_WRAPPER_CRYPTO_KEY`
   environment variable.
+
+- `key_id` - The unique name of this key.
+It is used to identify the key when you perform a root key migration.
+You can use the `key_id` field with all KMS stanzas.
 
 ## Authentication &amp; permissions
 

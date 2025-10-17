@@ -283,7 +283,15 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager, proxyHandlers.WithLogger(w.logger))
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
-			event.WriteError(ctx, op, err)
+
+			switch {
+			case errors.Match(errors.T(errors.WindowsRDPClientEarlyDisconnection), err):
+				// This is known behavior with Windows Remote Desktop clients and does not
+				// indicate a problem with the worker or the proxy.
+				// There is no need to log an error event here.
+			default:
+				event.WriteError(ctx, op, err)
+			}
 			return
 		}
 

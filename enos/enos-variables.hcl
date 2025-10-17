@@ -277,3 +277,9 @@ variable "ui_build_override" {
   type        = string
   default     = null
 }
+
+variable "github_token" {
+  description = "github token needed to run automated tests (requires read access to hashicorp repos)"
+  type        = string
+  default     = null
+}

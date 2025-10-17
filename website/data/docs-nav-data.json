@@ -1247,6 +1247,10 @@
             "path": "commands/connect/mysql"
           },
           {
+            "title": "mongo",
+            "path": "commands/connect/mongo"
+          },
+          {
             "title": "postgres",
             "path": "commands/connect/postgres"
           },
