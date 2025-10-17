@@ -35,7 +35,8 @@ variable "goos" {
 
 variable "ui_build_override" {
   description = "Override for build for UI automation (oss or ent)"
-  default     = null
+  type        = string
+  default     = ""
 }
 
 resource "enos_local_exec" "build" {
