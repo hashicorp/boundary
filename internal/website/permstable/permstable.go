@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-const permsFile = "website/content/docs/rbac/resource-table.mdx"
+const permsFile = "internal/website/permstable/resource-table.mdx"
 
 var (
 	iamScopes    = []string{"Global", "Org"}
