@@ -13,6 +13,7 @@ npm install --global pnpm || true
 root_dir="$(git rev-parse --show-toplevel)"
 pushd "${root_dir}" > /dev/null
 
+export UI_SRC_OVERRIDE="${UI_BUILD_OVERRIDE}"
 make ${BUILD_TARGET}
 zip -j ${ARTIFACT_PATH}/${ARTIFACT_NAME}.zip bin/${BINARY_NAME}
 
