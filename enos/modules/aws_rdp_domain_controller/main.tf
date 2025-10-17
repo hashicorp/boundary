@@ -79,7 +79,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -92,7 +93,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -106,7 +108,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -119,7 +122,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -133,7 +137,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -146,7 +151,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -160,7 +166,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -173,7 +180,8 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -187,7 +195,37 @@ resource "aws_security_group" "rdp_ingress" {
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
     ipv6_cidr_blocks = flatten([
-      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
+    ])
+  }
+
+  # Allow LDAPS (Lightweight Directory Access Protocol Secure) traffic to query Active Directory
+  ingress {
+    from_port = 636
+    to_port   = 636
+    protocol  = "tcp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
+    ])
+  }
+
+  ingress {
+    from_port = 636
+    to_port   = 636
+    protocol  = "udp"
+    cidr_blocks = flatten([
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
+      join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+      data.aws_vpc.infra.ipv6_cidr_block
     ])
   }
 
@@ -225,10 +263,12 @@ resource "aws_security_group" "allow_all_internal" {
   vpc_id = var.vpc_id
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    self             = true
+    cidr_blocks      = [data.aws_vpc.infra.cidr_block]
+    ipv6_cidr_blocks = [data.aws_vpc.infra.ipv6_cidr_block]
   }
 
   egress {
@@ -288,6 +328,8 @@ resource "aws_instance" "domain_controller" {
                   New-NetFirewallRule -Name ldaptcp -DisplayName 'LDAP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 389
                   New-NetFirewallRule -Name ldapudp -DisplayName 'LDAP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 389
                   New-NetFirewallRule -Name smbtcp -DisplayName 'SMB TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 445
+                  New-NetFirewallRule -Name ldapstcp -DisplayName 'LDAPS TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 636
+                  New-NetFirewallRule -Name ldapsudp -DisplayName 'LDAPS UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 636
                   New-NetFirewallRule -Name rdptcp -DisplayName 'RDP TCP' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
                   New-NetFirewallRule -Name rdpudp -DisplayName 'RDP UDP' -Enabled True -Direction Inbound -Protocol UDP -Action Allow -LocalPort 3389
 
