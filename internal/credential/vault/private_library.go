@@ -169,7 +169,7 @@ func baseToUsrPassDomain(ctx context.Context, bc *baseCred) (*usrPassDomainCred,
 	}, nil
 }
 
-var _ credential.PasswordCredential = (*passCred)(nil)
+var _ credential.PasswordOnly = (*passCred)(nil)
 
 type passCred struct {
 	*baseCred
