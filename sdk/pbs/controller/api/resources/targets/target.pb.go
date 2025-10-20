@@ -1487,6 +1487,52 @@ func (x *UsernamePasswordDomainCredential) GetDomain() string {
 	return ""
 }
 
+// The layout of the struct for "credential" field in SessionCredential for a password credential type.
+type PasswordCredential struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Password of the credential
+	Password      string `protobuf:"bytes,1,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PasswordCredential) Reset() {
+	*x = PasswordCredential{}
+	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PasswordCredential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PasswordCredential) ProtoMessage() {}
+
+func (x *PasswordCredential) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PasswordCredential.ProtoReflect.Descriptor instead.
+func (*PasswordCredential) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_targets_v1_target_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PasswordCredential) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 // The layout of the struct for "credential" field in SessionCredential for a ssh_private_key credential type.
 type SshPrivateKeyCredential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1502,7 +1548,7 @@ type SshPrivateKeyCredential struct {
 
 func (x *SshPrivateKeyCredential) Reset() {
 	*x = SshPrivateKeyCredential{}
-	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[16]
+	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1514,7 +1560,7 @@ func (x *SshPrivateKeyCredential) String() string {
 func (*SshPrivateKeyCredential) ProtoMessage() {}
 
 func (x *SshPrivateKeyCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[16]
+	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1527,7 +1573,7 @@ func (x *SshPrivateKeyCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SshPrivateKeyCredential.ProtoReflect.Descriptor instead.
 func (*SshPrivateKeyCredential) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_targets_v1_target_proto_rawDescGZIP(), []int{16}
+	return file_controller_api_resources_targets_v1_target_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SshPrivateKeyCredential) GetUsername() string {
@@ -1709,7 +1755,9 @@ const file_controller_api_resources_targets_v1_target_proto_rawDesc = "" +
 	" UsernamePasswordDomainCredential\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x16\n" +
-	"\x06domain\x18\x03 \x01(\tR\x06domain\"\x8c\x01\n" +
+	"\x06domain\x18\x03 \x01(\tR\x06domain\"0\n" +
+	"\x12PasswordCredential\x12\x1a\n" +
+	"\bpassword\x18\x01 \x01(\tR\bpassword\"\x8c\x01\n" +
 	"\x17SshPrivateKeyCredential\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1f\n" +
 	"\vprivate_key\x18\x02 \x01(\tR\n" +
@@ -1728,7 +1776,7 @@ func file_controller_api_resources_targets_v1_target_proto_rawDescGZIP() []byte 
 	return file_controller_api_resources_targets_v1_target_proto_rawDescData
 }
 
-var file_controller_api_resources_targets_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_controller_api_resources_targets_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_controller_api_resources_targets_v1_target_proto_goTypes = []any{
 	(*Alias)(nil),                            // 0: controller.api.resources.targets.v1.Alias
 	(*TargetAliasAttributes)(nil),            // 1: controller.api.resources.targets.v1.TargetAliasAttributes
@@ -1746,57 +1794,58 @@ var file_controller_api_resources_targets_v1_target_proto_goTypes = []any{
 	(*SessionAuthorization)(nil),             // 13: controller.api.resources.targets.v1.SessionAuthorization
 	(*UsernamePasswordCredential)(nil),       // 14: controller.api.resources.targets.v1.UsernamePasswordCredential
 	(*UsernamePasswordDomainCredential)(nil), // 15: controller.api.resources.targets.v1.UsernamePasswordDomainCredential
-	(*SshPrivateKeyCredential)(nil),          // 16: controller.api.resources.targets.v1.SshPrivateKeyCredential
-	(*structpb.Struct)(nil),                  // 17: google.protobuf.Struct
-	(*scopes.ScopeInfo)(nil),                 // 18: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrapperspb.StringValue)(nil),           // 19: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),            // 20: google.protobuf.Timestamp
-	(*wrapperspb.UInt32Value)(nil),           // 21: google.protobuf.UInt32Value
-	(*wrapperspb.Int32Value)(nil),            // 22: google.protobuf.Int32Value
-	(*wrapperspb.BoolValue)(nil),             // 23: google.protobuf.BoolValue
+	(*PasswordCredential)(nil),               // 16: controller.api.resources.targets.v1.PasswordCredential
+	(*SshPrivateKeyCredential)(nil),          // 17: controller.api.resources.targets.v1.SshPrivateKeyCredential
+	(*structpb.Struct)(nil),                  // 18: google.protobuf.Struct
+	(*scopes.ScopeInfo)(nil),                 // 19: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrapperspb.StringValue)(nil),           // 20: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),            // 21: google.protobuf.Timestamp
+	(*wrapperspb.UInt32Value)(nil),           // 22: google.protobuf.UInt32Value
+	(*wrapperspb.Int32Value)(nil),            // 23: google.protobuf.Int32Value
+	(*wrapperspb.BoolValue)(nil),             // 24: google.protobuf.BoolValue
 }
 var file_controller_api_resources_targets_v1_target_proto_depIdxs = []int32{
 	1,  // 0: controller.api.resources.targets.v1.Alias.attributes:type_name -> controller.api.resources.targets.v1.TargetAliasAttributes
 	2,  // 1: controller.api.resources.targets.v1.TargetAliasAttributes.authorize_session_arguments:type_name -> controller.api.resources.targets.v1.AuthorizeSessionArguments
-	17, // 2: controller.api.resources.targets.v1.SessionSecret.decoded:type_name -> google.protobuf.Struct
+	18, // 2: controller.api.resources.targets.v1.SessionSecret.decoded:type_name -> google.protobuf.Struct
 	4,  // 3: controller.api.resources.targets.v1.SessionCredential.credential_source:type_name -> controller.api.resources.targets.v1.CredentialSource
 	5,  // 4: controller.api.resources.targets.v1.SessionCredential.secret:type_name -> controller.api.resources.targets.v1.SessionSecret
-	17, // 5: controller.api.resources.targets.v1.SessionCredential.credential:type_name -> google.protobuf.Struct
-	18, // 6: controller.api.resources.targets.v1.Target.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	19, // 7: controller.api.resources.targets.v1.Target.name:type_name -> google.protobuf.StringValue
-	19, // 8: controller.api.resources.targets.v1.Target.description:type_name -> google.protobuf.StringValue
-	20, // 9: controller.api.resources.targets.v1.Target.created_time:type_name -> google.protobuf.Timestamp
-	20, // 10: controller.api.resources.targets.v1.Target.updated_time:type_name -> google.protobuf.Timestamp
+	18, // 5: controller.api.resources.targets.v1.SessionCredential.credential:type_name -> google.protobuf.Struct
+	19, // 6: controller.api.resources.targets.v1.Target.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	20, // 7: controller.api.resources.targets.v1.Target.name:type_name -> google.protobuf.StringValue
+	20, // 8: controller.api.resources.targets.v1.Target.description:type_name -> google.protobuf.StringValue
+	21, // 9: controller.api.resources.targets.v1.Target.created_time:type_name -> google.protobuf.Timestamp
+	21, // 10: controller.api.resources.targets.v1.Target.updated_time:type_name -> google.protobuf.Timestamp
 	3,  // 11: controller.api.resources.targets.v1.Target.host_sources:type_name -> controller.api.resources.targets.v1.HostSource
-	21, // 12: controller.api.resources.targets.v1.Target.session_max_seconds:type_name -> google.protobuf.UInt32Value
-	22, // 13: controller.api.resources.targets.v1.Target.session_connection_limit:type_name -> google.protobuf.Int32Value
-	19, // 14: controller.api.resources.targets.v1.Target.worker_filter:type_name -> google.protobuf.StringValue
-	19, // 15: controller.api.resources.targets.v1.Target.egress_worker_filter:type_name -> google.protobuf.StringValue
-	19, // 16: controller.api.resources.targets.v1.Target.ingress_worker_filter:type_name -> google.protobuf.StringValue
+	22, // 12: controller.api.resources.targets.v1.Target.session_max_seconds:type_name -> google.protobuf.UInt32Value
+	23, // 13: controller.api.resources.targets.v1.Target.session_connection_limit:type_name -> google.protobuf.Int32Value
+	20, // 14: controller.api.resources.targets.v1.Target.worker_filter:type_name -> google.protobuf.StringValue
+	20, // 15: controller.api.resources.targets.v1.Target.egress_worker_filter:type_name -> google.protobuf.StringValue
+	20, // 16: controller.api.resources.targets.v1.Target.ingress_worker_filter:type_name -> google.protobuf.StringValue
 	4,  // 17: controller.api.resources.targets.v1.Target.brokered_credential_sources:type_name -> controller.api.resources.targets.v1.CredentialSource
 	4,  // 18: controller.api.resources.targets.v1.Target.injected_application_credential_sources:type_name -> controller.api.resources.targets.v1.CredentialSource
-	17, // 19: controller.api.resources.targets.v1.Target.attributes:type_name -> google.protobuf.Struct
+	18, // 19: controller.api.resources.targets.v1.Target.attributes:type_name -> google.protobuf.Struct
 	8,  // 20: controller.api.resources.targets.v1.Target.tcp_target_attributes:type_name -> controller.api.resources.targets.v1.TcpTargetAttributes
 	9,  // 21: controller.api.resources.targets.v1.Target.ssh_target_attributes:type_name -> controller.api.resources.targets.v1.SshTargetAttributes
 	10, // 22: controller.api.resources.targets.v1.Target.rdp_target_attributes:type_name -> controller.api.resources.targets.v1.RdpTargetAttributes
-	19, // 23: controller.api.resources.targets.v1.Target.address:type_name -> google.protobuf.StringValue
+	20, // 23: controller.api.resources.targets.v1.Target.address:type_name -> google.protobuf.StringValue
 	0,  // 24: controller.api.resources.targets.v1.Target.aliases:type_name -> controller.api.resources.targets.v1.Alias
 	0,  // 25: controller.api.resources.targets.v1.Target.with_aliases:type_name -> controller.api.resources.targets.v1.Alias
-	21, // 26: controller.api.resources.targets.v1.TcpTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
-	21, // 27: controller.api.resources.targets.v1.TcpTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
-	21, // 28: controller.api.resources.targets.v1.SshTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
-	21, // 29: controller.api.resources.targets.v1.SshTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
-	19, // 30: controller.api.resources.targets.v1.SshTargetAttributes.storage_bucket_id:type_name -> google.protobuf.StringValue
-	23, // 31: controller.api.resources.targets.v1.SshTargetAttributes.enable_session_recording:type_name -> google.protobuf.BoolValue
-	21, // 32: controller.api.resources.targets.v1.RdpTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
-	21, // 33: controller.api.resources.targets.v1.RdpTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
-	18, // 34: controller.api.resources.targets.v1.SessionAuthorizationData.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	20, // 35: controller.api.resources.targets.v1.SessionAuthorizationData.created_time:type_name -> google.protobuf.Timestamp
-	20, // 36: controller.api.resources.targets.v1.SessionAuthorizationData.expiration:type_name -> google.protobuf.Timestamp
+	22, // 26: controller.api.resources.targets.v1.TcpTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
+	22, // 27: controller.api.resources.targets.v1.TcpTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
+	22, // 28: controller.api.resources.targets.v1.SshTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
+	22, // 29: controller.api.resources.targets.v1.SshTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
+	20, // 30: controller.api.resources.targets.v1.SshTargetAttributes.storage_bucket_id:type_name -> google.protobuf.StringValue
+	24, // 31: controller.api.resources.targets.v1.SshTargetAttributes.enable_session_recording:type_name -> google.protobuf.BoolValue
+	22, // 32: controller.api.resources.targets.v1.RdpTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
+	22, // 33: controller.api.resources.targets.v1.RdpTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
+	19, // 34: controller.api.resources.targets.v1.SessionAuthorizationData.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	21, // 35: controller.api.resources.targets.v1.SessionAuthorizationData.created_time:type_name -> google.protobuf.Timestamp
+	21, // 36: controller.api.resources.targets.v1.SessionAuthorizationData.expiration:type_name -> google.protobuf.Timestamp
 	11, // 37: controller.api.resources.targets.v1.SessionAuthorizationData.worker_info:type_name -> controller.api.resources.targets.v1.WorkerInfo
-	18, // 38: controller.api.resources.targets.v1.SessionAuthorization.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	20, // 39: controller.api.resources.targets.v1.SessionAuthorization.created_time:type_name -> google.protobuf.Timestamp
-	20, // 40: controller.api.resources.targets.v1.SessionAuthorization.expiration:type_name -> google.protobuf.Timestamp
+	19, // 38: controller.api.resources.targets.v1.SessionAuthorization.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	21, // 39: controller.api.resources.targets.v1.SessionAuthorization.created_time:type_name -> google.protobuf.Timestamp
+	21, // 40: controller.api.resources.targets.v1.SessionAuthorization.expiration:type_name -> google.protobuf.Timestamp
 	6,  // 41: controller.api.resources.targets.v1.SessionAuthorization.credentials:type_name -> controller.api.resources.targets.v1.SessionCredential
 	42, // [42:42] is the sub-list for method output_type
 	42, // [42:42] is the sub-list for method input_type
@@ -1822,7 +1871,7 @@ func file_controller_api_resources_targets_v1_target_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_resources_targets_v1_target_proto_rawDesc), len(file_controller_api_resources_targets_v1_target_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
