@@ -475,6 +475,12 @@ message UsernamePasswordDomainCredential {
   string domain = 3; // @gotags: `class:"public"`
 }
 
+// The layout of the struct for "credential" field in SessionCredential for a password credential type.
+message PasswordCredential {
+  // Password of the credential
+  string password = 1; // @gotags: `class:"secret"`
+}
+
 // The layout of the struct for "credential" field in SessionCredential for a ssh_private_key credential type.
 message SshPrivateKeyCredential {
   // Username of the credential
