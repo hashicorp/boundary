@@ -92,6 +92,24 @@ func (c *listCredentialResult) toCredential(ctx context.Context) (credential.Sta
 			cred.PasswordHmac = []byte(c.Hmac1)
 		}
 		return cred, nil
+	case "p":
+		cred := &PasswordCredential{
+			PasswordCredential: &store.PasswordCredential{
+				PublicId:    c.PublicId,
+				StoreId:     c.StoreId,
+				Name:        c.Name,
+				Description: c.Description,
+				CreateTime:  c.CreateTime,
+				UpdateTime:  c.UpdateTime,
+				Version:     uint32(c.Version),
+				KeyId:       c.KeyId,
+			},
+		}
+		// Assign byte slices only if the string isn't empty
+		if c.Hmac1 != "" {
+			cred.PasswordHmac = []byte(c.Hmac1)
+		}
+		return cred, nil
 	case "ssh":
 		cred := &SshPrivateKeyCredential{
 			SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
