@@ -279,7 +279,7 @@ variable "ui_build_override" {
 }
 
 variable "github_token" {
-  description = "github token needed to run automated tests (requires read access to hashicorp repos)"
+  description = "github token to the hashicorp org. needed to run RDP automated tests (requires contents (read-only) and actions (read-only) with fine-grained tokens or repo access using classic tokens)"
   type        = string
   default     = ""
 }
