@@ -364,7 +364,7 @@ resource "aws_instance" "domain_controller" {
       if ($result) {
           Write-Host "Successfully added and started openSSH agent"
           break
-    }
+      }
     } catch {
         Write-Host "SSH server was not installed, retrying"
         Start-Sleep -Seconds $interval
