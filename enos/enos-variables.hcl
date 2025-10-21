@@ -271,3 +271,15 @@ variable "windows_instance_type" {
   type        = string
   default     = "m7i-flex.xlarge"
 }
+
+variable "ui_build_override" {
+  description = "Override for build for UI automation"
+  type        = string
+  default     = ""
+}
+
+variable "github_token" {
+  description = "github token needed to run automated tests (requires read access to hashicorp repos)"
+  type        = string
+  default     = ""
+}
