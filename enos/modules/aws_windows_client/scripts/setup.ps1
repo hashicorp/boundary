@@ -48,7 +48,7 @@ refreshenv
 
 # Set the github token if provided
 if ("${github_token}" -ne "") {
-    # configure git to be able to dowwnload from private repos
+    # configure git to be able to download from private repos
     git config --system url."https://oauth2:${github_token}@github.com".insteadOf "https://github.com"
 
     # download opencv artifact if available
@@ -57,15 +57,16 @@ if ("${github_token}" -ne "") {
     refreshenv
 
     $repo = "hashicorp/boundary-enterprise"
-    $workflow = "build-opencv.yml"
+    $workflow = "build-opencv-ent.yml"
     $branch = "main"
     $artifactName = "opencv"
 
-    $run = gh run list --repo $repo --workflow=$workflow --limit 1 --json databaseId | ConvertFrom-Json
+    $run = gh run list --repo $repo --workflow=$workflow --branch=$branch --status success --limit 1 --json databaseId | ConvertFrom-Json
     if (-not $run -or -not $run[0].databaseId) {
         Write-Error "Could not find a workflow run for $workflow in $repo."
         exit 1
     }
+    Write-Host "Found workflow run: $($run[0])"
     $run_id = $run[0].databaseId
 
     New-Item -ItemType Directory -Path "C:/opencv/build" -Force
