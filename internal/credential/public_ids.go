@@ -51,11 +51,11 @@ func NewUsernamePasswordDomainCredentialId(ctx context.Context) (string, error) 
 	return id, nil
 }
 
-// PasswordCredentialId generates a new public ID for a password credential.
-func PasswordCredentialId(ctx context.Context) (string, error) {
+// NewPasswordCredentialId generates a new public ID for a password credential.
+func NewPasswordCredentialId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.PasswordCredentialPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "credential.PasswordCredentialId")
+		return "", errors.Wrap(ctx, err, "credential.NewPasswordCredentialId")
 	}
 	return id, nil
 }
