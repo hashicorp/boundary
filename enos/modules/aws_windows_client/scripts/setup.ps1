@@ -35,6 +35,7 @@ refreshenv
 # install mremoteng
 choco install mremoteng -y
 
+# install dependencies for rdp automated tests
 choco install golang -y --version ${go_version}
 refreshenv
 choco install git -y
