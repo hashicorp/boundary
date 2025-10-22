@@ -726,6 +726,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17)\\.x)/deploy/self-managed/install-clients',
+    destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/install-clients',
     destination: '/boundary/docs/:version/deploy/self-managed/install-clients',
     permanent: true,
@@ -763,6 +769,12 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/installing/systemd',
     destination: '/boundary/docs/:version/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/deploy/self-managed/systemd',
+    destination: '/boundary/docs/:version/install-boundary',
     permanent: true,
   },
   {
@@ -816,8 +828,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/install-boundary/terraform-patterns',
-    destination: '/boundary/docs/deploy/terraform-patterns',
+    source: '/boundary/docs/install-boundary/terraform-patterns/:slug*',
+    destination: '/boundary/docs/deploy/terraform-patterns/:slug*',
     permanent: true,
   },
   {
@@ -828,104 +840,15 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns',
-    destination: '/boundary/docs/:version/install-boundary/terraform-patterns',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-credentials-and-credential-stores',
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/:slug*',
     destination:
-      '/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores',
+      '/boundary/docs/:version/install-boundary/terraform-patterns/:slug*',
     permanent: true,
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-credentials-and-credential-stores',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-credentials-and-credential-stores',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-groups-and-rbac',
-    destination:
-      '/boundary/docs/deploy/terraform-patterns/terraform-groups-and-rbac',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-groups-and-rbac',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-groups-and-rbac',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-hosts-and-host-management',
-    destination:
-      '/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-hosts-and-host-management',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-hosts-and-host-management',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-scopes',
-    destination: '/boundary/docs/deploy/terraform-patterns/terraform-scopes',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-scopes',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-scopes',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-session-recording',
-    destination:
-      '/boundary/docs/deploy/terraform-patterns/terraform-session-recording',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-session-recording',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-session-recording',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-targets',
-    destination: '/boundary/docs/deploy/terraform-patterns/terraform-targets',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-pattern/terraform-targets',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-targets',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/install-boundary/terraform-patterns/terraform-users-and-auth-methods',
-    destination:
-      '/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods',
-    permanent: true,
-  },
-  {
-    source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/deploy/terraform-patterns/terraform-users-and-auth-methods',
-    destination:
-      '/boundary/docs/:version/install-boundary/terraform-patterns/terraform-users-and-auth-methods',
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/deploy/terraform-patterns/:slug*',
+    destination: '/boundary/docs/:version/install-boundary',
     permanent: true,
   },
   {
@@ -1630,6 +1553,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/credentials/:slug*',
+    destination: '/boundary/docs/:version/concepts/credential-management',
+    permanent: true,
+  },
+  {
     source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/configuration/credential-management/:slug*',
     destination: '/boundary/docs/:version/credentials/:slug*',
@@ -1644,6 +1572,12 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/configuration/credential-management/:slug*',
     destination: '/boundary/docs/:version/concepts/credential-management',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/credentials/rdp-testing-and-compatibility-matrix',
+    destination: '/boundary/docs/:version/configuration/credential-management',
     permanent: true,
   },
   {
@@ -2555,7 +2489,13 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:11|12|13|14|15)\\.x)/concepts/domain-model/aliases',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15)\\.x)/concepts/domain-model/aliases',
+    destination: '/boundary/docs/:version/concepts/domain-model',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15)\\.x)/domain-model/aliases',
     destination: '/boundary/docs/:version/concepts/domain-model',
     permanent: true,
   },
@@ -2748,6 +2688,12 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14)\\.x)/concepts/domain-model/storage-policy',
+    destination: '/boundary/docs/:version/concepts/domain-model',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14)\\.x)/domain-model/storage-policy',
     destination: '/boundary/docs/:version/concepts/domain-model',
     permanent: true,
   },
