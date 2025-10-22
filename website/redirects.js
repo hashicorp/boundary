@@ -299,7 +299,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:19)\\.x)/getting-started/run-and-login',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18|19)\\.x)/getting-started/run-and-login',
     destination:
       '/boundary/docs/:version/getting-started/dev-mode/run-and-login',
     permanent: true,
@@ -332,6 +332,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/install-boundary/architecture/:slug*',
+    destination: '/boundary/docs/:version/install-boundary/:slug*',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/architecture/:slug*',
     destination: '/boundary/docs/:version/architecture/:slug*',
     permanent: true,
@@ -345,6 +351,13 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/architecture/system-requirements',
     destination: '/boundary/docs/:version/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/system-requirements',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/system-requirements',
     permanent: true,
   },
   {
@@ -399,6 +412,13 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/architecture/recommended-architecture',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/recommended-architecture',
     destination:
       '/boundary/docs/:version/install-boundary/architecture/recommended-architecture',
     permanent: true,
@@ -478,6 +498,13 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/fault-tolerance',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/fault-tolerance',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/fault-tolerance',
     destination: '/boundary/docs/:version/architecture/fault-tolerance',
     permanent: true,
@@ -541,6 +568,13 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/high-availability',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/high-availability',
     destination: '/boundary/docs/:version/architecture/high-availability',
     permanent: true,
@@ -594,6 +628,17 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17)\\.x)/install-boundary/deploy',
+    destination: '/boundary/docs/:version/install-boundary/install',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:18)\\.x)/install-boundary/install',
+    destination: '/boundary/docs/:version/install-boundary/deploy',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/install-boundary/deploy',
     destination: '/boundary/docs/:version/deploy/self-managed/install',
     permanent: true,
@@ -642,6 +687,18 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/initialize',
     destination: '/boundary/docs/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/install-boundary/initialize',
+    destination: '/boundary/docs/:version/install-boundary/no-gen-resources',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/:version/install-boundary/initialize',
     permanent: true,
   },
   {
@@ -737,6 +794,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/install-boundary/install-clients',
+    destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/self-managed/install-clients',
     destination: '/boundary/docs/deploy/self-managed/install-clients',
     permanent: true,
@@ -794,7 +857,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:19)\\.x)/getting-started/connect-to-target',
+      '/boundary/docs/:version(v0\\.(?:9|10|11|12|13|14|15|16|17|18|19)\\.x)/getting-started/connect-to-target',
     destination: '/boundary/docs/:version/hcp/get-started/connect-to-target',
     permanent: true,
   },
@@ -817,7 +880,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:19)\\.x)/getting-started/deploy-and-login',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18|19)\\.x)/getting-started/deploy-and-login',
     destination: '/boundary/docs/:version/hcp/get-started/deploy-and-login',
     permanent: true,
   },
@@ -830,6 +893,12 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/terraform-patterns/:slug*',
     destination: '/boundary/docs/deploy/terraform-patterns/:slug*',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/install-boundary/terraform-patterns/:slug*',
+    destination: '/boundary/docs/:version/install-boundary',
     permanent: true,
   },
   {
@@ -1381,6 +1450,16 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/host-discovery/gcp',
     destination: '/boundary/docs/hosts/gcp',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/hosts/gcp',
+    destination: '/boundary/docs/:version/concepts/host-discovery',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:8|9|10|11|12)\\.x)/hosts/gcp',
+    destination: '/boundary/docs/:version/concepts/service-discovery',
     permanent: true,
   },
   {
