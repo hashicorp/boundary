@@ -130,7 +130,7 @@ variable "vault_instance_type" {
 variable "vault_version" {
   description = "Version of Vault to use"
   type        = string
-  default     = "1.12.2"
+  default     = "1.17.6"
 }
 
 variable "test_email" {

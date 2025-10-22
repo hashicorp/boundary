@@ -46,3 +46,8 @@ output "domain_name" {
   description = "The domain name the instance is joined to"
   value       = var.active_directory_domain
 }
+
+output "vault_ldap_user" {
+  description = "User created for Vault LDAP use"
+  value       = local.vault_ldap_user
+}
