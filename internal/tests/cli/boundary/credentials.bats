@@ -12,6 +12,7 @@ export NEW_UPD_AT_CREDENTIAL='test-at-user-domain-pass'
 export NEW_UPD_SLASH_CREDENTIAL='test-slash-domain-user-pass'
 export NEW_UPD_CREDENTIAL_DOMAIN='test-domain-user-plus-domain'
 export NEW_JSON_CREDENTIAL='test-json'
+export NEW_PASSWORD_CREDENTIAL='test-pass'
 
 @test "boundary/login: can login as default user" {
   run login $DEFAULT_LOGIN
@@ -75,6 +76,20 @@ export NEW_JSON_CREDENTIAL='test-json'
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/credentials: can create $NEW_PASSWORD_CREDENTIAL credential in $NEW_STORE store" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  run create_password_credential $NEW_PASSWORD_CREDENTIAL $csid 'password'
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credentials: can not create already created $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  run create_password_credential $NEW_PASSWORD_CREDENTIAL $csid 'password'
+  echo "$output"
+  [ "$status" -eq 1 ]
+}
+
 @test "boundary/credentials: can not create already created $NEW_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   run create_username_password_credential $NEW_CREDENTIAL $csid 'username' 'password'
@@ -121,6 +136,14 @@ export NEW_JSON_CREDENTIAL='test-json'
 @test "boundary/credentials: can read $NEW_UPD_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_UPD_CREDENTIAL $csid)
+  run read_credential $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credentials: can read $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run read_credential $cid
   echo "$output"
   [ "$status" -eq 0 ]
@@ -189,6 +212,15 @@ export NEW_JSON_CREDENTIAL='test-json'
 @test "boundary/credentials: can delete $NEW_JSON_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
+  run delete_credential $cid
+  echo "$output"
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credentials: can delete $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run delete_credential $cid
   echo "$output"
   run has_status_code "$output" "204"
@@ -273,6 +305,14 @@ export NEW_JSON_CREDENTIAL='test-json'
 @test "boundary/credential-stores: can not read deleted $NEW_JSON_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
+  run read_credential $cid
+  echo "$output"
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/credential-stores: can not read deleted $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run read_credential $cid
   echo "$output"
   [ "$status" -eq 1 ]
