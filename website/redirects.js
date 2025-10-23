@@ -239,6 +239,16 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing',
+    destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing',
+    destination: '/boundary/docs/:version/install-boundary',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/installing',
     destination: '/boundary/docs/:version/deploy/self-managed',
     permanent: true,
@@ -354,6 +364,18 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/postgres',
+    destination: '/boundary/docs/:version/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/postgres',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/system-requirements',
+    permanent: true,
+  },
+  {
     source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/system-requirements',
     destination:
@@ -442,6 +464,20 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/reference-architectures',
+    destination:
+      '/boundary/docs/:version/install-boundary/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/reference-architectures',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/installing/reference-architectures',
     destination:
       '/boundary/docs/:version/architecture/recommended-architecture',
@@ -512,6 +548,19 @@ module.exports = [
   {
     source: '/boundary/docs/install-boundary/architecture/high-availability',
     destination: '/boundary/docs/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/high-availability',
+    destination: '/boundary/docs/:version/install-boundary/high-availability',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/high-availability',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/high-availability',
     permanent: true,
   },
   {
@@ -697,7 +746,19 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/no-gen-resources',
+    destination: '/boundary/docs/:version/install-boundary/no-gen-resources',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/:version/install-boundary/initialize',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/no-gen-resources',
     destination: '/boundary/docs/:version/install-boundary/initialize',
     permanent: true,
   },
@@ -822,6 +883,17 @@ module.exports = [
   {
     source: '/boundary/docs/installing/systemd',
     destination: '/boundary/docs/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/systemd',
+    destination: '/boundary/docs/:version/install-boundary/systemd',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/systemd',
+    destination: '/boundary/docs/:version/install-boundary/systemd',
     permanent: true,
   },
   {
@@ -2274,13 +2346,18 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/integrations',
+    source: '/boundary/docs/:version(v0\\.(?:13|14|19)\\.x)/integrations',
     destination: '/boundary/docs/:version',
     permanent: true,
   },
   {
     source: '/boundary/docs/integrations/vault',
     destination: '/boundary/docs/vault',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/integrations/vault',
+    destination: '/boundary/docs/:version',
     permanent: true,
   },
   {
@@ -2863,6 +2940,12 @@ module.exports = [
     source:
       '/boundary/docs/configuration/target-aliases/interoperability-matrix',
     destination: '/boundary/docs/interoperability-matrix/index',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/interoperability-matrix',
+    destination: '/boundary/docs/:version',
     permanent: true,
   },
 ]
