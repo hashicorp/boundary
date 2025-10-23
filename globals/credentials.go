@@ -11,6 +11,7 @@ const (
 	UnspecifiedCredentialType            CredentialType = "unspecified"
 	UsernamePasswordCredentialType       CredentialType = "username_password"
 	UsernamePasswordDomainCredentialType CredentialType = "username_password_domain"
+	PasswordCredentialType               CredentialType = "password"
 	SshPrivateKeyCredentialType          CredentialType = "ssh_private_key"
 	SshCertificateCredentialType         CredentialType = "ssh_certificate"
 	JsonCredentialType                   CredentialType = "json"

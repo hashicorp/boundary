@@ -47,3 +47,9 @@ variable "boundary_src_path" {
   type        = string
   default     = ""
 }
+
+variable "github_token" {
+  description = "github token to the hashicorp org. needed to run RDP automated tests (requires contents (read-only) and actions (read-only) with fine-grained tokens or repo access using classic tokens)"
+  type        = string
+  default     = ""
+}

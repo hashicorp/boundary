@@ -39,9 +39,10 @@ scenario "e2e_ui_docker" {
     module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
 
     variables {
-      path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
-      cli_build_path = local.build_path[matrix.builder]
-      edition        = var.boundary_edition
+      path              = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
+      cli_build_path    = local.build_path[matrix.builder]
+      edition           = var.boundary_edition
+      ui_build_override = var.ui_build_override
     }
   }
 

@@ -112,6 +112,7 @@ scenario "e2e_aws_rdp_base" {
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
       boundary_src_path     = local.local_boundary_src_dir
+      github_token          = var.github_token
     }
   }
 
@@ -339,6 +340,10 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_rdp_domain_controller.private_ip
   }
 
+  output "rdp_domain_controller_ipv6" {
+    value = step.create_rdp_domain_controller.ipv6
+  }
+
   output "rdp_domain_controller_admin_username" {
     value = step.create_rdp_domain_controller.admin_username
   }
@@ -401,5 +406,13 @@ scenario "e2e_aws_rdp_base" {
 
   output "windows_worker_private_ip" {
     value = step.create_windows_worker.private_ip
+  }
+
+  output "vault_address_public" {
+    value = step.create_vault_cluster.instance_public_ips_ipv4[0]
+  }
+
+  output "vault_root_token" {
+    value = step.create_vault_cluster.vault_root_token
   }
 }
