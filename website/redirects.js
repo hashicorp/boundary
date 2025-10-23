@@ -1976,6 +1976,24 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13)\\.x)/operations/session-recordings',
+    destination: '/boundary/docs/:version/operations/manage-recorded-sessions',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13)\\.x)/operations/session-recordings/manage-recorded-sessions',
+    destination: '/boundary/docs/:version/operations/manage-recorded-sessions',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/operations/manage-recorded-sessions',
+    destination: '/boundary/docs/:version/operations/session-recordings',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/session-recording/configuration/manage-recorded-sessions',
     destination:
       '/boundary/docs/:version/operations/session-recordings/manage-recorded-sessions',
@@ -2069,6 +2087,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13)\\.x)/operations/session-recordings/validate-data-store',
+    destination: '/boundary/docs/:version/configuration/session-recording',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/session-recording/compliance/validate-data-store',
     destination:
       '/boundary/docs/:version/operations/session-recordings/validate-data-store',
@@ -2086,6 +2110,12 @@ module.exports = [
       '/boundary/docs/operations/session-recordings/validate-session-recordings',
     destination:
       '/boundary/docs/session-recording/compliance/validate-session-recordings',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13)\\.x)/operations/session-recordings/validate-session-recordings',
+    destination: '/boundary/docs/:version/configuration/session-recording',
     permanent: true,
   },
   {
