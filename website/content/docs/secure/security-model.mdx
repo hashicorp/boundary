@@ -1,0 +1,142 @@
+---
+layout: docs
+page_title: Boundary security model
+description: >-
+  Understand the mechanisms involved in a secure Boundary deployment, which threats are considered part of the security model, and HCP Boundary's architecture.
+---
+
+# Security model
+
+Boundary brokers secure, auditable connections to infrastructure targets while keeping credentials hidden and enforcing least-privilege policy.
+The security model ensures [confidentiality, integrity, authentication, and accountability](http://www.wikipedia.org/wiki/Information_security) for all access and session brokering operations.
+
+Defense in depth is crucial for secure privileged access management, and deployment requirements may differ dramatically depending on your use case.
+This documentation may need to be adapted to your situation, but the general mechanisms for a secure Boundary deployment revolve around:
+
+- [mTLS](/boundary/docs/secure/encryption/connections-tls) - Mutual TLS authentication between client, controller, and worker components prevents unauthorized access by requiring all parties to present valid certificates.
+This requirement protects internal communications and session brokering operations.
+- [RBAC](/boundary/docs/rbac) - Boundary's allow-only permissions model enables authorization for authenticated connections by granting capabilities to roles which are then assigned to users, groups, or managed groups.
+- [Scopes](/boundary/docs/domain-model) - Access to targets within organizations and projects can be controlled to allow for granular access to infrastructure resources.
+- [Data encryption](/boundary/docs/secure/encryption/data-encryption) - Sensitive data stored in Boundary's database is protected using envelope encryption with external key management systems.
+
+The combination of these mechanisms creates a strong security posture, enabling administrators to enforce least-privilege access, decouple credentials from end users, maintain comprehensive audit logs, and ensure secure network traversal without direct connectivity to sensitive networks.
+
+## Threat model
+
+The following are the various parts of the Boundary threat model:
+
+- **Eavesdropping on any Boundary communication**.
+All communication between clients, controllers, and workers is protected by TLS or mutually authenticated TLS, ensuring confidentiality and integrity.
+- **Tampering with data at rest or in transit**.
+Any unauthorized modification of session information, configuration, or persistent state should be detected, causing transaction abort or session termination.
+- **Access to targets or controls without authentication or authorization**.
+All requests must be authenticated and authorized according to defined granular policies.
+- **Access to targets or controls without accountability**.
+When audit logging is enabled, all access attempts and privileged operations must be logged before sensitive data is transmitted.
+- **Confidentiality of managed credentials**.
+Credentials brokered by Boundary must never be exposed to clients unless explicitly authorized, preventing credential leakage.
+- **Availability of session brokering services**.
+Boundary supports highly available deployments to maintain access in case of infrastructure failures.
+
+## Not in scope
+
+The following are explicitly not considered part of the Boundary threat model:
+
+- **Protecting against compromise of Boundary hosts (controllers, workers)**.
+An attacker with arbitrary code execution or privileged access on controller or worker hosts can undermine security guarantees.
+This includes access to:
+  - The Boundary data directory containing configuration and state
+  - Memory of running Boundary controller or worker processes
+  - The capability to run modified Boundary binaries
+  - The capability to redirect worker host network traffic
+- **Protecting against compromise of end-user or administrator devices**.
+  - If an attacker compromises a user's device and obtains valid Boundary credentials, they can perform actions with those credentials' privileges.
+  - Brokered credentials may be returned to the user's device and displayed in plain text.
+  - Boundary Client Agent specifics:
+      - The Client Agent stores session credentials and related information in memory.
+      Boundary CLI persists auth tokens to platform-specific keyring storage.
+      If an attacker can read the memory of the Client Agent process or has compromised the OS user account under which the Client Agent is running and authenticated, they may be able to access these active session credentials.
+      - The Client Agent's security relies on the OS user context; an OS user can only connect to sessions managed by the Client Agent if they are the same OS user that initiated the DNS lookup that created the session.
+      Compromise of this OS user account bypasses the local protection.
+      - An attacker could subvert the Client Agent's DNS interception mechanism on the local host.
+- **Protecting against vulnerabilities in external credential sources**.
+Boundary integrates with systems like HashiCorp Vault, cloud IAM services, and other credential stores, but cannot protect against exploits targeting these external services.
+- **Protecting against the leakage of the existence of resources**.
+While Boundary protects credential details, an attacker with read access to the backend might be able to see that certain targets or auth methods exist, even if they cannot access them.
+- **Protecting against network-level denial of service attacks**.
+While Boundary supports high-availability configurations and provides rate limiting, it does not include inherent protections against volumetric DoS attacks targeting its network surfaces.
+- **Protecting against target application vulnerabilities**.
+Once a session is established to a target (SSH server, database, etc.), Boundary cannot protect against vulnerabilities in that target application.
+
+## HCP Boundary
+
+HCP Boundary is deployed onto a single AWS region across three availability zones in that region.
+Each customer cluster is deployed as a Nomad job of Docker containers.
+The Nomad jobs are controlled by an external service that accesses the Nomad cluster through the VPC's PrivateLink.
+
+![High-level diagram of HCP Boundary architecture](/img/security-model/boundary-architecture.png)
+
+For a given HCP Boundary cluster, the only user-accessible endpoints are the controllers, which have a randomly-generated 32-character cluster UUID, `https://<cluster_id>.boundary.hashicorp.cloud`.
+These machine-generated URLs provide no discernible patterns, guarding against the enumeration of controllers.
+
+### Tenancy model
+
+HCP Boundary uses a multi-tenant RDS Postgres cluster with a separate database per tenant.
+This architecture uses security controls inherent to Postgres' database isolation.
+All secret and sensitive row data is encrypted with scope-specific, per-tenant keys.
+
+This model is commonly referred to as a **siloed** multi-tenant database, as opposed to **bridge** or **pool** models.
+A siloed model allows us to maintain the strictest security while simplifying the architecture.
+
+### Self-managed workers
+
+Self-managed workers are workers that are managed by administrators outside of the HCP infrastructure, in their cloud or on-premises environments.
+Just like all Boundary worker-to-controller and client-to-worker communication, self-managed workers connect to the controller and clients over mutually-authenticated TLS.
+For more information about how self-managed workers authenticate to the HCP Boundary controller, refer to [PKI-based worker authentication](/boundary/docs/secure/encryption/connections-tls#pki-based-worker-authentication).
+
+A compromised worker may result in the compromise of any targets assigned to the worker as well as the integrity of any log data provided by the compromised worker.
+
+### Storage
+
+The Boundary controller and worker infrastructure is stateless, whereby all state lives in the RDBMS.
+Each HCP Boundary cluster is provided with a separate database inside of an Aurora Postgres cluster.
+The [Vault database engine](/vault/docs/secrets/databases) provides access to the database using dynamic credentials that are regularly rotated.
+
+![High-level diagram of HCP Boundary data at rest](/img/security-model/data-at-rest.png)
+
+### Data encryption
+
+HCP Boundary clusters use the [Vault Transit secrets engine](/vault/docs/secrets/transit) for their root, recovery, and worker-auth KMS keys.
+Boundary controllers are provided access to the Vault transit keys with a token that is assigned a policy that allows them to access only their individual keys.
+These tokens are regularly rotated.
+
+Administrators may also use an external key management system, including Vault or HCP Vault, to manage the key-encrypting root key.
+Refer to the [kms stanza](/boundary/docs/configuration/kms) documentation for more information about supported external KMS systems.
+
+### Data in transit
+
+All user-to-controller communication is performed over TLS.
+Refer to the [TLS configuration options](/boundary/docs/configuration/listeners/tcp-listeners#tls) in the TCP listeners documentation.
+
+All other communication, including worker-to-controller and client-to-worker, is performed over mutually-authenticated TLS.
+Boundary automatically generates and manages the TLS keys.
+
+![High-level diagram of HCP Boundary data in transit](/img/security-model/data-in-transit.png)
+
+### Identity
+
+The HCP Platform allows administrators to perform high-level cluster operations such as creation and deletion.
+You can manage HCP users and their permissions using the [HCP Portal](https://portal.cloud.hashicorp.com).
+Once you create an HCP Boundary cluster, you manage Boundary users and permissions within Boundary itself.
+
+When an administrator creates an HCP cluster tenant, they are prompted to create administrative credentials to bootstrap the cluster.
+The administrator can then use Boundary-specific authentication methods to connect directly to the controller and perform administrative tasks.
+
+## More information
+
+Refer to the following topics for more information:
+
+- [TLS in Boundary](/boundary/docs/secure/encryption/connections-tls)
+- [Permissions in Boundary](/boundary/docs/rbac)
+- [Boundary domain model overview](/boundary/docs/domain-model)
+- [Data encryption in Boundary](/boundary/docs/secure/encryption/data-encryption)
