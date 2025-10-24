@@ -69,6 +69,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:11|12|13|14|15|16|17|18)\\.x)/roadmap',
+    destination: '/boundary/docs/:version/overview/what-is-boundary',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/roadmap',
     destination: '/boundary/docs/:version/what-is-boundary',
     permanent: true,
@@ -76,6 +82,11 @@ module.exports = [
   {
     source: '/boundary/docs/oss',
     destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss',
+    destination: '/boundary/docs/:version/overview/what-is-boundary',
     permanent: true,
   },
   {
@@ -282,6 +293,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss/installing/dev-mode',
+    destination: '/boundary/docs/:version/getting-started/dev-mode/dev-mode',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/getting-started/dev-mode/dev-mode',
     destination: '/boundary/docs/:version/getting-started/dev-mode',
     permanent: true,
@@ -316,7 +333,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/installing/run-and-login',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18|19)\\.x)/oss/installing/run-and-login',
     destination:
       '/boundary/docs/:version/getting-started/dev-mode/run-and-login',
     permanent: true,
@@ -331,6 +348,13 @@ module.exports = [
     source:
       '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/getting-started/dev-mode/connect-to-dev-target',
     destination: '/boundary/docs/:version/oss/installing/connect-to-dev-target',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18|)\\.x)/oss/installing/connect-to-dev-target',
+    destination:
+      '/boundary/docs/:version/getting-started/dev-mode/connect-to-dev-target',
     permanent: true,
   },
   {
@@ -411,6 +435,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/oss/installing/postgres',
+    destination: '/boundary/docs/:version/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/oss/installing/postgres',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/system-requirements',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/installing/postgres',
     destination: '/boundary/docs/:version/architecture/system-requirements',
     permanent: true,
@@ -472,6 +509,20 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/reference-architectures',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/oss/installing/reference-architectures',
+    destination:
+      '/boundary/docs/:version/install-boundary/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/oss/installing/reference-architectures',
     destination:
       '/boundary/docs/:version/install-boundary/architecture/recommended-architecture',
     permanent: true,
@@ -617,7 +668,20 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/oss/installing/high-availability',
+    destination: '/boundary/docs/:version/install-boundary/high-availability',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/install-boundary/high-availability',
+    destination:
+      '/boundary/docs/:version/install-boundary/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/oss/installing/high-availability',
     destination:
       '/boundary/docs/:version/install-boundary/architecture/high-availability',
     permanent: true,
@@ -798,6 +862,18 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/oss/installing/no-gen-resources',
+    destination: '/boundary/docs/:version/install-boundary/no-gen-resources',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/oss/installing/no-gen-resources',
+    destination: '/boundary/docs/:version/install-boundary/initialize',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/installing/no-gen-resources',
     destination: '/boundary/docs/:version/deploy/self-managed/initialize',
     permanent: true,
@@ -886,13 +962,14 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/installing/systemd',
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/installing/systemd',
     destination: '/boundary/docs/:version/install-boundary/systemd',
     permanent: true,
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:15|16|17|18)\\.x)/installing/systemd',
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss/installing/systemd',
     destination: '/boundary/docs/:version/install-boundary/systemd',
     permanent: true,
   },
@@ -915,6 +992,12 @@ module.exports = [
   {
     source: '/boundary/docs/oss/installing',
     destination: '/boundary/docs/deploy/self-managed',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss/installing',
+    destination: '/boundary/docs/:version/install-boundary',
     permanent: true,
   },
   {
@@ -1126,6 +1209,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss/operations/metrics',
+    destination: '/boundary/docs/:version/operations/metrics',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/oss/operations/metrics',
     destination: '/boundary/docs/:version/monitor/metrics',
     permanent: true,
@@ -1170,6 +1259,12 @@ module.exports = [
   {
     source: '/boundary/docs/:version(v0\\.(?:9|10|11|12)\\.x)/monitor/health',
     destination: '/boundary/docs/:version/oss/operations/health',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:13|14|15|16|17|18)\\.x)/oss/operations/health',
+    destination: '/boundary/docs/:version/operations/health',
     permanent: true,
   },
   {
@@ -1323,7 +1418,44 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/:version(v0\\.(?:19)\\.x)/release-notes/v0_20_0',
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13)\\.x)/release-notes/v0_14_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14)\\.x)/release-notes/v0_15_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15)\\.x)/release-notes/v0_16_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16)\\.x)/release-notes/v0_17_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17)\\.x)/release-notes/v0_18_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/release-notes/v0_19_0',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19)\\.x)/release-notes/v0_20_0',
     destination: '/boundary/docs/:version',
     permanent: true,
   },
@@ -2187,7 +2319,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16)\\.x)/rbac',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16)\\.x)/rbac',
     destination: '/boundary/docs/:version/concepts/security/permissions',
     permanent: true,
   },
@@ -2232,7 +2364,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:8|9|10|11|12|1|14|15|16)\\.x)/rbac/permission-grant-formats',
+      '/boundary/docs/:version(v0\\.(?:8|9|10|11|12|13|14|15|16)\\.x)/rbac/permission-grant-formats',
     destination:
       '/boundary/docs/:version/concepts/security/permissions/permission-grant-formats',
     permanent: true,
@@ -2264,7 +2396,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16|17|18)\\.x)/rbac/manage-roles',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/rbac/manage-roles',
     destination: '/boundary/docs/:version/common-workflows/manage-roles',
     permanent: true,
   },
@@ -2281,7 +2413,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:8|9|10|11|12|1|14|15|16)\\.x)/rbac/resource-table',
+      '/boundary/docs/:version(v0\\.(?:8|9|10|11|12|13|14|15|16)\\.x)/rbac/resource-table',
     destination:
       '/boundary/docs/:version/concepts/security/permissions/resource-table',
     permanent: true,
@@ -2312,7 +2444,7 @@ module.exports = [
   },
   {
     source:
-      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|1|14|15|16|17|18)\\.x)/rbac/users/manage-users-groups',
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/rbac/users/manage-users-groups',
     destination: '/boundary/docs/:version/common-workflows/manage-users-groups',
     permanent: true,
   },
