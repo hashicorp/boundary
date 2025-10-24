@@ -2073,7 +2073,6 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
-			globals.PasswordCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break

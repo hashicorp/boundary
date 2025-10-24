@@ -265,6 +265,21 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for username password domain credential"))
 		}
+	case *credstatic.PasswordCredential:
+		var err error
+		credType = string(globals.PasswordCredentialType)
+		credData, err = handlers.ProtoToStruct(
+			ctx,
+			&pb.PasswordCredential{
+				Password: string(c.GetPassword()),
+			},
+		)
+		secret = map[string]any{
+			"password": string(c.GetPassword()),
+		}
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for password credential"))
+		}
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
 		credType = string(globals.SshPrivateKeyCredentialType)
@@ -286,7 +301,6 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))
 		}
-
 	case *credstatic.JsonCredential:
 		var err error
 		credType = string(globals.JsonCredentialType)
