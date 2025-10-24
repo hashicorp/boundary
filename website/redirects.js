@@ -1493,8 +1493,20 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:10|11|12|13|14|15|16|17|18)\\.x)/workers/create',
+    destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/worker/worker-configuration',
     destination: '/boundary/docs/workers/registration',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:10|11|12|13|14)\\.x)/workers/registration',
+    destination: '/boundary/docs/:version/configuration/worker',
     permanent: true,
   },
   {
@@ -1565,6 +1577,12 @@ module.exports = [
   },
   {
     source:
+      '/boundary/docs/:version(v0\\.(?:9|10|11|12|13)\\.x)/workers/multi-hop',
+    destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
+    source:
       '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/workers/multi-hop',
     destination:
       '/boundary/docs/:version/concepts/connection-workflows/multi-hop',
@@ -1577,6 +1595,32 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/:version(v0\\.(?:9|10|11|12|13)\\.x)/workers/multi-hop/enterprise',
+    destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:9|10|11|12|13)\\.x)/workers/multi-hop/hcp',
+    destination: '/boundary/docs/:version/configuration/worker',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/workers/multi-hop/enterprise',
+    destination:
+      '/boundary/docs/:version/concepts/connection-workflows/multi-hop',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:14|15|16|17|18)\\.x)/workers/multi-hop/hcp',
+    destination:
+      '/boundary/docs/:version/concepts/connection-workflows/multi-hop',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/worker-tags',
     destination: '/boundary/docs/workers/worker-tags',
     permanent: true,
@@ -1584,6 +1628,12 @@ module.exports = [
   {
     source:
       '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/workers/worker-tags',
+    destination: '/boundary/docs/:version/concepts/filtering/worker-tags',
+    permanent: true,
+  },
+  {
+    source:
+      '/boundary/docs/:version(v0\\.(?:1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18)\\.x)/workers/filters',
     destination: '/boundary/docs/:version/concepts/filtering/worker-tags',
     permanent: true,
   },
@@ -2641,6 +2691,11 @@ module.exports = [
   },
   {
     source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/integrations/vault',
+    destination: '/boundary/docs/:version',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/:version(v0\\.(?:13|14)\\.x)/vault',
     destination: '/boundary/docs/:version',
     permanent: true,
   },
