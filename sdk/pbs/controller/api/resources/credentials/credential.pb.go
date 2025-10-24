@@ -59,6 +59,7 @@ type Credential struct {
 	//	*Credential_SshPrivateKeyAttributes
 	//	*Credential_JsonAttributes
 	//	*Credential_UsernamePasswordDomainAttributes
+	//	*Credential_PasswordAttributes
 	Attrs isCredential_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
 	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
@@ -211,6 +212,15 @@ func (x *Credential) GetUsernamePasswordDomainAttributes() *UsernamePasswordDoma
 	return nil
 }
 
+func (x *Credential) GetPasswordAttributes() *PasswordAttributes {
+	if x != nil {
+		if x, ok := x.Attrs.(*Credential_PasswordAttributes); ok {
+			return x.PasswordAttributes
+		}
+	}
+	return nil
+}
+
 func (x *Credential) GetAuthorizedActions() []string {
 	if x != nil {
 		return x.AuthorizedActions
@@ -243,6 +253,10 @@ type Credential_UsernamePasswordDomainAttributes struct {
 	UsernamePasswordDomainAttributes *UsernamePasswordDomainAttributes `protobuf:"bytes,104,opt,name=username_password_domain_attributes,json=usernamePasswordDomainAttributes,proto3,oneof"`
 }
 
+type Credential_PasswordAttributes struct {
+	PasswordAttributes *PasswordAttributes `protobuf:"bytes,105,opt,name=password_attributes,json=passwordAttributes,proto3,oneof"`
+}
+
 func (*Credential_Attributes) isCredential_Attrs() {}
 
 func (*Credential_UsernamePasswordAttributes) isCredential_Attrs() {}
@@ -252,6 +266,8 @@ func (*Credential_SshPrivateKeyAttributes) isCredential_Attrs() {}
 func (*Credential_JsonAttributes) isCredential_Attrs() {}
 
 func (*Credential_UsernamePasswordDomainAttributes) isCredential_Attrs() {}
+
+func (*Credential_PasswordAttributes) isCredential_Attrs() {}
 
 // The attributes of a UsernamePassword Credential.
 type UsernamePasswordAttributes struct {
@@ -584,8 +600,7 @@ var File_controller_api_resources_credentials_v1_credential_proto protoreflect.F
 
 const file_controller_api_resources_credentials_v1_credential_proto_rawDesc = "" +
 	"\n" +
-	"8controller/api/resources/credentials/v1/credential.proto\x12'controller.api.resources.credentials.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xa5\n" +
-	"\n" +
+	"8controller/api/resources/credentials/v1/credential.proto\x12'controller.api.resources.credentials.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb8\v\n" +
 	"\n" +
 	"Credential\x12\x0e\n" +
 	"\x02id\x18\n" +
@@ -610,7 +625,9 @@ const file_controller_api_resources_credentials_v1_credential_proto_rawDesc = ""
 	"\x0fjson_attributes\x18g \x01(\v27.controller.api.resources.credentials.v1.JsonAttributesB\x1c\xa0\xda)\x01\x9a\xe3)\x04json\xfa\xd2\xe4\x93\x02\n" +
 	"\x12\bINTERNALH\x00R\x0ejsonAttributes\x12\xcc\x01\n" +
 	"#username_password_domain_attributes\x18h \x01(\v2I.controller.api.resources.credentials.v1.UsernamePasswordDomainAttributesB0\xa0\xda)\x01\x9a\xe3)\x18username_password_domain\xfa\xd2\xe4\x93\x02\n" +
-	"\x12\bINTERNALH\x00R usernamePasswordDomainAttributes\x12/\n" +
+	"\x12\bINTERNALH\x00R usernamePasswordDomainAttributes\x12\x90\x01\n" +
+	"\x13password_attributes\x18i \x01(\v2;.controller.api.resources.credentials.v1.PasswordAttributesB \xa0\xda)\x01\x9a\xe3)\bpassword\xfa\xd2\xe4\x93\x02\n" +
+	"\x12\bINTERNALH\x00R\x12passwordAttributes\x12/\n" +
 	"\x12authorized_actions\x18\xac\x02 \x03(\tR\x12authorized_actionsB\a\n" +
 	"\x05attrs\"\xb6\x02\n" +
 	"\x1aUsernamePasswordAttributes\x12a\n" +
@@ -694,21 +711,22 @@ var file_controller_api_resources_credentials_v1_credential_proto_depIdxs = []in
 	4,  // 7: controller.api.resources.credentials.v1.Credential.ssh_private_key_attributes:type_name -> controller.api.resources.credentials.v1.SshPrivateKeyAttributes
 	5,  // 8: controller.api.resources.credentials.v1.Credential.json_attributes:type_name -> controller.api.resources.credentials.v1.JsonAttributes
 	2,  // 9: controller.api.resources.credentials.v1.Credential.username_password_domain_attributes:type_name -> controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes
-	7,  // 10: controller.api.resources.credentials.v1.UsernamePasswordAttributes.username:type_name -> google.protobuf.StringValue
-	7,  // 11: controller.api.resources.credentials.v1.UsernamePasswordAttributes.password:type_name -> google.protobuf.StringValue
-	7,  // 12: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.username:type_name -> google.protobuf.StringValue
-	7,  // 13: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.password:type_name -> google.protobuf.StringValue
-	7,  // 14: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.domain:type_name -> google.protobuf.StringValue
-	7,  // 15: controller.api.resources.credentials.v1.PasswordAttributes.password:type_name -> google.protobuf.StringValue
-	7,  // 16: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.username:type_name -> google.protobuf.StringValue
-	7,  // 17: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key:type_name -> google.protobuf.StringValue
-	7,  // 18: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key_passphrase:type_name -> google.protobuf.StringValue
-	9,  // 19: controller.api.resources.credentials.v1.JsonAttributes.object:type_name -> google.protobuf.Struct
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	3,  // 10: controller.api.resources.credentials.v1.Credential.password_attributes:type_name -> controller.api.resources.credentials.v1.PasswordAttributes
+	7,  // 11: controller.api.resources.credentials.v1.UsernamePasswordAttributes.username:type_name -> google.protobuf.StringValue
+	7,  // 12: controller.api.resources.credentials.v1.UsernamePasswordAttributes.password:type_name -> google.protobuf.StringValue
+	7,  // 13: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.username:type_name -> google.protobuf.StringValue
+	7,  // 14: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.password:type_name -> google.protobuf.StringValue
+	7,  // 15: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.domain:type_name -> google.protobuf.StringValue
+	7,  // 16: controller.api.resources.credentials.v1.PasswordAttributes.password:type_name -> google.protobuf.StringValue
+	7,  // 17: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.username:type_name -> google.protobuf.StringValue
+	7,  // 18: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key:type_name -> google.protobuf.StringValue
+	7,  // 19: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key_passphrase:type_name -> google.protobuf.StringValue
+	9,  // 20: controller.api.resources.credentials.v1.JsonAttributes.object:type_name -> google.protobuf.Struct
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_credentials_v1_credential_proto_init() }
@@ -722,6 +740,7 @@ func file_controller_api_resources_credentials_v1_credential_proto_init() {
 		(*Credential_SshPrivateKeyAttributes)(nil),
 		(*Credential_JsonAttributes)(nil),
 		(*Credential_UsernamePasswordDomainAttributes)(nil),
+		(*Credential_PasswordAttributes)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
