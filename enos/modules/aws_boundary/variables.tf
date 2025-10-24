@@ -136,12 +136,6 @@ variable "db_class" {
   default     = "db.t4g.small"
 }
 
-variable "db_version" {
-  description = "AWS RDS DBS engine version (for postgres/mysql)"
-  type        = string
-  default     = "15.7"
-}
-
 variable "db_engine" {
   description = "AWS RDS DB engine type"
   type        = string
