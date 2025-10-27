@@ -49,6 +49,7 @@ var (
 	upMaskManager   handlers.MaskManager
 	spkMaskManager  handlers.MaskManager
 	jsonMaskManager handlers.MaskManager
+	pMaskmanager    handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -94,6 +95,13 @@ func init() {
 		context.Background(),
 		handlers.MaskDestination{&store.UsernamePasswordDomainCredential{}},
 		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordDomainAttributes{}},
+	); err != nil {
+		panic(err)
+	}
+	if pMaskmanager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.PasswordCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.PasswordAttributes{}},
 	); err != nil {
 		panic(err)
 	}
@@ -454,6 +462,23 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+	case credential.PasswordSubtype.String():
+		cred, err := toPasswordStorageCredential(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreatePasswordCredential(ctx, scopeId, cred)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
+		}
+		if out == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
+		}
+		return out, nil
 	case credential.SshPrivateKeySubtype.String():
 		cred, err := toSshPrivateKeyStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -546,6 +571,29 @@ func (s Service) updateInRepo(
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		out, rowsUpdated, err := repo.UpdateUsernamePasswordDomainCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
+		}
+		return out, nil
+	case credential.PasswordSubtype:
+		dbMasks = append(dbMasks, pMaskmanager.Translate(masks)...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+
+		cred, err := toPasswordStorageCredential(ctx, storeId, in)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to password storage credential"))
+		}
+		cred.PublicId = id
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err := repo.UpdatePasswordCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
 		}
@@ -733,6 +781,8 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 			out.Type = credential.UsernamePasswordSubtype.String()
 		case *static.UsernamePasswordDomainCredential:
 			out.Type = credential.UsernamePasswordDomainSubtype.String()
+		case *static.PasswordCredential:
+			out.Type = credential.PasswordSubtype.String()
 		case *static.SshPrivateKeyCredential:
 			out.Type = credential.SshPrivateKeySubtype.String()
 		case *static.JsonCredential:
@@ -778,6 +828,14 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 					Username:     wrapperspb.String(cred.GetUsername()),
 					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
 					Domain:       wrapperspb.String(cred.GetDomain()),
+				},
+			}
+		}
+	case *static.PasswordCredential:
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.Credential_PasswordAttributes{
+				PasswordAttributes: &pb.PasswordAttributes{
+					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
 				},
 			}
 		}
@@ -842,6 +900,28 @@ func toUsernamePasswordDomainStorageCredential(ctx context.Context, storeId stri
 		attrs.GetUsername().GetValue(),
 		credential.Password(attrs.GetPassword().GetValue()),
 		attrs.GetDomain().GetValue(),
+		opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
+	}
+
+	return cs, err
+}
+
+func toPasswordStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.PasswordCredential, err error) {
+	const op = "credentials.toPasswordStorageCredential"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetPasswordAttributes()
+	cs, err := static.NewPasswordCredential(
+		storeId,
+		credential.Password(attrs.GetPassword().GetValue()),
 		opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
@@ -921,6 +1001,7 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
 		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 		globals.PasswordCredentialPrefix,
@@ -951,6 +1032,10 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			}
 			if req.Item.GetUsernamePasswordDomainAttributes().GetDomain().GetValue() == "" {
 				badFields[domainField] = "Field required for creating a username-password-domain credential."
+			}
+		case credential.PasswordSubtype.String():
+			if req.Item.GetPasswordAttributes().GetPassword().GetValue() == "" {
+				badFields[passwordField] = "Field required for creating a password credential."
 			}
 		case credential.SshPrivateKeySubtype.String():
 			if req.Item.GetSshPrivateKeyAttributes().GetUsername().GetValue() == "" {
@@ -1023,7 +1108,11 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), domainField) && attrs.GetDomain().GetValue() == "" {
 				badFields[domainField] = "This is a required field and cannot be set to empty."
 			}
-
+		case credential.PasswordSubtype:
+			attrs := req.GetItem().GetPasswordAttributes()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), passwordField) && attrs.GetPassword().GetValue() == "" {
+				badFields[passwordField] = "This is a required field and cannot be set to empty."
+			}
 		case credential.SshPrivateKeySubtype:
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
@@ -1078,6 +1167,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
 		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 		globals.PasswordCredentialPrefix,
@@ -1091,6 +1181,7 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
 		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 		globals.PasswordCredentialPrefix,
