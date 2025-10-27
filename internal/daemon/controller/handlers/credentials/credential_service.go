@@ -1144,7 +1144,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					}
 				}
 			}
-
 		case credential.JsonSubtype:
 			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
 				object := req.GetItem().GetJsonAttributes().GetObject()
@@ -1154,10 +1153,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					badFields[objectField] = "Unable to parse given json value"
 				}
 			}
-
-		case credential.PasswordSubtype:
-			badFields[passwordField] = "Password credential updates are not yet implemented"
-
 		default:
 			badFields[globals.IdField] = "Unknown credential type."
 		}
