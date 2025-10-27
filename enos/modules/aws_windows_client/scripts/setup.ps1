@@ -59,7 +59,7 @@ if ("${github_token}" -ne "") {
     $repo = "hashicorp/boundary-enterprise"
     $workflow = "build-opencv-ent.yml"
     $branch = "main"
-    $artifactName = "opencv"
+    $artifactName = "opencv-windows"
 
     $run = gh run list --repo $repo --workflow=$workflow --branch=$branch --status success --limit 1 --json databaseId | ConvertFrom-Json
     if (-not $run -or -not $run[0].databaseId) {
