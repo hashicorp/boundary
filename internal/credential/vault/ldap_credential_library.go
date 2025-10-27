@@ -15,16 +15,18 @@ import (
 
 var _ credential.Library = (*LdapCredentialLibrary)(nil)
 
-// LdapCredentialLibrary is a credential library that issues
-// ldap credentials using the vault ldap secret engine.
+// LdapCredentialLibrary is a credential library that issues ldap credentials
+// using the vault ldap secret engine. This credential library always issues
+// username/password/domain credentials.
 type LdapCredentialLibrary struct {
 	*store.LdapCredentialLibrary
 	tableName string `gorm:"-"`
 }
 
-// NewLdapCredentialLibrary creates a new in memory LdapCredentialLibrary
-// for a Vault backend at vaultPath assigned to storeId.
-// Name and description are the only valid options. All other options are ignored.
+// NewLdapCredentialLibrary creates a new in memory LdapCredentialLibrary for a
+// Vault backend at vaultPath assigned to storeId. This credential library
+// always issues username/password/domain credentials. WithName and
+// WithDescription are the only valid options. All other options are ignored.
 func NewLdapCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*LdapCredentialLibrary, error) {
 	const op = "vault.NewLdapCredentialLibrary"
 	opts := getOpts(opt...)
