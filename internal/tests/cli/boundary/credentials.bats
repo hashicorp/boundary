@@ -69,13 +69,6 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
 
 }
 
-@test "boundary/credentials: can create $NEW_JSON_CREDENTIAL credential in $NEW_STORE store" {
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_json_credential $NEW_JSON_CREDENTIAL $csid '-string-kv username=admin -string-kv password=pass'
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
 @test "boundary/credentials: can create $NEW_PASSWORD_CREDENTIAL credential in $NEW_STORE store" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   run create_password_credential $NEW_PASSWORD_CREDENTIAL $csid 'password'
@@ -88,6 +81,13 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
   run create_password_credential $NEW_PASSWORD_CREDENTIAL $csid 'password'
   echo "$output"
   [ "$status" -eq 1 ]
+}
+
+@test "boundary/credentials: can create $NEW_JSON_CREDENTIAL credential in $NEW_STORE store" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  run create_json_credential $NEW_JSON_CREDENTIAL $csid '-string-kv username=admin -string-kv password=pass'
+  echo "$output"
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/credentials: can not create already created $NEW_CREDENTIAL credential" {
@@ -140,15 +140,6 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
   echo "$output"
   [ "$status" -eq 0 ]
 }
-
-@test "boundary/credentials: can read $NEW_PASSWORD_CREDENTIAL credential" {
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
-  run read_credential $cid
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
 @test "boundary/credentials: can read $NEW_UPD_AT_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_UPD_AT_CREDENTIAL $csid)
@@ -160,6 +151,14 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
 @test "boundary/credentials: can read $NEW_UPD_SLASH_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_UPD_SLASH_CREDENTIAL $csid)
+  run read_credential $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credentials: can read $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run read_credential $cid
   echo "$output"
   [ "$status" -eq 0 ]
@@ -203,6 +202,15 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
 @test "boundary/credentials: can delete $NEW_UPD_SLASH_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_UPD_SLASH_CREDENTIAL $csid)
+  run delete_credential $cid
+  echo "$output"
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credentials: can delete $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run delete_credential $cid
   echo "$output"
   run has_status_code "$output" "204"
@@ -287,6 +295,14 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
   [ "$status" -eq 1 ]
 }
 
+@test "boundary/credential-stores: can not read deleted $NEW_PASSWORD_CREDENTIAL credential" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
+  run read_credential $cid
+  echo "$output"
+  [ "$status" -eq 1 ]
+}
+
 @test "boundary/credential-stores: can delete $NEW_STORE static store" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   run delete_credential_store $csid
@@ -305,14 +321,6 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
 @test "boundary/credential-stores: can not read deleted $NEW_JSON_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
-  run read_credential $cid
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
-@test "boundary/credential-stores: can not read deleted $NEW_PASSWORD_CREDENTIAL credential" {
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
   run read_credential $cid
   echo "$output"
   [ "$status" -eq 1 ]
