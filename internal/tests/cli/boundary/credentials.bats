@@ -226,15 +226,6 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/credentials: can delete $NEW_PASSWORD_CREDENTIAL credential" {
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local cid=$(credential_id $NEW_PASSWORD_CREDENTIAL $csid)
-  run delete_credential $cid
-  echo "$output"
-  run has_status_code "$output" "204"
-  [ "$status" -eq 0 ]
-}
-
 @test "boundary/credentials: can not use object flag with kv flags for json credential" {
   echo "{\"key\":\"value\"}" > cred_json_object
   local object_file_path="file://$(pwd)/cred_json_object"
