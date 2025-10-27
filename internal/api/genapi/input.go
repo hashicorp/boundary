@@ -753,6 +753,22 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentials.PasswordAttributes{},
+		outFile:     "credentials/password_attributes.gen.go",
+		subtypeName: "PasswordCredential",
+		subtype:     "password",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:     &credentials.SshPrivateKeyAttributes{},
 		outFile:     "credentials/ssh_private_key_attributes.gen.go",
 		subtypeName: "SshPrivateKeyCredential",
