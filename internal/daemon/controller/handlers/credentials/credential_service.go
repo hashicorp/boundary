@@ -445,6 +445,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+
 	case credential.UsernamePasswordDomainSubtype.String():
 		cred, err := toUsernamePasswordDomainStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -462,6 +463,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+
 	case credential.PasswordSubtype.String():
 		cred, err := toPasswordStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -479,6 +481,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+
 	case credential.SshPrivateKeySubtype.String():
 		cred, err := toSshPrivateKeyStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -496,6 +499,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+
 	case credential.JsonSubtype.String():
 		cred, err := toJsonStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -513,8 +517,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
-	case credential.PasswordSubtype.String():
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unimplemented, "Password credential creation is not yet implemented")
+
 	default:
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, fmt.Sprintf("Unsupported credential type %q", item.GetType()))
 	}
@@ -555,6 +558,7 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
+
 	case credential.UsernamePasswordDomainSubtype:
 		dbMasks = append(dbMasks, updMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -578,6 +582,7 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
+
 	case credential.PasswordSubtype:
 		dbMasks = append(dbMasks, pMaskmanager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -1004,7 +1009,6 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
-		globals.PasswordCredentialPrefix,
 	)
 }
 
@@ -1073,9 +1077,6 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			} else if _, err := json.Marshal(object); err != nil {
 				badFields[objectField] = "Unable to parse given json value"
 			}
-
-		case credential.PasswordSubtype.String():
-			badFields[passwordField] = "Password credential creation is not yet implemented"
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
@@ -1165,7 +1166,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
-		globals.PasswordCredentialPrefix,
 	)
 }
 
@@ -1179,7 +1179,6 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
-		globals.PasswordCredentialPrefix,
 	)
 }
 
