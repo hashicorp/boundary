@@ -196,6 +196,16 @@ variable "target_rdp_domain_name" {
   type        = string
   default     = ""
 }
+variable "server_version" {
+  description = "Server version of rdp target"
+  type        = string
+  default     = ""
+}
+variable "client_version" {
+  description = "Client version of RDP client"
+  type        = string
+  default     = ""
+}
 variable "client_ip_public" {
   description = "Public IP of the client machine"
   type        = string
@@ -279,6 +289,8 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_CLIENT_USERNAME                          = var.client_username
     E2E_CLIENT_PASSWORD                          = var.client_password
     E2E_CLIENT_TEST_DIR                          = var.client_test_dir
+    E2E_CLIENT_VERSION                           = var.client_version
+    E2E_SERVER_VERSION                           = var.server_version
   }
 
   inline = var.debug_no_run ? [""] : [

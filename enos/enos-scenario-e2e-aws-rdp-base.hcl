@@ -317,6 +317,8 @@ scenario "e2e_aws_rdp_base" {
       vault_addr_public                        = step.create_vault_cluster.instance_public_ips_ipv4[0]
       vault_addr_private                       = step.create_vault_cluster.instance_private_ips[0]
       vault_root_token                         = step.create_vault_cluster.vault_root_token
+      server_version                           = matrix.rdp_server
+      client_version                           = matrix.client
     }
   }
 
