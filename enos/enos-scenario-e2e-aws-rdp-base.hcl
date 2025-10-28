@@ -310,6 +310,7 @@ scenario "e2e_aws_rdp_base" {
       target_rdp_member_server_user            = step.create_rdp_member_server.admin_username
       target_rdp_member_server_password        = step.create_rdp_member_server.password
       target_rdp_domain_name                   = step.create_rdp_domain_controller.domain_name
+      target_rdp_server_version                = matrix.rdp_server
       client_ip_public                         = step.create_windows_client.public_ip
       client_username                          = step.create_windows_client.test_username
       client_password                          = step.create_windows_client.test_password
@@ -317,6 +318,7 @@ scenario "e2e_aws_rdp_base" {
       vault_addr_public                        = step.create_vault_cluster.instance_public_ips_ipv4[0]
       vault_addr_private                       = step.create_vault_cluster.instance_private_ips[0]
       vault_root_token                         = step.create_vault_cluster.vault_root_token
+      client_version                           = matrix.client
     }
   }
 
