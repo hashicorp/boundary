@@ -19,6 +19,12 @@ variable "cli_build_path" {
   type        = string
 }
 
+variable "ui_build_override" {
+  description = "Override for build for UI automation (oss or ent)"
+  type        = string
+  default     = ""
+}
+
 variable "edition" {
   default = "oss"
 }
