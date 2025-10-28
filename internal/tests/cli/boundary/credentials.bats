@@ -140,7 +140,6 @@ export NEW_PASSWORD_CREDENTIAL='test-pass'
   echo "$output"
   [ "$status" -eq 0 ]
 }
-
 @test "boundary/credentials: can read $NEW_UPD_AT_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_UPD_AT_CREDENTIAL $csid)
