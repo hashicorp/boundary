@@ -8,52 +8,52 @@ description: |-
 # Service Discovery
 
 ## Overview
-Traditionally, connecting to remote hosts and services requires knowledge of 
-the endpoint’s connection info (e.g. the IP address and port of the service). 
+Traditionally, connecting to remote hosts and services requires knowledge of
+the endpoint’s connection info (e.g. the IP address and port of the service).
 This creates complexity when managing the onboarding of new resources at scale
 or dealing with dynamic services whose connection info frequently changes.
 
-**Service discovery** focuses on automating the process of onboarding new or 
-changed infrastructure resources – and their connection info – to Boundary 
+**Service discovery** focuses on automating the process of onboarding new or
+changed infrastructure resources – and their connection info – to Boundary
 as hosts.
 
 # Automating Service Discovery in Boundary
 
-Boundary supports target/service discovery in three primary workflows: 
+Boundary supports target/service discovery in three primary workflows:
 
-**[Manual configuration](https://learn.hashicorp.com/tutorials/boundary/manage-targets?in=boundary/basic-administration)**: 
-Boundary administrators can manually configure static 
-hosts and targets via the administrator UI and CLI. Manual configuration of 
-targets with static hosts requires knowledge of the IP address or endpoint used 
+**[Manual configuration](https://developer.hashicorp.com/boundary/tutorials/community-administration/community-manage-targets)**:
+Boundary administrators can manually configure static
+hosts and targets via the administrator UI and CLI. Manual configuration of
+targets with static hosts requires knowledge of the IP address or endpoint used
 to connect to a host.
 
-**[Service discovery via configuration as code with Terraform](https://learn.hashicorp.com/tutorials/boundary/getting-started-config)**: 
-Boundary is fully programmatically instrumented and the discovery and configuration of new 
-infrastructure targets can be automated with 
-[Boundary’s Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs). 
-This allows for dynamic configuration of a host and target without the need 
-for prior knowledge of the target’s connection info. 
+**[Service discovery via configuration as code with Terraform](https://learn.hashicorp.com/tutorials/boundary/getting-started-config)**:
+Boundary is fully programmatically instrumented and the discovery and configuration of new
+infrastructure targets can be automated with
+[Boundary’s Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+This allows for dynamic configuration of a host and target without the need
+for prior knowledge of the target’s connection info.
 
-**[Runtime service discovery via dynamic host catalogs](https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs)**: 
-Boundary dynamic host catalogs automate the ingestion of resources from 
-infrastructure providers into Boundary. Boundary hosts are automatically 
-created, updated and added to host sets in order to reflect the connection 
-information maintained in these providers. This removes the need to know 
-host connection info or reapply infrastructure as code templates to 
-configure new or changed resources.This removes the need to know host connection 
+**[Runtime service discovery via dynamic host catalogs](https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs)**:
+Boundary dynamic host catalogs automate the ingestion of resources from
+infrastructure providers into Boundary. Boundary hosts are automatically
+created, updated and added to host sets in order to reflect the connection
+information maintained in these providers. This removes the need to know
+host connection info or reapply infrastructure as code templates to
+configure new or changed resources.This removes the need to know host connection
 info or reapply infrastructure as code templates to configure new or changed resources.
 
 # Dynamic Host Catalogs
-Dynamic host catalogs are an agentless workflow for Boundary to 
-securely query infrastructure providers at runtime to discover and configure 
-new services. Boundary dynamic host catalogs are written in go-plugin and run 
-as separate processes. Boundary administrators can define rules for which 
-external resources should be ingested into the catalog by 
+Dynamic host catalogs are an agentless workflow for Boundary to
+securely query infrastructure providers at runtime to discover and configure
+new services. Boundary dynamic host catalogs are written in go-plugin and run
+as separate processes. Boundary administrators can define rules for which
+external resources should be ingested into the catalog by
 [creating dynamic host](https://www.boundaryproject.io/docs/concepts/domain-model/host-sets)
- sets with an attributes filter. Attributes specify the fields which the plugin 
+ sets with an attributes filter. Attributes specify the fields which the plugin
  should use to lookup which hosts should be members of this host set.
 
-Currently, Boundary supports dynamic host catalog implementations for AWS and 
-Azure and we will continue to grow this ecosystem to support additional providers. 
+Currently, Boundary supports dynamic host catalog implementations for AWS and
+Azure and we will continue to grow this ecosystem to support additional providers.
 
 You can get started with dynamic host catalogs [here](https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs?in=boundary/configuration).
