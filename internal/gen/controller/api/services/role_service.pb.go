@@ -10,16 +10,15 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	roles "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -594,7 +593,7 @@ type AddRolePrincipalsRequest struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                      // @gotags: `class:"public"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
 	PrincipalIds  []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -700,7 +699,7 @@ type SetRolePrincipalsRequest struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                      // @gotags: `class:"public"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
 	PrincipalIds  []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -806,7 +805,7 @@ type RemoveRolePrincipalsRequest struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                      // @gotags: `class:"public"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
 	PrincipalIds  []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

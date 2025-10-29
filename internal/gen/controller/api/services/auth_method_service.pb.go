@@ -10,10 +10,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	authmethods "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	authtokens "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
@@ -24,6 +20,9 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -808,7 +807,7 @@ func (x *ChangeStateResponse) GetItem() *authmethods.AuthMethod {
 type PasswordLoginAttributes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	LoginName     string                 `protobuf:"bytes,1,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"`        // @gotags: `class:"secret"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"`     // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -919,7 +918,7 @@ func (x *OidcStartAttributes) GetCachedRoundtripPayload() string {
 type LdapLoginAttributes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	LoginName     string                 `protobuf:"bytes,10,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
-	Password      string                 `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"`        // @gotags: `class:"secret"`
+	Password      string                 `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"`     // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

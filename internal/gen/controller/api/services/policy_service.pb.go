@@ -10,10 +10,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	policies "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/policies"
 	_ "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
@@ -21,6 +17,9 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -122,7 +121,7 @@ type ListPoliciesRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Recursive bool                   `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`           // @gotags: `class:"public" eventstream:"observation"`
-	Filter    string                 `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                                            // @gotags: `class:"public"`
+	Filter    string                 `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                  // @gotags: `class:"public"`
 	// An opaque token that Boundary uses to continue an existing iteration or
 	// request updated items. If you do not specify a token, pagination
 	// starts from the beginning. To learn more about list pagination

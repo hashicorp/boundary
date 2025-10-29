@@ -10,13 +10,12 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	servers "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -530,7 +529,7 @@ func (x *SessionJobInfo) GetProcessingError() SessionProcessingError {
 // Deprecated: Marked as deprecated in controller/servers/services/v1/server_coordination_service.proto.
 type MonitorSessionJobInfo struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"`                                                     // @gotags: `class:"public" eventstream:"observation"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"`                                                                               // @gotags: `class:"public" eventstream:"observation"`
 	Status          SESSIONSTATUS          `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"`                                                   // @gotags: `class:"public"`
 	ProcessingError SessionProcessingError `protobuf:"varint,3,opt,name=processing_error,json=processingError,proto3,enum=controller.servers.services.v1.SessionProcessingError" json:"processing_error,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields   protoimpl.UnknownFields

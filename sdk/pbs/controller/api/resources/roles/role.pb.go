@@ -10,16 +10,15 @@
 package roles
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	scopes "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	_ "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (

@@ -10,10 +10,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	hostcatalogs "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	hostsets "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plugins "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
@@ -21,6 +17,9 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (

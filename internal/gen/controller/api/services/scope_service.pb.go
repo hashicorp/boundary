@@ -10,16 +10,15 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	scopes "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -970,7 +969,7 @@ func (x *DestroyKeyVersionResponse) GetState() string {
 
 type AttachStoragePolicyRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"`                          // @gotags: `class:"public" eventstream:"observation"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"`                                                    // @gotags: `class:"public" eventstream:"observation"`
 	StoragePolicyId string                 `protobuf:"bytes,2,opt,name=storage_policy_id,json=storagePolicyId,proto3" json:"storage_policy_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.

@@ -10,10 +10,6 @@
 package session_recordings
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	scopes "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	_ "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	_ "google.golang.org/genproto/googleapis/api/visibility"
@@ -22,6 +18,9 @@ import (
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (

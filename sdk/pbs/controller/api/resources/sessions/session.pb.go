@@ -10,14 +10,13 @@
 package sessions
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	scopes "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
