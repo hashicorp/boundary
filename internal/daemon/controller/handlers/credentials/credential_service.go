@@ -599,7 +599,6 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
-
 	case credential.SshPrivateKeySubtype:
 		dbMasks = append(dbMasks, spkMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -633,7 +632,6 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
-
 	case credential.JsonSubtype:
 		dbMasks = append(dbMasks, jsonMaskManager.Translate(masks, "attributes", "object")...)
 		if len(dbMasks) == 0 {
@@ -657,7 +655,6 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
-
 	default:
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, fmt.Sprintf("Unsupported credential type %q", item.GetType()))
 
@@ -1062,7 +1059,6 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 					}
 				}
 			}
-
 		case credential.JsonSubtype.String():
 			object := req.GetItem().GetJsonAttributes().GetObject()
 			if object == nil || len(object.AsMap()) <= 0 {
@@ -1070,7 +1066,6 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			} else if _, err := json.Marshal(object); err != nil {
 				badFields[objectField] = "Unable to parse given json value"
 			}
-
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
@@ -1139,7 +1134,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					}
 				}
 			}
-
 		case credential.JsonSubtype:
 			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
 				object := req.GetItem().GetJsonAttributes().GetObject()
@@ -1149,7 +1143,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					badFields[objectField] = "Unable to parse given json value"
 				}
 			}
-
 		default:
 			badFields[globals.IdField] = "Unknown credential type."
 		}
