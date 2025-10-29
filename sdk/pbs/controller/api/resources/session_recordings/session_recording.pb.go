@@ -1132,6 +1132,7 @@ type Credential struct {
 	//	*Credential_UsernamePasswordAttributes
 	//	*Credential_SshPrivateKeyAttributes
 	//	*Credential_JsonAttributes
+	//	*Credential_PasswordAttributes
 	Attrs         isCredential_Attrs `protobuf_oneof:"attrs"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1252,6 +1253,15 @@ func (x *Credential) GetJsonAttributes() *JsonCredentialAttributes {
 	return nil
 }
 
+func (x *Credential) GetPasswordAttributes() *PasswordCredentialAttributes {
+	if x != nil {
+		if x, ok := x.Attrs.(*Credential_PasswordAttributes); ok {
+			return x.PasswordAttributes
+		}
+	}
+	return nil
+}
+
 type isCredential_Attrs interface {
 	isCredential_Attrs()
 }
@@ -1273,6 +1283,10 @@ type Credential_JsonAttributes struct {
 	JsonAttributes *JsonCredentialAttributes `protobuf:"bytes,10,opt,name=json_attributes,json=jsonAttributes,proto3,oneof"`
 }
 
+type Credential_PasswordAttributes struct {
+	PasswordAttributes *PasswordCredentialAttributes `protobuf:"bytes,11,opt,name=password_attributes,json=passwordAttributes,proto3,oneof"`
+}
+
 func (*Credential_Attributes) isCredential_Attrs() {}
 
 func (*Credential_UsernamePasswordAttributes) isCredential_Attrs() {}
@@ -1280,6 +1294,8 @@ func (*Credential_UsernamePasswordAttributes) isCredential_Attrs() {}
 func (*Credential_SshPrivateKeyAttributes) isCredential_Attrs() {}
 
 func (*Credential_JsonAttributes) isCredential_Attrs() {}
+
+func (*Credential_PasswordAttributes) isCredential_Attrs() {}
 
 // The attributes of a UsernamePassword Credential.
 type UsernamePasswordCredentialAttributes struct {
@@ -1446,6 +1462,52 @@ func (x *JsonCredentialAttributes) GetObjectHmac() string {
 	return ""
 }
 
+// The attributes of a Password Credential.
+type PasswordCredentialAttributes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The hmac value of the password.
+	PasswordHmac  string `protobuf:"bytes,1,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: class:"public"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PasswordCredentialAttributes) Reset() {
+	*x = PasswordCredentialAttributes{}
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PasswordCredentialAttributes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PasswordCredentialAttributes) ProtoMessage() {}
+
+func (x *PasswordCredentialAttributes) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PasswordCredentialAttributes.ProtoReflect.Descriptor instead.
+func (*PasswordCredentialAttributes) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PasswordCredentialAttributes) GetPasswordHmac() string {
+	if x != nil {
+		return x.PasswordHmac
+	}
+	return ""
+}
+
 // CredentialLibrary contains all fields related to an Credential Library resource
 type CredentialLibrary struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1474,7 +1536,7 @@ type CredentialLibrary struct {
 
 func (x *CredentialLibrary) Reset() {
 	*x = CredentialLibrary{}
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[14]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1486,7 +1548,7 @@ func (x *CredentialLibrary) String() string {
 func (*CredentialLibrary) ProtoMessage() {}
 
 func (x *CredentialLibrary) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[14]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1499,7 +1561,7 @@ func (x *CredentialLibrary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CredentialLibrary.ProtoReflect.Descriptor instead.
 func (*CredentialLibrary) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{14}
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CredentialLibrary) GetId() string {
@@ -1632,7 +1694,7 @@ type VaultCredentialLibraryAttributes struct {
 
 func (x *VaultCredentialLibraryAttributes) Reset() {
 	*x = VaultCredentialLibraryAttributes{}
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[15]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1644,7 +1706,7 @@ func (x *VaultCredentialLibraryAttributes) String() string {
 func (*VaultCredentialLibraryAttributes) ProtoMessage() {}
 
 func (x *VaultCredentialLibraryAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[15]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1657,7 +1719,7 @@ func (x *VaultCredentialLibraryAttributes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VaultCredentialLibraryAttributes.ProtoReflect.Descriptor instead.
 func (*VaultCredentialLibraryAttributes) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{15}
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *VaultCredentialLibraryAttributes) GetPath() string {
@@ -1706,7 +1768,7 @@ type VaultSSHCertificateCredentialLibraryAttributes struct {
 
 func (x *VaultSSHCertificateCredentialLibraryAttributes) Reset() {
 	*x = VaultSSHCertificateCredentialLibraryAttributes{}
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[16]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1718,7 +1780,7 @@ func (x *VaultSSHCertificateCredentialLibraryAttributes) String() string {
 func (*VaultSSHCertificateCredentialLibraryAttributes) ProtoMessage() {}
 
 func (x *VaultSSHCertificateCredentialLibraryAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[16]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1731,7 +1793,7 @@ func (x *VaultSSHCertificateCredentialLibraryAttributes) ProtoReflect() protoref
 
 // Deprecated: Use VaultSSHCertificateCredentialLibraryAttributes.ProtoReflect.Descriptor instead.
 func (*VaultSSHCertificateCredentialLibraryAttributes) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{16}
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *VaultSSHCertificateCredentialLibraryAttributes) GetPath() string {
@@ -1810,7 +1872,7 @@ type ValuesAtTime struct {
 
 func (x *ValuesAtTime) Reset() {
 	*x = ValuesAtTime{}
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[17]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1822,7 +1884,7 @@ func (x *ValuesAtTime) String() string {
 func (*ValuesAtTime) ProtoMessage() {}
 
 func (x *ValuesAtTime) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[17]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1835,7 +1897,7 @@ func (x *ValuesAtTime) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValuesAtTime.ProtoReflect.Descriptor instead.
 func (*ValuesAtTime) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{17}
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ValuesAtTime) GetUser() *User {
@@ -1936,7 +1998,7 @@ type SessionRecording struct {
 
 func (x *SessionRecording) Reset() {
 	*x = SessionRecording{}
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[18]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1948,7 +2010,7 @@ func (x *SessionRecording) String() string {
 func (*SessionRecording) ProtoMessage() {}
 
 func (x *SessionRecording) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[18]
+	mi := &file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1961,7 +2023,7 @@ func (x *SessionRecording) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionRecording.ProtoReflect.Descriptor instead.
 func (*SessionRecording) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{18}
+	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SessionRecording) GetId() string {
@@ -2220,7 +2282,7 @@ const file_controller_api_resources_sessionrecordings_v1_session_recording_proto
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12(\n" +
 	"\x0ftls_server_name\x18\x03 \x01(\tR\x0ftls_server_name\x12(\n" +
 	"\x0ftls_skip_verify\x18\x04 \x01(\bR\x0ftls_skip_verify\x12$\n" +
-	"\rworker_filter\x18\x05 \x01(\tR\rworker_filter\"\xc6\x06\n" +
+	"\rworker_filter\x18\x05 \x01(\tR\rworker_filter\"\xe5\a\n" +
 	"\n" +
 	"Credential\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12j\n" +
@@ -2238,7 +2300,9 @@ const file_controller_api_resources_sessionrecordings_v1_session_recording_proto
 	"\x12\bINTERNALH\x00R\x17sshPrivateKeyAttributes\x12\x8c\x01\n" +
 	"\x0fjson_attributes\x18\n" +
 	" \x01(\v2G.controller.api.resources.sessionrecordings.v1.JsonCredentialAttributesB\x18\x9a\xe3)\x04json\xfa\xd2\xe4\x93\x02\n" +
-	"\x12\bINTERNALH\x00R\x0ejsonAttributesB\a\n" +
+	"\x12\bINTERNALH\x00R\x0ejsonAttributes\x12\x9c\x01\n" +
+	"\x13password_attributes\x18\v \x01(\v2K.controller.api.resources.sessionrecordings.v1.PasswordCredentialAttributesB\x1c\x9a\xe3)\bpassword\xfa\xd2\xe4\x93\x02\n" +
+	"\x12\bINTERNALH\x00R\x12passwordAttributesB\a\n" +
 	"\x05attrs\"g\n" +
 	"$UsernamePasswordCredentialAttributes\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12#\n" +
@@ -2249,7 +2313,9 @@ const file_controller_api_resources_sessionrecordings_v1_session_recording_proto
 	"\x1bprivate_key_passphrase_hmac\x18\x03 \x01(\tR\x18privateKeyPassphraseHmac\";\n" +
 	"\x18JsonCredentialAttributes\x12\x1f\n" +
 	"\vobject_hmac\x18\x01 \x01(\tR\n" +
-	"objectHmac\"\xd3\a\n" +
+	"objectHmac\"C\n" +
+	"\x1cPasswordCredentialAttributes\x12#\n" +
+	"\rpassword_hmac\x18\x01 \x01(\tR\fpasswordHmac\"\xd3\a\n" +
 	"\x11CredentialLibrary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12j\n" +
 	"\x10credential_store\x18\x02 \x01(\v2>.controller.api.resources.sessionrecordings.v1.CredentialStoreR\x10credential_store\x12\x12\n" +
@@ -2340,7 +2406,7 @@ func file_controller_api_resources_sessionrecordings_v1_session_recording_proto_
 	return file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDescData
 }
 
-var file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_controller_api_resources_sessionrecordings_v1_session_recording_proto_goTypes = []any{
 	(*ChannelRecording)(nil),                               // 0: controller.api.resources.sessionrecordings.v1.ChannelRecording
 	(*ConnectionRecording)(nil),                            // 1: controller.api.resources.sessionrecordings.v1.ConnectionRecording
@@ -2356,73 +2422,75 @@ var file_controller_api_resources_sessionrecordings_v1_session_recording_proto_g
 	(*UsernamePasswordCredentialAttributes)(nil),           // 11: controller.api.resources.sessionrecordings.v1.UsernamePasswordCredentialAttributes
 	(*SshPrivateKeyCredentialAttributes)(nil),              // 12: controller.api.resources.sessionrecordings.v1.SshPrivateKeyCredentialAttributes
 	(*JsonCredentialAttributes)(nil),                       // 13: controller.api.resources.sessionrecordings.v1.JsonCredentialAttributes
-	(*CredentialLibrary)(nil),                              // 14: controller.api.resources.sessionrecordings.v1.CredentialLibrary
-	(*VaultCredentialLibraryAttributes)(nil),               // 15: controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
-	(*VaultSSHCertificateCredentialLibraryAttributes)(nil), // 16: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes
-	(*ValuesAtTime)(nil),                                   // 17: controller.api.resources.sessionrecordings.v1.ValuesAtTime
-	(*SessionRecording)(nil),                               // 18: controller.api.resources.sessionrecordings.v1.SessionRecording
-	nil,                                                    // 19: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
-	nil,                                                    // 20: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
-	(*timestamppb.Timestamp)(nil),                          // 21: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),                            // 22: google.protobuf.Duration
-	(*scopes.ScopeInfo)(nil),                               // 23: controller.api.resources.scopes.v1.ScopeInfo
-	(*structpb.Struct)(nil),                                // 24: google.protobuf.Struct
+	(*PasswordCredentialAttributes)(nil),                   // 14: controller.api.resources.sessionrecordings.v1.PasswordCredentialAttributes
+	(*CredentialLibrary)(nil),                              // 15: controller.api.resources.sessionrecordings.v1.CredentialLibrary
+	(*VaultCredentialLibraryAttributes)(nil),               // 16: controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
+	(*VaultSSHCertificateCredentialLibraryAttributes)(nil), // 17: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes
+	(*ValuesAtTime)(nil),                                   // 18: controller.api.resources.sessionrecordings.v1.ValuesAtTime
+	(*SessionRecording)(nil),                               // 19: controller.api.resources.sessionrecordings.v1.SessionRecording
+	nil,                                                    // 20: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
+	nil,                                                    // 21: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
+	(*timestamppb.Timestamp)(nil),                          // 22: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),                            // 23: google.protobuf.Duration
+	(*scopes.ScopeInfo)(nil),                               // 24: controller.api.resources.scopes.v1.ScopeInfo
+	(*structpb.Struct)(nil),                                // 25: google.protobuf.Struct
 }
 var file_controller_api_resources_sessionrecordings_v1_session_recording_proto_depIdxs = []int32{
-	21, // 0: controller.api.resources.sessionrecordings.v1.ChannelRecording.created_time:type_name -> google.protobuf.Timestamp
-	21, // 1: controller.api.resources.sessionrecordings.v1.ChannelRecording.updated_time:type_name -> google.protobuf.Timestamp
-	21, // 2: controller.api.resources.sessionrecordings.v1.ChannelRecording.start_time:type_name -> google.protobuf.Timestamp
-	21, // 3: controller.api.resources.sessionrecordings.v1.ChannelRecording.end_time:type_name -> google.protobuf.Timestamp
-	22, // 4: controller.api.resources.sessionrecordings.v1.ChannelRecording.duration:type_name -> google.protobuf.Duration
-	21, // 5: controller.api.resources.sessionrecordings.v1.ConnectionRecording.created_time:type_name -> google.protobuf.Timestamp
-	21, // 6: controller.api.resources.sessionrecordings.v1.ConnectionRecording.updated_time:type_name -> google.protobuf.Timestamp
-	21, // 7: controller.api.resources.sessionrecordings.v1.ConnectionRecording.start_time:type_name -> google.protobuf.Timestamp
-	21, // 8: controller.api.resources.sessionrecordings.v1.ConnectionRecording.end_time:type_name -> google.protobuf.Timestamp
-	22, // 9: controller.api.resources.sessionrecordings.v1.ConnectionRecording.duration:type_name -> google.protobuf.Duration
+	22, // 0: controller.api.resources.sessionrecordings.v1.ChannelRecording.created_time:type_name -> google.protobuf.Timestamp
+	22, // 1: controller.api.resources.sessionrecordings.v1.ChannelRecording.updated_time:type_name -> google.protobuf.Timestamp
+	22, // 2: controller.api.resources.sessionrecordings.v1.ChannelRecording.start_time:type_name -> google.protobuf.Timestamp
+	22, // 3: controller.api.resources.sessionrecordings.v1.ChannelRecording.end_time:type_name -> google.protobuf.Timestamp
+	23, // 4: controller.api.resources.sessionrecordings.v1.ChannelRecording.duration:type_name -> google.protobuf.Duration
+	22, // 5: controller.api.resources.sessionrecordings.v1.ConnectionRecording.created_time:type_name -> google.protobuf.Timestamp
+	22, // 6: controller.api.resources.sessionrecordings.v1.ConnectionRecording.updated_time:type_name -> google.protobuf.Timestamp
+	22, // 7: controller.api.resources.sessionrecordings.v1.ConnectionRecording.start_time:type_name -> google.protobuf.Timestamp
+	22, // 8: controller.api.resources.sessionrecordings.v1.ConnectionRecording.end_time:type_name -> google.protobuf.Timestamp
+	23, // 9: controller.api.resources.sessionrecordings.v1.ConnectionRecording.duration:type_name -> google.protobuf.Duration
 	0,  // 10: controller.api.resources.sessionrecordings.v1.ConnectionRecording.channel_recordings:type_name -> controller.api.resources.sessionrecordings.v1.ChannelRecording
-	23, // 11: controller.api.resources.sessionrecordings.v1.User.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	23, // 12: controller.api.resources.sessionrecordings.v1.HostCatalog.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	24, // 13: controller.api.resources.sessionrecordings.v1.HostCatalog.attributes:type_name -> google.protobuf.Struct
+	24, // 11: controller.api.resources.sessionrecordings.v1.User.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	24, // 12: controller.api.resources.sessionrecordings.v1.HostCatalog.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	25, // 13: controller.api.resources.sessionrecordings.v1.HostCatalog.attributes:type_name -> google.protobuf.Struct
 	3,  // 14: controller.api.resources.sessionrecordings.v1.Host.host_catalog:type_name -> controller.api.resources.sessionrecordings.v1.HostCatalog
-	24, // 15: controller.api.resources.sessionrecordings.v1.Host.attributes:type_name -> google.protobuf.Struct
+	25, // 15: controller.api.resources.sessionrecordings.v1.Host.attributes:type_name -> google.protobuf.Struct
 	5,  // 16: controller.api.resources.sessionrecordings.v1.Host.static_host_attributes:type_name -> controller.api.resources.sessionrecordings.v1.StaticHostAttributes
-	23, // 17: controller.api.resources.sessionrecordings.v1.Target.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	24, // 18: controller.api.resources.sessionrecordings.v1.Target.attributes:type_name -> google.protobuf.Struct
+	24, // 17: controller.api.resources.sessionrecordings.v1.Target.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	25, // 18: controller.api.resources.sessionrecordings.v1.Target.attributes:type_name -> google.protobuf.Struct
 	7,  // 19: controller.api.resources.sessionrecordings.v1.Target.ssh_target_attributes:type_name -> controller.api.resources.sessionrecordings.v1.SshTargetAttributes
-	24, // 20: controller.api.resources.sessionrecordings.v1.CredentialStore.attributes:type_name -> google.protobuf.Struct
+	25, // 20: controller.api.resources.sessionrecordings.v1.CredentialStore.attributes:type_name -> google.protobuf.Struct
 	9,  // 21: controller.api.resources.sessionrecordings.v1.CredentialStore.vault_credential_store_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultCredentialStoreAttributes
 	8,  // 22: controller.api.resources.sessionrecordings.v1.Credential.credential_store:type_name -> controller.api.resources.sessionrecordings.v1.CredentialStore
-	24, // 23: controller.api.resources.sessionrecordings.v1.Credential.attributes:type_name -> google.protobuf.Struct
+	25, // 23: controller.api.resources.sessionrecordings.v1.Credential.attributes:type_name -> google.protobuf.Struct
 	11, // 24: controller.api.resources.sessionrecordings.v1.Credential.username_password_attributes:type_name -> controller.api.resources.sessionrecordings.v1.UsernamePasswordCredentialAttributes
 	12, // 25: controller.api.resources.sessionrecordings.v1.Credential.ssh_private_key_attributes:type_name -> controller.api.resources.sessionrecordings.v1.SshPrivateKeyCredentialAttributes
 	13, // 26: controller.api.resources.sessionrecordings.v1.Credential.json_attributes:type_name -> controller.api.resources.sessionrecordings.v1.JsonCredentialAttributes
-	8,  // 27: controller.api.resources.sessionrecordings.v1.CredentialLibrary.credential_store:type_name -> controller.api.resources.sessionrecordings.v1.CredentialStore
-	24, // 28: controller.api.resources.sessionrecordings.v1.CredentialLibrary.attributes:type_name -> google.protobuf.Struct
-	15, // 29: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
-	15, // 30: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_generic_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
-	16, // 31: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_ssh_certificate_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes
-	19, // 32: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.critical_options:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
-	20, // 33: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.extensions:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
-	2,  // 34: controller.api.resources.sessionrecordings.v1.ValuesAtTime.user:type_name -> controller.api.resources.sessionrecordings.v1.User
-	6,  // 35: controller.api.resources.sessionrecordings.v1.ValuesAtTime.target:type_name -> controller.api.resources.sessionrecordings.v1.Target
-	4,  // 36: controller.api.resources.sessionrecordings.v1.ValuesAtTime.host:type_name -> controller.api.resources.sessionrecordings.v1.Host
-	10, // 37: controller.api.resources.sessionrecordings.v1.ValuesAtTime.credentials:type_name -> controller.api.resources.sessionrecordings.v1.Credential
-	14, // 38: controller.api.resources.sessionrecordings.v1.ValuesAtTime.credential_libraries:type_name -> controller.api.resources.sessionrecordings.v1.CredentialLibrary
-	23, // 39: controller.api.resources.sessionrecordings.v1.SessionRecording.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	21, // 40: controller.api.resources.sessionrecordings.v1.SessionRecording.created_time:type_name -> google.protobuf.Timestamp
-	21, // 41: controller.api.resources.sessionrecordings.v1.SessionRecording.updated_time:type_name -> google.protobuf.Timestamp
-	21, // 42: controller.api.resources.sessionrecordings.v1.SessionRecording.start_time:type_name -> google.protobuf.Timestamp
-	21, // 43: controller.api.resources.sessionrecordings.v1.SessionRecording.end_time:type_name -> google.protobuf.Timestamp
-	22, // 44: controller.api.resources.sessionrecordings.v1.SessionRecording.duration:type_name -> google.protobuf.Duration
-	1,  // 45: controller.api.resources.sessionrecordings.v1.SessionRecording.connection_recordings:type_name -> controller.api.resources.sessionrecordings.v1.ConnectionRecording
-	17, // 46: controller.api.resources.sessionrecordings.v1.SessionRecording.create_time_values:type_name -> controller.api.resources.sessionrecordings.v1.ValuesAtTime
-	21, // 47: controller.api.resources.sessionrecordings.v1.SessionRecording.retain_until:type_name -> google.protobuf.Timestamp
-	21, // 48: controller.api.resources.sessionrecordings.v1.SessionRecording.delete_after:type_name -> google.protobuf.Timestamp
-	49, // [49:49] is the sub-list for method output_type
-	49, // [49:49] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	14, // 27: controller.api.resources.sessionrecordings.v1.Credential.password_attributes:type_name -> controller.api.resources.sessionrecordings.v1.PasswordCredentialAttributes
+	8,  // 28: controller.api.resources.sessionrecordings.v1.CredentialLibrary.credential_store:type_name -> controller.api.resources.sessionrecordings.v1.CredentialStore
+	25, // 29: controller.api.resources.sessionrecordings.v1.CredentialLibrary.attributes:type_name -> google.protobuf.Struct
+	16, // 30: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
+	16, // 31: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_generic_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultCredentialLibraryAttributes
+	17, // 32: controller.api.resources.sessionrecordings.v1.CredentialLibrary.vault_ssh_certificate_credential_library_attributes:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes
+	20, // 33: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.critical_options:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
+	21, // 34: controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.extensions:type_name -> controller.api.resources.sessionrecordings.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
+	2,  // 35: controller.api.resources.sessionrecordings.v1.ValuesAtTime.user:type_name -> controller.api.resources.sessionrecordings.v1.User
+	6,  // 36: controller.api.resources.sessionrecordings.v1.ValuesAtTime.target:type_name -> controller.api.resources.sessionrecordings.v1.Target
+	4,  // 37: controller.api.resources.sessionrecordings.v1.ValuesAtTime.host:type_name -> controller.api.resources.sessionrecordings.v1.Host
+	10, // 38: controller.api.resources.sessionrecordings.v1.ValuesAtTime.credentials:type_name -> controller.api.resources.sessionrecordings.v1.Credential
+	15, // 39: controller.api.resources.sessionrecordings.v1.ValuesAtTime.credential_libraries:type_name -> controller.api.resources.sessionrecordings.v1.CredentialLibrary
+	24, // 40: controller.api.resources.sessionrecordings.v1.SessionRecording.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	22, // 41: controller.api.resources.sessionrecordings.v1.SessionRecording.created_time:type_name -> google.protobuf.Timestamp
+	22, // 42: controller.api.resources.sessionrecordings.v1.SessionRecording.updated_time:type_name -> google.protobuf.Timestamp
+	22, // 43: controller.api.resources.sessionrecordings.v1.SessionRecording.start_time:type_name -> google.protobuf.Timestamp
+	22, // 44: controller.api.resources.sessionrecordings.v1.SessionRecording.end_time:type_name -> google.protobuf.Timestamp
+	23, // 45: controller.api.resources.sessionrecordings.v1.SessionRecording.duration:type_name -> google.protobuf.Duration
+	1,  // 46: controller.api.resources.sessionrecordings.v1.SessionRecording.connection_recordings:type_name -> controller.api.resources.sessionrecordings.v1.ConnectionRecording
+	18, // 47: controller.api.resources.sessionrecordings.v1.SessionRecording.create_time_values:type_name -> controller.api.resources.sessionrecordings.v1.ValuesAtTime
+	22, // 48: controller.api.resources.sessionrecordings.v1.SessionRecording.retain_until:type_name -> google.protobuf.Timestamp
+	22, // 49: controller.api.resources.sessionrecordings.v1.SessionRecording.delete_after:type_name -> google.protobuf.Timestamp
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_sessionrecordings_v1_session_recording_proto_init() }
@@ -2450,8 +2518,9 @@ func file_controller_api_resources_sessionrecordings_v1_session_recording_proto_
 		(*Credential_UsernamePasswordAttributes)(nil),
 		(*Credential_SshPrivateKeyAttributes)(nil),
 		(*Credential_JsonAttributes)(nil),
+		(*Credential_PasswordAttributes)(nil),
 	}
-	file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[14].OneofWrappers = []any{
+	file_controller_api_resources_sessionrecordings_v1_session_recording_proto_msgTypes[15].OneofWrappers = []any{
 		(*CredentialLibrary_Attributes)(nil),
 		(*CredentialLibrary_VaultCredentialLibraryAttributes)(nil),
 		(*CredentialLibrary_VaultGenericCredentialLibraryAttributes)(nil),
@@ -2463,7 +2532,7 @@ func file_controller_api_resources_sessionrecordings_v1_session_recording_proto_
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDesc), len(file_controller_api_resources_sessionrecordings_v1_session_recording_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
