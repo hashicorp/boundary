@@ -621,6 +621,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credentials create password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.PasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credentials create username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui, opts...),
@@ -647,6 +653,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credentials update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
