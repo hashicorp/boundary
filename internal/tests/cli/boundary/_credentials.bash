@@ -63,6 +63,19 @@ function create_json_credential() {
     $args
 }
 
+function create_password_credential() {
+  local name=$1
+  local sid=$2
+  local pass=$3
+
+  export BP="${pass}"
+  boundary credentials create password \
+    -name $name \
+    -description 'test password credential' \
+    -credential-store-id $sid \
+    -password env://BP
+}
+
 function read_credential() {
   boundary credentials read -id $1 -format json
 }

@@ -677,6 +677,22 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
+		inProto:     &credentials.PasswordAttributes{},
+		outFile:     "credentials/password_attributes.gen.go",
+		subtypeName: "PasswordCredential",
+		subtype:     "password",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:     &credentials.UsernamePasswordAttributes{},
 		outFile:     "credentials/username_password_attributes.gen.go",
 		subtypeName: "UsernamePasswordCredential",
@@ -712,6 +728,22 @@ var inputStructs = []*structInfo{
 			},
 			{
 				Name:        "Domain",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:     &credentials.PasswordAttributes{},
+		outFile:     "credentials/password_attributes.gen.go",
+		subtypeName: "PasswordCredential",
+		subtype:     "password",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Password",
 				SkipDefault: true,
 			},
 		},
@@ -1261,6 +1293,15 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &session_recordings.Credential{},
 		outFile: "sessionrecordings/credential.gen.go",
+	},
+	{
+		inProto:        &session_recordings.PasswordCredentialAttributes{},
+		outFile:        "sessionrecordings/password_credential_attributes.gen.go",
+		subtype:        "password",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto:        &session_recordings.UsernamePasswordCredentialAttributes{},

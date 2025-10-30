@@ -321,3 +321,67 @@ func TestRewrap_credStaticUsernamePasswordDomainRewrapFn(t *testing.T) {
 		assert.Equal(t, cred.GetPasswordHmac(), got.GetPasswordHmac())
 	})
 }
+
+func TestRewrap_credStaticPasswordRewrapFn(t *testing.T) {
+	ctx := context.Background()
+	t.Run("errors-on-query-error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		wrapper := db.TestWrapper(t)
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT \$1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT \$1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		kmsCache := kms.TestKms(t, conn, wrapper)
+		rw := db.New(conn)
+		mock.ExpectQuery(
+			`select distinct pass\.public_id, pass\.password_encrypted, pass\.key_id from credential_static_password_credential pass inner join credential_static_store store on store\.public_id = pass\.store_id where store\.project_id = \$1 and pass\.key_id = \$2;`,
+		).WillReturnError(errors.New("Query error"))
+		err := credStaticPasswordRewrapFn(ctx, "some_id", "some_scope", rw, rw, kmsCache)
+		require.Error(t, err)
+	})
+	t.Run("success", func(t *testing.T) {
+		conn, _ := db.TestSetup(t, "postgres")
+		wrapper := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, wrapper)
+		rw := db.New(conn)
+
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
+		cred, err := NewPasswordCredential(cs.GetPublicId(), "password")
+		assert.NoError(t, err)
+
+		cred.PublicId, err = credential.NewPasswordCredentialId(ctx)
+		assert.NoError(t, err)
+
+		kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+		assert.NoError(t, err)
+
+		assert.NoError(t, cred.encrypt(ctx, kmsWrapper))
+		assert.NoError(t, rw.Create(context.Background(), cred))
+
+		// now things are stored in the db, we can rotate and rewrap
+		assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+		assert.NoError(t, credStaticPasswordRewrapFn(ctx, cred.GetKeyId(), prj.PublicId, rw, rw, kmsCache))
+
+		// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
+		got := allocPasswordCredential()
+		got.PublicId = cred.PublicId
+		assert.NoError(t, rw.LookupById(ctx, got))
+
+		kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
+		assert.NoError(t, err)
+		newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+		assert.NoError(t, err)
+
+		// decrypt with the new key version and check to make sure things match
+		assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
+		assert.NotEmpty(t, got.GetKeyId())
+		assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
+		assert.Equal(t, newKeyVersionId, got.GetKeyId())
+		assert.Equal(t, "password", string(got.GetPassword()))
+		assert.NotEmpty(t, got.GetPasswordHmac())
+		assert.Equal(t, cred.GetPasswordHmac(), got.GetPasswordHmac())
+	})
+}

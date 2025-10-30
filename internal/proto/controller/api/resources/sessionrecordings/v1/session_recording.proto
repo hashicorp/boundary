@@ -308,6 +308,10 @@ message Credential {
       (google.api.field_visibility).restriction = "INTERNAL",
       (custom_options.v1.subtype) = "json"
     ];
+    PasswordCredentialAttributes password_attributes = 11 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "password"
+    ];
   }
 }
 
@@ -336,6 +340,12 @@ message SshPrivateKeyCredentialAttributes {
 message JsonCredentialAttributes {
   // The hmac value of the object.
   string object_hmac = 1; // @gotags: class:"public"
+}
+
+// The attributes of a Password Credential.
+message PasswordCredentialAttributes {
+  // The hmac value of the password.
+  string password_hmac = 1; // @gotags: class:"public"
 }
 
 // CredentialLibrary contains all fields related to an Credential Library resource
