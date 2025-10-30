@@ -130,7 +130,6 @@ test*.hcl
 
 # Test error files
 tmp-errors-Test*
-test_output*
 
 # Enos
 /enos/**/.enos
@@ -153,3 +152,6 @@ dist
 out
 
 .schema-diff/
+
+# rdp e2e automation
+test_output*
