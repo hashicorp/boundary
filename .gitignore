@@ -130,6 +130,7 @@ test*.hcl
 
 # Test error files
 tmp-errors-Test*
+test_output*
 
 # Enos
 /enos/**/.enos
