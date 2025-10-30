@@ -4,6 +4,11 @@ page_title: Manage Sessions
 description: How to manage Boundary sessions
 ---
 
+⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+> [!IMPORTANT]  
+> **Documentation Update:** Product documentation previously located in `/website` has moved to the [`hashicorp/web-unified-docs`](https://github.com/hashicorp/web-unified-docs) repository, where all product documentation is now centralized. Please make contributions directly to `web-unified-docs`, since changes to `/website` in this repository will not appear on developer.hashicorp.com.
+⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
 # Manage Sessions
 
 [Sessions](/boundary/docs/domain-model/sessions) are Boundary resources created when connecting to a [Target](/boundary/docs/domain-model/targets). A target allows Boundary users to define an endpoint with a protocol and default port to establish a session. Unless specified with a `-host-id` flag when establishing a session, Boundary will choose one [Host](/boundary/docs/domain-model/hosts) from the target's [Host Sets](/boundary/docs/domain-model/host-sets) to connect to at random.
