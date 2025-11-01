@@ -268,7 +268,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// Create static credentials
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
-	_, err = boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
+	_, err = boundary.CreateStaticCredentialUsernamePasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
 	require.NoError(t, err)
 	_, err = boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, "testdata/credential.json")
 	require.NoError(t, err)

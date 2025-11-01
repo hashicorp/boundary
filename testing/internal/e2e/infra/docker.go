@@ -599,9 +599,19 @@ func setupRedisAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *do
 	t.Helper()
 	t.Log("Configuring Redis authentication and user permissions...")
 
+	// e2e user
 	err := exec.Command(
 		"docker", "exec", config.NetworkAlias, "redis-cli",
-		"ACL", "SETUSER", config.User, "on", fmt.Sprintf(">%s", config.Password), "+@read", "+@write", "allkeys",
+		"ACL", "SETUSER", config.User, "on", fmt.Sprintf(">%s", config.Password), "+@all", "allkeys",
+	).Run()
+	if err != nil {
+		return err
+	}
+
+	// default user
+	err = exec.Command(
+		"docker", "exec", config.NetworkAlias, "redis-cli",
+		"ACL", "SETUSER", "default", fmt.Sprintf(">%s", config.Password),
 	).Run()
 	if err != nil {
 		return err
