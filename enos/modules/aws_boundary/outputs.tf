@@ -6,6 +6,11 @@ output "controller_ips" {
   value       = var.ip_version == "6" ? flatten(aws_instance.controller.*.ipv6_addresses) : aws_instance.controller.*.public_ip
 }
 
+output "controller_ips_private" {
+  description = "Private IPs of boundary controllers"
+  value       = var.ip_version == "6" || var.ip_version == "dual" ? flatten(aws_instance.controller.*.ipv6_addresses) : aws_instance.controller.*.private_ip
+}
+
 output "worker_ips" {
   description = "Public IPs of boundary workers"
   value       = var.ip_version == "6" ? flatten(aws_instance.worker.*.ipv6_addresses) : aws_instance.worker.*.public_ip

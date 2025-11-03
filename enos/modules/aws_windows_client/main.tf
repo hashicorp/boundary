@@ -142,7 +142,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = [aws_security_group.windows_client.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = 1
+  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
 
   root_block_device {
     volume_type           = "gp2"
