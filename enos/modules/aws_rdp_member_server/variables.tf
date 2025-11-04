@@ -44,6 +44,12 @@ variable "active_directory_domain" {
   description = "The name of the Active Directory domain to be created on the Windows Domain Controller."
 }
 
+variable "ip_version" {
+  type        = string
+  description = "IP version to use for security group rules. Valid values are '4', '6', or 'dual'."
+  default     = "4"
+}
+
 # =================================================================
 # domain controller information
 # =================================================================
