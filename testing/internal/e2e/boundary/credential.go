@@ -202,10 +202,10 @@ func CreateStaticCredentialPrivateKeyCli(t testing.TB, ctx context.Context, cred
 	return credentialId, nil
 }
 
-// CreateStaticCredentialPasswordCli uses the cli to create a new password credential in the
+// CreateStaticCredentialUsernamePasswordCli uses the cli to create a new password credential in the
 // provided static credential store.
 // Returns the id of the new credential
-func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string) (string, error) {
+func CreateStaticCredentialUsernamePasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
@@ -238,10 +238,10 @@ func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, creden
 	return credentialId, nil
 }
 
-// CreateStaticCredentialPasswordDomainCli uses the cli to create a new username password domain credential in the
+// CreateStaticCredentialUsernamePasswordDomainCli uses the cli to create a new username password domain credential in the
 // provided static credential store.
 // Returns the id of the new credential
-func CreateStaticCredentialPasswordDomainCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string, domain string) (string, error) {
+func CreateStaticCredentialUsernamePasswordDomainCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string, domain string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err

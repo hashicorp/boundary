@@ -84,7 +84,7 @@ func TestCliTcpTargetConnectRedis(t *testing.T) {
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 
-	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
+	credentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(
 		t,
 		ctx,
 		storeId,
