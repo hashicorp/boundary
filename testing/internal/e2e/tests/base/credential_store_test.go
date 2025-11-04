@@ -81,7 +81,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	jsonCredentialId, err := boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
 	require.NoError(t, err)
-	updCredentialId, err := boundary.CreateStaticCredentialPasswordDomainCli(t, ctx, storeId, c.TargetSshUser, testPassword, testDomain)
+	updCredentialId, err := boundary.CreateStaticCredentialUsernamePasswordDomainCli(t, ctx, storeId, c.TargetSshUser, testPassword, testDomain)
 	require.NoError(t, err)
 
 	// Get credentials for target (expect empty)
