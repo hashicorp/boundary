@@ -262,6 +262,41 @@ func CreateStaticCredentialUsernamePasswordCli(t testing.TB, ctx context.Context
 	return credentialId, nil
 }
 
+// CreateStaticCredentialPasswordCli uses the cli to create a new password credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, password string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credentials", "create", "password",
+			"-credential-store-id", credentialStoreId,
+			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-name", fmt.Sprintf("e2e Credential %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", password),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialsResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialsResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Password Credential: %s", credentialId)
+	return credentialId, nil
+}
+
 // CreateStaticCredentialUsernamePasswordDomainCli uses the cli to create a new username password domain credential in the
 // provided static credential store.
 // Returns the id of the new credential
