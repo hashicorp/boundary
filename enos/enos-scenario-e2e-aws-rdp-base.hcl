@@ -115,6 +115,7 @@ scenario "e2e_aws_rdp_base" {
       boundary_src_path     = local.local_boundary_src_dir
       github_token          = var.github_token
       ip_version            = local.ip_version
+      vault_version         = var.vault_version
     }
   }
 

@@ -23,6 +23,17 @@ $newPath = $existingPath + ";" + $destination
     [EnvironmentVariableTarget]::Machine
 )
 
+Write-Host "Checking if Vault needs to be installed..."
+if ("${vault_version}" -ne "") {
+    Write-Host "Installing Vault version ${vault_version}..."
+    # Download and install Vault
+    $vaultZipUrl = "https://releases.hashicorp.com/vault/${vault_version}/vault_${vault_version}_windows_amd64.zip"
+    $vaultZipPath = Join-Path $destination "vault.zip"
+    curl.exe -L -o $vaultZipPath $vaultZipUrl
+
+    Expand-Archive -Path $vaultZipPath -DestinationPath $destination -Force
+}
+
 # Install chocolatey (package manager)
 powershell -c "irm https://community.chocolatey.org/install.ps1|iex"
 
