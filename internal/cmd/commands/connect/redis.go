@@ -49,13 +49,21 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 	var username, password string
 
 	retCreds = creds
-	if len(retCreds.UsernamePassword) > 0 {
+	switch {
+	case len(retCreds.UsernamePassword) > 0:
 		// Mark credential as consumed, such that it is not printed to the user
 		retCreds.UsernamePassword[0].Consumed = true
 
 		// Grab the first available username/password credential brokered
 		username = retCreds.UsernamePassword[0].Username
 		password = retCreds.UsernamePassword[0].Password
+
+	case len(retCreds.Password) > 0:
+		// Mark credential as consumed, such that it is not printed to the user
+		retCreds.Password[0].Consumed = true
+
+		// Grab the first available password credential brokered
+		password = retCreds.Password[0].Password
 	}
 
 	switch r.flagRedisStyle {
@@ -69,12 +77,14 @@ func (r *redisFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		case username != "":
 			args = append(args, "--user", username)
 		case c.flagUsername != "":
-			args = append(args, "--user", c.flagUsername, "--askpass")
+			args = append(args, "--user", c.flagUsername)
 		}
 
-		// Password is read by redis-cli via environment variable. The password disappears after the command exits.
 		if password != "" {
 			envs = append(envs, fmt.Sprintf("REDISCLI_AUTH=%s", password))
+		} else {
+			// prompt for password if it wasn't provided
+			envs = append(envs, "--askpass")
 		}
 	}
 
