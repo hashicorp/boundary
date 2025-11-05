@@ -78,7 +78,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -92,7 +92,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -107,7 +107,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -121,7 +121,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -136,7 +136,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -150,7 +150,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -165,7 +165,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -179,7 +179,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -194,7 +194,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -209,7 +209,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -223,7 +223,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
       data.aws_vpc.infra.ipv6_cidr_block
     ])
@@ -238,7 +238,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
     ])
   }
@@ -251,7 +251,7 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
-    ipv6_cidr_blocks = flatten([
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : flatten([
       [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
     ])
   }
@@ -268,7 +268,7 @@ resource "aws_security_group" "allow_all_internal" {
     protocol         = "-1"
     self             = true
     cidr_blocks      = [data.aws_vpc.infra.cidr_block]
-    ipv6_cidr_blocks = [data.aws_vpc.infra.ipv6_cidr_block]
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : [data.aws_vpc.infra.ipv6_cidr_block]
   }
 
   egress {
@@ -297,7 +297,7 @@ resource "aws_instance" "domain_controller" {
   vpc_security_group_ids = [aws_security_group.rdp_ingress.id, aws_security_group.allow_all_internal.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = 1
+  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
 
   root_block_device {
     volume_type           = "gp2"

@@ -142,7 +142,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = [aws_security_group.windows_client.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = 1
+  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
 
   root_block_device {
     volume_type           = "gp2"
@@ -231,13 +231,23 @@ resource "aws_instance" "client" {
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
 
                   # Create a non-admin user to be used for RDP connection. This
-                  # is needed since the scheduled task that runs pyautogui
+                  # is needed since the scheduled task that runs desktop automation
                   # doesn't work in an Administrator context.
                   ## Create a local user
                   $Username = "${local.test_username}"
                   $Password = ConvertTo-SecureString "${local.test_password}" -AsPlainText -Force
                   New-LocalUser $Username -Password $Password -FullName "Auto Login User" -Description "User for Auto Login"
                   Add-LocalGroupMember -Group "Administrators" -Member $Username
+
+                  # Disable windows snapping assist. This is done to reduce
+                  # complexity in RDP automated tests since the snapping assist
+                  # window introduces an additional UI element that needs to be handled.
+                  Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" -Name "SnapAssist" -Value 0 -Force
+
+                  $script = 'Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SnapAssist" -Value 0 -Force; Stop-Process -Name explorer -Force; Start-Process explorer.exe'
+                  $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -Command $script"
+                  $trigger = New-ScheduledTaskTrigger -AtLogOn -User "autologinuser"
+                  Register-ScheduledTask -TaskName "RemoveSnapAssist" -Action $action -Trigger $trigger -User "autologinuser" -RunLevel Highest -Force
 
                   # Set registry keys for auto-login
                   $regPath = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"

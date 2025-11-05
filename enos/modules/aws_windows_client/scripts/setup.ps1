@@ -87,4 +87,8 @@ if ("${github_token}" -ne "") {
         $newPath,
         [EnvironmentVariableTarget]::Machine
     )
+
+    # go mod download
+    cd $src_destination
+    go mod download
 }

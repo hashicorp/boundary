@@ -48,7 +48,7 @@ resource "aws_instance" "member_server" {
   vpc_security_group_ids = var.domain_controller_sec_group_id_list
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = 1
+  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
 
   root_block_device {
     volume_type           = "gp2"
