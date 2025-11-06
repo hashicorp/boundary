@@ -383,6 +383,18 @@ func WithVaultCredentialLibraryPath(inPath string) Option {
 	}
 }
 
+func WithVaultLdapCredentialLibraryPath(inPath string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["path"] = inPath
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithVaultSSHCertificateCredentialLibraryPath(inPath string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

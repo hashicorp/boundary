@@ -1269,6 +1269,134 @@ func (x *SshPrivateKeyOverride) GetPrivateKeyPassphraseAttribute() string {
 	return ""
 }
 
+type LdapCredentialLibrary struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// public_id is a surrogate key suitable for use in a public API.
+	// @inject_tag: `gorm:"primary_key"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
+	// create_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// update_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// name is optional. If set, it must be unique within project_id.
+	// @inject_tag: `gorm:"default:null"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// description is optional.
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
+	// store_id of the owning vault credential store.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	StoreId string `protobuf:"bytes,6,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty" gorm:"not_null"`
+	// version allows optimistic locking of the resource.
+	// @inject_tag: `gorm:"default:null"`
+	Version uint32 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
+	// vault_path is the path in Vault to request credentials from.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	VaultPath string `protobuf:"bytes,8,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty" gorm:"not_null"`
+	// credential_type is always ssh_certificate
+	// @inject_tag: `gorm:"default:null"`
+	CredentialType string `protobuf:"bytes,9,opt,name=credential_type,json=credentialType,proto3" json:"credential_type,omitempty" gorm:"default:null"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LdapCredentialLibrary) Reset() {
+	*x = LdapCredentialLibrary{}
+	mi := &file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LdapCredentialLibrary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LdapCredentialLibrary) ProtoMessage() {}
+
+func (x *LdapCredentialLibrary) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LdapCredentialLibrary.ProtoReflect.Descriptor instead.
+func (*LdapCredentialLibrary) Descriptor() ([]byte, []int) {
+	return file_controller_storage_credential_vault_store_v1_vault_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *LdapCredentialLibrary) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *LdapCredentialLibrary) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *LdapCredentialLibrary) GetUpdateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *LdapCredentialLibrary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *LdapCredentialLibrary) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *LdapCredentialLibrary) GetStoreId() string {
+	if x != nil {
+		return x.StoreId
+	}
+	return ""
+}
+
+func (x *LdapCredentialLibrary) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *LdapCredentialLibrary) GetVaultPath() string {
+	if x != nil {
+		return x.VaultPath
+	}
+	return ""
+}
+
+func (x *LdapCredentialLibrary) GetCredentialType() string {
+	if x != nil {
+		return x.CredentialType
+	}
+	return ""
+}
+
 var File_controller_storage_credential_vault_store_v1_vault_proto protoreflect.FileDescriptor
 
 const file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc = "" +
@@ -1424,7 +1552,23 @@ const file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc = ""
 	"library_id\x18\x01 \x01(\tR\tlibraryId\x12-\n" +
 	"\x12username_attribute\x18\x02 \x01(\tR\x11usernameAttribute\x122\n" +
 	"\x15private_key_attribute\x18\x03 \x01(\tR\x13privateKeyAttribute\x12G\n" +
-	" private_key_passphrase_attribute\x18\x04 \x01(\tR\x1dprivateKeyPassphraseAttributeBEZCgithub.com/hashicorp/boundary/internal/credential/vault/store;storeb\x06proto3"
+	" private_key_passphrase_attribute\x18\x04 \x01(\tR\x1dprivateKeyPassphraseAttribute\"\xd5\x03\n" +
+	"\x15LdapCredentialLibrary\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12K\n" +
+	"\vcreate_time\x18\x02 \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
+	"createTime\x12K\n" +
+	"\vupdate_time\x18\x03 \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
+	"updateTime\x12$\n" +
+	"\x04name\x18\x04 \x01(\tB\x10\xc2\xdd)\f\n" +
+	"\x04Name\x12\x04nameR\x04name\x12@\n" +
+	"\vdescription\x18\x05 \x01(\tB\x1e\xc2\xdd)\x1a\n" +
+	"\vDescription\x12\vdescriptionR\vdescription\x12\x19\n" +
+	"\bstore_id\x18\x06 \x01(\tR\astoreId\x12\x18\n" +
+	"\aversion\x18\a \x01(\rR\aversion\x12?\n" +
+	"\n" +
+	"vault_path\x18\b \x01(\tB \xc2\xdd)\x1c\n" +
+	"\tVaultPath\x12\x0fattributes.pathR\tvaultPath\x12'\n" +
+	"\x0fcredential_type\x18\t \x01(\tR\x0ecredentialTypeBEZCgithub.com/hashicorp/boundary/internal/credential/vault/store;storeb\x06proto3"
 
 var (
 	file_controller_storage_credential_vault_store_v1_vault_proto_rawDescOnce sync.Once
@@ -1438,7 +1582,7 @@ func file_controller_storage_credential_vault_store_v1_vault_proto_rawDescGZIP()
 	return file_controller_storage_credential_vault_store_v1_vault_proto_rawDescData
 }
 
-var file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_controller_storage_credential_vault_store_v1_vault_proto_goTypes = []any{
 	(*CredentialStore)(nil),                 // 0: controller.storage.credential.vault.store.v1.CredentialStore
 	(*Token)(nil),                           // 1: controller.storage.credential.vault.store.v1.Token
@@ -1449,29 +1593,32 @@ var file_controller_storage_credential_vault_store_v1_vault_proto_goTypes = []an
 	(*UsernamePasswordOverride)(nil),        // 6: controller.storage.credential.vault.store.v1.UsernamePasswordOverride
 	(*UsernamePasswordDomainOverride)(nil),  // 7: controller.storage.credential.vault.store.v1.UsernamePasswordDomainOverride
 	(*SshPrivateKeyOverride)(nil),           // 8: controller.storage.credential.vault.store.v1.SshPrivateKeyOverride
-	(*timestamp.Timestamp)(nil),             // 9: controller.storage.timestamp.v1.Timestamp
+	(*LdapCredentialLibrary)(nil),           // 9: controller.storage.credential.vault.store.v1.LdapCredentialLibrary
+	(*timestamp.Timestamp)(nil),             // 10: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_credential_vault_store_v1_vault_proto_depIdxs = []int32{
-	9,  // 0: controller.storage.credential.vault.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 1: controller.storage.credential.vault.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 2: controller.storage.credential.vault.store.v1.CredentialStore.delete_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 3: controller.storage.credential.vault.store.v1.Token.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 4: controller.storage.credential.vault.store.v1.Token.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 5: controller.storage.credential.vault.store.v1.Token.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 6: controller.storage.credential.vault.store.v1.Token.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 7: controller.storage.credential.vault.store.v1.CredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 8: controller.storage.credential.vault.store.v1.CredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 9: controller.storage.credential.vault.store.v1.SSHCertificateCredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 10: controller.storage.credential.vault.store.v1.SSHCertificateCredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 11: controller.storage.credential.vault.store.v1.Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 12: controller.storage.credential.vault.store.v1.Credential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 13: controller.storage.credential.vault.store.v1.Credential.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	9,  // 14: controller.storage.credential.vault.store.v1.Credential.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	10, // 0: controller.storage.credential.vault.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 1: controller.storage.credential.vault.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 2: controller.storage.credential.vault.store.v1.CredentialStore.delete_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 3: controller.storage.credential.vault.store.v1.Token.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 4: controller.storage.credential.vault.store.v1.Token.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 5: controller.storage.credential.vault.store.v1.Token.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 6: controller.storage.credential.vault.store.v1.Token.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 7: controller.storage.credential.vault.store.v1.CredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 8: controller.storage.credential.vault.store.v1.CredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 9: controller.storage.credential.vault.store.v1.SSHCertificateCredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 10: controller.storage.credential.vault.store.v1.SSHCertificateCredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 11: controller.storage.credential.vault.store.v1.Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 12: controller.storage.credential.vault.store.v1.Credential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 13: controller.storage.credential.vault.store.v1.Credential.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 14: controller.storage.credential.vault.store.v1.Credential.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 15: controller.storage.credential.vault.store.v1.LdapCredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	10, // 16: controller.storage.credential.vault.store.v1.LdapCredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_credential_vault_store_v1_vault_proto_init() }
@@ -1485,7 +1632,7 @@ func file_controller_storage_credential_vault_store_v1_vault_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc), len(file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

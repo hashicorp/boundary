@@ -194,8 +194,9 @@ delete from credential_vault_credential
 select sum(reltuples::bigint) as estimate
   from pg_class
  where oid in (
-  'credential_vault_library'::regclass,
-  'credential_vault_ssh_cert_library'::regclass
+  'credential_vault_generic_library'::regclass,
+  'credential_vault_ssh_cert_library'::regclass,
+  'credential_vault_ldap_library'::regclass
 )
 `
 
@@ -209,12 +210,17 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
   select *
     from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+ldap_libs as (
+  select *
+    from credential_vault_ldap_library
    where public_id in (select public_id from libraries)
 ),
 final as (
@@ -263,6 +269,29 @@ final as (
          additional_valid_principals,
          'ssh' as type
     from ssh_cert_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,                  -- Add to make union uniform
+         null as http_request_body,            -- Add to make union uniform
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'ldap' as type
+    from ldap_libs
 )
   select *
     from final
@@ -280,12 +309,17 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
   select *
     from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+ldap_libs as (
+  select *
+    from credential_vault_ldap_library
    where public_id in (select public_id from libraries)
 ),
 final as (
@@ -334,6 +368,29 @@ final as (
          additional_valid_principals,
          'ssh' as type
     from ssh_cert_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,                  -- Add to make union uniform
+         null as http_request_body,            -- Add to make union uniform
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'ldap' as type
+    from ldap_libs
 )
   select *
     from final
@@ -351,12 +408,17 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
   select *
     from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+ldap_libs as (
+  select *
+    from credential_vault_ldap_library
    where public_id in (select public_id from libraries)
 ),
 final as (
@@ -405,6 +467,29 @@ final as (
          additional_valid_principals,
          'ssh' as type
     from ssh_cert_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,                  -- Add to make union uniform
+         null as http_request_body,            -- Add to make union uniform
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'ldap' as type
+    from ldap_libs
 )
   select *
     from final
@@ -423,12 +508,17 @@ with libraries as (
 ),
 generic_libs as (
   select *
-    from credential_vault_library
+    from credential_vault_generic_library
    where public_id in (select public_id from libraries)
 ),
 ssh_cert_libs as (
   select *
     from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+ldap_libs as (
+  select *
+    from credential_vault_ldap_library
    where public_id in (select public_id from libraries)
 ),
 final as (
@@ -477,6 +567,29 @@ final as (
          additional_valid_principals,
          'ssh' as type
     from ssh_cert_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,                  -- Add to make union uniform
+         null as http_request_body,            -- Add to make union uniform
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'ldap' as type
+    from ldap_libs
 )
   select *
     from final

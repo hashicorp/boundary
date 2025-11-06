@@ -113,6 +113,17 @@ scenario "e2e_docker_base_with_vault" {
     }
   }
 
+  step "create_ldap_server" {
+    module = module.docker_ldap
+    depends_on = [
+      step.create_docker_network
+    ]
+    variables {
+      image_name   = "${var.docker_mirror}/osixia/openldap:latest"
+      network_name = [local.network_cluster]
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e_docker
     depends_on = [
@@ -141,6 +152,13 @@ scenario "e2e_docker_base_with_vault" {
       vault_root_token         = step.create_vault.token
       vault_port               = step.create_vault.port
       max_page_size            = step.create_boundary.max_page_size
+      ldap_address             = step.create_ldap_server.address
+      ldap_domain_dn           = step.create_ldap_server.domain_dn
+      ldap_admin_dn            = step.create_ldap_server.admin_dn
+      ldap_admin_password      = step.create_ldap_server.admin_password
+      ldap_user_name           = step.create_ldap_server.user_name
+      ldap_user_password       = step.create_ldap_server.user_password
+      ldap_group_name          = step.create_ldap_server.group_name
     }
   }
 }

@@ -4,6 +4,7 @@
 begin;
 
   -- Replaces view from 56/02_add_data_key_foreign_key_references.up.sql
+  -- Replaced in 78/01_ssh_signed_certs_additional_valid_principals
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with

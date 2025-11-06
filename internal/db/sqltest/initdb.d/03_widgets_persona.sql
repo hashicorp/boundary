@@ -388,7 +388,7 @@ begin;
     values
       ('vs_______wvs', 'kdkv___widget', 'current', 'hmac-value', 'token-value', now(),             now() + interval '1 hour');
 
-    insert into credential_vault_library
+    insert into credential_vault_generic_library
       (store_id,       public_id,       name,                    description, vault_path,           http_method, credential_type)
     values
       ('vs_______wvs', 'vl______wvl1',  'widget vault library',      'None',      '/secrets',              'GET',       'unspecified'),
@@ -413,82 +413,82 @@ begin;
       ('vs_______wvs', 'vl______wvl20', 'widget vault kv eighteen',  'None',      '/secrets/kv/eighteen',  'GET',       'username_password_domain'),
       ('vs_______wvs', 'vl______wvl21', 'widget vault kv nineteen',  'None',      '/secrets/kv/nineteen',  'GET',       'username_password_domain');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id)
     values
       ('vl______wvl4');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     username_attribute)
     values
       ('vl______wvl5', 'my_username');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     password_attribute)
     values
       ('vl______wvl6', 'my_password');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     username_attribute, password_attribute)
     values
       ('vl______wvl7', 'my_username',      'my_password');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id)
     values
       ('vl______wvl9');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     username_attribute)
     values
       ('vl______wvl10', 'my_username');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     private_key_attribute)
     values
       ('vl______wvl11', 'my_private_key');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     username_attribute, private_key_attribute, private_key_passphrase_attribute)
     values
       ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id)
     values
       ('vl______wvl13');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     username_attribute, password_attribute, domain_attribute)
     values
       ('vl______wvl14', 'my_username',      'my_password',       'my_domain');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     username_attribute, domain_attribute)
     values
       ('vl______wvl15', 'my_username',      'my_domain');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     password_attribute, domain_attribute)
     values
       ('vl______wvl16', 'my_password',      'my_domain');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     username_attribute, password_attribute)
     values
       ('vl______wvl17', 'my_username',      'my_password');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     username_attribute)
     values
       ('vl______wvl18', 'my_username');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     password_attribute)
     values
       ('vl______wvl19', 'my_password');
 
-    insert into credential_vault_library_username_password_domain_mapping_ovrd
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
       (library_id,     domain_attribute)
     values
       ('vl______wvl20', 'my_domain');

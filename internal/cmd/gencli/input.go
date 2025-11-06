@@ -357,6 +357,22 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update"},
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
+		{
+			ResourceType:         resource.CredentialLibrary.String(),
+			Pkg:                  "credentiallibraries",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "vault-ldap",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			NeedsSubtypeInCreate: true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
 	},
 	"credentials": {
 		{

@@ -321,10 +321,11 @@ scenario "e2e_aws_rdp_base" {
       client_username                          = step.create_windows_client.test_username
       client_password                          = step.create_windows_client.test_password
       client_test_dir                          = step.create_windows_client.test_dir
+      client_ssh_key                           = step.create_windows_client.ssh_private_key
+      client_version                           = matrix.client
       vault_addr_public                        = step.create_vault_cluster.instance_addresses[0]
       vault_addr_private                       = step.create_vault_cluster.instance_addresses_private[0]
       vault_root_token                         = step.create_vault_cluster.vault_root_token
-      client_version                           = matrix.client
     }
   }
 

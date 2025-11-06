@@ -264,6 +264,7 @@ begin;
     ('GET'),
     ('POST');
 
+  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
@@ -379,6 +380,7 @@ begin;
     ('expired'),
     ('unknown');
 
+  -- Updated in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_credential (
     public_id wt_public_id primary key,
     library_id wt_public_id

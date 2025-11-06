@@ -18,6 +18,7 @@ func init() {
 	globals.RegisterPrefixToResourceInfo(globals.VaultDynamicCredentialPrefix, resource.Credential, credential.Domain, Subtype)
 	globals.RegisterPrefixToResourceInfo(globals.VaultCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, GenericLibrarySubtype)
 	globals.RegisterPrefixToResourceInfo(globals.VaultSshCertificateCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, SSHCertificateLibrarySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultLdapCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, LdapCredentialLibrarySubtype)
 }
 
 // PublicId prefixes for the resources in the vault package.
@@ -25,6 +26,7 @@ const (
 	Subtype                      = globals.Subtype("vault")
 	GenericLibrarySubtype        = globals.Subtype("vault-generic")
 	SSHCertificateLibrarySubtype = globals.Subtype("vault-ssh-certificate")
+	LdapCredentialLibrarySubtype = globals.Subtype("vault-ldap")
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
@@ -55,6 +57,14 @@ func newSSHCertificateCredentialLibraryId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.VaultSshCertificateCredentialLibraryPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "vault.newSSHCertificateCredentialLibraryPrefix")
+	}
+	return id, nil
+}
+
+func newLdapCredentialLibraryId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.VaultLdapCredentialLibraryPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "vault.newLdapCredentialLibraryPrefix")
 	}
 	return id, nil
 }

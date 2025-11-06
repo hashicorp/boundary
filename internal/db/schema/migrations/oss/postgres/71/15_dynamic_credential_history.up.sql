@@ -37,6 +37,7 @@ begin;
     'delete_credential_library_history_subtype() is an after delete trigger '
     'function for subtypes of credential_library_history_base.';
 
+  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_hst (
     public_id wt_public_id not null,
     name wt_name,
