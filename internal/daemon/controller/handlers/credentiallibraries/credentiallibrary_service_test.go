@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -86,6 +87,25 @@ func sshCredentialLibraryToProto(credLib *vault.SSHCertificateCredentialLibrary,
 	}
 }
 
+func ldapCredentialLibraryToProto(credLib *vault.LdapCredentialLibrary, project *iam.Scope) *pb.CredentialLibrary {
+	return &pb.CredentialLibrary{
+		Id:                credLib.GetPublicId(),
+		CredentialStoreId: credLib.GetStoreId(),
+		CredentialType:    credLib.GetCredentialType(),
+		Scope:             &scopepb.ScopeInfo{Id: project.GetPublicId(), Type: scope.Project.String(), ParentScopeId: project.GetParentId()},
+		CreatedTime:       credLib.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       credLib.GetUpdateTime().GetTimestamp(),
+		Version:           credLib.GetVersion(),
+		Type:              vault.LdapCredentialLibrarySubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+			VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+				Path: wrapperspb.String(credLib.GetVaultPath()),
+			},
+		},
+	}
+}
+
 func TestList(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -114,6 +134,9 @@ func TestList(t *testing.T) {
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
 		wantLibraries = append(wantLibraries, sshCredentialLibraryToProto(l, prj))
 	}
+	for _, l := range vault.TestLdapCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
+		wantLibraries = append(wantLibraries, ldapCredentialLibraryToProto(l, prj))
+	}
 
 	cases := []struct {
 		name    string
@@ -131,7 +154,7 @@ func TestList(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 20,
+				EstItemCount: 30,
 			},
 			anonRes: &pbs.ListCredentialLibrariesResponse{
 				Items:        wantLibraries,
@@ -139,7 +162,7 @@ func TestList(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 20,
+				EstItemCount: 30,
 			},
 		},
 		{
@@ -264,15 +287,19 @@ func TestList_Attributes(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
-	ts := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
-	storeGeneric, storeSSHCertificate := ts[0], ts[1]
+	ts := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 3)
+	storeGeneric, storeSSHCertificate, storeLdap := ts[0], ts[1], ts[2]
 	var wantLibrariesGeneric []*pb.CredentialLibrary
 	var wantLibrariesSSHCertificate []*pb.CredentialLibrary
+	var wantLibrariesLdap []*pb.CredentialLibrary
 	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, storeGeneric.GetPublicId(), globals.UnspecifiedCredentialType, 5) {
 		wantLibrariesGeneric = append(wantLibrariesGeneric, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, storeSSHCertificate.GetPublicId(), 10) {
 		wantLibrariesSSHCertificate = append(wantLibrariesSSHCertificate, sshCredentialLibraryToProto(l, prj))
+	}
+	for _, l := range vault.TestLdapCredentialLibraries(t, conn, wrapper, storeLdap.GetPublicId(), 10) {
+		wantLibrariesLdap = append(wantLibrariesLdap, ldapCredentialLibraryToProto(l, prj))
 	}
 
 	cases := []struct {
@@ -305,6 +332,24 @@ func TestList_Attributes(t *testing.T) {
 			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeSSHCertificate.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesSSHCertificate[2].GetVaultSshCertificateCredentialLibraryAttributes().GetPath().Value)},
 			res: &pbs.ListCredentialLibrariesResponse{
 				Items:        wantLibrariesSSHCertificate[2:3],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			}, // anonymous user does not have access to attributes
+		},
+		{
+			name: "Filter on Attribute Ldap Library",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeLdap.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesLdap[2].GetVaultLdapCredentialLibraryAttributes().GetPath().Value)},
+			res: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibrariesLdap[2:3],
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
@@ -607,6 +652,51 @@ func TestCreate(t *testing.T) {
 					return ret
 				}(),
 			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "No Vault LDAP path",
+			req: &pbs.CreateCredentialLibraryRequest{
+				Item: &pb.CredentialLibrary{
+					CredentialStoreId: store.GetPublicId(),
+					Type:              vault.LdapCredentialLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String(""),
+						},
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid Vault LDAP credential type",
+			req: &pbs.CreateCredentialLibraryRequest{
+				Item: &pb.CredentialLibrary{
+					CredentialStoreId: store.GetPublicId(),
+					Type:              vault.LdapCredentialLibrarySubtype.String(),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("ldap/invalid/path"),
+						},
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid credential library type",
+			req: &pbs.CreateCredentialLibraryRequest{
+				Item: &pb.CredentialLibrary{
+					CredentialStoreId: store.GetPublicId(),
+					Type:              "bla-invalid",
+					CredentialType:    "bla-invalid",
+				},
+			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1211,6 +1301,40 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Create a valid Vault LDAP Credential library",
+			req: &pbs.CreateCredentialLibraryRequest{
+				Item: &pb.CredentialLibrary{
+					CredentialStoreId: store.GetPublicId(),
+					Type:              vault.LdapCredentialLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("ldap/creds/hi"),
+						},
+					},
+				},
+			},
+			idPrefix: globals.VaultLdapCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultLdapCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.LdapCredentialLibrarySubtype.String(),
+					CredentialType:    string(globals.UsernamePasswordDomainCredentialType),
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("ldap/creds/hi"),
+						},
+					},
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1335,6 +1459,13 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 	sshCertLib, err := repo.CreateSSHCertificateCredentialLibrary(context.Background(), prj.GetPublicId(), lib2)
 	require.NoError(t, err)
+
+	libLdap1, err := vault.NewLdapCredentialLibrary(store.GetPublicId(), "ldap/creds/test")
+	require.NoError(t, err)
+	require.NotNil(t, libLdap1)
+	libLdap1, err = repo.CreateLdapCredentialLibrary(t.Context(), prj.GetPublicId(), libLdap1)
+	require.NoError(t, err)
+	require.NotNil(t, libLdap1)
 
 	cases := []struct {
 		name string
@@ -1518,6 +1649,28 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
+			name: "success-ldap",
+			id:   libLdap1.GetPublicId(),
+			res: &pbs.GetCredentialLibraryResponse{
+				Item: &pb.CredentialLibrary{
+					Id:                libLdap1.GetPublicId(),
+					CredentialStoreId: libLdap1.GetStoreId(),
+					CredentialType:    libLdap1.GetCredentialType(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              vault.LdapCredentialLibrarySubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       libLdap1.CreateTime.GetTimestamp(),
+					UpdatedTime:       libLdap1.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String(libLdap1.GetVaultPath()),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "not found error",
 			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialLibraryPrefix),
 			err:  handlers.NotFoundError(),
@@ -1579,6 +1732,7 @@ func TestDelete(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 	vl2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	vl3 := vault.TestLdapCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 	s, err := NewService(ctx, iamRepoFn, repoFn, 1000)
 	require.NoError(t, err)
 	cases := []struct {
@@ -1594,6 +1748,10 @@ func TestDelete(t *testing.T) {
 		{
 			name: "success-ssh-cert",
 			id:   vl2.GetPublicId(),
+		},
+		{
+			name: "success-ldap",
+			id:   vl3.GetPublicId(),
 		},
 		{
 			name: "not found error",
@@ -3541,6 +3699,287 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	}
 }
 
+func TestUpdate_LdapCredentialLibrary(t *testing.T) {
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(testCtx, rw, rw, kms, sche)
+	}
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
+
+	s, err := NewService(testCtx, iamRepoFn, repoFn, 1000)
+	require.NoError(t, err)
+	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)
+	store := cs[0]
+
+	freshLibrary := func(opt ...vault.Option) (*vault.LdapCredentialLibrary, func()) {
+		repo, err := repoFn()
+		require.NoError(t, err)
+		lib, err := vault.NewLdapCredentialLibrary(store.GetPublicId(), "ldap/creds/foo", opt...)
+		require.NoError(t, err)
+
+		vl, err := repo.CreateLdapCredentialLibrary(ctx, prj.GetPublicId(), lib)
+		require.NoError(t, err)
+		clean := func() {
+			_, err := s.DeleteCredentialLibrary(ctx, &pbs.DeleteCredentialLibraryRequest{Id: vl.GetPublicId()})
+			require.NoError(t, err)
+		}
+		return vl, clean
+	}
+
+	tests := []struct {
+		name          string
+		req           *pbs.UpdateCredentialLibraryRequest
+		res           func(*pb.CredentialLibrary) *pb.CredentialLibrary
+		wantErr       bool
+		wantErrStatus int
+		wantErrStr    string
+	}{
+		{
+			name: "updateNonExistentField",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"doesntExist"}},
+				Item: &pb.CredentialLibrary{
+					Name: wrapperspb.String("updateNonExistentField_test"),
+				},
+			},
+			wantErr:       true,
+			wantErrStatus: runtime.HTTPStatusFromCode(codes.InvalidArgument),
+			wantErrStr:    "No valid fields included in the update mask.",
+		},
+		{
+			name: "updateImmutableField",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"storeId"}},
+				Item: &pb.CredentialLibrary{
+					CredentialStoreId: "immutable",
+				},
+			},
+			wantErr:       true,
+			wantErrStatus: runtime.HTTPStatusFromCode(codes.InvalidArgument),
+			wantErrStr:    "No valid fields included in the update mask.",
+		},
+		{
+			name: "updateValidFieldWithInvalidData",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"attributes.path"}},
+				Item: &pb.CredentialLibrary{
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("invalid_path"),
+						},
+					},
+				},
+			},
+			wantErr:    true,
+			wantErrStr: "vault_path_must_have_staticcred_or_creds constraint failed",
+		},
+		{
+			name: "updateImmutableCredentialTypeField",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"credentialType"}},
+				Item: &pb.CredentialLibrary{
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
+				},
+			},
+			wantErr:       true,
+			wantErrStatus: runtime.HTTPStatusFromCode(codes.InvalidArgument),
+			wantErrStr:    "Cannot modify credential type.",
+		},
+		{
+			name: "updateImmutableTypeField",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"type"}},
+				Item: &pb.CredentialLibrary{
+					Type: string(globals.SshCertificateCredentialType),
+				},
+			},
+			wantErr:       true,
+			wantErrStatus: runtime.HTTPStatusFromCode(codes.InvalidArgument),
+			wantErrStr:    "Cannot modify resource type.",
+		},
+		{
+			name: "unsetVaultPath",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"attributes.path"}},
+				Item: &pb.CredentialLibrary{
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String(""),
+						},
+					},
+				},
+			},
+			wantErr:       true,
+			wantErrStatus: runtime.HTTPStatusFromCode(codes.InvalidArgument),
+			wantErrStr:    "attributes.path\", desc: \"This is a required field and cannot be set to empty.",
+		},
+		{
+			name: "updateName",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name"}},
+				Item: &pb.CredentialLibrary{
+					Name: wrapperspb.String("updated_name"),
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.Name = wrapperspb.String("updated_name")
+				return cl
+			},
+		},
+		{
+			name: "updateDescription",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"description"}},
+				Item: &pb.CredentialLibrary{
+					Description: wrapperspb.String("updated_description"),
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.Description = wrapperspb.String("updated_description")
+				return cl
+			},
+		},
+		{
+			name: "updateValidVaultPath",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"attributes.path"}},
+				Item: &pb.CredentialLibrary{
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("ldap/static-cred/updated/path"),
+						},
+					},
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.GetVaultLdapCredentialLibraryAttributes().Path = wrapperspb.String("ldap/static-cred/updated/path")
+				return cl
+			},
+		},
+		{
+			name: "updateMultipleOneNonExistent",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "doesntExist"}},
+				Item: &pb.CredentialLibrary{
+					Name: wrapperspb.String("updated_name"),
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.Name = wrapperspb.String("updated_name")
+				return cl
+			},
+		},
+		{
+			name: "updateMultipleOneImmutable",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime.
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "credentialStoreId"}},
+				Item: &pb.CredentialLibrary{
+					Name:              wrapperspb.String("updated_name"),
+					CredentialStoreId: "immutable",
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.Name = wrapperspb.String("updated_name")
+				return cl
+			},
+		},
+		{
+			name: "updateMultiple",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				Id:         "", // Set at test runtime
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "attributes.path"}},
+				Item: &pb.CredentialLibrary{
+					Name: wrapperspb.String("updated_name"),
+					Attrs: &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+						VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+							Path: wrapperspb.String("ldap/creds/updated/path"),
+						},
+					},
+				},
+			},
+			res: func(cl *pb.CredentialLibrary) *pb.CredentialLibrary {
+				cl.Name = wrapperspb.String("updated_name")
+				cl.GetVaultLdapCredentialLibraryAttributes().Path = wrapperspb.String("ldap/creds/updated/path")
+				return cl
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			st, cleanup := freshLibrary()
+			defer cleanup()
+
+			if tc.req.Item.GetVersion() == 0 {
+				tc.req.Item.Version = 1
+			}
+			if tc.req.GetId() == "" {
+				tc.req.Id = st.GetPublicId()
+			}
+			resToChange, err := s.GetCredentialLibrary(ctx, &pbs.GetCredentialLibraryRequest{Id: st.GetPublicId()})
+			require.NoError(err)
+
+			got, gErr := s.UpdateCredentialLibrary(ctx, tc.req)
+			if tc.wantErr {
+				require.ErrorContains(gErr, tc.wantErrStr)
+
+				gApiErr, ok := gErr.(*handlers.ApiError)
+				if ok {
+					// We don't always return status.
+					require.NotNil(gApiErr)
+					require.EqualValues(tc.wantErrStatus, gApiErr.Status)
+				}
+				require.Nil(got)
+				return
+			}
+			require.NoError(gErr)
+			require.NotNil(got)
+
+			want := &pbs.UpdateCredentialLibraryResponse{Item: tc.res(resToChange.GetItem())}
+			gotUpdateTime := got.GetItem().GetUpdatedTime()
+			created := st.GetCreateTime().GetTimestamp()
+			assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+			want.Item.UpdatedTime = got.Item.UpdatedTime
+
+			assert.EqualValues(2, got.Item.Version)
+			want.Item.Version = 2
+
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
+		})
+	}
+}
+
 func TestListPagination(t *testing.T) {
 	// Set database read timeout to avoid duplicates in response
 	oldReadTimeout := globals.RefreshReadLookbackDuration
@@ -3588,6 +4027,9 @@ func TestListPagination(t *testing.T) {
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 5) {
 		allCredentialLibraries = append(allCredentialLibraries, sshCredentialLibraryToProto(l, prj))
+	}
+	for _, l := range vault.TestLdapCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 5) {
+		allCredentialLibraries = append(allCredentialLibraries, ldapCredentialLibraryToProto(l, prj))
 	}
 
 	// Reverse as we return items sorted by create_time desceding (newest first)
@@ -3642,7 +4084,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3667,7 +4109,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3679,10 +4121,10 @@ func TestListPagination(t *testing.T) {
 
 	// Request rest of results
 	req.ListToken = got.ListToken
-	req.PageSize = 10
+	req.PageSize = 15
 	got, err = s.ListCredentialLibraries(ctx, req)
 	require.NoError(err)
-	require.Len(got.GetItems(), 6)
+	require.Len(got.GetItems(), 11)
 	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
@@ -3693,7 +4135,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3718,14 +4160,14 @@ func TestListPagination(t *testing.T) {
 	// Update one of the other stores
 	allCredentialLibraries[1].Name = wrapperspb.String("new-name")
 	allCredentialLibraries[1].Version = 2
-	updatedLibrary := &vault.SSHCertificateCredentialLibrary{
-		SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+	updatedLibrary := &vault.LdapCredentialLibrary{
+		LdapCredentialLibrary: &store.LdapCredentialLibrary{
 			PublicId: allCredentialLibraries[1].GetId(),
 			StoreId:  allCredentialLibraries[1].GetCredentialStoreId(),
 			Name:     allCredentialLibraries[1].Name.Value,
 		},
 	}
-	cred, _, err := vaultRepo.UpdateSSHCertificateCredentialLibrary(ctx, prj.PublicId, updatedLibrary, 1, []string{"name"})
+	cred, _, err := vaultRepo.UpdateLdapCredentialLibrary(ctx, prj.PublicId, updatedLibrary, 1, []string{"name"})
 	require.NoError(err)
 	allCredentialLibraries[1].UpdatedTime = cred.UpdateTime.GetTimestamp()
 	allCredentialLibraries[1].Version = cred.Version
@@ -3759,7 +4201,7 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				// Should contain the deleted library
 				RemovedIds:   []string{deletedCredLib.Id},
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3784,7 +4226,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "updated_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3812,7 +4254,7 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				// Should be empty again
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -3835,7 +4277,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 10,
+				EstItemCount: 15,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b

@@ -5,7 +5,7 @@ begin;
   select plan(31);
 
   select has_table('recording_dynamic_credential');
-  select has_view('credential_vault_library_hst_aggregate', 'view for aggregate vault library history info does not exist');
+  select has_view('credential_vault_generic_library_hst_aggregate', 'view for aggregate vault generic library history info does not exist');
   select has_view('credential_vault_ssh_cert_library_hst_aggregate', 'view for aggregate vault ssh cert library history info does not exist');
 
   -- tests a fk column referencing a history table
@@ -55,7 +55,7 @@ begin;
 
   prepare select_recording_vault_libraries as
     select recording_id::text, public_id::text, store_public_id::text, purposes::text
-    from credential_vault_library_hst_aggregate
+    from credential_vault_generic_library_hst_aggregate
     where recording_id = 'sr1_____cora'
     order by public_id;
 

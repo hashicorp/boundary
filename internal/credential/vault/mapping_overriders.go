@@ -98,7 +98,7 @@ func (o *UsernamePasswordOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_username_password_mapping_override"
+	return "credential_vault_generic_library_username_password_mapping_ovrd"
 }
 
 // SetTableName sets the table name.
@@ -165,7 +165,7 @@ func (o *UsernamePasswordDomainOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_username_password_domain_mapping_ovrd"
+	return "credential_vault_generic_library_usern_pass_domain_mapping_ovrd"
 }
 
 // SetTableName sets the table name.
@@ -291,7 +291,7 @@ func (o *SshPrivateKeyOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_ssh_private_key_mapping_override"
+	return "credential_vault_generic_library_ssh_private_key_mapping_ovrd"
 }
 
 // SetTableName sets the table name.

@@ -71,6 +71,8 @@ const (
 	VaultSshCertificateCredentialLibraryPrefix = "clvsclt"
 	// DynamicCredentialPrefix is the prefix for Vault dynamic credentials
 	VaultDynamicCredentialPrefix = "cdvlt"
+	// VaultLdapCredentialLibraryPrefix is the prefix for Vault Ldap credential libraries
+	VaultLdapCredentialLibraryPrefix = "clvllt"
 
 	// UsernamePasswordCredentialPrefix is the prefix for username/password
 	// creds
@@ -242,6 +244,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 	VaultSshCertificateCredentialLibraryPrefix: {
+		Type:    resource.CredentialLibrary,
+		Subtype: UnknownSubtype,
+	},
+	VaultLdapCredentialLibraryPrefix: {
 		Type:    resource.CredentialLibrary,
 		Subtype: UnknownSubtype,
 	},

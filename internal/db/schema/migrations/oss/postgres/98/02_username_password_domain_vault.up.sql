@@ -3,6 +3,7 @@
 
 begin;
 
+  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_username_password_domain_mapping_ovrd (
     library_id wt_public_id primary key
       constraint credential_vault_library_fkey

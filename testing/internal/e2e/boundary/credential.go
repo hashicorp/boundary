@@ -368,6 +368,54 @@ func CreateStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client
 	return credentialId, nil
 }
 
+func CreateVaultLdapCredentialLibraryApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, vaultPath string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := credentiallibraries.NewClient(client).Create(ctx, "vault-ldap", credentialStoreId,
+		credentiallibraries.WithName(fmt.Sprintf("e2e vault credential library %s", name)),
+		credentiallibraries.WithVaultLdapCredentialLibraryPath(vaultPath),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return res.GetItem().Id, nil
+}
+
+func CreateVaultLdapCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-libraries", "create", "vault-ldap",
+			"-credential-store-id", credentialStoreId,
+			"-vault-path", vaultPath,
+			"-name", fmt.Sprintf("e2e vault credential library %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialLibraryResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialLibraryId := createCredentialLibraryResult.Item.Id
+	t.Logf("Created Vault LDAP Credential Library: %s", credentialLibraryId)
+	return credentialLibraryId, nil
+}
+
 // CreateStaticCredentialPasswordDomainApi uses the API to create a new username-password-domain credential in the
 // provided static credential store.
 // Returns the id of the new credential

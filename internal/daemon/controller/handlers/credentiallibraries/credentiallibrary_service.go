@@ -60,6 +60,7 @@ const (
 var (
 	maskManager        handlers.MaskManager
 	sshCertMaskManager handlers.MaskManager
+	ldapMaskManager    handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -105,6 +106,13 @@ func init() {
 		context.Background(),
 		handlers.MaskDestination{&store.SSHCertificateCredentialLibrary{}},
 		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultSSHCertificateCredentialLibraryAttributes{}},
+	); err != nil {
+		panic(err)
+	}
+	if ldapMaskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.LdapCredentialLibrary{}},
+		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultLdapCredentialLibraryAttributes{}},
 	); err != nil {
 		panic(err)
 	}
@@ -367,19 +375,27 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	var currentCredentialType globals.CredentialType
 	var mo vault.MappingOverride
 	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
-	case vault.SSHCertificateLibrarySubtype:
-		cur, err := repo.LookupSSHCertificateCredentialLibrary(ctx, req.Id)
-		if err != nil {
-			return nil, err
-		}
-		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
-	default:
+	case vault.GenericLibrarySubtype:
 		cur, err := repo.LookupCredentialLibrary(ctx, req.Id)
 		if err != nil {
 			return nil, err
 		}
 		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
 		mo = cur.MappingOverride
+	case vault.SSHCertificateLibrarySubtype:
+		cur, err := repo.LookupSSHCertificateCredentialLibrary(ctx, req.Id)
+		if err != nil {
+			return nil, err
+		}
+		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
+	case vault.LdapCredentialLibrarySubtype:
+		cur, err := repo.LookupLdapCredentialLibrary(ctx, req.GetId())
+		if err != nil {
+			return nil, err
+		}
+		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown vault credential library subtype")
 	}
 
 	if err := validateUpdateRequest(req, currentCredentialType); err != nil {
@@ -457,6 +473,15 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("ssh certificate credential library %q not found", id))
 		}
 		return cs, err
+	case vault.LdapCredentialLibrarySubtype:
+		cs, err := repo.LookupLdapCredentialLibrary(ctx, id)
+		if err != nil && !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if cs == nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("ldapcredential library %q not found", id))
+		}
+		return cs, err
 	}
 	return nil, errors.New(ctx, errors.InvalidParameter, op, "unrecognized credential library subtype")
 }
@@ -465,6 +490,23 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	const op = "credentiallibraries.(Service).createInRepo"
 	var out credential.Library
 	switch item.GetType() {
+	case vault.GenericLibrarySubtype.String():
+		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		rl, err := repo.CreateCredentialLibrary(ctx, scopeId, cl)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential library"))
+		}
+		if rl == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential library but no error returned from repository.")
+		}
+		out = rl
 	case vault.SSHCertificateLibrarySubtype.String():
 		cl, err := toStorageVaultSSHCertificateLibrary(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
@@ -482,8 +524,8 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create ssh certificate credential library but no error returned from repository.")
 		}
 		out = rl
-	default:
-		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+	case vault.LdapCredentialLibrarySubtype.String():
+		cl, err := toStorageVaultLdapLibrary(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -491,14 +533,16 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		rl, err := repo.CreateCredentialLibrary(ctx, scopeId, cl)
+		rl, err := repo.CreateLdapCredentialLibrary(ctx, scopeId, cl)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential library"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create ldap credential library"))
 		}
 		if rl == nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential library but no error returned from repository.")
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create ldap credential library but no error returned from repository.")
 		}
 		out = rl
+	default:
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unknown vault credential library subtype %q", item.GetType())
 	}
 	return out, nil
 }
@@ -535,6 +579,23 @@ func (s Service) updateInRepo(
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	switch globals.ResourceInfoFromPrefix(id).Subtype {
+	case vault.GenericLibrarySubtype:
+		dbMasks = append(dbMasks, maskManager.Translate(masks)...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cl.PublicId = id
+		out, rowsUpdated, err = repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
+		}
 	case vault.SSHCertificateLibrarySubtype:
 		dbMasks = append(dbMasks, sshCertMaskManager.Translate(masks)...)
 		if getMapUpdate(criticalOptionsField, masks) {
@@ -558,23 +619,25 @@ func (s Service) updateInRepo(
 		if rowsUpdated == 0 {
 			return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
 		}
-	default:
-		dbMasks = append(dbMasks, maskManager.Translate(masks)...)
+	case vault.LdapCredentialLibrarySubtype:
+		dbMasks = append(dbMasks, ldapMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 		}
-		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+		cl, err := toStorageVaultLdapLibrary(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		cl.PublicId = id
-		out, rowsUpdated, err = repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
+		out, rowsUpdated, err = repo.UpdateLdapCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
 		}
 		if rowsUpdated == 0 {
 			return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
 		}
+	default:
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unknown vault credential library subtype %q", globals.ResourceInfoFromPrefix(id).Subtype)
 	}
 	return out, nil
 }
@@ -587,10 +650,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows := 0
 	switch globals.ResourceInfoFromPrefix(id).Subtype {
+	case vault.GenericLibrarySubtype:
+		rows, err = repo.DeleteCredentialLibrary(ctx, scopeId, id)
 	case vault.SSHCertificateLibrarySubtype:
 		rows, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, scopeId, id)
+	case vault.LdapCredentialLibrarySubtype:
+		rows, err = repo.DeleteLdapCredentialLibrary(ctx, scopeId, id)
 	default:
-		rows, err = repo.DeleteCredentialLibrary(ctx, scopeId, id)
+		return false, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unknown vault credential library subtype %q", globals.ResourceInfoFromPrefix(id).Subtype)
 	}
 	if err != nil {
 		if errors.IsNotFoundError(err) {
@@ -632,6 +699,17 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 			parentId = cl.GetStoreId()
 		case vault.SSHCertificateLibrarySubtype:
 			cl, err := repo.LookupSSHCertificateCredentialLibrary(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cl == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cl.GetStoreId()
+		case vault.LdapCredentialLibrarySubtype:
+			cl, err := repo.LookupLdapCredentialLibrary(ctx, id)
 			if err != nil {
 				res.Error = err
 				return res
@@ -860,7 +938,21 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 				VaultSshCertificateCredentialLibraryAttributes: attrs,
 			}
 		}
-
+	case vault.LdapCredentialLibrarySubtype:
+		vaultIn, ok := in.(*vault.LdapCredentialLibrary)
+		if !ok {
+			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault ldap credential library")
+		}
+		if outputFields.Has(globals.CredentialTypeField) {
+			out.CredentialType = vaultIn.GetCredentialType()
+		}
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.CredentialLibrary_VaultLdapCredentialLibraryAttributes{
+				VaultLdapCredentialLibraryAttributes: &pb.VaultLdapCredentialLibraryAttributes{
+					Path: wrapperspb.String(vaultIn.GetVaultPath()),
+				},
+			}
+		}
 	}
 	return &out, nil
 }
@@ -1009,20 +1101,33 @@ func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in
 	return cs, err
 }
 
+func toStorageVaultLdapLibrary(ctx context.Context, storeId string, in *pb.CredentialLibrary) (*vault.LdapCredentialLibrary, error) {
+	const op = "credentiallibraries.toStorageVaultLdapLibrary"
+
+	var opts []vault.Option
+	if in.GetName() != nil {
+		opts = append(opts, vault.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetVaultLdapCredentialLibraryAttributes()
+	cs, err := vault.NewLdapCredentialLibrary(storeId, attrs.GetPath().GetValue(), opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential library"))
+	}
+
+	return cs, nil
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
-	prefix := ""
-	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
-	case vault.SSHCertificateLibrarySubtype:
-		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
-	default:
-		prefix = globals.VaultCredentialLibraryPrefix
-	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, prefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix, globals.VaultLdapCredentialLibraryPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
@@ -1065,8 +1170,9 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 			}
 
 			if t != vault.GenericLibrarySubtype.String() &&
-				t != vault.SSHCertificateLibrarySubtype.String() {
-				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q or %q", vault.GenericLibrarySubtype.String(), vault.SSHCertificateLibrarySubtype.String())
+				t != vault.SSHCertificateLibrarySubtype.String() &&
+				t != vault.LdapCredentialLibrarySubtype.String() {
+				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q, %q or %q", vault.GenericLibrarySubtype.String(), vault.SSHCertificateLibrarySubtype.String(), vault.LdapCredentialLibrarySubtype.String())
 			}
 
 			switch req.GetItem().GetType() {
@@ -1128,6 +1234,17 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
 				}
 				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
+			case vault.LdapCredentialLibrarySubtype.String():
+				if req.GetItem().GetCredentialType() != "" {
+					badFields[globals.CredentialTypeField] = "This field is read only and cannot be set."
+				}
+				attrs := req.GetItem().GetVaultLdapCredentialLibraryAttributes()
+				if attrs == nil {
+					badFields[attributesPathField] = "This is a required field."
+				}
+				if attrs.GetPath().GetValue() == "" {
+					badFields[vaultPathField] = "This is a required field."
+				}
 			}
 		default:
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
@@ -1137,17 +1254,9 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType globals.CredentialType) error {
-	prefix := ""
-	st := globals.ResourceInfoFromPrefix(req.GetId()).Subtype
-	switch st {
-	case vault.GenericLibrarySubtype:
-		prefix = globals.VaultCredentialLibraryPrefix
-	case vault.SSHCertificateLibrarySubtype:
-		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
-	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch st {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case vault.GenericLibrarySubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.GenericLibrarySubtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
@@ -1192,13 +1301,27 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				}
 				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
 			}
+		case vault.LdapCredentialLibrarySubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.LdapCredentialLibrarySubtype.String() {
+				badFields[globals.TypeField] = "Cannot modify resource type."
+			}
+			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
+				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
+			}
+
+			attrs := req.GetItem().GetVaultLdapCredentialLibraryAttributes()
+			if attrs != nil {
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
+					badFields[vaultPathField] = "This is a required field and cannot be set to empty."
+				}
+			}
 		}
 		return badFields
-	}, prefix)
+	}, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix, globals.VaultLdapCredentialLibraryPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix, globals.VaultLdapCredentialLibraryPrefix)
 }
 
 func validateListRequest(ctx context.Context, req *pbs.ListCredentialLibrariesRequest) error {

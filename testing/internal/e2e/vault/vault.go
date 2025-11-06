@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -23,36 +25,142 @@ type CreateTokenResponse struct {
 	}
 }
 
-// Setup verifies if appropriate credentials are set and adds the boundary controller
-// policy to vault. Returns the vault address.
-func Setup(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName string, kvPolicyFilePath string) {
+// SetupForBoundaryController verifies if appropriate credentials are set and
+// adds the boundary controller policy to vault. Returns the policy name.
+func SetupForBoundaryController(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName string) {
 	// Set up boundary policy
 	boundaryPolicyFilePath, err := filepath.Abs(boundaryControllerFilePath)
 	require.NoError(t, err)
-	boundaryPolicyName = WritePolicy(t, context.Background(), boundaryPolicyFilePath)
+	boundaryPolicyName = WritePolicy(t, t.Context(), boundaryPolicyFilePath)
 
-	// Create kv policy
-	kvPolicyFilePath = fmt.Sprintf("%s/%s", t.TempDir(), "kv-policy.hcl")
-	_, err = os.Create(kvPolicyFilePath)
-	require.NoError(t, err)
-
-	return boundaryPolicyName, kvPolicyFilePath
+	return boundaryPolicyName
 }
 
-// CreateKvPrivateKeyCredential creates a private key credential in vault and creates a vault policy
-// to be able to read that credential. Returns the name of the policy.
-func CreateKvPrivateKeyCredential(t testing.TB, secretPath string, user string, keyPath string, kvPolicyFilePath string) string {
+// SetupLdap sets a Vault server up for LDAP against an OpenLDAP server. It
+// enables the LDAP secrets engine, configures it and creates a static user
+// according to what is in OpenLDAP. Additionally, it sets up Vault's ability to
+// manage LDAP users dynamically. Note that this function does not put any
+// clean-up in place to run after a test is complete. When applicable, callers
+// should destroy the Vault LDAP policy and LDAP secrets engine this function
+// creates.
+func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdminPw, ldapDn, ldapUser, ldapGroup string) string {
+	// Enable LDAP secrets engine.
+	output := e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs("secrets", "enable", fmt.Sprintf("-path=%s", vaultLdapMountPath), "ldap"),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Define and write LDAP access policy to Vault.
+	vaultLdapPolicyFilePath := path.Join(t.TempDir(), "ldap-policy.hcl")
+	f, err := os.Create(vaultLdapPolicyFilePath)
+	require.NoError(t, err)
+
+	_, err = fmt.Fprintf(f, `
+		path "%[1]s/static-cred/%[2]s" {
+			capabilities = ["read"]
+		}
+		path "%[1]s/static-role/%[2]s" {
+			capabilities = ["create", "read", "update", "patch", "delete", "list"]
+		}
+
+		path "%[1]s/creds/%[3]s" {
+			capabilities = ["read"]
+		}
+		path "%[1]s/role/%[3]s" {
+			capabilities = ["create", "read", "update", "patch", "delete", "list"]
+		}
+	`, vaultLdapMountPath, ldapUser, ldapGroup)
+	require.NoError(t, err)
+	require.NoError(t, f.Sync())
+	_ = f.Close()
+
+	policyName := WritePolicy(t, t.Context(), vaultLdapPolicyFilePath)
+
+	// Configure LDAP secrets engine to point to existing OpenLDAP server.
+	output = e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs(
+			"write",
+			fmt.Sprintf("%s/config", vaultLdapMountPath),
+			fmt.Sprintf("url=%s", ldapAddr),
+			fmt.Sprintf("binddn=%s", ldapAdminDn),
+			fmt.Sprintf("bindpass=%s", ldapAdminPw),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Create static LDAP user in Vault (already defined in OpenLDAP server).
+	output = e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs(
+			"write",
+			fmt.Sprintf("%s/static-role/%s", vaultLdapMountPath, ldapUser),
+			fmt.Sprintf("dn=cn=%s,%s", ldapUser, ldapDn),
+			fmt.Sprintf("username=%s", ldapUser),
+			"rotation_period=24h",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Create Vault dynamic role for LDAP group.
+	createLdif := fmt.Sprintf(`
+		dn: cn={{.Username}},%[1]s
+		changetype: add
+		objectClass: inetOrgPerson
+		cn: {{.Username}}
+		sn: {{.Username}}
+		uid: {{.Username}}
+		userPassword:{{.Password}}
+
+		dn: cn=%s,%[1]s
+		changetype: modify
+		add: uniqueMember
+		uniqueMember: cn={{.Username}},%[1]s
+		-
+	`, ldapDn, ldapGroup)
+	createLdif = strings.ReplaceAll(createLdif, "\t", "")
+
+	deleteLdif := fmt.Sprintf(`
+		dn: cn={{.Username}},%s
+		changetype: delete
+	`, ldapDn)
+	deleteLdif = strings.ReplaceAll(deleteLdif, "\t", "")
+
+	output = e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs(
+			"write",
+			fmt.Sprintf("%s/role/%s", vaultLdapMountPath, ldapGroup),
+			"username_template=b_{{.DisplayName}}_{{.RoleName}}_{{random 10}}_{{unix_time}}",
+			fmt.Sprintf("creation_ldif=%s", createLdif),
+			fmt.Sprintf("rollback_ldif=%s", deleteLdif),
+			fmt.Sprintf("deletion_ldif=%s", deleteLdif),
+			"default_ttl=1h",
+			"max_ttxl=24h",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	return policyName
+}
+
+// CreateKvPrivateKeyCredential creates a private key credential in vault and
+// creates a vault policy to be able to read that credential. Returns the secret
+// and policy names. Note that this function does not put any clean-up in place
+// to run after a test is complete. When applicable, callers should destroy the
+// policy and secret this function creates.
+func CreateKvPrivateKeyCredential(t testing.TB, secretPath string, user string, keyPath string) (secretName string, policyName string) {
 	secretName, err := base62.Random(16)
 	require.NoError(t, err)
 
-	// Update policy file
-	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	policyFilePath := path.Join(t.TempDir(), fmt.Sprintf("kv-pk-%s-policy.hcl", secretName))
+	f, err := os.Create(policyFilePath)
 	require.NoError(t, err)
-	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
+
+	_, err = fmt.Fprintf(f, "path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
 		secretPath,
 		secretName,
-	))
+	)
 	require.NoError(t, err)
+
+	policyName = WritePolicy(t, t.Context(), policyFilePath)
 
 	// Create secret
 	output := e2e.RunCommand(context.Background(), "vault",
@@ -66,23 +174,30 @@ func CreateKvPrivateKeyCredential(t testing.TB, secretPath string, user string, 
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	return secretName
+	return secretName, policyName
 }
 
-// CreateKvPasswordCredential creates a username/password credential in vault and creates a vault
-// policy to be able to read that credential. Returns the name of the policy
-func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kvPolicyFilePath string) (secretName string, password string) {
+// CreateKvPasswordCredential creates a username/password credential in vault
+// and creates a vault policy to be able to read that credential. Returns the
+// secret and policy names as well as the password for the secret. Note that
+// this function does not put any clean-up in place to run after a test is
+// complete. When applicable, callers should destroy the policy and secret this
+// function creates.
+func CreateKvPasswordCredential(t testing.TB, secretPath string, user string) (secretName string, policyName string, password string) {
 	secretName, err := base62.Random(16)
 	require.NoError(t, err)
 
-	// Update policy file
-	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	policyFilePath := path.Join(t.TempDir(), fmt.Sprintf("kv-up-%s-policy.hcl", secretName))
+	f, err := os.Create(policyFilePath)
 	require.NoError(t, err)
-	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
+
+	_, err = fmt.Fprintf(f, "path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
 		secretPath,
 		secretName,
-	))
+	)
 	require.NoError(t, err)
+
+	policyName = WritePolicy(t, t.Context(), policyFilePath)
 
 	// Create secret
 	password, err = base62.Random(16)
@@ -98,23 +213,29 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kv
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	return secretName, password
+	return secretName, policyName, password
 }
 
-// CreateKvPasswordDomainCredential creates a username/password/domain credential in vault and creates a vault
-// policy to be able to read that credential. Returns the name of the policy
-func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user string, domain string, kvPolicyFilePath string) (secretName string, password string) {
+// CreateKvPasswordDomainCredential creates a username/password/domain
+// credential in vault and creates a vault policy to be able to read that
+// credential. Returns the name of the policy. Note that this function does not
+// put any clean-up in place to run after a test is complete. When applicable,
+// callers should destroy the policy and secret this function creates.
+func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user string, domain string) (secretName string, policyName string, password string) {
 	secretName, err := base62.Random(16)
 	require.NoError(t, err)
 
-	// Update policy file
-	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	policyFilePath := path.Join(t.TempDir(), fmt.Sprintf("kv-upd-%s-policy.hcl", secretName))
+	f, err := os.Create(policyFilePath)
 	require.NoError(t, err)
-	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
+
+	_, err = fmt.Fprintf(f, "path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
 		secretPath,
 		secretName,
-	))
+	)
 	require.NoError(t, err)
+
+	policyName = WritePolicy(t, t.Context(), policyFilePath)
 
 	// Create secret
 	password, err = base62.Random(16)
@@ -131,7 +252,7 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	return secretName, password
+	return secretName, policyName, password
 }
 
 // WritePolicy adds a policy to vault. Provide a name for the policy that you want to create as well
