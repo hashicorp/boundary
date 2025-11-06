@@ -325,7 +325,7 @@ resource "archive_file" "boundary_src_zip" {
   type        = "zip"
   source_dir  = var.boundary_src_path
   output_path = "${path.root}/.terraform/tmp/boundary-src.zip"
-  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**"]
+  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**", "**/ui/.tmp/**"]
 }
 
 resource "enos_local_exec" "add_boundary_src" {
