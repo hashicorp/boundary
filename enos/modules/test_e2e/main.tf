@@ -226,7 +226,11 @@ variable "client_test_dir" {
   type        = string
   default     = ""
 }
-
+variable "client_ssh_key" {
+  description = "Path to the ssh key for the windows client"
+  type        = string
+  default     = ""
+}
 variable "ip_version" {
   description = "ip version used to setup boundary instance, should be 4, 6, or dual"
   type        = string
@@ -291,6 +295,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_CLIENT_PASSWORD                          = var.client_password
     E2E_CLIENT_TEST_DIR                          = var.client_test_dir
     E2E_CLIENT_VERSION                           = var.client_version
+    E2E_CLIENT_SSH_KEY                           = var.client_ssh_key
   }
 
   inline = var.debug_no_run ? [""] : [
