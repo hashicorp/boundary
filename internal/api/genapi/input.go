@@ -642,6 +642,22 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentiallibraries.VaultLdapCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_ldap_credential_library_attributes.gen.go",
+		subtypeName: "VaultLdapCredentialLibrary",
+		subtype:     "vault-ldap",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentiallibraries.CredentialLibrary{},
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{

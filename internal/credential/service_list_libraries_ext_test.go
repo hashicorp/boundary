@@ -48,8 +48,10 @@ func TestLibraryService_List(t *testing.T) {
 		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0],
+		vault.TestLdapCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
+		vault.TestLdapCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 	}
 
 	// since we sort by create time descending, we need to reverse the slice
@@ -66,7 +68,9 @@ func TestLibraryService_List(t *testing.T) {
 		cmpopts.IgnoreUnexported(
 			vault.CredentialLibrary{},
 			vault.SSHCertificateCredentialLibrary{},
+			vault.LdapCredentialLibrary{},
 			store.SSHCertificateCredentialLibrary{},
+			store.LdapCredentialLibrary{},
 			store.CredentialLibrary{},
 			timestamp.Timestamp{},
 			timestamppb.Timestamp{},
@@ -385,7 +389,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 5)
+		require.Equal(t, resp.EstimatedItemCount, 7)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], libs[0], cmpOpts...))
@@ -394,7 +398,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 5)
+		require.Equal(t, resp2.EstimatedItemCount, 7)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], libs[1], cmpOpts...))
@@ -403,7 +407,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 5)
+		require.Equal(t, resp3.EstimatedItemCount, 7)
 		require.Empty(t, resp3.DeletedIds)
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], libs[2], cmpOpts...))
@@ -412,7 +416,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
-		require.Equal(t, resp4.EstimatedItemCount, 5)
+		require.Equal(t, resp4.EstimatedItemCount, 7)
 		require.Empty(t, resp4.DeletedIds)
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], libs[3], cmpOpts...))
@@ -420,21 +424,39 @@ func TestLibraryService_List(t *testing.T) {
 		resp5, err := credential.ListLibrariesPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp5.CompleteListing)
-		require.Equal(t, resp5.EstimatedItemCount, 5)
+		require.False(t, resp5.CompleteListing)
+		require.Equal(t, resp5.EstimatedItemCount, 7)
 		require.Empty(t, resp5.DeletedIds)
 		require.Len(t, resp5.Items, 1)
 		require.Empty(t, cmp.Diff(resp5.Items[0], libs[4], cmpOpts...))
 
-		// Finished initial pagination phase, request refresh
-		// Expect no results.
-		resp6, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, credStore.GetPublicId())
+		resp6, err := credential.ListLibrariesPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp6.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp6.CompleteListing)
-		require.Equal(t, resp6.EstimatedItemCount, 5)
+		require.False(t, resp6.CompleteListing)
+		require.Equal(t, resp6.EstimatedItemCount, 7)
 		require.Empty(t, resp6.DeletedIds)
-		require.Empty(t, resp6.Items)
+		require.Len(t, resp6.Items, 1)
+		require.Empty(t, cmp.Diff(resp6.Items[0], libs[5], cmpOpts...))
+
+		resp7, err := credential.ListLibrariesPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, credStore.GetPublicId())
+		require.NoError(t, err)
+		require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp7.CompleteListing)
+		require.Equal(t, resp7.EstimatedItemCount, 7)
+		require.Empty(t, resp7.DeletedIds)
+		require.Len(t, resp7.Items, 1)
+		require.Empty(t, cmp.Diff(resp7.Items[0], libs[6], cmpOpts...))
+
+		// Finished initial pagination phase, request refresh
+		// Expect no results.
+		resp8, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, credStore.GetPublicId())
+		require.NoError(t, err)
+		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp8.CompleteListing)
+		require.Equal(t, resp8.EstimatedItemCount, 7)
+		require.Empty(t, resp8.DeletedIds)
+		require.Empty(t, resp8.Items)
 
 		// Create some new libraries
 		newLib1 := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
@@ -453,33 +475,33 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 
 		// Refresh again, should get newLib2
-		resp7, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
-		require.NoError(t, err)
-		require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
-		require.False(t, resp7.CompleteListing)
-		require.Equal(t, resp7.EstimatedItemCount, 7)
-		require.Empty(t, resp7.DeletedIds)
-		require.Len(t, resp7.Items, 1)
-		require.Empty(t, cmp.Diff(resp7.Items[0], newLib2, cmpOpts...))
-
-		// Refresh again, should get newLib1
-		resp8, err := credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, credStore.GetPublicId())
-		require.NoError(t, err)
-		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp8.CompleteListing)
-		require.Equal(t, resp8.EstimatedItemCount, 7)
-		require.Empty(t, resp8.DeletedIds)
-		require.Len(t, resp8.Items, 1)
-		require.Empty(t, cmp.Diff(resp8.Items[0], newLib1, cmpOpts...))
-
-		// Refresh again, should get no results
-		resp9, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, credStore.GetPublicId())
+		resp9, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp9.CompleteListing)
-		require.Equal(t, resp9.EstimatedItemCount, 7)
+		require.False(t, resp9.CompleteListing)
+		require.Equal(t, resp9.EstimatedItemCount, 9)
 		require.Empty(t, resp9.DeletedIds)
-		require.Empty(t, resp9.Items)
+		require.Len(t, resp9.Items, 1)
+		require.Empty(t, cmp.Diff(resp9.Items[0], newLib2, cmpOpts...))
+
+		// Refresh again, should get newLib1
+		resp10, err := credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, credStore.GetPublicId())
+		require.NoError(t, err)
+		require.Equal(t, resp10.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp10.CompleteListing)
+		require.Equal(t, resp10.EstimatedItemCount, 9)
+		require.Empty(t, resp10.DeletedIds)
+		require.Len(t, resp10.Items, 1)
+		require.Empty(t, cmp.Diff(resp10.Items[0], newLib1, cmpOpts...))
+
+		// Refresh again, should get no results
+		resp11, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, credStore.GetPublicId())
+		require.NoError(t, err)
+		require.Equal(t, resp11.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp11.CompleteListing)
+		require.Equal(t, resp11.EstimatedItemCount, 9)
+		require.Empty(t, resp11.DeletedIds)
+		require.Empty(t, resp11.Items)
 	})
 
 	t.Run("simple pagination with aggressive filtering", func(t *testing.T) {
@@ -492,7 +514,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 5)
+		require.Equal(t, resp.EstimatedItemCount, 7)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], libs[1], cmpOpts...))
@@ -502,7 +524,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NotNil(t, resp2.ListToken)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 5)
+		require.Equal(t, resp2.EstimatedItemCount, 7)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], libs[len(libs)-1], cmpOpts...))
@@ -512,7 +534,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 5)
+		require.Equal(t, resp3.EstimatedItemCount, 7)
 		require.Empty(t, resp3.DeletedIds)
 		require.Empty(t, resp3.Items)
 
@@ -545,7 +567,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
-		require.Equal(t, resp4.EstimatedItemCount, 9)
+		require.Equal(t, resp4.EstimatedItemCount, 11)
 		require.Empty(t, resp4.DeletedIds)
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], newLibs2[0], cmpOpts...))
@@ -555,7 +577,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
-		require.Equal(t, resp5.EstimatedItemCount, 9)
+		require.Equal(t, resp5.EstimatedItemCount, 11)
 		require.Empty(t, resp5.DeletedIds)
 		require.Len(t, resp5.Items, 1)
 		require.Empty(t, cmp.Diff(resp5.Items[0], newLibs1[0], cmpOpts...))
@@ -566,7 +588,7 @@ func TestLibraryService_List(t *testing.T) {
 			return true, nil
 		}
 		deletedCredentialLibraryId := libs[0].GetPublicId()
-		_, err := repo.DeleteSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), deletedCredentialLibraryId)
+		_, err := repo.DeleteLdapCredentialLibrary(ctx, prj.GetPublicId(), deletedCredentialLibraryId)
 		require.NoError(t, err)
 		libs = libs[1:]
 
@@ -579,19 +601,19 @@ func TestLibraryService_List(t *testing.T) {
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 4)
+		require.Equal(t, resp.EstimatedItemCount, 6)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], libs[0], cmpOpts...))
 
 		// request remaining results
-		resp2, err := credential.ListLibrariesPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo, credStore.GetPublicId())
+		resp2, err := credential.ListLibrariesPage(ctx, []byte("some hash"), 5, filterFunc, resp.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 4)
+		require.Equal(t, resp2.EstimatedItemCount, 6)
 		require.Empty(t, resp2.DeletedIds)
-		require.Len(t, resp2.Items, 3)
+		require.Len(t, resp2.Items, 5)
 		require.Empty(t, cmp.Diff(resp2.Items, libs[1:], cmpOpts...))
 
 		deletedCredentialLibraryId = libs[0].GetPublicId()
@@ -608,7 +630,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 3)
+		require.Equal(t, resp3.EstimatedItemCount, 5)
 		require.Contains(t, resp3.DeletedIds, deletedCredentialLibraryId)
 		require.Empty(t, resp3.Items)
 	})
