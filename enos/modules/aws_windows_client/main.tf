@@ -350,6 +350,7 @@ resource "local_file" "powershell_script" {
     boundary_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
     go_version            = "${enos_local_exec.get_go_version.stdout}"
     github_token          = "${var.github_token}"
+    vault_version         = "${var.vault_version}"
   })
   filename = "${path.root}/.terraform/tmp/setup_windows_client.ps1"
 }
