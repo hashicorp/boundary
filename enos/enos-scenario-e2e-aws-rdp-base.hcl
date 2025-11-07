@@ -309,6 +309,7 @@ scenario "e2e_aws_rdp_base" {
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
       target_rdp_domain_controller_addr        = step.create_rdp_domain_controller.private_ip
+      target_rdp_domain_controller_addr_ipv6   = step.create_rdp_domain_controller.ipv6[0]
       target_rdp_domain_controller_user        = step.create_rdp_domain_controller.admin_username
       target_rdp_domain_controller_password    = step.create_rdp_domain_controller.password
       target_rdp_member_server_addr            = step.create_rdp_member_server.private_ip
