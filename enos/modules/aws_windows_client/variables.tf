@@ -59,3 +59,9 @@ variable "github_token" {
   type        = string
   default     = ""
 }
+
+variable "vault_version" {
+  description = "Version of Vault to install on client"
+  type        = string
+  default     = ""
+}
