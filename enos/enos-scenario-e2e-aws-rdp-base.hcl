@@ -115,6 +115,7 @@ scenario "e2e_aws_rdp_base" {
       boundary_src_path     = local.local_boundary_src_dir
       github_token          = var.github_token
       ip_version            = local.ip_version
+      vault_version         = var.vault_version
     }
   }
 
@@ -321,10 +322,10 @@ scenario "e2e_aws_rdp_base" {
       client_password                          = step.create_windows_client.test_password
       client_test_dir                          = step.create_windows_client.test_dir
       client_ssh_key                           = step.create_windows_client.ssh_private_key
-      vault_addr_public                        = step.create_vault_cluster.instance_public_ips_ipv4[0]
-      vault_addr_private                       = step.create_vault_cluster.instance_private_ips[0]
-      vault_root_token                         = step.create_vault_cluster.vault_root_token
       client_version                           = matrix.client
+      vault_addr_public                        = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_private                       = step.create_vault_cluster.instance_addresses_private[0]
+      vault_root_token                         = step.create_vault_cluster.vault_root_token
     }
   }
 
