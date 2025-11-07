@@ -73,7 +73,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath,
+	ldapPolicyName, err := vault.SetupLdapWithOpenLdap(t, c.VaultLdapPath,
 		c.LdapAddress, c.LdapAdminDn, c.LdapAdminPassword,
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)
@@ -89,6 +89,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
+	require.NoError(t, err)
 
 	// Create Vault token for Boundary.
 	output := e2e.RunCommand(t.Context(), "vault",
@@ -243,7 +244,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	ldapPolicyName := vault.SetupLdap(t, c.VaultLdapPath,
+	ldapPolicyName, err := vault.SetupLdapWithOpenLdap(t, c.VaultLdapPath,
 		c.LdapAddress, c.LdapAdminDn, c.LdapAdminPassword,
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)
@@ -259,6 +260,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
+	require.NoError(t, err)
 
 	// Create Vault token for Boundary.
 	output := e2e.RunCommand(t.Context(), "vault",
