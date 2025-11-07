@@ -325,7 +325,7 @@ resource "archive_file" "boundary_src_zip" {
   type        = "zip"
   source_dir  = var.boundary_src_path
   output_path = "${path.root}/.terraform/tmp/boundary-src.zip"
-  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**"]
+  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**", "**/ui/.tmp/**"]
 }
 
 resource "enos_local_exec" "add_boundary_src" {
@@ -375,7 +375,9 @@ resource "enos_local_exec" "run_powershell_script" {
     enos_local_exec.wait_for_ssh,
   ]
 
-  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.client.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
+  # running this script as test_username so that go modules will be set up for
+  # the user used for RDP tests
+  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.test_username}@${aws_instance.client.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
 }
 
 # used for debug
