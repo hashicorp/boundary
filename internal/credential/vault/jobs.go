@@ -169,6 +169,12 @@ func (r *TokenRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	return nil
 }
 
+func isForbiddenError(err error) bool {
+	var respErr *vault.ResponseError
+	ok := errors.As(err, &respErr)
+	return ok && respErr.StatusCode == http.StatusForbidden
+}
+
 func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error {
 	const op = "vault.(TokenRenewalJob).renewToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
@@ -190,12 +196,11 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		return errors.Wrap(ctx, err, op)
 	}
 
-	var respErr *vault.ResponseError
 	renewedToken, err := vc.renewToken(ctx)
-	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
-		// Vault returned a 403 when attempting a renew self, the token is either expired
-		// or malformed.  Set status to "expired" so credentials created with token can be
-		// cleaned up.
+	if err != nil {
+		if isForbiddenError(err) ||
+			time.Now().After(token.ExpirationTime.AsTime()) {
+		}
 		query, values := token.updateStatusQuery(ExpiredToken)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
@@ -213,7 +218,6 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 		}
-
 		return nil
 	}
 	if err != nil {
