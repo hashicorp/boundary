@@ -6,6 +6,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -36,24 +37,99 @@ func SetupForBoundaryController(t testing.TB, boundaryControllerFilePath string)
 	return boundaryPolicyName
 }
 
-// SetupLdap sets a Vault server up for LDAP against an OpenLDAP server. It
+// SetupLdapWithAd sets a Vault server up for LDAP against an Active Directory server. It
 // enables the LDAP secrets engine, configures it and creates a static user
-// according to what is in OpenLDAP. Additionally, it sets up Vault's ability to
-// manage LDAP users dynamically. Note that this function does not put any
+// according to what is in Active Directory. Note that this function does not put any
 // clean-up in place to run after a test is complete. When applicable, callers
-// should destroy the Vault LDAP policy and LDAP secrets engine this function
-// creates.
-func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdminPw, ldapDn, ldapUser, ldapGroup string) string {
+// should destroy the Vault LDAP policy this function creates.
+func SetupLdapWithAd(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdmin, ldapAdminPw, ldapUser, ldapDn string) (string, error) {
 	// Enable LDAP secrets engine.
 	output := e2e.RunCommand(t.Context(), "vault",
 		e2e.WithArgs("secrets", "enable", fmt.Sprintf("-path=%s", vaultLdapMountPath), "ldap"),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
 
 	// Define and write LDAP access policy to Vault.
 	vaultLdapPolicyFilePath := path.Join(t.TempDir(), "ldap-policy.hcl")
 	f, err := os.Create(vaultLdapPolicyFilePath)
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
+	_, err = fmt.Fprintf(f, `
+		path "%[1]s/static-cred/%[2]s" {
+			capabilities = ["read"]
+		}
+		path "%[1]s/static-role/%[2]s" {
+			capabilities = ["create", "read", "update", "patch", "delete", "list"]
+		}
+	`, vaultLdapMountPath, ldapUser)
+	if err != nil {
+		return "", err
+	}
+	err = f.Sync()
+	if err != nil {
+		return "", err
+	}
+	_ = f.Close()
+
+	policyName := WritePolicy(t, t.Context(), vaultLdapPolicyFilePath)
+
+	// Configure LDAP secrets engine to point to AD service.
+	output = e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs(
+			"write",
+			fmt.Sprintf("%s/config", vaultLdapMountPath),
+			fmt.Sprintf("url=%s", ldapAddr),
+			fmt.Sprintf("binddn=cn=%s,%s", ldapAdmin, ldapDn),
+			fmt.Sprintf("bindpass=%s", ldapAdminPw),
+			"schema=ad",
+			"insecure_tls=true",
+		),
+	)
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
+
+	// Create static LDAP user in Vault (already defined in AD server).
+	output = e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs(
+			"write",
+			fmt.Sprintf("%s/static-role/%s", vaultLdapMountPath, ldapUser),
+			fmt.Sprintf("dn=cn=%s,%s", ldapUser, ldapDn),
+			fmt.Sprintf("username=%s", ldapUser),
+			"rotation_period=24h",
+		),
+	)
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
+
+	return policyName, nil
+}
+
+// SetupLdapWithOpenLdap sets a Vault server up for LDAP against an OpenLDAP server. It
+// enables the LDAP secrets engine, configures it and creates a static user
+// according to what is in OpenLDAP. Additionally, it sets up Vault's ability to
+// manage LDAP users dynamically. Note that this function does not put any
+// clean-up in place to run after a test is complete. When applicable, callers
+// should destroy the Vault LDAP policy this function creates.
+func SetupLdapWithOpenLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdminPw, ldapDn, ldapUser, ldapGroup string) (string, error) {
+	// Enable LDAP secrets engine.
+	output := e2e.RunCommand(t.Context(), "vault",
+		e2e.WithArgs("secrets", "enable", fmt.Sprintf("-path=%s", vaultLdapMountPath), "ldap"),
+	)
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
+
+	// Define and write LDAP access policy to Vault.
+	vaultLdapPolicyFilePath := path.Join(t.TempDir(), "ldap-policy.hcl")
+	f, err := os.Create(vaultLdapPolicyFilePath)
+	if err != nil {
+		return "", err
+	}
 
 	_, err = fmt.Fprintf(f, `
 		path "%[1]s/static-cred/%[2]s" {
@@ -70,8 +146,13 @@ func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdmi
 			capabilities = ["create", "read", "update", "patch", "delete", "list"]
 		}
 	`, vaultLdapMountPath, ldapUser, ldapGroup)
-	require.NoError(t, err)
-	require.NoError(t, f.Sync())
+	if err != nil {
+		return "", err
+	}
+	err = f.Sync()
+	if err != nil {
+		return "", err
+	}
 	_ = f.Close()
 
 	policyName := WritePolicy(t, t.Context(), vaultLdapPolicyFilePath)
@@ -86,7 +167,9 @@ func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdmi
 			fmt.Sprintf("bindpass=%s", ldapAdminPw),
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
 
 	// Create static LDAP user in Vault (already defined in OpenLDAP server).
 	output = e2e.RunCommand(t.Context(), "vault",
@@ -98,7 +181,9 @@ func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdmi
 			"rotation_period=24h",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
 
 	// Create Vault dynamic role for LDAP group.
 	createLdif := fmt.Sprintf(`
@@ -136,9 +221,11 @@ func SetupLdap(t testing.TB, vaultLdapMountPath, ldapAddr, ldapAdminDn, ldapAdmi
 			"max_ttxl=24h",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", errors.New(strings.TrimSpace(string(output.Stderr)))
+	}
 
-	return policyName
+	return policyName, nil
 }
 
 // CreateKvPrivateKeyCredential creates a private key credential in vault and
