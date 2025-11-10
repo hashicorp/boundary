@@ -1196,6 +1196,9 @@ type TestVaultServer struct {
 	vaultContainer    any
 	ldapContainer     any
 	postgresContainer any
+
+	stopped  bool
+	Shutdown func(t *testing.T)
 }
 
 // NewTestVaultServer creates and returns a TestVaultServer. Some Vault
