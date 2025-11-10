@@ -201,31 +201,28 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be
 		// cleaned up.
-		if isForbiddenError(err) ||
-			// Also check if the token has already expired based on time to avoid attempting to renew expired token
-			// against unreachable Vault server.
-			time.Now().After(token.ExpirationTime.AsTime()) {
-		}
-		query, values := token.updateStatusQuery(ExpiredToken)
-		numRows, err := r.writer.Exec(ctx, query, values)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if numRows != 1 {
-			return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
-		}
-		if s.TokenStatus == string(CurrentToken) {
-			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.PublicId)
-		}
+		// Also, check if the token has already expired based on time to avoid attempting
+		// to renew the expired token against an Vault server that may no longer exist.
+		if isForbiddenError(err) || time.Now().After(token.ExpirationTime.AsTime()) {
+			query, values := token.updateStatusQuery(ExpiredToken)
+			numRows, err := r.writer.Exec(ctx, query, values)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if numRows != 1 {
+				return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
+			}
+			if s.TokenStatus == string(CurrentToken) {
+				event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.PublicId)
+			}
 
-		// Set credentials associated with this token to expired as Vault will already cascade delete them
-		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{ExpiredCredential, token.TokenHmac})
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			// Set credentials associated with this token to expired as Vault will already cascade delete them
+			_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{ExpiredCredential, token.TokenHmac})
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			}
+			return nil
 		}
-		return nil
-	}
-	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
 
