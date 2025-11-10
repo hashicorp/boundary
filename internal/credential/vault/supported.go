@@ -50,8 +50,6 @@ func init() {
 	}
 }
 
-func gotDocker(t testing.TB) {}
-
 func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	const (
 		serverTlsTemplate = `{
@@ -189,9 +187,17 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 
 	resource, err := pool.RunWithOptions(dockerOptions)
 	require.NoError(err)
+
+	server.Shutdown = func(t *testing.T) {
+		cleanupResource(t, pool, resource)
+		server.stopped = true
+	}
+
 	if !opts.skipCleanup {
 		t.Cleanup(func() {
-			cleanupResource(t, pool, resource)
+			if !server.stopped {
+				cleanupResource(t, pool, resource)
+			}
 		})
 	}
 	server.vaultContainer = resource
