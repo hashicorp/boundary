@@ -224,7 +224,7 @@ func (o *PasswordOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_password_mapping_override"
+	return "credential_vault_generic_library_password_mapping_override"
 }
 
 // SetTableName sets the table name.

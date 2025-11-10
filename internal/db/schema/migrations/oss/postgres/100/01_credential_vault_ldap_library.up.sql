@@ -78,7 +78,7 @@ begin;
   create trigger default_vault_ldap_credential_type before insert on credential_vault_ldap_library
     for each row execute procedure default_vault_ldap_credential_type();
 
-  -- Replaces view from 99/01_credential_vault_library_refactor.up.sql
+  -- Replaced in 101/02_credential_vault_password_library.up.sql
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with
