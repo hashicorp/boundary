@@ -198,7 +198,12 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 
 	renewedToken, err := vc.renewToken(ctx)
 	if err != nil {
+		// Vault returned a 403 when attempting a renew self, the token is either expired
+		// or malformed.  Set status to "expired" so credentials created with token can be
+		// cleaned up.
 		if isForbiddenError(err) ||
+			// Also check if the token has already expired based on time to avoid attempting to renew expired token
+			// against unreachable Vault server.
 			time.Now().After(token.ExpirationTime.AsTime()) {
 		}
 		query, values := token.updateStatusQuery(ExpiredToken)
