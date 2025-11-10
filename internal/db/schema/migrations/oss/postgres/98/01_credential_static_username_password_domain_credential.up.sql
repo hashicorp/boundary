@@ -153,8 +153,8 @@ begin;
   comment on view credential_static_username_password_domain_credential_hst_agg is
     'credential_static_username_password_domain_credential_hst_aggregate contains the username password credential history data along with its store and purpose data.';
 
-
-  -- This constraint is replaced in 99/01_credential_static_password_credential.up.sql
+  -- This constraint replaces the previous constraint created in 63/01_credential_vault_ssh_cert_library.up.sql
+  -- This constraint is replaced in 101/01_credential_static_password_credential.up.sql
   alter table credential_type_enm
     drop constraint only_predefined_credential_types_allowed;
 
@@ -173,8 +173,8 @@ begin;
   insert into credential_type_enm (name)
     values ('username_password_domain');
 
-
--- This function is updated in 99/01_credential_static_password_credential.up.sql.
+-- This function replaces the previous function created in 71/14_recording_static_credential.up.sql
+-- This function is replaced in 101/01_credential_static_password_credential.up.sql
 create or replace function insert_recording_static_credentials() returns trigger
   as $$
   begin

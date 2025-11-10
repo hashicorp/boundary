@@ -44,7 +44,7 @@ func TestCliTcpTargetConnectRedisPassword(t *testing.T) {
 		ctx,
 		projectId,
 		redisInfo.Port,
-		target.WithAddress(redisInfo.Hostname),
+		[]target.Option{target.WithAddress(redisInfo.Hostname)},
 	)
 	require.NoError(t, err)
 
