@@ -266,7 +266,6 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					p.cancel()
 					return
 				}
-				// this is where the connections actually occur. if we want to count conns, it's here
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
 					fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
 					// No reason to think we can successfully handle the next

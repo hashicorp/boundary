@@ -144,8 +144,8 @@ func WithApiClient(with *api.Client) Option {
 	}
 }
 
-// WithInactivityTimeout provides an optional duration after which a session will
-// be cancelled with no active connections
+// WithInactivityTimeout provides an optional duration after which a session
+// with no active connections will be cancelled
 func WithInactivityTimeout(with time.Duration) Option {
 	return func(o *Options) error {
 		o.withInactivityTimeout = with

@@ -877,11 +877,13 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		defer close(cmdExit)
 		if err := cmd.Start(); err != nil {
 			cmdError(err)
-		} else if err := cmd.Wait(); err != nil {
-			cmdError(err)
-		} else {
-			c.execCmdReturnValue.Store(0)
+			return
 		}
+		if err := cmd.Wait(); err != nil {
+			cmdError(err)
+			return
+		}
+		c.execCmdReturnValue.Store(0)
 	}()
 
 	for {
