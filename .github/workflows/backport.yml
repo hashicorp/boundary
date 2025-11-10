@@ -16,8 +16,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     container: hashicorpdev/backport-assistant:0.5.1
     steps:
-      # Note: actions/checkout v5 breaks the backport assistant, so we pin to v4.2.2 for now.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@51b96e0b55bdb46765f2a117c2b9c2b51fc766d4 # v6.0.0
         with:
           fetch-depth: 0 # Fetch all branches and tags
       - name: Check if any migrations have changed

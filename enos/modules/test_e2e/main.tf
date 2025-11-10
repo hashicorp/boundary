@@ -161,6 +161,11 @@ variable "target_rdp_domain_controller_addr" {
   type        = string
   default     = ""
 }
+variable "target_rdp_domain_controller_addr_ipv6" {
+  description = "IPV6 ddress of RDP domain controller"
+  type        = string
+  default     = ""
+}
 variable "target_rdp_domain_controller_user" {
   description = "Username for RDP domain controller"
   type        = string
@@ -282,6 +287,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_MAX_PAGE_SIZE                            = var.max_page_size
     E2E_IP_VERSION                               = var.ip_version
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR        = var.target_rdp_domain_controller_addr
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR_IPV6   = var.target_rdp_domain_controller_addr_ipv6
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_USER        = var.target_rdp_domain_controller_user
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_PASSWORD    = var.target_rdp_domain_controller_password
     E2E_TARGET_RDP_MEMBER_SERVER_ADDR            = var.target_rdp_member_server_addr
