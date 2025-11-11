@@ -35,7 +35,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
@@ -161,7 +161,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
@@ -287,7 +287,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)

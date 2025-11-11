@@ -43,7 +43,7 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
+		[]target.Option{target.WithAddress(c.TargetAddress)},
 	)
 	require.NoError(t, err)
 

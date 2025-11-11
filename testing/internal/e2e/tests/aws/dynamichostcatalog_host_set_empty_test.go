@@ -96,7 +96,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	t.Log("Successfully detected zero hosts in the host catalog")
 
 	// Create target
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)

@@ -107,65 +107,66 @@ func AddBrokeredCredentialSourceToTargetApi(t testing.TB, ctx context.Context, c
 
 // CreateTargetCli uses the cli to create a new target in boundary
 // Returns the id of the new target.
-func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) (string, error) {
+func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, targetOpts []target.Option, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	opts := target.GetOpts(opt...)
-	var args []string
+	opts := target.GetOpts(targetOpts...)
+	var args []e2e.Option
 
+	args = append(args, e2e.WithArgs("targets", "create"))
 	// Set target type. Default to tcp if not specified
 	if opts.WithType != "" {
-		args = append(args, string(opts.WithType))
+		args = append(args, e2e.WithArgs(string(opts.WithType)))
 	} else {
-		args = append(args, "tcp")
+		args = append(args, e2e.WithArgs("tcp"))
 	}
 
 	args = append(args,
-		"-scope-id", projectId,
-		"-default-port", defaultPort,
-		"-description", "e2e",
-		"-format", "json",
+		e2e.WithArgs("-scope-id", projectId,
+			"-default-port", defaultPort,
+			"-description", "e2e",
+			"-format", "json"),
 	)
 
 	if opts.WithName != "" {
-		args = append(args, "-name", opts.WithName)
+		args = append(args, e2e.WithArgs("-name", opts.WithName))
 	} else {
-		args = append(args, "-name", fmt.Sprintf("e2e Target %s", name))
+		args = append(args, e2e.WithArgs("-name", fmt.Sprintf("e2e Target %s", name)))
 	}
 	if opts.WithDescription != "" {
-		args = append(args, "-description", opts.WithDescription)
+		args = append(args, e2e.WithArgs("-description", opts.WithDescription))
 	}
 	if opts.WithAddress != "" {
-		args = append(args, "-address", opts.WithAddress)
+		args = append(args, e2e.WithArgs("-address", opts.WithAddress))
 	}
 	if opts.WithDefaultClientPort != 0 {
-		args = append(args, "-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort))
+		args = append(args, e2e.WithArgs("-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort)))
 	}
 	if opts.WithEnableSessionRecording != false {
-		args = append(args, "-enable-session-recording", fmt.Sprintf("%v", opts.WithEnableSessionRecording))
+		args = append(args, e2e.WithArgs("-enable-session-recording", fmt.Sprintf("%v", opts.WithEnableSessionRecording)))
 	}
 	if opts.WithStorageBucketId != "" {
-		args = append(args, "-storage-bucket-id", opts.WithStorageBucketId)
+		args = append(args, e2e.WithArgs("-storage-bucket-id", opts.WithStorageBucketId))
 	}
 	if opts.WithIngressWorkerFilter != "" {
-		args = append(args, "-ingress-worker-filter", opts.WithIngressWorkerFilter)
+		args = append(args, e2e.WithArgs("-ingress-worker-filter", opts.WithIngressWorkerFilter))
 	}
 	if opts.WithEgressWorkerFilter != "" {
-		args = append(args, "-egress-worker-filter", opts.WithEgressWorkerFilter)
+		args = append(args, e2e.WithArgs("-egress-worker-filter", opts.WithEgressWorkerFilter))
 	}
 	if opts.WithSessionConnectionLimit != 0 {
-		args = append(args, "-session-connection-limit", fmt.Sprintf("%d", opts.WithSessionConnectionLimit))
+		args = append(args, e2e.WithArgs("-session-connection-limit", fmt.Sprintf("%d", opts.WithSessionConnectionLimit)))
 	}
 	if opts.WithSessionMaxSeconds != 0 {
-		args = append(args, "-session-max-seconds", fmt.Sprintf("%d", opts.WithSessionMaxSeconds))
+		args = append(args, e2e.WithArgs("-session-max-seconds", fmt.Sprintf("%d", opts.WithSessionMaxSeconds)))
 	}
+	args = append(args, opt...)
 
 	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "create"),
-		e2e.WithArgs(args...),
+		args...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))

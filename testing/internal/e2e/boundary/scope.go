@@ -56,13 +56,14 @@ func CreateProjectApi(t testing.TB, ctx context.Context, client *api.Client, org
 
 // CreateOrgCli creates a new organization in boundary using the cli.
 // Returns the id of the new org.
-func CreateOrgCli(t testing.TB, ctx context.Context) (string, error) {
+func CreateOrgCli(t testing.TB, ctx context.Context, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"scopes", "create",
 			"-name", fmt.Sprintf("e2e Org %s", name),
@@ -70,6 +71,11 @@ func CreateOrgCli(t testing.TB, ctx context.Context) (string, error) {
 			"-scope-id", "global",
 			"-format", "json",
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
@@ -89,36 +95,33 @@ func CreateOrgCli(t testing.TB, ctx context.Context) (string, error) {
 // CreateProjectCli creates a new project in boundary using the cli. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
-func CreateProjectCli(t testing.TB, ctx context.Context, orgId string, opt ...ScopeOption) (string, error) {
-	opts := getScopeOpts(opt...)
-	var args []string
-
-	args = append(args,
-		"scopes", "create",
-		"-scope-id", orgId,
-		"-description", "e2e",
-		"-format", "json",
-	)
-
-	if opts.WithName != "" {
-		args = append(args, "-name", opts.WithName)
-	} else {
-		name, err := base62.Random(16)
-		if err != nil {
-			return "", err
-		}
-		args = append(args, "-name", fmt.Sprintf("e2e Project %s", name))
+func CreateProjectCli(t testing.TB, ctx context.Context, orgId string, opt ...e2e.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(args...),
+	var options []e2e.Option
+	options = append(options,
+		e2e.WithArgs("scopes", "create",
+			"-scope-id", orgId,
+			"-name", fmt.Sprintf("e2e Org %s", name),
+			"-description", "e2e",
+			"-format", "json"),
 	)
+
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
+	)
+
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
 
 	var createProjResult scopes.ScopeCreateResult
-	err := json.Unmarshal(output.Stdout, &createProjResult)
+	err = json.Unmarshal(output.Stdout, &createProjResult)
 	if err != nil {
 		return "", err
 	}
@@ -126,30 +129,4 @@ func CreateProjectCli(t testing.TB, ctx context.Context, orgId string, opt ...Sc
 	projectId := createProjResult.Item.Id
 	t.Logf("Created Project Id: %s", projectId)
 	return projectId, nil
-}
-
-// getScopeOpts iterates the inbound ScopeOptions and returns a struct
-func getScopeOpts(opt ...ScopeOption) scopeOptions {
-	opts := scopeOptions{
-		WithName: "",
-	}
-	for _, o := range opt {
-		o(&opts)
-	}
-	return opts
-}
-
-// ScopeOption represents how Options are passed as arguments
-type ScopeOption func(*scopeOptions)
-
-// scopeOptions is a struct representing available options for scopes
-type scopeOptions struct {
-	WithName string
-}
-
-// WithName provides an option to search by a friendly name
-func WithName(name string) ScopeOption {
-	return func(o *scopeOptions) {
-		o.WithName = name
-	}
 }

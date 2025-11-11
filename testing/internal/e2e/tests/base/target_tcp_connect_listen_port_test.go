@@ -36,7 +36,7 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
-		target.WithAddress(c.TargetAddress),
+		[]target.Option{target.WithAddress(c.TargetAddress)},
 	)
 	require.NoError(t, err)
 
@@ -97,8 +97,10 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
-		target.WithAddress(c.TargetAddress),
-		target.WithDefaultClientPort(DefaultClientPort),
+		[]target.Option{
+			target.WithAddress(c.TargetAddress),
+			target.WithDefaultClientPort(DefaultClientPort),
+		},
 	)
 	require.NoError(t, err)
 

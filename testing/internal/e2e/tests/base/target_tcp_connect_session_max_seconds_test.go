@@ -41,8 +41,10 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
-		target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
+		[]target.Option{
+			target.WithAddress(c.TargetAddress),
+			target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
+		},
 	)
 	require.NoError(t, err)
 
@@ -113,8 +115,10 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
-		target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
+		[]target.Option{
+			target.WithAddress(c.TargetAddress),
+			target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
+		},
 	)
 	require.NoError(t, err)
 

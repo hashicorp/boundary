@@ -129,8 +129,10 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress("openssh-server"),
-		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+		[]target.Option{
+			target.WithAddress("openssh-server"),
+			target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+		},
 	)
 	require.NoError(t, err)
 

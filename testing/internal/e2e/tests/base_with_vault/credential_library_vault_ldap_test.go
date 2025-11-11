@@ -230,7 +230,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, t.Context(), hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, t.Context(), projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, t.Context(), projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, t.Context(), targetId, hostSetId)
 	require.NoError(t, err)
