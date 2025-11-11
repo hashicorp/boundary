@@ -6,14 +6,56 @@ package vault
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_token(t *testing.T) {
+	renewalTime := timestamp.New(time.Now())
+	expirationTime := timestamp.New(time.Now().Add(time.Hour))
+	input := &clientStore{
+		PublicId:            "pub-123",
+		ProjectId:           "proj-1",
+		DeleteTime:          nil,
+		VaultAddress:        "https://vault.example.local:8200",
+		Namespace:           "default",
+		CaCert:              []byte("-----BEGIN CERTIFICATE-----\n...dummy...\n-----END CERTIFICATE-----"),
+		TlsServerName:       "vault.example.local",
+		TlsSkipVerify:       true,
+		WorkerFilter:        "worker=*",
+		TokenHmac:           []byte("dummy-hmac"),
+		Token:               TokenSecret{}, // zero value; replace with real value if needed
+		CtToken:             []byte("dummy-ciphertext-token"),
+		TokenRenewalTime:    renewalTime,
+		TokenKeyId:          "token-key-1",
+		TokenStatus:         "active",
+		TokenExpirationTime: expirationTime,
+		ClientCert:          []byte("-----BEGIN CERTIFICATE-----\n...client...\n-----END CERTIFICATE-----"),
+		ClientKeyId:         "client-key-1",
+		ClientKey:           KeySecret{}, // zero value; replace with real value if needed
+		CtClientKey:         []byte("dummy-ciphertext-client-key"),
+	}
+	want := &Token{
+		Token: &store.Token{
+			TokenHmac:      input.TokenHmac,
+			CtToken:        input.CtToken,
+			ExpirationTime: input.TokenExpirationTime,
+			KeyId:          input.TokenKeyId,
+			Status:         input.TokenStatus,
+		},
+	}
+	got := input.token()
+	require.NotNil(t, got)
+	require.Equal(t, got.Token.String(), want.String())
+}
 
 func TestRepository_lookupPrivateStore(t *testing.T) {
 	t.Parallel()
