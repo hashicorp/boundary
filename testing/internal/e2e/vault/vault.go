@@ -270,7 +270,7 @@ func CreateKvPrivateKeyCredential(t testing.TB, secretPath string, user string, 
 // this function does not put any clean-up in place to run after a test is
 // complete. When applicable, callers should destroy the policy and secret this
 // function creates.
-func CreateKvPasswordCredential(t testing.TB, secretPath string, user string) (secretName string, policyName string, password string) {
+func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, providedPassword ...string) (secretName string, policyName string, password string) {
 	secretName, err := base62.Random(16)
 	require.NoError(t, err)
 
@@ -286,9 +286,15 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string) (s
 
 	policyName = WritePolicy(t, t.Context(), policyFilePath)
 
+	// Use provided password or generate random one
+	if len(providedPassword) > 0 && providedPassword[0] != "" {
+		password = providedPassword[0]
+	} else {
+		password, err = base62.Random(16)
+		require.NoError(t, err)
+	}
+
 	// Create secret
-	password, err = base62.Random(16)
-	require.NoError(t, err)
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
@@ -308,7 +314,7 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string) (s
 // credential. Returns the name of the policy. Note that this function does not
 // put any clean-up in place to run after a test is complete. When applicable,
 // callers should destroy the policy and secret this function creates.
-func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user string, domain string) (secretName string, policyName string, password string) {
+func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user string, domain string, providedPassword ...string) (secretName string, policyName string, password string) {
 	secretName, err := base62.Random(16)
 	require.NoError(t, err)
 
@@ -324,9 +330,15 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 
 	policyName = WritePolicy(t, t.Context(), policyFilePath)
 
+	// Use provided password or generate random one
+	if len(providedPassword) > 0 && providedPassword[0] != "" {
+		password = providedPassword[0]
+	} else {
+		password, err = base62.Random(16)
+		require.NoError(t, err)
+	}
+
 	// Create secret
-	password, err = base62.Random(16)
-	require.NoError(t, err)
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
