@@ -535,6 +535,11 @@ func TestTokenRenewalJob_RunExpired_VaultUnreachableTemporarily(t *testing.T) {
 	// Renewal should work here since Vault should still be reachable
 	err = r.Run(ctx, 0)
 	require.NoError(err)
+	token := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
+	// successful renewal should have updated expiration time
+	assert.True(time.Now().Before(token.ExpirationTime.AsTime()))
+	assert.Equal(string(CurrentToken), token.Status)
 
 	// Shutdown Vault server to make vault unreachable
 	v.Shutdown(t)
@@ -545,9 +550,9 @@ func TestTokenRenewalJob_RunExpired_VaultUnreachableTemporarily(t *testing.T) {
 	require.NoError(err)
 
 	// Verify token was not expired in repo
-	token := allocToken()
+	token = allocToken()
 	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
-	// expiration time is still in the future
+	// expiration time is still in the future and token should still be 'current'
 	assert.True(time.Now().Before(token.ExpirationTime.AsTime()))
 	assert.Equal(string(CurrentToken), token.Status)
 }
@@ -589,18 +594,23 @@ func TestTokenRenewalJob_RunExpired_VaultUnreachablePermanently(t *testing.T) {
 	// Renewal should work here since Vault should still be reachable
 	err = r.Run(ctx, 0)
 	require.NoError(err)
+	token := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
+	// successful renewal should have updated expiration time
+	assert.True(token.ExpirationTime.AsTime().After(time.Now()))
+	assert.Equal(string(CurrentToken), token.Status)
 
 	// Shutdown Vault server to make vault unreachable
 	v.Shutdown(t)
 	// Sleep to move clock and expire token
 	time.Sleep(time.Second * 2)
 
-	// Renewal should work here since Vault should still be reachable
+	// Renewal should fail, job does not return an error when renewal fails (emits error event)
 	err = r.Run(ctx, 0)
 	require.NoError(err)
 
-	// Verify token was expired in repo
-	token := allocToken()
+	// token should be marked as expired in the repo since the expiration time has passed
+	token = allocToken()
 	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
 	assert.Equal(string(ExpiredToken), token.Status)
 }
