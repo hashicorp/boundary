@@ -533,6 +533,7 @@ func TestTokenRenewalJob_Run_VaultUnreachableTemporarily(t *testing.T) {
 	tokenBeforeRenew := allocToken()
 	require.NoError(rw.LookupWhere(ctx, &tokenBeforeRenew, "store_id = ?", []any{cs.GetPublicId()}))
 	assert.True(time.Now().Before(tokenBeforeRenew.ExpirationTime.AsTime()))
+	assert.Equal(string(CurrentToken), tokenBeforeRenew.Status)
 	// Shutdown Vault server to make vault unreachable
 	v.Shutdown(t)
 
@@ -588,6 +589,7 @@ func TestTokenRenewalJob_RunExpired_VaultUnreachablePermanently(t *testing.T) {
 	require.NoError(rw.LookupWhere(ctx, &tokenBeforeRenew, "store_id = ?", []any{cs.GetPublicId()}))
 	// expiration time is in the future
 	assert.True(tokenBeforeRenew.ExpirationTime.AsTime().After(time.Now()))
+	assert.Equal(string(CurrentToken), tokenBeforeRenew.Status)
 
 	err = r.Run(ctx, 0)
 	require.NoError(err)
