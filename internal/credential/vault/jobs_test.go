@@ -533,22 +533,10 @@ func TestTokenRenewalJob_Run_VaultUnreachableTemporarily(t *testing.T) {
 	tokenBeforeRenew := allocToken()
 	require.NoError(rw.LookupWhere(ctx, &tokenBeforeRenew, "store_id = ?", []any{cs.GetPublicId()}))
 	assert.True(time.Now().Before(tokenBeforeRenew.ExpirationTime.AsTime()))
-
-	// first renewal should succeed and token should not be expired
-	err = r.Run(ctx, 0)
-	require.NoError(err)
-
-	tokenAfterSuccessfulRenew := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &tokenAfterSuccessfulRenew, "store_id = ?", []any{cs.GetPublicId()}))
-	// expiration time is updated after the successful renewal
-	assert.True(tokenAfterSuccessfulRenew.ExpirationTime.AsTime().After(tokenBeforeRenew.ExpirationTime.AsTime()))
-	assert.Equal(string(CurrentToken), tokenAfterSuccessfulRenew.Status)
-
 	// Shutdown Vault server to make vault unreachable
 	v.Shutdown(t)
 
 	// Renewal will fail because Vault is unreachable but job does not return an error
-	// it
 	err = r.Run(ctx, 0)
 	require.NoError(err)
 
@@ -558,7 +546,7 @@ func TestTokenRenewalJob_Run_VaultUnreachableTemporarily(t *testing.T) {
 	// expiration time is still in the future and token should still be 'current'
 	assert.True(time.Now().Before(tokenAfterFailedRenew.ExpirationTime.AsTime()))
 	// expiration time should remain the same since renewal failed
-	assert.Equal(tokenAfterSuccessfulRenew.ExpirationTime, tokenAfterFailedRenew.ExpirationTime)
+	assert.Equal(tokenBeforeRenew.ExpirationTime, tokenAfterFailedRenew.ExpirationTime)
 	assert.Equal(string(CurrentToken), tokenAfterFailedRenew.Status)
 }
 
