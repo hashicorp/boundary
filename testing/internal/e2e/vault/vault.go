@@ -295,7 +295,6 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, pr
 	}
 
 	// Create secret
-	require.NoError(t, err)
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
@@ -340,7 +339,6 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 	}
 
 	// Create secret
-	require.NoError(t, err)
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
