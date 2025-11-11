@@ -43,25 +43,26 @@ func (r *Repository) lookupClientStore(ctx context.Context, publicId string) (*c
 // a Vault client. If the Vault token for the store is expired all token data will be null
 // other than the status of expired.
 type clientStore struct {
-	PublicId         string `gorm:"primary_key"`
-	ProjectId        string
-	DeleteTime       *timestamp.Timestamp
-	VaultAddress     string
-	Namespace        string
-	CaCert           []byte
-	TlsServerName    string
-	TlsSkipVerify    bool
-	WorkerFilter     string
-	TokenHmac        []byte
-	Token            TokenSecret
-	CtToken          []byte
-	TokenRenewalTime *timestamp.Timestamp
-	TokenKeyId       string
-	TokenStatus      string
-	ClientCert       []byte
-	ClientKeyId      string
-	ClientKey        KeySecret
-	CtClientKey      []byte
+	PublicId            string `gorm:"primary_key"`
+	ProjectId           string
+	DeleteTime          *timestamp.Timestamp
+	VaultAddress        string
+	Namespace           string
+	CaCert              []byte
+	TlsServerName       string
+	TlsSkipVerify       bool
+	WorkerFilter        string
+	TokenHmac           []byte
+	Token               TokenSecret
+	CtToken             []byte
+	TokenRenewalTime    *timestamp.Timestamp
+	TokenKeyId          string
+	TokenStatus         string
+	TokenExpirationTime *timestamp.Timestamp
+	ClientCert          []byte
+	ClientKeyId         string
+	ClientKey           KeySecret
+	CtClientKey         []byte
 }
 
 func allocClientStore() *clientStore {
@@ -98,7 +99,7 @@ func (ps *clientStore) token() *Token {
 		tk.Status = ps.TokenStatus
 		tk.CtToken = ps.CtToken
 		tk.KeyId = ps.TokenKeyId
-
+		tk.ExpirationTime = ps.TokenRenewalTime
 		return tk
 	}
 
