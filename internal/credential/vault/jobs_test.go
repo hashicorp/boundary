@@ -500,6 +500,58 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	require.Nil(cs)
 }
 
+// TestTokenRenewalJob_RunExpired_VaultUnreachableTemporarily tests that tokens are not mistakenly marked
+// as expired when Vault is unreachable temporarily.
+func TestTokenRenewalJob_RunExpired_VaultUnreachableTemporarily(t *testing.T) {
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper, scheduler.WithRunJobsInterval(time.Second))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	v := NewTestVaultServer(t)
+
+	// Create 300s token so we can try to renew multiple times
+	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second*300))
+	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
+	assert.NoError(err)
+	require.NotNil(in)
+
+	r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	err = sche.RegisterJob(ctx, r)
+	require.NoError(err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(ctx, in)
+	require.NoError(err)
+
+	// Renewal should work here since Vault should still be reachable
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+
+	// Shutdown Vault server to make vault unreachable
+	v.Shutdown(t)
+
+	// Renewal will fail because Vault is unreachable but job does not return an error
+	// it
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+
+	// Verify token was not expired in repo
+	token := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
+	// expiration time is still in the future
+	assert.True(time.Now().Before(token.ExpirationTime.AsTime()))
+	assert.Equal(string(CurrentToken), token.Status)
+}
+
 // TestTokenRenewalJob_RunExpired_VaultUnreachable tests token renewal logic when the Vault server becomes unreachable.
 // The job should stop attempting to renew the token once the token is expired since the renewal will never
 // be successful and there is no guarantee that Vault server will ever be reachable again.
