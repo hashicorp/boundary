@@ -34,30 +34,28 @@ import (
 const sessionCancelTimeout = 30 * time.Second
 
 type ClientProxy struct {
-	tofuToken               string
-	cachedListenerAddress   *ua.String
-	connectionsLeft         *atomic.Int32
-	activeConns             *atomic.Int32
-	connsLeftCh             chan int32
-	callerConnectionsLeftCh chan int32
-	apiClient               *api.Client
-	sessionAuthzData        *targets.SessionAuthorizationData
-	createTime              time.Time
-	expiration              time.Time
-	inactiveSince           time.Time
-	proxyStartTime          time.Time
-	beenActive              *atomic.Bool
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	transport               *http.Transport
-	workerAddr              string
-	listenAddrPort          netip.AddrPort
-	listener                *atomic.Value
-	listenerCloseOnce       *sync.Once
-	clientTlsConf           *tls.Config
-	connWg                  *sync.WaitGroup
-	started                 *atomic.Bool
-	skipSessionTeardown     bool
+	tofuToken             string
+	cachedListenerAddress *ua.String
+	connectionsLeft       *atomic.Int32
+	activeConns           *atomic.Int32
+	connsLeftCh           chan int32
+	callerConnsLeftCh     chan int32
+	apiClient             *api.Client
+	sessionAuthzData      *targets.SessionAuthorizationData
+	createTime            time.Time
+	expiration            time.Time
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	transport             *http.Transport
+	workerAddr            string
+	listenAddrPort        netip.AddrPort
+	listener              *atomic.Value
+	listenerCloseOnce     *sync.Once
+	clientTlsConf         *tls.Config
+	connWg                *sync.WaitGroup
+	started               *atomic.Bool
+	skipSessionTeardown   bool
+	closeReason           *atomic.Value
 }
 
 // New creates a new client proxy. The given context should be cancelable; once
@@ -94,19 +92,19 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	}
 
 	p := &ClientProxy{
-		cachedListenerAddress:   ua.NewString(""),
-		connsLeftCh:             make(chan int32),
-		connectionsLeft:         new(atomic.Int32),
-		activeConns:             new(atomic.Int32),
-		beenActive:              new(atomic.Bool),
-		listener:                new(atomic.Value),
-		listenerCloseOnce:       new(sync.Once),
-		connWg:                  new(sync.WaitGroup),
-		listenAddrPort:          opts.WithListenAddrPort,
-		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
-		started:                 new(atomic.Bool),
-		skipSessionTeardown:     opts.WithSkipSessionTeardown,
-		apiClient:               opts.withApiClient,
+		cachedListenerAddress: ua.NewString(""),
+		connsLeftCh:           make(chan int32),
+		connectionsLeft:       new(atomic.Int32),
+		activeConns:           new(atomic.Int32),
+		listener:              new(atomic.Value),
+		listenerCloseOnce:     new(sync.Once),
+		connWg:                new(sync.WaitGroup),
+		listenAddrPort:        opts.WithListenAddrPort,
+		callerConnsLeftCh:     opts.WithConnectionsLeftCh,
+		started:               new(atomic.Bool),
+		skipSessionTeardown:   opts.WithSkipSessionTeardown,
+		apiClient:             opts.withApiClient,
+		closeReason:           new(atomic.Value),
 	}
 
 	if opts.WithListener != nil {
@@ -148,7 +146,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
-	p.ctx, p.cancel = context.WithDeadline(ctx, p.expiration)
+	p.ctx, p.cancel = context.WithDeadlineCause(ctx, p.expiration, fmt.Errorf("Session has expired"))
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
@@ -217,7 +215,17 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 
 	// Ensure closing the listener runs on any other return condition
 	defer listenerCloseFunc()
-	p.proxyStartTime = time.Now()
+
+	// automatically close the proxy when inactive
+	proxyAutoClose := time.AfterFunc(10*time.Minute, func() {
+		p.cancel()
+		p.setCloseReason("Inactivity timeout reached")
+	})
+
+	activeConnCh := make(chan int32)
+	activeConnFn := func(d int32) {
+		activeConnCh <- p.activeConns.Add(d)
+	}
 
 	fin := make(chan error, 10)
 	p.connWg.Add(1)
@@ -250,11 +258,10 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					return
 				}
 			}
-			p.activeConns.Add(1)
-			p.beenActive.CompareAndSwap(false, true)
+			activeConnFn(1)
 			p.connWg.Add(1)
 			go func() {
-				defer p.activeConns.Add(-1)
+				defer activeConnFn(-1)
 				defer listeningConn.Close()
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
@@ -319,42 +326,30 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 		for {
 			select {
 			case <-p.ctx.Done():
+				if err := context.Cause(p.ctx); !errors.Is(err, context.Canceled) {
+					p.setCloseReason(err.Error())
+				}
 				return
 			case connsLeft := <-p.connsLeftCh:
 				p.connectionsLeft.Store(connsLeft)
-				if p.callerConnectionsLeftCh != nil {
-					p.callerConnectionsLeftCh <- connsLeft
+				if p.callerConnsLeftCh != nil {
+					p.callerConnsLeftCh <- connsLeft
 				}
 				if connsLeft == 0 {
 					// Close the listener as we can't authorize any more
 					// connections
+					p.setCloseReason("No connections left in session")
 					return
 				}
-			default:
-			}
-			switch {
-			case !p.beenActive.Load():
-				if time.Since(p.proxyStartTime) >= 10*time.Minute {
-					// Proxy has been inactive for 10 minutes, close it.
-					return
+			case activeConns := <-activeConnCh:
+				if opts.withInactivityTimeout == 0 {
+					// no timeout was set, proxy should not be closed for inactivity
+					continue
 				}
-			// nothing has happened yet, don't mark inactive
-			case opts.withInactivityTimeout == 0:
-				// no timeout was set, proxy should not be closed for inactivity
-			case p.inactiveSince.IsZero():
-				if p.activeConns.Load() == 0 {
-					// connections are currently inactive
-					p.inactiveSince = time.Now()
-				}
-			default:
-				if p.activeConns.Load() == 0 {
-					if time.Since(p.inactiveSince) >= opts.withInactivityTimeout {
-						// connections have been inactive for longer than timeout
-						return
-					}
+				if activeConns == 0 {
+					proxyAutoClose.Reset(opts.withInactivityTimeout)
 				} else {
-					// connections are currently active, set inactive to zero
-					p.inactiveSince = time.Time{}
+					proxyAutoClose.Stop()
 				}
 			}
 		}
@@ -400,6 +395,25 @@ func (p *ClientProxy) CloseSession(sessionTeardownTimeout time.Duration) error {
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)
 	}
 	return nil
+}
+
+// CloseReason returns the reason why the proxy was closed, if the proxy closed
+// itself. If the proxy is still running or the proxy was closed externally, an
+// empty string is returned.
+func (p *ClientProxy) CloseReason() string {
+	switch r := p.closeReason.Load().(type) {
+	case string:
+		return r
+	default:
+		return ""
+	}
+}
+
+// setCloseReason updates the reason the proxy closed from an empty string to the
+// provided string. setCloseReason only accepts the first provided reason for
+// closing, all other calls are ignored.
+func (p *ClientProxy) setCloseReason(reason string) {
+	p.closeReason.CompareAndSwap(nil, reason)
 }
 
 // ListenerAddress returns the address of the client proxy listener. Because the

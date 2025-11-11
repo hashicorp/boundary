@@ -624,10 +624,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		if c.execCmdReturnValue != nil {
 			// Don't print out in this case, so ensure we clear it
 			termInfo.Reason = ""
-		} else if time.Now().After(clientProxy.SessionExpiration()) {
-			termInfo.Reason = "Session has expired"
-		} else if clientProxy.ConnectionsLeft() == 0 {
-			termInfo.Reason = "No connections left in session"
+		} else if r := clientProxy.CloseReason(); r != "" {
+			termInfo.Reason = r
 		} else if err := proxyError.Load(); err != nil {
 			termInfo.Reason = "Error from proxy client: " + err.Error()
 		}

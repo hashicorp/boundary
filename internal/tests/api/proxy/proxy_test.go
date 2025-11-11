@@ -214,7 +214,6 @@ func TestConnectionTimeout(t *testing.T) {
 	echo := []byte("echo")
 	readBuf := make([]byte, len(echo))
 
-	time.Sleep(time.Second)
 	conn, err := net.DialTCP("tcp", nil, net.TCPAddrFromAddrPort(addrPort))
 	require.NoError(err)
 	written, err := conn.Write(echo)
@@ -225,10 +224,15 @@ func TestConnectionTimeout(t *testing.T) {
 	require.Equal(read, len(echo))
 	require.NoError(conn.Close())
 
-	time.Sleep(2 * time.Second)
-	require.True(done)
-
+	start := time.Now()
+	for {
+		if done == true || time.Since(start) > time.Second*2 {
+			require.True(done)
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.Equal("Inactivity timeout reached", pxy.CloseReason())
 	pxyCancel()
-	// Wait to ensure cleanup and that the second-start logic works
 	wg.Wait()
 }
