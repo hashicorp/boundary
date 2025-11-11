@@ -221,6 +221,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 			}
+			// exit early as we mark the token as expired
 			return nil
 		}
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
