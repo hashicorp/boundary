@@ -99,7 +99,7 @@ func (ps *clientStore) token() *Token {
 		tk.Status = ps.TokenStatus
 		tk.CtToken = ps.CtToken
 		tk.KeyId = ps.TokenKeyId
-		tk.ExpirationTime = ps.TokenRenewalTime
+		tk.ExpirationTime = ps.TokenExpirationTime
 		return tk
 	}
 
