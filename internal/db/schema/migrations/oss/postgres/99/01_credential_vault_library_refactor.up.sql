@@ -503,6 +503,7 @@ begin;
     'This view should not be used to retrieve data which will be returned external to boundary.';
 
   -- Replaces and renames view defined in 98/02_username_password_domain_vault.up.sql.
+  -- Replaced in 101/02_credential_vault_password_library.up.sql
   alter view credential_vault_library_list_lookup
     rename to credential_vault_generic_library_list_lookup;
   drop view credential_vault_generic_library_list_lookup;
