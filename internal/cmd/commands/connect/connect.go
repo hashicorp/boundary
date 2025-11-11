@@ -888,7 +888,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		select {
 		case <-c.proxyCtx.Done():
 			// the proxy exited for some reason, end the cmd since connections are no longer possible
-			cmd.Process.Signal(syscall.SIGTERM)
+			_ = cmd.Process.Signal(syscall.SIGTERM)
 		case <-cmdExit:
 			return
 		}
