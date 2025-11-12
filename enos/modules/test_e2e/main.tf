@@ -236,6 +236,11 @@ variable "client_ssh_key" {
   type        = string
   default     = ""
 }
+variable "controller_ip_public" {
+  description = "public ip of the controller"
+  type        = string
+  default     = ""
+}
 variable "ip_version" {
   description = "ip version used to setup boundary instance, should be 4, 6, or dual"
   type        = string
@@ -296,6 +301,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_TARGET_RDP_MEMBER_SERVER_PASSWORD        = var.target_rdp_member_server_password
     E2E_TARGET_RDP_DOMAIN_NAME                   = var.target_rdp_domain_name
     E2E_TARGET_RDP_SERVER_VERSION                = var.target_rdp_server_version
+    E2E_CONTROLLER_IP_PUBLIC                     = var.controller_ip_public
     E2E_CLIENT_IP_PUBLIC                         = var.client_ip_public
     E2E_CLIENT_USERNAME                          = var.client_username
     E2E_CLIENT_PASSWORD                          = var.client_password
