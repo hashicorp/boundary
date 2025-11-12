@@ -225,8 +225,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:       "inactive-timeout",
 		Target:     &c.flagInactiveTimeout,
 		Completion: complete.PredictAnything,
-		Usage:      "How long to wait between connections before closing the session. Increase this value if the proxy closes during long-running processes.",
-		Default:    -1,
+		Usage:      "How long to wait between connections before closing the session. Increase this value if the proxy closes during long-running processes, or use -1 to disable the timeout.",
 	})
 
 	switch c.Func {
@@ -517,9 +516,8 @@ func (c *Command) Run(args []string) (retCode int) {
 	clientProxyCloseCh := make(chan struct{})
 	connCountCloseCh := make(chan struct{})
 
-	if c.flagInactiveTimeout >= 0 {
-		apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(c.flagInactiveTimeout))
-	} else {
+	if c.flagInactiveTimeout == 0 {
+		// no timeout was specified by the user, so use our defaults based on subcommand
 		switch c.Func {
 		case "connect":
 			// connect is when there is no subcommand specified, this case should
@@ -535,6 +533,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			// for other protocols, give some extra leeway just in case
 			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(3*time.Second))
 		}
+	} else {
+		apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(c.flagInactiveTimeout))
 	}
 
 	proxyError := new(atomic.Error)

@@ -342,14 +342,15 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					return
 				}
 			case activeConns := <-activeConnCh:
-				if opts.withInactivityTimeout == 0 {
-					// no timeout was set, proxy should not be closed for inactivity
-					continue
-				}
-				if activeConns == 0 {
-					proxyAutoClose.Reset(opts.withInactivityTimeout)
-				} else {
+				switch {
+				case activeConns > 0:
+					// always stop the timer when a new connection is made,
+					// even if timeout opt is 0
 					proxyAutoClose.Stop()
+				case opts.withInactivityTimeout <= 0:
+					// no timeout was set, timer should not be reset for inactivity
+				case activeConns == 0:
+					proxyAutoClose.Reset(opts.withInactivityTimeout)
 				}
 			}
 		}
