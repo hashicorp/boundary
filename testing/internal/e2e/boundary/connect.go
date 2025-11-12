@@ -71,18 +71,27 @@ func ConnectCliStdoutPipe(t testing.TB, ctx context.Context, targetId string) Co
 		}
 	})
 
-	// Read the first line of output (JSON with connection info)
+	// Read lines until we find valid JSON
 	scanner := bufio.NewScanner(stdoutPipe)
-	var outputLine string
-	if scanner.Scan() {
-		outputLine = scanner.Text()
-	}
-	require.NoError(t, scanner.Err())
-
-	// Parse the JSON output
 	var connectOutput ConnectCliOutput
-	err = json.Unmarshal([]byte(outputLine), &connectOutput)
-	require.NoError(t, err)
+	linesRead := 0
+	maxLines := 50
+
+	for scanner.Scan() && linesRead < maxLines {
+		linesRead++
+		outputLine := scanner.Text()
+
+		// Try to parse as JSON
+		err = json.Unmarshal([]byte(outputLine), &connectOutput)
+		if err == nil {
+			break
+		}
+
+	}
+
+	require.NoError(t, scanner.Err())
+	require.NotEmpty(t, connectOutput.Address)
+	require.NotZero(t, connectOutput.Port)
 
 	return connectOutput
 }
