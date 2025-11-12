@@ -386,6 +386,10 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_windows_client.public_ip
   }
 
+  output "windows_client_private_ip" {
+    value = step.create_windows_client.private_ip
+  }
+
   output "windows_client_admin_password" {
     value = step.create_windows_client.admin_password
   }
