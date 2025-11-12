@@ -54,7 +54,7 @@ func Test_token(t *testing.T) {
 	}
 	got := input.token()
 	require.NotNil(t, got)
-	require.Equal(t, got.Token.String(), want.String())
+	require.Equal(t, got.String(), want.String())
 }
 
 func TestRepository_lookupPrivateStore(t *testing.T) {
