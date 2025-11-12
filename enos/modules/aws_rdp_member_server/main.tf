@@ -249,9 +249,9 @@ locals {
   private_key = abspath(var.domain_controller_private_key)
 }
 
-resource "time_sleep" "wait_2_minutes" {
+resource "time_sleep" "wait_3_minutes" {
   depends_on      = [aws_instance.member_server]
-  create_duration = "2m"
+  create_duration = "3m"
 }
 
 # wait for the SSH service to be available on the instance. We specifically use
@@ -259,7 +259,7 @@ resource "time_sleep" "wait_2_minutes" {
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
   count      = var.server_version != "2016" ? 1 : 0
-  depends_on = [time_sleep.wait_2_minutes]
+  depends_on = [time_sleep.wait_3_minutes]
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
