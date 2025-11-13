@@ -71,18 +71,38 @@ func ConnectCliStdoutPipe(t testing.TB, ctx context.Context, targetId string) Co
 		}
 	})
 
-	// Read the first line of output (JSON with connection info)
+	// TODO: this doesnt work, need to revist
+	// Read lines until we find valid JSON
 	scanner := bufio.NewScanner(stdoutPipe)
-	var outputLine string
-	if scanner.Scan() {
-		outputLine = scanner.Text()
-	}
-	require.NoError(t, scanner.Err())
-
-	// Parse the JSON output
 	var connectOutput ConnectCliOutput
-	err = json.Unmarshal([]byte(outputLine), &connectOutput)
-	require.NoError(t, err)
+	linesRead := 0
+	maxLines := 50
+
+	// Potential issue: trying to scan before session is fully established, and output is written
+	// May need a time buffer, instead of loop
+	// 1st scanner.Scan() returns true for first line, when session is created
+	// 2nd scanner.Scan() - hangs here, cause its waiting for more output, but session is just opended, and not writing any data
+
+	// Example log output:
+	// connect.go:83: scan result: true
+	// connect.go:85: line 1
+	// connect.go:86: outputLine: {"address":"...","port":...,"protocol":"rdp","expiration":"...","connection_limit":-1,"session_id":"..."}
+	// hangs on 2nd scan, because no more output is written
+	for scanner.Scan() && linesRead < maxLines {
+		linesRead++
+		outputLine := scanner.Text()
+
+		// Try to parse as JSON
+		err = json.Unmarshal([]byte(outputLine), &connectOutput)
+		if err == nil {
+			break
+		}
+
+	}
+
+	require.NoError(t, scanner.Err())
+	require.NotEmpty(t, connectOutput.Address)
+	require.NotZero(t, connectOutput.Port)
 
 	return connectOutput
 }
