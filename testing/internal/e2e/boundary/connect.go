@@ -71,12 +71,23 @@ func ConnectCliStdoutPipe(t testing.TB, ctx context.Context, targetId string) Co
 		}
 	})
 
+	// TODO: this doesnt work, need to revist
 	// Read lines until we find valid JSON
 	scanner := bufio.NewScanner(stdoutPipe)
 	var connectOutput ConnectCliOutput
 	linesRead := 0
 	maxLines := 50
 
+	// Potential issue: trying to scan before session is fully established, and output is written
+	// May need a time buffer, instead of loop
+	// 1st scanner.Scan() returns true for first line, when session is created
+	// 2nd scanner.Scan() - hangs here, cause its waiting for more output, but session is just opended, and not writing any data
+
+	// Example log output:
+	// connect.go:83: scan result: true
+	// connect.go:85: line 1
+	// connect.go:86: outputLine: {"address":"...","port":...,"protocol":"rdp","expiration":"...","connection_limit":-1,"session_id":"..."}
+	// hangs on 2nd scan, because no more output is written
 	for scanner.Scan() && linesRead < maxLines {
 		linesRead++
 		outputLine := scanner.Text()
