@@ -50,8 +50,10 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 
 	// Create TCP target
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
-		target.WithType("tcp"),
-		target.WithAddress(c.TargetAddress),
+		[]target.Option{
+			target.WithType("tcp"),
+			target.WithAddress(c.TargetAddress),
+		},
 	)
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)

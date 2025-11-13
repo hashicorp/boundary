@@ -224,7 +224,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222", nil) // openssh-server uses port 2222
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -235,8 +235,10 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		ctx,
 		projectId,
 		"2222",
-		target.WithName("e2e target with address"),
-		target.WithAddress(te.Target.UriNetwork),
+		[]target.Option{
+			target.WithName("e2e target with address"),
+			target.WithAddress(te.Target.UriNetwork),
+		},
 	)
 	require.NoError(t, err)
 

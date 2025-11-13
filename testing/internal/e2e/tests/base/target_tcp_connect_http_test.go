@@ -36,7 +36,7 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ Server: netcat-can-you-believe-it
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 
 	// Create http target and connect to it
-	httpTargetId, err := boundary.CreateTargetCli(t, ctx, projectId, destPort, target.WithAddress(c.TargetAddress))
+	httpTargetId, err := boundary.CreateTargetCli(t, ctx, projectId, destPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

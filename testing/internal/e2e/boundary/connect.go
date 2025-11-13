@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"testing"
 
@@ -82,7 +83,7 @@ func ConnectCliStdoutPipe(t testing.TB, ctx context.Context, targetId string) Co
 	// Parse the JSON output
 	var connectOutput ConnectCliOutput
 	err = json.Unmarshal([]byte(outputLine), &connectOutput)
-	require.NoError(t, err)
+	require.NoError(t, err, fmt.Sprintf("received output: %s", outputLine))
 
 	return connectOutput
 }

@@ -43,8 +43,10 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
-		target.WithSessionConnectionLimit(int32(sessionConnectionLimit)),
+		[]target.Option{
+			target.WithAddress(c.TargetAddress),
+			target.WithSessionConnectionLimit(int32(sessionConnectionLimit)),
+		},
 	)
 	require.NoError(t, err)
 

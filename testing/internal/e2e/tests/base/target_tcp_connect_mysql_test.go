@@ -75,7 +75,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		ctx,
 		projectId,
 		port,
-		target.WithAddress(hostname),
+		[]target.Option{target.WithAddress(hostname)},
 	)
 	require.NoError(t, err)
 

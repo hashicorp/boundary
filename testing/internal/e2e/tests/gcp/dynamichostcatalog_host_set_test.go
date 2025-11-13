@@ -117,7 +117,7 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	assert.Equal(t, 1, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.GcpTargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.GcpTargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
 	require.NoError(t, err)
