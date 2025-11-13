@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
@@ -199,11 +200,11 @@ func TestConnectionTimeout(t *testing.T) {
 	pxy, err := proxy.New(pxyCtx, sessAuthz.AuthorizationToken)
 	require.NoError(err)
 	wg.Add(1)
-	done := false
+	done := atomic.NewBool(false)
 	go func() {
 		defer wg.Done()
 		require.NoError(pxy.Start(proxy.WithInactivityTimeout(time.Second)))
-		done = true
+		done.Store(true)
 	}()
 
 	addr := pxy.ListenerAddress(context.Background())
@@ -226,8 +227,8 @@ func TestConnectionTimeout(t *testing.T) {
 
 	start := time.Now()
 	for {
-		if done == true || time.Since(start) > time.Second*2 {
-			require.True(done)
+		if done.Load() || time.Since(start) > time.Second*2 {
+			require.True(done.Load(), "proxy did not close itself within the expected time frame (2 seconds)")
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
