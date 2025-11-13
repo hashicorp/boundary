@@ -321,7 +321,6 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 			}
 		}()
 		defer p.connWg.Done()
-		defer p.cancel()
 		defer listenerCloseFunc()
 		for {
 			select {
