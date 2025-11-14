@@ -393,6 +393,11 @@ type Worker struct {
 	// they are sync'ed to the corresponding storage bucket. The path must already exist.
 	RecordingStoragePath string `hcl:"recording_storage_path"`
 
+	// SshKnownHostsPath represents the location of the known_hosts file to be used by the worker
+	// for SSH host key verification when connecting to ssh targets. The path must already exist.
+	// If not provided the worker will skip host key verification.
+	SshKnownHostsPath string `hcl:"ssh_known_hosts_path"`
+
 	// RecordingStorageMinimumAvailableCapacity represents the minimum amount of available
 	// disk space a worker needs in the path defined by RecordingStoragePath for processing
 	// sessions with recording enabled. The expected input value for this field is a

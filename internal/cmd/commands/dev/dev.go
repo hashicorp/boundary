@@ -113,6 +113,7 @@ type Command struct {
 	flagWorkerAuthCaCertificateLifetime                time.Duration
 	flagWorkerAuthDebuggingEnabled                     bool
 	flagWorkerRecordingStorageDir                      string
+	flagSshKnownHostsPath                              string
 	flagWorkerRecordingStorageMinimumAvailableCapacity string
 	flagBsrKey                                         string
 }
@@ -428,6 +429,12 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:   "worker-ssh-known-hosts-path",
+		Target: &c.flagSshKnownHostsPath,
+		Usage:  "Specifies the path of the known_hosts file to be used by the worker for SSH host key verification of an SSH target in dev mode. SSH targets and SSH credential injection are Enterprise-only features.",
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:   "worker-recording-storage-minimum-available-capacity",
 		Target: &c.flagWorkerRecordingStorageMinimumAvailableCapacity,
 		Usage:  "Specifies the minimum amount of available disk space a worker needs in the recording storage directory to process sessions with session recording enabled. Input should be a capacity string: 4kib or 3GB. Defaults to 500mib.",
@@ -533,6 +540,7 @@ func (c *Command) Run(args []string) int {
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 
 	if !c.flagControllerOnly {
+		c.Config.Worker.SshKnownHostsPath = c.flagSshKnownHostsPath
 		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
 		c.Config.Worker.RecordingStorageMinimumAvailableCapacity = c.flagWorkerRecordingStorageMinimumAvailableCapacity

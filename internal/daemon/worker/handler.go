@@ -280,7 +280,13 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "error getting decryption function")
 			event.WriteError(ctx, op, err)
 		}
-		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager, proxyHandlers.WithLogger(w.logger))
+
+		handlerOpts := []proxyHandlers.Option{proxyHandlers.WithLogger(w.logger)}
+		if cb := w.SshKnownHostsCallback.Load(); cb != nil {
+			handlerOpts = append(handlerOpts, proxyHandlers.WithSshHostKeyCallback(*cb))
+		}
+
+		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager, handlerOpts...)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
 
