@@ -37,9 +37,8 @@ begin;
   create trigger delete_credential_vault_library_mapping_override_subtype after delete on credential_vault_library_username_password_domain_mapping_ovrd
     for each row execute procedure delete_credential_vault_library_mapping_override_subtype();
 
-
--- Replaces view from 78/01_ssh_signed_certs_additional_valid_principals.up.sql
--- Replaced in 99/01_credential_vault_library_refactor.up.sql
+  -- Replaces view from 78/01_ssh_signed_certs_additional_valid_principals.up.sql
+  -- Replaced in 99/01_credential_vault_library_refactor.up.sql
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with
@@ -161,10 +160,9 @@ begin;
     'This view should only be used when issuing credentials from a Vault credential library. Each row may contain encrypted data. '
     'This view should not be used to retrieve data which will be returned external to boundary.';
 
-
--- Replaces view created in 49/01_vault_credentials.up.sql
--- Replaced in 99/01_credential_vault_library_refactor.up.sql where this
--- view's name changed to credential_vault_generic_library_list_lookup.
+  -- Replaces view created in 49/01_vault_credentials.up.sql
+  -- Replaced in 99/01_credential_vault_library_refactor.up.sql where this
+  -- view's name changed to credential_vault_generic_library_list_lookup.
   drop view credential_vault_library_list_lookup;
   create view credential_vault_library_list_lookup as
   with
