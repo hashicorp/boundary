@@ -79,12 +79,19 @@ description will be read.
     [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method.
 
 - `public_cluster_addr` - Specifies the public host or IP address (and
-  optionally port) at which the controller can be reached _by workers_. This will
-  be used by workers after initial connection to controllers via the worker's
-  `initial_upstreams` block. This defaults to the address of the listener marked for
-  `cluster` purpose. It is used if there is a load balancer in front of multiple Boundary controllers. This is also especially useful for cloud environments that do not
+  optionally port) at which the controller can be reached **by workers**. Workers use this value after making the initial connection to controllers via the worker's
+  `initial_upstreams` block. The default value is the address of the listener marked for the
+  `cluster` purpose.
+
+  You can use this attribute if you want to put a load balancer in front of multiple Boundary controllers to ensure that the workers know the addresses of the controllers to perform client-side load balancing.
+  For example, you could have a TCP load balancer that points to a controller's `cluster` listener for the worker's initial ingress.
+  Then the controller gives the worker the `public_cluster_addr` and the worker updates its client-side load balancing configuration to connect to the set of cluster addresses.
+
+  This setting is also especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
-  EIP. This value can be a direct address string, can refer to a file on disk (file://)
+  EIP.
+
+  This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
   address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
   Note that the address should not include the protocol prefixes like `http://` or `https://`.
@@ -221,6 +228,31 @@ kms "aead" {
 
 Boundary supports many kinds of KMS integrations. For a complete guide to all available
 KMS types, see our [KMS documentation](/boundary/docs/configuration/kms).
+
+## Load balancing
+
+Boundary does not require a load balancer or reverse proxy, as long as workers can directly connect to the controller.
+You can connect controllers directly to `cluster` listener addresses using the `public_cluster_addr` along with the workers' `initial_upstreams` attribute.
+
+However, a load balancer or reverse proxy may be useful if you want to have a:
+
+- Dynamic set of controller addresses so that you can add or remove controllers without having to update each worker's `initial_upstreams` attribute as they change.
+- TCP proxy in front of each `public_cluster_addr` or `cluster` listener address for other reasons.
+The TCP proxy is supported as long as you do not round robin or load balance and you keep the `initial_upstreams` values in sync.
+
+Refer to the following steps for the recommended method for configuring a load balancer to work with Boundary.
+
+1. Configure a load balancer or reverse proxy in TCP mode to point directly to each controller's `cluster` address or configure a round robin configuration in which the controllers point to each other.
+1. Configure each controller's `initial_upstreams` attribute with the address of the load balancer.
+The load balancer's address should not be the same as any of the `public_cluster_addr` or `cluster` listener addresses.
+1. Configure each controller's `public_cluster_addr` attribute to be an address that the worker can use to directly connect to the controller after the worker makes the initial connection through the load balancer.
+
+  In that initial connection, the worker obtains the current set of controller addresses from each controller's `public_cluster_addr`, if it is available.
+  If you did not configure a `public_cluster_addr`, the worker user the controller's `cluster` listener address.
+
+Alternatively, you can use a load balancer or reverse proxy for the `public_cluster_addr` addresses.
+The load balancer or reverse proxy must be in TCP mode, and it it must only proxy from each controller's `public_cluster_addr` to that controller's `cluster` lisetner.
+If you attemmpt to load balance across these addresses, it will result in connectivity issues and a failure of the built-in client-side load balancing.
 
 ## Complete configuration example
 
