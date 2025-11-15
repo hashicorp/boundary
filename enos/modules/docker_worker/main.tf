@@ -72,7 +72,7 @@ resource "docker_image" "boundary" {
 }
 
 locals {
-  recording_storage_path = "/recordings"
+  recording_storage_path = "/boundary/recordings"
   port_ops               = var.port + 1
 }
 
