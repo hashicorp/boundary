@@ -13,19 +13,19 @@ begin;
   select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______wvs';
 
   select is(count(*), 4::bigint)
-    from credential_vault_generic_library_ssh_private_key_mapping_ovrd
+    from credential_vault_library_ssh_private_key_mapping_override
    where library_id in ('vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
   select is(count(*), 4::bigint)
-    from credential_vault_generic_library_username_password_mapping_ovrd
+    from credential_vault_library_username_password_mapping_override
   where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7');
 
   select is(count(*), 8::bigint)
-    from credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+    from credential_vault_library_username_password_domain_mapping_ovrd
   where library_id in ('vl______wvl13', 'vl______wvl14', 'vl______wvl15', 'vl______wvl16', 'vl______wvl17', 'vl______wvl18', 'vl______wvl19', 'vl______wvl20');
 
   select is(count(*), 8::bigint)
-    from credential_vault_generic_library_mapping_override
+    from credential_vault_library_mapping_override
    where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
   -- create test vault tokens

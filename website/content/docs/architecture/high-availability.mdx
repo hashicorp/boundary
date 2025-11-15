@@ -6,11 +6,6 @@ description: >-
 
 ---
 
-⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-> [!IMPORTANT]  
-> **Documentation Update:** Product documentation previously located in `/website` has moved to the [`hashicorp/web-unified-docs`](https://github.com/hashicorp/web-unified-docs) repository, where all product documentation is now centralized. Please make contributions directly to `web-unified-docs`, since changes to `/website` in this repository will not appear on developer.hashicorp.com.
-⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-
 # High availability installation
 
 Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and 3 worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for a number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant configuration, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.

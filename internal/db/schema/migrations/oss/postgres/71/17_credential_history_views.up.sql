@@ -66,8 +66,7 @@ group by sspkc.history_id, rsc.recording_id, css.history_id;
 comment on view credential_static_ssh_private_key_credential_hst_aggregate is
   'credential_static_ssh_private_key_credential_hst_aggregate contains the ssh private key credential history data along with its store and purpose data.';
 
--- Replaced in 99/01_credential_vault_library_refactor.up.sql. Note that this
--- view's name has changed to credential_vault_generic_library_hst_aggregate.
+-- Dynamic Credentials
 create view credential_vault_library_hst_aggregate as
 select
   rdc.recording_id,

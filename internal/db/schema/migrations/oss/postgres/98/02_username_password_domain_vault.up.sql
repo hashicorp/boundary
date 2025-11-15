@@ -3,7 +3,6 @@
 
 begin;
 
-  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_username_password_domain_mapping_ovrd (
     library_id wt_public_id primary key
       constraint credential_vault_library_fkey
@@ -39,7 +38,6 @@ begin;
 
 
 -- Replaces view from 78/01_ssh_signed_certs_additional_valid_principals.up.sql
--- Replaced in 99/01_credential_vault_library_refactor.up.sql
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with
@@ -163,8 +161,6 @@ begin;
 
 
 -- Replaces view created in 49/01_vault_credentials.up.sql
--- Replaced in 99/01_credential_vault_library_refactor.up.sql where this
--- view's name changed to credential_vault_generic_library_list_lookup.
   drop view credential_vault_library_list_lookup;
   create view credential_vault_library_list_lookup as
   with

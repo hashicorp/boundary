@@ -2,11 +2,18 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+## 0.20.1 (2025/11/03)
+
+### New and Improved
+
+* Added a complete IBM Key Protect wrapper implementation with configuration options and KMS client integration ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/292))
+
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
 
-* Update cap/ldap pkg to latest version to address possible concurreny issue ([PR](https://github.com/hashicorp/boundary/pull/6107))
 * Added support for RDP targets and RDP credential injection for connecting to
   Windows machines. RDP credential injection supports both NTLM and Kerberos
   authentication.
@@ -15,19 +22,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   This new helper command allows users to authorize sessions against MySQL
   targets and automatically invoke a MySQL client with the appropriate
   connection parameters and credentials.
-* cli: Added `boundary connect mongo` command for connecting to MongoDB targets.
-  This new helper command allows users to authorize sessions against MongoDB
-  targets and automatically invoke a MongoDB client with the appropriate
-  connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 * cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
   This new helper command allows users to authorize sessions against Cassandra
   targets and automatically invoke a Cassandra client with the appropriate
-  connection parameters and credentials. Currently only username/password credentials are automatically attached.
-* cli: Added `boundary connect redis` command for connecting to Redis targets.
-  This new helper command allows users to authorize sessions against Redis
-  targets and automatically invoke a Redis client with the appropriate
   connection parameters and credentials. Currently only username/password credentials are automatically attached.
 * ui: Improved load times for resource tables with search and filtering capabilities by replacing indexeddb for local data storage with sqlite (WASM) and OPFS ([PR](https://github.com/hashicorp/boundary-ui/pull/2984))
 
@@ -44,41 +43,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Additionally, an input address containing an IPv6 literal may be modified by
   Boundary to conform with RFC 5952.
   ([PR](https://github.com/hashicorp/boundary/pull/5599))
-
-## 0.19.3 (2025/07/10)
-### New and Improved
-
-* cli: Added `boundary connect mysql` command for connecting to MySQL targets.
-  This new helper command allows users to authorize sessions against MySQL
-  targets and automatically invoke a MySQL client with the appropriate
-  connection parameters and credentials.
-* Adds support to parse User-Agent headers and emit them in telemetry events
-  ([PR](https://github.com/hashicorp/boundary/pull/5645)).
-
-* Improved grants system performance by refactoring the IAM data model. In the previous version, Boundary always fetches all grants and grant scopes of a user to perform permissions checks. This refactor
-   allows Boundary to only fetch the grants and grant scopes that are relevant to the current request, significantly improving performance for users with large numbers of roles and grant scopes.
-  ([PR](https://github.com/hashicorp/boundary/pull/5846))
-
-* ui: Sorting functionality added to aliases, groups, roles, scopes, targets, session recordings, sessions, users, auth methods, credential stores, and host catalogs resource tables.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2773))
-
-### Bug fixes
-
-* Fixed the `children` grant scope not behaving properly with `list-resolvable-aliases` ([PR](https://github.com/hashicorp/boundary/pull/5869/files)) ([PR](https://github.com/hashicorp/boundary/pull/5846))
-* Fixed [issue 5003](https://github.com/hashicorp/boundary/issues/5003) where resource ID grants were prioritized over `ids=*` grants, causing grants to be overly restrictive under some circumstances. ([PR](https://github.com/hashicorp/boundary/pull/5877))
-
-### Deprecations/Changes
-
-* Modified parsing logic for various IP/host/address fields across Boundary.
-  Notably, for some fields, Boundary previously required bracket-enclosed
-  IPv6 addresses (eg: `[::1]`). With this change, if the provided address is
-  just an IPv6 literal, enclosing the address in brackets is not valid.
-  Additionally, an input address containing an IPv6 literal may be modified by
-  Boundary to conform with RFC 5952.
-  ([PR](https://github.com/hashicorp/boundary/pull/5599))
-
-* Redundant grant scopes are no longer allowed. For example, if an org scope inherits a grant from the global scope, you cannot apply the same grant directly to the org scope. Passing the `-repair` flag to the `boundary database migrate` command will find and remove any redundant grant scopes in the database.
-  ([PR](https://github.com/hashicorp/boundary/pull/5846))
 
 ## 0.19.2 (2025/05/08)
 ### New and Improved

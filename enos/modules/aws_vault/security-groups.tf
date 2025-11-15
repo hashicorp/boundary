@@ -44,11 +44,10 @@ resource "aws_security_group" "enos_vault_sg" {
 
   # Internal Traffic
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = true
-    cidr_blocks = [data.aws_vpc.infra.cidr_block]
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
   }
 
   egress {

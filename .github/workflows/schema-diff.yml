@@ -74,47 +74,26 @@ jobs:
           To understand how these diffs are generated and some limitations see the
           [documentation](https://github.com/hashicorp/boundary/blob/main/scripts/schema-diff.sh) of the script.
 
-          <details>
-            <summary><b>Functions</b></summary>
+          #### Functions
+          $(getdiff .schema-diff/funcs.diff)
 
-            $(getdiff .schema-diff/funcs.diff)
-          </details>
+          #### Tables
+          $(getdiff .schema-diff/tables.diff)
 
-          <details>
-            <summary><b>Tables</b></summary>
+          #### Views
+          $(getdiff .schema-diff/views.diff)
 
-            $(getdiff .schema-diff/tables.diff)
-          </details>
+          #### Triggers
+          $(getdiff .schema-diff/triggers.diff)
 
-          <details>
-            <summary><b>Views</b></summary>
+          #### Indexes
+          $(getdiff .schema-diff/indexes.diff)
 
-            $(getdiff .schema-diff/views.diff)
-          </details>
+          #### Constraints
+          $(getdiff .schema-diff/constraints.diff)
 
-          <details>
-            <summary><b>Triggers</b></summary>
-
-            $(getdiff .schema-diff/triggers.diff)
-          </details>
-
-          <details>
-            <summary><b>Indexes</b></summary>
-
-            $(getdiff .schema-diff/indexes.diff)
-          </details>
-
-          <details>
-            <summary><b>Constraints</b></summary>
-
-            $(getdiff .schema-diff/constraints.diff)
-          </details>
-
-          <details>
-            <summary><b>Foreign Key Constraints</b></summary>
-
-            $(getdiff .schema-diff/fk_constraints.diff)
-          </details>
+          #### Foreign Key Constraints
+          $(getdiff .schema-diff/fk_constraints.diff)
           EOF
 
           # Parse it through jq to build a valid json object.

@@ -3,7 +3,6 @@
 
 begin;
 
-  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_mapping_override (
     library_id wt_public_id primary key
       constraint credential_vault_library_fkey
@@ -17,7 +16,6 @@ begin;
 
   -- insert_credential_vault_library_mapping_override_subtype() is a before insert trigger
   -- function for subtypes of credential_vault_library_mapping_override
-  -- Updated and renamed in 99/01_credential_vault_library_refactor.up.sql
   create function insert_credential_vault_library_mapping_override_subtype() returns trigger
   as $$
   begin
@@ -31,7 +29,6 @@ begin;
 
   -- delete_credential_vault_library_mapping_override_subtype() is an after delete trigger
   -- function for subtypes of credential_vault_library_mapping_override
-  -- Updated and renamed in 99/01_credential_vault_library_refactor.up.sql
   create function delete_credential_vault_library_mapping_override_subtype() returns trigger
   as $$
   begin

@@ -3,8 +3,7 @@
 
 begin;
 
-  -- Updated in 36/01_vault_library_map_username_password.up.sql
-  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
+-- Updated in 36/01_vault_library_map_username_password.up.sql
   create table credential_vault_library_user_password_mapping_override (
     library_id wt_public_id primary key
       constraint credential_vault_library_fkey

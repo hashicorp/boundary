@@ -49,13 +49,13 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -75,26 +75,13 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	})
 
 	// Create credentials in vault
-	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
+	domainSecretName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com", kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", passwordPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", domainPolicyName),
+			e2e.WithArgs("policy", "delete", kvPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -106,9 +93,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+privateKeyPolicyName,
-			"-policy="+passwordPolicyName,
-			"-policy="+domainPolicyName,
+			"-policy="+kvPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -258,7 +243,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -270,30 +255,11 @@ func TestApiVaultCredentialStore(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Create credentials in vault
-	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", passwordPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", domainPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
+	// Create credential in vault
+	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
+	domainSecretName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com", kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credentials")
 
 	// Create vault token for boundary
@@ -302,9 +268,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+privateKeyPolicyName,
-			"-policy="+passwordPolicyName,
-			"-policy="+domainPolicyName,
+			"-policy="+kvPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",

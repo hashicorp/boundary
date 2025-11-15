@@ -24,12 +24,6 @@ variable "edition" {
   default = "oss"
 }
 
-variable "ui_build_override" {
-  description = "Override for build for UI automation (oss or ent)"
-  type        = string
-  default     = ""
-}
-
 resource "enos_local_exec" "get_git_sha" {
   inline = ["git rev-parse --short HEAD"]
 }
@@ -40,10 +34,9 @@ locals {
 
 resource "enos_local_exec" "build_docker_image" {
   environment = {
-    "IMAGE_NAME"        = local.image_name
-    "ARTIFACT_PATH"     = var.cli_build_path
-    "EDITION"           = var.edition
-    "UI_BUILD_OVERRIDE" = var.ui_build_override
+    "IMAGE_NAME"    = local.image_name
+    "ARTIFACT_PATH" = var.cli_build_path
+    "EDITION"       = var.edition
   }
   scripts = ["${path.module}/build.sh"]
 }

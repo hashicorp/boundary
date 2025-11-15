@@ -130,7 +130,7 @@ variable "vault_instance_type" {
 variable "vault_version" {
   description = "Version of Vault to use"
   type        = string
-  default     = "1.17.6"
+  default     = "1.12.2"
 }
 
 variable "test_email" {
@@ -270,16 +270,4 @@ variable "windows_instance_type" {
   description = "Instance type for Windows client nodes"
   type        = string
   default     = "m7i-flex.xlarge"
-}
-
-variable "ui_build_override" {
-  description = "Override for build for UI automation"
-  type        = string
-  default     = ""
-}
-
-variable "github_token" {
-  description = "github token to the hashicorp org. needed to run RDP automated tests (requires contents (read-only) and actions (read-only) with fine-grained tokens or repo access using classic tokens)"
-  type        = string
-  default     = ""
 }

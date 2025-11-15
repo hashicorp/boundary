@@ -35,12 +35,6 @@ type cassandraConfig struct {
 	NetworkAlias string
 }
 
-type redisConfig struct {
-	User         string
-	Password     string
-	NetworkAlias string
-}
-
 // StartBoundaryDatabase spins up a postgres database in a docker container.
 // Returns information about the container
 func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
@@ -360,57 +354,6 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	}
 }
 
-// StartMongo starts a MongoDB database in a docker container.
-// Returns information about the container
-func StartMongo(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
-	t.Log("Starting MongoDB database...")
-	c, err := LoadConfig()
-	require.NoError(t, err)
-
-	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:        tag,
-	}, docker.AuthConfiguration{})
-	require.NoError(t, err)
-
-	networkAlias := "e2emongo"
-	mongoDb := "e2eboundarydb"
-	mongoUser := "e2eboundary"
-	mongoPassword := "e2eboundary"
-
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:        tag,
-		Env: []string{
-			"MONGO_INITDB_ROOT_USERNAME=" + mongoUser,
-			"MONGO_INITDB_ROOT_PASSWORD=" + mongoPassword,
-			"MONGO_INITDB_DATABASE=" + mongoDb,
-		},
-		ExposedPorts: []string{"27017/tcp"},
-		Name:         networkAlias,
-		Networks:     []*dockertest.Network{network},
-	})
-	require.NoError(t, err)
-
-	return &Container{
-		Resource: resource,
-		UriLocalhost: fmt.Sprintf(
-			"mongodb://%s:%s@%s/%s?authSource=admin",
-			mongoUser,
-			mongoPassword,
-			resource.GetHostPort("27017/tcp"),
-			mongoDb,
-		),
-		UriNetwork: fmt.Sprintf(
-			"mongodb://%s:%s@%s:27017/%s?authSource=admin",
-			mongoUser,
-			mongoPassword,
-			networkAlias,
-			mongoDb,
-		),
-	}
-}
-
 // StartCassandra starts a Cassandra database in a docker container.
 // Returns information about the container
 func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
@@ -478,63 +421,6 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	}
 }
 
-// StartRedis starts a Redis database in a docker container.
-// Returns information about the container
-func StartRedis(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
-	t.Log("Starting Redis database...")
-	c, err := LoadConfig()
-	require.NoError(t, err)
-
-	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:        tag,
-	}, docker.AuthConfiguration{})
-	require.NoError(t, err)
-
-	config := redisConfig{
-		User:         "e2eboundary",
-		Password:     "e2eboundary",
-		NetworkAlias: "e2eredis",
-	}
-
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository:   fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:          tag,
-		ExposedPorts: []string{"6379/tcp"},
-		Name:         config.NetworkAlias,
-		Networks:     []*dockertest.Network{network},
-	})
-	require.NoError(t, err)
-
-	err = pool.Retry(func() error {
-		cmd := exec.Command("docker", "exec", config.NetworkAlias, "redis-cli", "PING")
-		output, cmdErr := cmd.CombinedOutput()
-		if cmdErr != nil {
-			return fmt.Errorf("failed to connect to Redis container '%s': %v\nOutput: %s", config.NetworkAlias, cmdErr, string(output))
-		}
-		return nil
-	})
-	require.NoError(t, err, "Redis container did not start in time or is not healthy")
-
-	err = setupRedisAuthAndUser(t, resource, pool, &config)
-	require.NoError(t, err)
-
-	return &Container{
-		Resource: resource,
-		UriLocalhost: fmt.Sprintf(
-			"redis://%s:%s@localhost:6379",
-			config.User,
-			config.Password,
-		),
-		UriNetwork: fmt.Sprintf(
-			"redis://%s:%s@%s:6379",
-			config.User,
-			config.Password,
-			config.NetworkAlias,
-		),
-	}
-}
-
 // setupCassandraAuthAndUser enables authentication on a Cassandra container and creates a user with permissions.
 func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *cassandraConfig) error {
 	t.Helper()
@@ -591,21 +477,5 @@ func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool
 			return err
 		}
 	}
-	return nil
-}
-
-// setupRedisAuthAndUser configures a Redis container by creating a user with permissions.
-func setupRedisAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, config *redisConfig) error {
-	t.Helper()
-	t.Log("Configuring Redis authentication and user permissions...")
-
-	err := exec.Command(
-		"docker", "exec", config.NetworkAlias, "redis-cli",
-		"ACL", "SETUSER", config.User, "on", fmt.Sprintf(">%s", config.Password), "+@read", "+@write", "allkeys",
-	).Run()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

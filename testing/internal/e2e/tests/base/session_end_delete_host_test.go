@@ -44,7 +44,7 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)

@@ -118,7 +118,6 @@ begin;
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Credential libraries
-  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_deleted (
     public_id wt_public_id primary key,
     delete_time wt_timestamp not null

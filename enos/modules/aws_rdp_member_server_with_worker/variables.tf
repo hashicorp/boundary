@@ -33,12 +33,6 @@ variable "prefix" {
   default     = "enos"
 }
 
-variable "ip_version" {
-  type        = string
-  description = "IP version to use for security group rules. Valid values are '4', '6', or 'dual'."
-  default     = "4"
-}
-
 # =================================================================
 # aws configuration variables
 # =================================================================
@@ -56,8 +50,8 @@ variable "aws_region" {
 
 variable "controller_ip" {
   description = "IP address of the controller instance"
-  type        = list(string)
-  default     = []
+  type        = string
+  default     = ""
 }
 
 variable "iam_name" {

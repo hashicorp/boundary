@@ -58,7 +58,6 @@ type CredentialLibrary struct {
 	//	*CredentialLibrary_VaultCredentialLibraryAttributes
 	//	*CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes
 	//	*CredentialLibrary_VaultGenericCredentialLibraryAttributes
-	//	*CredentialLibrary_VaultLdapCredentialLibraryAttributes
 	Attrs isCredentialLibrary_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
 	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
@@ -206,15 +205,6 @@ func (x *CredentialLibrary) GetVaultGenericCredentialLibraryAttributes() *VaultC
 	return nil
 }
 
-func (x *CredentialLibrary) GetVaultLdapCredentialLibraryAttributes() *VaultLdapCredentialLibraryAttributes {
-	if x != nil {
-		if x, ok := x.Attrs.(*CredentialLibrary_VaultLdapCredentialLibraryAttributes); ok {
-			return x.VaultLdapCredentialLibraryAttributes
-		}
-	}
-	return nil
-}
-
 func (x *CredentialLibrary) GetAuthorizedActions() []string {
 	if x != nil {
 		return x.AuthorizedActions
@@ -257,10 +247,6 @@ type CredentialLibrary_VaultGenericCredentialLibraryAttributes struct {
 	VaultGenericCredentialLibraryAttributes *VaultCredentialLibraryAttributes `protobuf:"bytes,103,opt,name=vault_generic_credential_library_attributes,json=vaultGenericCredentialLibraryAttributes,proto3,oneof"`
 }
 
-type CredentialLibrary_VaultLdapCredentialLibraryAttributes struct {
-	VaultLdapCredentialLibraryAttributes *VaultLdapCredentialLibraryAttributes `protobuf:"bytes,104,opt,name=vault_ldap_credential_library_attributes,json=vaultLdapCredentialLibraryAttributes,proto3,oneof"`
-}
-
 func (*CredentialLibrary_Attributes) isCredentialLibrary_Attrs() {}
 
 func (*CredentialLibrary_VaultCredentialLibraryAttributes) isCredentialLibrary_Attrs() {}
@@ -269,8 +255,6 @@ func (*CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes) isCrede
 }
 
 func (*CredentialLibrary_VaultGenericCredentialLibraryAttributes) isCredentialLibrary_Attrs() {}
-
-func (*CredentialLibrary_VaultLdapCredentialLibraryAttributes) isCredentialLibrary_Attrs() {}
 
 // The attributes of a vault typed Credential Library.
 type VaultCredentialLibraryAttributes struct {
@@ -454,57 +438,11 @@ func (x *VaultSSHCertificateCredentialLibraryAttributes) GetAdditionalValidPrinc
 	return nil
 }
 
-// The attributes of a vault LDAP Credential Library.
-type VaultLdapCredentialLibraryAttributes struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The path in Vault to request credentials from.
-	Path          *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty" class:"public"` // @gotags: `class:"public"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *VaultLdapCredentialLibraryAttributes) Reset() {
-	*x = VaultLdapCredentialLibraryAttributes{}
-	mi := &file_controller_api_resources_credentiallibraries_v1_credential_library_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *VaultLdapCredentialLibraryAttributes) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VaultLdapCredentialLibraryAttributes) ProtoMessage() {}
-
-func (x *VaultLdapCredentialLibraryAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_credentiallibraries_v1_credential_library_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use VaultLdapCredentialLibraryAttributes.ProtoReflect.Descriptor instead.
-func (*VaultLdapCredentialLibraryAttributes) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *VaultLdapCredentialLibraryAttributes) GetPath() *wrapperspb.StringValue {
-	if x != nil {
-		return x.Path
-	}
-	return nil
-}
-
 var File_controller_api_resources_credentiallibraries_v1_credential_library_proto protoreflect.FileDescriptor
 
 const file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDesc = "" +
 	"\n" +
-	"Hcontroller/api/resources/credentiallibraries/v1/credential_library.proto\x12/controller.api.resources.credentiallibraries.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\x84\r\n" +
+	"Hcontroller/api/resources/credentiallibraries/v1/credential_library.proto\x12/controller.api.resources.credentiallibraries.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xae\v\n" +
 	"\x11CredentialLibrary\x12\x0e\n" +
 	"\x02id\x18\n" +
 	" \x01(\tR\x02id\x120\n" +
@@ -526,10 +464,7 @@ const file_controller_api_resources_credentiallibraries_v1_credential_library_pr
 	"3vault_ssh_certificate_credential_library_attributes\x18f \x01(\v2_.controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributesB-\xa0\xda)\x01\x9a\xe3)\x15vault-ssh-certificate\xfa\xd2\xe4\x93\x02\n" +
 	"\x12\bINTERNALH\x00R.vaultSshCertificateCredentialLibraryAttributes\x12\xd8\x01\n" +
 	"+vault_generic_credential_library_attributes\x18g \x01(\v2Q.controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributesB%\xa0\xda)\x01\x9a\xe3)\rvault-generic\xfa\xd2\xe4\x93\x02\n" +
-	"\x12\bINTERNALH\x00R'vaultGenericCredentialLibraryAttributes\x12\xd3\x01\n" +
-	"(vault_ldap_credential_library_attributes\x18h \x01(\v2U.controller.api.resources.credentiallibraries.v1.VaultLdapCredentialLibraryAttributesB\"\xa0\xda)\x01\x9a\xe3)\n" +
-	"vault-ldap\xfa\xd2\xe4\x93\x02\n" +
-	"\x12\bINTERNALH\x00R$vaultLdapCredentialLibraryAttributes\x12/\n" +
+	"\x12\bINTERNALH\x00R'vaultGenericCredentialLibraryAttributes\x12/\n" +
 	"\x12authorized_actions\x18\xac\x02 \x03(\tR\x12authorized_actions\x12/\n" +
 	"\x0fcredential_type\x18\xb6\x02 \x01(\tB\x04\xa0\xda)\x01R\x0fcredential_type\x12b\n" +
 	"\x1ccredential_mapping_overrides\x18\xc0\x02 \x01(\v2\x17.google.protobuf.StructB\x04\xa0\xda)\x01R\x1ccredential_mapping_overridesB\a\n" +
@@ -572,11 +507,7 @@ const file_controller_api_resources_credentiallibraries_v1_credential_library_pr
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
 	"\x0fExtensionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"~\n" +
-	"$VaultLdapCredentialLibraryAttributes\x12V\n" +
-	"\x04path\x18\n" +
-	" \x01(\v2\x1c.google.protobuf.StringValueB$\xa0\xda)\x01\xc2\xdd)\x1c\n" +
-	"\x0fattributes.path\x12\tVaultPathR\x04pathBhZfgithub.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries;credentiallibrariesb\x06proto3"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BhZfgithub.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries;credentiallibrariesb\x06proto3"
 
 var (
 	file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDescOnce sync.Once
@@ -590,50 +521,47 @@ func file_controller_api_resources_credentiallibraries_v1_credential_library_pro
 	return file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDescData
 }
 
-var file_controller_api_resources_credentiallibraries_v1_credential_library_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_controller_api_resources_credentiallibraries_v1_credential_library_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_controller_api_resources_credentiallibraries_v1_credential_library_proto_goTypes = []any{
 	(*CredentialLibrary)(nil),                              // 0: controller.api.resources.credentiallibraries.v1.CredentialLibrary
 	(*VaultCredentialLibraryAttributes)(nil),               // 1: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes
 	(*VaultSSHCertificateCredentialLibraryAttributes)(nil), // 2: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes
-	(*VaultLdapCredentialLibraryAttributes)(nil),           // 3: controller.api.resources.credentiallibraries.v1.VaultLdapCredentialLibraryAttributes
-	nil,                            // 4: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
-	nil,                            // 5: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
-	(*scopes.ScopeInfo)(nil),       // 6: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrapperspb.StringValue)(nil), // 7: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),  // 8: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),        // 9: google.protobuf.Struct
-	(*wrapperspb.UInt32Value)(nil), // 10: google.protobuf.UInt32Value
+	nil,                            // 3: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
+	nil,                            // 4: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
+	(*scopes.ScopeInfo)(nil),       // 5: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrapperspb.StringValue)(nil), // 6: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),  // 7: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),        // 8: google.protobuf.Struct
+	(*wrapperspb.UInt32Value)(nil), // 9: google.protobuf.UInt32Value
 }
 var file_controller_api_resources_credentiallibraries_v1_credential_library_proto_depIdxs = []int32{
-	6,  // 0: controller.api.resources.credentiallibraries.v1.CredentialLibrary.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	7,  // 1: controller.api.resources.credentiallibraries.v1.CredentialLibrary.name:type_name -> google.protobuf.StringValue
-	7,  // 2: controller.api.resources.credentiallibraries.v1.CredentialLibrary.description:type_name -> google.protobuf.StringValue
-	8,  // 3: controller.api.resources.credentiallibraries.v1.CredentialLibrary.created_time:type_name -> google.protobuf.Timestamp
-	8,  // 4: controller.api.resources.credentiallibraries.v1.CredentialLibrary.updated_time:type_name -> google.protobuf.Timestamp
-	9,  // 5: controller.api.resources.credentiallibraries.v1.CredentialLibrary.attributes:type_name -> google.protobuf.Struct
+	5,  // 0: controller.api.resources.credentiallibraries.v1.CredentialLibrary.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	6,  // 1: controller.api.resources.credentiallibraries.v1.CredentialLibrary.name:type_name -> google.protobuf.StringValue
+	6,  // 2: controller.api.resources.credentiallibraries.v1.CredentialLibrary.description:type_name -> google.protobuf.StringValue
+	7,  // 3: controller.api.resources.credentiallibraries.v1.CredentialLibrary.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 4: controller.api.resources.credentiallibraries.v1.CredentialLibrary.updated_time:type_name -> google.protobuf.Timestamp
+	8,  // 5: controller.api.resources.credentiallibraries.v1.CredentialLibrary.attributes:type_name -> google.protobuf.Struct
 	1,  // 6: controller.api.resources.credentiallibraries.v1.CredentialLibrary.vault_credential_library_attributes:type_name -> controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes
 	2,  // 7: controller.api.resources.credentiallibraries.v1.CredentialLibrary.vault_ssh_certificate_credential_library_attributes:type_name -> controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes
 	1,  // 8: controller.api.resources.credentiallibraries.v1.CredentialLibrary.vault_generic_credential_library_attributes:type_name -> controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes
-	3,  // 9: controller.api.resources.credentiallibraries.v1.CredentialLibrary.vault_ldap_credential_library_attributes:type_name -> controller.api.resources.credentiallibraries.v1.VaultLdapCredentialLibraryAttributes
-	9,  // 10: controller.api.resources.credentiallibraries.v1.CredentialLibrary.credential_mapping_overrides:type_name -> google.protobuf.Struct
-	7,  // 11: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.path:type_name -> google.protobuf.StringValue
-	7,  // 12: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.http_method:type_name -> google.protobuf.StringValue
-	7,  // 13: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.http_request_body:type_name -> google.protobuf.StringValue
-	7,  // 14: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.path:type_name -> google.protobuf.StringValue
-	7,  // 15: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.username:type_name -> google.protobuf.StringValue
-	7,  // 16: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_type:type_name -> google.protobuf.StringValue
-	10, // 17: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_bits:type_name -> google.protobuf.UInt32Value
-	7,  // 18: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ttl:type_name -> google.protobuf.StringValue
-	7,  // 19: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_id:type_name -> google.protobuf.StringValue
-	4,  // 20: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.critical_options:type_name -> controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
-	5,  // 21: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.extensions:type_name -> controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
-	7,  // 22: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.additional_valid_principals:type_name -> google.protobuf.StringValue
-	7,  // 23: controller.api.resources.credentiallibraries.v1.VaultLdapCredentialLibraryAttributes.path:type_name -> google.protobuf.StringValue
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	8,  // 9: controller.api.resources.credentiallibraries.v1.CredentialLibrary.credential_mapping_overrides:type_name -> google.protobuf.Struct
+	6,  // 10: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.path:type_name -> google.protobuf.StringValue
+	6,  // 11: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.http_method:type_name -> google.protobuf.StringValue
+	6,  // 12: controller.api.resources.credentiallibraries.v1.VaultCredentialLibraryAttributes.http_request_body:type_name -> google.protobuf.StringValue
+	6,  // 13: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.path:type_name -> google.protobuf.StringValue
+	6,  // 14: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.username:type_name -> google.protobuf.StringValue
+	6,  // 15: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_type:type_name -> google.protobuf.StringValue
+	9,  // 16: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_bits:type_name -> google.protobuf.UInt32Value
+	6,  // 17: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ttl:type_name -> google.protobuf.StringValue
+	6,  // 18: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.key_id:type_name -> google.protobuf.StringValue
+	3,  // 19: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.critical_options:type_name -> controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.CriticalOptionsEntry
+	4,  // 20: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.extensions:type_name -> controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.ExtensionsEntry
+	6,  // 21: controller.api.resources.credentiallibraries.v1.VaultSSHCertificateCredentialLibraryAttributes.additional_valid_principals:type_name -> google.protobuf.StringValue
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_credentiallibraries_v1_credential_library_proto_init() }
@@ -646,7 +574,6 @@ func file_controller_api_resources_credentiallibraries_v1_credential_library_pro
 		(*CredentialLibrary_VaultCredentialLibraryAttributes)(nil),
 		(*CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes)(nil),
 		(*CredentialLibrary_VaultGenericCredentialLibraryAttributes)(nil),
-		(*CredentialLibrary_VaultLdapCredentialLibraryAttributes)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -654,7 +581,7 @@ func file_controller_api_resources_credentiallibraries_v1_credential_library_pro
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDesc), len(file_controller_api_resources_credentiallibraries_v1_credential_library_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

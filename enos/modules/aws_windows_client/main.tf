@@ -106,11 +106,10 @@ resource "aws_security_group" "windows_client" {
 
   // Allow all traffic originating from the VPC
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = true
-    cidr_blocks = [data.aws_vpc.infra.cidr_block]
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
   }
 
   egress {
@@ -142,7 +141,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = [aws_security_group.windows_client.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -231,23 +230,13 @@ resource "aws_instance" "client" {
                   New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
 
                   # Create a non-admin user to be used for RDP connection. This
-                  # is needed since the scheduled task that runs desktop automation
+                  # is needed since the scheduled task that runs pyautogui
                   # doesn't work in an Administrator context.
                   ## Create a local user
                   $Username = "${local.test_username}"
                   $Password = ConvertTo-SecureString "${local.test_password}" -AsPlainText -Force
                   New-LocalUser $Username -Password $Password -FullName "Auto Login User" -Description "User for Auto Login"
                   Add-LocalGroupMember -Group "Administrators" -Member $Username
-
-                  # Disable windows snapping assist. This is done to reduce
-                  # complexity in RDP automated tests since the snapping assist
-                  # window introduces an additional UI element that needs to be handled.
-                  Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" -Name "SnapAssist" -Value 0 -Force
-
-                  $script = 'Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SnapAssist" -Value 0 -Force; Stop-Process -Name explorer -Force; Start-Process explorer.exe'
-                  $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -Command $script"
-                  $trigger = New-ScheduledTaskTrigger -AtLogOn -User "autologinuser"
-                  Register-ScheduledTask -TaskName "RemoveSnapAssist" -Action $action -Trigger $trigger -User "autologinuser" -RunLevel Highest -Force
 
                   # Set registry keys for auto-login
                   $regPath = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
@@ -296,10 +285,6 @@ resource "enos_local_exec" "wait_for_ssh" {
   inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.client.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
-resource "enos_local_exec" "get_go_version" {
-  inline = ["cat $(echo $(git rev-parse --show-toplevel))/.go-version | xargs"]
-}
-
 resource "enos_local_exec" "make_dir" {
   count = var.boundary_cli_zip_path != "" ? 1 : 0
   depends_on = [
@@ -325,7 +310,7 @@ resource "archive_file" "boundary_src_zip" {
   type        = "zip"
   source_dir  = var.boundary_src_path
   output_path = "${path.root}/.terraform/tmp/boundary-src.zip"
-  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**", "**/ui/.tmp/**"]
+  excludes    = ["**/enos/**", "**/node_modules/**", "bin/**", "**/.git/**", "plugins/**/*.gz", "website/**"]
 }
 
 resource "enos_local_exec" "add_boundary_src" {
@@ -348,9 +333,6 @@ resource "local_file" "powershell_script" {
   content = templatefile("${path.module}/scripts/setup.ps1", {
     boundary_cli_zip_path = "${local.test_dir}/${basename(local.boundary_cli_zip_path)}"
     boundary_src_zip_path = "${local.test_dir}/${basename(archive_file.boundary_src_zip[0].output_path)}"
-    go_version            = "${enos_local_exec.get_go_version.stdout}"
-    github_token          = "${var.github_token}"
-    vault_version         = "${var.vault_version}"
   })
   filename = "${path.root}/.terraform/tmp/setup_windows_client.ps1"
 }
@@ -375,9 +357,7 @@ resource "enos_local_exec" "run_powershell_script" {
     enos_local_exec.wait_for_ssh,
   ]
 
-  # running this script as test_username so that go modules will be set up for
-  # the user used for RDP tests
-  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${local.test_username}@${aws_instance.client.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
+  inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.client.public_ip} ${local.test_dir}/${basename(local_file.powershell_script[0].filename)}"]
 }
 
 # used for debug

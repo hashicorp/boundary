@@ -37,7 +37,7 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 	require.NoError(t, err)
 	acctName := "e2e-account"
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)

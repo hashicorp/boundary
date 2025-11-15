@@ -417,22 +417,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "mysql",
 			}
 		}),
-		"connect mongo": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "mongo",
-			}
-		}),
 		"connect cassandra": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "cassandra",
-			}
-		}),
-		"connect redis": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "redis",
 			}
 		}),
 		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
@@ -495,12 +483,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
-		"credential-libraries create vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &credentiallibrariescmd.VaultLdapCommand{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "create",
-			}
-		}),
 		"credential-libraries update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -521,12 +503,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credential-libraries update vault-ssh-certificate": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.VaultSshCertificateCommand{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "update",
-			}
-		}),
-		"credential-libraries update vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
-			return &credentiallibrariescmd.VaultLdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}

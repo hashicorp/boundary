@@ -355,7 +355,6 @@ begin;
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
   -- Replaces whx_credential_dimension_source defined in 71/07_targets.up.sql
-  -- Replaced in 99/01_credential_vault_library_refactor.up.sql.
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,

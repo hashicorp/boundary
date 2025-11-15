@@ -86,7 +86,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	assert.Empty(t, initialTargets.ListToken)
 
 	// Create a new target and destroy one of the other targets
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

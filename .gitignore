@@ -152,6 +152,3 @@ dist
 out
 
 .schema-diff/
-
-# rdp e2e automation
-test_output*

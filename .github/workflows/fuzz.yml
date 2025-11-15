@@ -49,7 +49,7 @@ jobs:
         run: go test ./internal/perms -fuzz=FuzzParse -fuzztime=30s
       - name: Upload fuzz failure seed corpus as run artifact
         if: failure()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: fuzz-corpus
           path: ./internal/perms/testdata/fuzz

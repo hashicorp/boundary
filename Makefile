@@ -128,7 +128,7 @@ clean-ui:
 
 .PHONY: build-ui-ifne
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/.tmp/boundary-ui/ui/admin/dist))
+ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
 	@echo "==> No UI assets found, building..."
 	@$(MAKE) build-ui
 else

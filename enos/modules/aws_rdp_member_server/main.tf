@@ -48,7 +48,7 @@ resource "aws_instance" "member_server" {
   vpc_security_group_ids = var.domain_controller_sec_group_id_list
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
-  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -249,9 +249,9 @@ locals {
   private_key = abspath(var.domain_controller_private_key)
 }
 
-resource "time_sleep" "wait_5_minutes" {
+resource "time_sleep" "wait_2_minutes" {
   depends_on      = [aws_instance.member_server]
-  create_duration = "5m"
+  create_duration = "2m"
 }
 
 # wait for the SSH service to be available on the instance. We specifically use
@@ -259,7 +259,7 @@ resource "time_sleep" "wait_5_minutes" {
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
   count      = var.server_version != "2016" ? 1 : 0
-  depends_on = [time_sleep.wait_5_minutes]
+  depends_on = [time_sleep.wait_2_minutes]
   inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 

@@ -2056,7 +2056,6 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
@@ -2070,7 +2069,6 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
@@ -2096,7 +2094,6 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
@@ -2110,7 +2107,6 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
@@ -2140,7 +2136,6 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,
@@ -2154,7 +2149,6 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
 			globals.UsernamePasswordDomainCredentialPrefix,

@@ -5,11 +5,6 @@ description: >-
   Learn about using health endpoints to verify controller and worker server status. Check their health using wget. View an example response and configuration.
 ---
 
-⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-> [!IMPORTANT]  
-> **Documentation Update:** Product documentation previously located in `/website` has moved to the [`hashicorp/web-unified-docs`](https://github.com/hashicorp/web-unified-docs) repository, where all product documentation is now centralized. Please make contributions directly to `web-unified-docs`, since changes to `/website` in this repository will not appear on developer.hashicorp.com.
-⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-
 # Boundary health endpoints
 
 Boundary provides health monitoring through the `/health` path using a listener with the `"ops"` purpose. By default, a listener with that purpose runs on port `9203`. See the [example configuration](#example-configuration) section for an example listener stanza in a `config.hcl` file.

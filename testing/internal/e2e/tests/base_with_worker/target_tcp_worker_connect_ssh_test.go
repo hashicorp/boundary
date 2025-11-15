@@ -49,7 +49,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -69,10 +69,11 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	})
 
 	// Create credential in vault
-	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+			e2e.WithArgs("policy", "delete", kvPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -84,7 +85,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			fmt.Sprintf("-policy=%s", boundaryPolicyName),
-			fmt.Sprintf("-policy=%s", privateKeyPolicyName),
+			fmt.Sprintf("-policy=%s", kvPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -129,10 +130,8 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		[]target.Option{
-			target.WithAddress("openssh-server"),
-			target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
-		},
+		target.WithAddress("openssh-server"),
+		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
 	)
 	require.NoError(t, err)
 

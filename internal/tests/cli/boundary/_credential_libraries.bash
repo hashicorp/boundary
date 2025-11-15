@@ -18,17 +18,6 @@ function create_vault_generic_library() {
     create vault-generic $@
 }
 
-function create_vault_ldap_library() {
-  boundary credential-libraries \
-    create vault-ldap $@
-}
-
-function update_vault_ldap_library() {
-  boundary credential-libraries \
-    update vault-ldap $@
-}
-
-
 function create_vault_library() {
   boundary credential-libraries \
     create vault $@

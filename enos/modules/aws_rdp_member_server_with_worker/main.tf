@@ -75,7 +75,7 @@ resource "aws_instance" "worker" {
   key_name               = var.domain_controller_aws_keypair_name
   subnet_id              = data.aws_subnets.infra.ids[0]
   iam_instance_profile   = var.iam_name
-  ipv6_address_count     = var.ip_version == "6" || var.ip_version == "dual" ? 1 : 0
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -215,7 +215,7 @@ ${var.domain_admin_password}
                     }
                   } while ($true)
 
-                  # Logging to troubleshoot domain issues
+                  #logging to troubleshoot domain issues
                   Resolve-DnsName -Name "${var.active_directory_domain}" -Server "${var.domain_controller_ip}" -ErrorAction SilentlyContinue
                   Get-Service -Name LanmanWorkstation, Netlogon, RpcSs | Select-Object Name, DisplayName, Status
 
@@ -312,7 +312,7 @@ resource "local_file" "worker_config" {
     enos_local_exec.add_boundary_cli,
   ]
   content = templatefile("${path.module}/${var.worker_config_file_path}", {
-    controller_ip           = var.ip_version == "4" ? jsonencode(var.controller_ip) : jsonencode(formatlist("[%s]:9201", flatten(var.controller_ip)))
+    controller_ip           = var.controller_ip
     aws_kms_key             = data.aws_kms_key.kms_key.id
     aws_region              = var.aws_region
     worker_public_ip        = aws_instance.worker.public_ip

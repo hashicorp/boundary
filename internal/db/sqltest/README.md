@@ -3,9 +3,7 @@
 This test suite is used to test behavior of the database logic.
 In particular the data warehouse implementation is
 completely in sql via plpgsql, functions, and triggers.
-Note that these tests are not limited to testing triggers - they should also be used to test constraints and indexes.
-
-This test suite is implemented directly in sql.
+This test suite is also implemented directly in sql.
 
 ## Organization
 

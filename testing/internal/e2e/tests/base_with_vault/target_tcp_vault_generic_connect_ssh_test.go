@@ -47,13 +47,13 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -73,10 +73,11 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	})
 
 	// Create credential in vault
-	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+			e2e.WithArgs("policy", "delete", kvPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -88,7 +89,7 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			fmt.Sprintf("-policy=%s", boundaryPolicyName),
-			fmt.Sprintf("-policy=%s", privateKeyPolicyName),
+			fmt.Sprintf("-policy=%s", kvPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",

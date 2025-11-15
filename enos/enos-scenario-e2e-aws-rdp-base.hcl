@@ -29,7 +29,6 @@ scenario "e2e_aws_rdp_base" {
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    ip_version               = "4"
 
     build_path_linux = {
       "local" = "/tmp",
@@ -62,7 +61,7 @@ scenario "e2e_aws_rdp_base" {
   }
 
   step "create_base_infra" {
-    module = local.ip_version == "4" ? module.aws_vpc : module.aws_vpc_ipv6
+    module = module.aws_vpc_ipv6
 
     depends_on = [
       step.find_azs,
@@ -113,9 +112,6 @@ scenario "e2e_aws_rdp_base" {
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
       boundary_src_path     = local.local_boundary_src_dir
-      github_token          = var.github_token
-      ip_version            = local.ip_version
-      vault_version         = var.vault_version
     }
   }
 
@@ -141,7 +137,7 @@ scenario "e2e_aws_rdp_base" {
       kms_key_arn     = step.create_base_infra.kms_key_arn
       storage_backend = "raft"
       unseal_method   = "shamir"
-      ip_version      = local.ip_version
+      ip_version      = "dual"
       vault_release = {
         version = var.vault_version
         edition = "oss"
@@ -163,7 +159,6 @@ scenario "e2e_aws_rdp_base" {
     variables {
       vpc_id         = step.create_base_infra.vpc_id
       server_version = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
-      ip_version     = local.ip_version
     }
   }
 
@@ -197,7 +192,7 @@ scenario "e2e_aws_rdp_base" {
       vault_address               = step.create_vault_cluster.instance_public_ips[0]
       vault_transit_token         = step.create_vault_cluster.vault_transit_token
       aws_region                  = var.aws_region
-      ip_version                  = local.ip_version
+      ip_version                  = "dual"
       recording_storage_path      = "/recording"
       alb_sg_additional_ips       = step.create_windows_client.public_ip_list
     }
@@ -249,7 +244,7 @@ scenario "e2e_aws_rdp_base" {
       server_version                      = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
       boundary_cli_zip_path               = step.build_boundary_windows.artifact_path
       kms_key_arn                         = step.create_base_infra.kms_key_arn
-      controller_ip                       = step.create_boundary_cluster.controller_ips_private
+      controller_ip                       = step.create_boundary_cluster.public_controller_addresses[0]
       iam_name                            = step.create_boundary_cluster.iam_instance_profile_name
       boundary_security_group             = step.create_boundary_cluster.boundary_sg_id
       active_directory_domain             = step.create_rdp_domain_controller.domain_name
@@ -259,7 +254,6 @@ scenario "e2e_aws_rdp_base" {
       domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
       domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
       aws_region                          = var.aws_region
-      ip_version                          = local.ip_version
     }
   }
 
@@ -280,7 +274,6 @@ scenario "e2e_aws_rdp_base" {
       domain_admin_password               = step.create_rdp_domain_controller.password
       domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
       domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
-      ip_version                          = local.ip_version
     }
   }
 
@@ -309,7 +302,6 @@ scenario "e2e_aws_rdp_base" {
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
       target_rdp_domain_controller_addr        = step.create_rdp_domain_controller.private_ip
-      target_rdp_domain_controller_addr_ipv6   = local.ip_version == "4" ? "" : step.create_rdp_domain_controller.ipv6[0]
       target_rdp_domain_controller_user        = step.create_rdp_domain_controller.admin_username
       target_rdp_domain_controller_password    = step.create_rdp_domain_controller.password
       target_rdp_member_server_addr            = step.create_rdp_member_server.private_ip
@@ -317,16 +309,12 @@ scenario "e2e_aws_rdp_base" {
       target_rdp_member_server_user            = step.create_rdp_member_server.admin_username
       target_rdp_member_server_password        = step.create_rdp_member_server.password
       target_rdp_domain_name                   = step.create_rdp_domain_controller.domain_name
-      target_rdp_server_version                = matrix.rdp_server
-      controller_ip_public                     = step.create_boundary_cluster.controller_ips[0]
       client_ip_public                         = step.create_windows_client.public_ip
       client_username                          = step.create_windows_client.test_username
       client_password                          = step.create_windows_client.test_password
       client_test_dir                          = step.create_windows_client.test_dir
-      client_ssh_key                           = step.create_windows_client.ssh_private_key
-      client_version                           = matrix.client
-      vault_addr_public                        = step.create_vault_cluster.instance_addresses[0]
-      vault_addr_private                       = step.create_vault_cluster.instance_addresses_private[0]
+      vault_addr_public                        = step.create_vault_cluster.instance_public_ips_ipv4[0]
+      vault_addr_private                       = step.create_vault_cluster.instance_private_ips[0]
       vault_root_token                         = step.create_vault_cluster.vault_root_token
     }
   }
@@ -349,10 +337,6 @@ scenario "e2e_aws_rdp_base" {
 
   output "rdp_domain_controller_private_ip" {
     value = step.create_rdp_domain_controller.private_ip
-  }
-
-  output "rdp_domain_controller_ipv6" {
-    value = step.create_rdp_domain_controller.ipv6
   }
 
   output "rdp_domain_controller_admin_username" {
@@ -387,10 +371,6 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_windows_client.public_ip
   }
 
-  output "windows_client_private_ip" {
-    value = step.create_windows_client.private_ip
-  }
-
   output "windows_client_admin_password" {
     value = step.create_windows_client.admin_password
   }
@@ -421,13 +401,5 @@ scenario "e2e_aws_rdp_base" {
 
   output "windows_worker_private_ip" {
     value = step.create_windows_worker.private_ip
-  }
-
-  output "vault_address_public" {
-    value = step.create_vault_cluster.instance_public_ips_ipv4[0]
-  }
-
-  output "vault_root_token" {
-    value = step.create_vault_cluster.vault_root_token
   }
 }

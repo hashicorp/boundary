@@ -69,7 +69,7 @@ begin;
     join wh_session_accumulating_fact on wh_session_accumulating_fact.session_id = wh_session_connection_accumulating_fact.session_id
     where wh_session_connection_accumulating_fact.session_id = 's1____walter';
 
-  update credential_vault_generic_library set vault_path = '/secrets/tcp/user' where public_id = 'vl______wvl2';
+  update credential_vault_library set vault_path = '/secrets/tcp/user' where public_id = 'vl______wvl2';
 
   insert into session
     ( project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)

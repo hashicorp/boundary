@@ -119,10 +119,10 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	// Create target
 	var targetId string
 	if c.IpVersion == "4" {
-		targetId, err = boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
+		targetId, err = boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	} else {
 		targetId, err = boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
-			[]target.Option{target.WithIngressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagCollocated))},
+			target.WithIngressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagCollocated)),
 		)
 	}
 

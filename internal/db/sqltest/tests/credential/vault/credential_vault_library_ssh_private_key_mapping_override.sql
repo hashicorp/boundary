@@ -3,10 +3,10 @@
 
 --  credential_vault_library_ssh_private_key_mapping_override tests:
 --   the following triggers
---    insert_credential_vault_generic_library_mapping_override_subtyp
---    delete_credential_vault_generic_library_mapping_override_subtyp
+--    insert_credential_vault_library_mapping_override_subtype
+--    delete_credential_vault_library_mapping_override_subtype
 --   and the following view
---    credential_vault_generic_library_list_lookup
+--    credential_vault_library_list_lookup
 
 begin;
   select plan(11);
@@ -14,16 +14,16 @@ begin;
 
   -- validate the setup data
   select is(count(*), 4::bigint)
-    from credential_vault_generic_library_ssh_private_key_mapping_ovrd
+    from credential_vault_library_ssh_private_key_mapping_override
    where library_id in ('vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
   select is(count(*), 4::bigint)
-    from credential_vault_generic_library_mapping_override
+    from credential_vault_library_mapping_override
    where library_id in ('vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
   prepare select_libraries as
    select public_id::text, credential_type::text, username_attribute::text, private_key_attribute::text, private_key_passphrase_attribute::text
-     from credential_vault_generic_library_list_lookup
+     from credential_vault_library_list_lookup
     where public_id in ('vl______wvl2', 'vl______wvl8', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12')
  order by public_id;
 
@@ -39,28 +39,28 @@ begin;
   );
 
   -- validate the insert triggers
-  select is(count(*), 0::bigint) from credential_vault_generic_library_ssh_private_key_mapping_ovrd where library_id = 'vl______wvl8';
-  select is(count(*), 0::bigint) from credential_vault_generic_library_mapping_override             where library_id = 'vl______wvl8';
+  select is(count(*), 0::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
+  select is(count(*), 0::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
 
   prepare insert_cvl_ssh_private_key_mapping_override as
-    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
+    insert into credential_vault_library_ssh_private_key_mapping_override
       (library_id,     username_attribute, private_key_attribute)
     values
       ('vl______wvl8', 'my_username',      'my_private_key');
   select lives_ok('insert_cvl_ssh_private_key_mapping_override');
 
-  select is(count(*), 1::bigint) from credential_vault_generic_library_ssh_private_key_mapping_ovrd where library_id = 'vl______wvl8';
-  select is(count(*), 1::bigint) from credential_vault_generic_library_mapping_override             where library_id = 'vl______wvl8';
+  select is(count(*), 1::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
+  select is(count(*), 1::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
 
   -- validate the delete triggers
   prepare delete_cvl_ssh_private_key_mapping_override as
     delete
-      from credential_vault_generic_library_ssh_private_key_mapping_ovrd
+      from credential_vault_library_ssh_private_key_mapping_override
      where library_id = 'vl______wvl8';
   select lives_ok('delete_cvl_ssh_private_key_mapping_override');
 
-  select is(count(*), 0::bigint) from credential_vault_generic_library_ssh_private_key_mapping_ovrd where library_id = 'vl______wvl8';
-  select is(count(*), 0::bigint) from credential_vault_generic_library_mapping_override             where library_id = 'vl______wvl8';
+  select is(count(*), 0::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
+  select is(count(*), 0::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
 
   select * from finish();
 rollback;

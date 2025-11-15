@@ -46,6 +46,11 @@ const (
 
 	devConfig = `
 disable_mlock = true
+
+telemetry {
+	prometheus_retention_time = "24h"
+	disable_hostname = true
+}
 `
 
 	devControllerExtraConfig = `
@@ -1348,6 +1353,10 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 // Sanitized returns a copy of the config with all values that are considered
 // sensitive stripped. It also strips all `*Raw` values that are mainly
 // used for parsing.
+//
+// Specifically, the fields that this method strips are:
+// - KMS.Config
+// - Telemetry.CirconusAPIToken
 func (c *Config) Sanitized() map[string]any {
 	// Create shared config if it doesn't exist (e.g. in tests) so that map
 	// keys are actually populated

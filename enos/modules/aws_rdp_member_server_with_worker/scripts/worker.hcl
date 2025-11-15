@@ -18,7 +18,7 @@ listener "tcp" {
 worker {
   public_addr = "${worker_public_ip}"
   name = "win-worker-0"
-  initial_upstreams = ${controller_ip}
+  initial_upstreams = ["[${controller_ip}]:9201"]
   tags {
     type = ["worker", "rdp", "windows"]
   }

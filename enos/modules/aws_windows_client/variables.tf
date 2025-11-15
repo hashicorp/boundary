@@ -33,12 +33,6 @@ variable "prefix" {
   default     = "enos"
 }
 
-variable "ip_version" {
-  type        = string
-  description = "IP version to use for security group rules. Valid values are '4', '6', or 'dual'."
-  default     = "4"
-}
-
 # =================================================================
 # additional resources
 # =================================================================
@@ -50,18 +44,6 @@ variable "boundary_cli_zip_path" {
 
 variable "boundary_src_path" {
   description = "Path to the boundary source code"
-  type        = string
-  default     = ""
-}
-
-variable "github_token" {
-  description = "github token to the hashicorp org. needed to run RDP automated tests (requires contents (read-only) and actions (read-only) with fine-grained tokens or repo access using classic tokens)"
-  type        = string
-  default     = ""
-}
-
-variable "vault_version" {
-  description = "Version of Vault to install on client"
   type        = string
   default     = ""
 }

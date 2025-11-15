@@ -3,6 +3,11 @@
 
 disable_mlock = true
 
+telemetry {
+  prometheus_retention_time = "24h"
+  disable_hostname          = true
+}
+
 listener "tcp" {
   address     = "0.0.0.0:${port}"
   purpose     = "proxy"

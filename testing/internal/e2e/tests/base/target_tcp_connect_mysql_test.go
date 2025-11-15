@@ -75,14 +75,14 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		ctx,
 		projectId,
 		port,
-		[]target.Option{target.WithAddress(hostname)},
+		target.WithAddress(hostname),
 	)
 	require.NoError(t, err)
 
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 
-	credentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
 		storeId,

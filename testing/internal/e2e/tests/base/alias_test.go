@@ -44,7 +44,7 @@ func TestCliAlias(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		[]target.Option{target.WithAddress(c.TargetAddress)},
+		target.WithAddress(c.TargetAddress),
 	)
 	require.NoError(t, err)
 	aliasTargetAddress := "example.alias.boundary"
@@ -127,7 +127,7 @@ func TestCliAlias(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		[]target.Option{target.WithName("targetWithHost")},
+		target.WithName("targetWithHost"),
 	)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)

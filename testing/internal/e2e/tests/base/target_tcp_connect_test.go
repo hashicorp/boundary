@@ -43,7 +43,7 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	})
 	testProjectName := `E2E/Project-With\Name`
 	testTargetName := `E2E/Test-Target-With\Name`
-	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, e2e.WithArgs("-name", testProjectName))
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, boundary.WithName(testProjectName))
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithName(testTargetName)})
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)

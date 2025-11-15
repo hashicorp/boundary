@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -38,21 +37,7 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	testProjectName := `E2E/Project-With\Name`
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"scopes", "create",
-			"-scope-id", orgId,
-			"-description", "e2e",
-			"-name", testProjectName,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var createProjResult scopes.ScopeCreateResult
-	err = json.Unmarshal(output.Stdout, &createProjResult)
-	require.NoError(t, err)
-	projectId := createProjResult.Item.Id
-	t.Logf("Created Project Id: %s", projectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, boundary.WithName(testProjectName))
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -63,7 +48,7 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
 	testTargetName := `E2E/Test-Target-With\Name`
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithName(testTargetName)})
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -75,7 +60,7 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get credentials for target
-	output = e2e.RunCommand(ctx, "boundary",
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

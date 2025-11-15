@@ -52,7 +52,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-generic library" {
+@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-generic libary" {
   skip_if_no_vault
 
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
@@ -106,7 +106,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-ssh-certificate library" {
+@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-ssh-certificate libary" {
   skip_if_no_vault
 
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
@@ -576,69 +576,6 @@ export NEW_VAULT_LIB="test_vault"
 }
 
 @test "boundary/credential-libraries: can delete $NEW_VAULT_LIB vault-ssh-certificate library" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run delete_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-  run has_status_code "$output" "204"
-  [ "$status" -eq 0 ]
-}
-
-@test "boundary/credential-libraries: can create $NEW_VAULT_LIB vault-ldap library in credential store $NEW_STORE" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_vault_ldap_library \
-    -name $NEW_VAULT_LIB -credential-store-id $csid \
-    -vault-path /ldap/static-cred/einstein \
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
-
-@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-ldap library" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_vault_ldap_library \
-    -name $NEW_VAULT_LIB -credential-store-id $csid \
-    -vault-path /ldap/static-cred/einstein \
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
-@test "boundary/credential-libraries: can update $NEW_VAULT_LIB vault-ldap library description" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run update_vault_ldap_library -id $clid -description hellothere
-  echo "$output"
-  [ "$status" -eq 0 ]
-
-  run read_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-  got=$(echo "$output")
-
-  run field_eq "$got" ".item.attributes.description" "null"
-  [ "$status" -eq 0 ]
-}
-
-@test "boundary/credential-libraries: can read $NEW_VAULT_LIB vault-ldap library" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run read_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
-@test "boundary/credential-libraries: can delete $NEW_VAULT_LIB vault-ldaplibrary" {
   skip_if_no_vault
 
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)

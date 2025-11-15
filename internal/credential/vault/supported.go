@@ -7,8 +7,6 @@
 package vault
 
 import (
-	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -34,18 +32,15 @@ const DefaultVaultVersion = "1.15.1"
 var (
 	vaultRepository    = "hashicorp/vault"
 	postgresRepository = "postgres"
-	ldapRepository     = "osixia/openldap"
 )
 
 func init() {
 	newVaultServer = gotNewServer
-	mountLdapServer = gotLdapServer
 	mountDatabase = gotMountDatabase
 
 	mirror := os.Getenv("DOCKER_MIRROR")
 	if mirror != "" {
 		vaultRepository = strings.Join([]string{mirror, vaultRepository}, "/")
-		ldapRepository = strings.Join([]string{mirror, ldapRepository}, "/")
 		postgresRepository = strings.Join([]string{mirror, postgresRepository}, "/")
 	}
 }
@@ -222,233 +217,20 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	return server
 }
 
-func gotLdapServer(t testing.TB, v *TestVaultServer, opt ...TestOption) *TestLdapServer {
-	require.NotNil(t, v.pool)
-	require.NotNil(t, v.network, "Vault server must be created with docker network")
-	require.NotNil(t, v.vaultContainer, "vault container doesn't exist")
-	require.Nil(t, v.ldapContainer, "ldap container exists")
-
-	pool, ok := v.pool.(*dockertest.Pool)
-	require.True(t, ok)
-	nw, ok := v.network.(*dockertest.Network)
-	require.True(t, ok)
-
-	opts := getTestOpts(t, opt...)
-	if opts.ldapRootDomain == "" {
-		opts.ldapRootDomain = "example.org"
-	}
-	if opts.bindPass == "" {
-		opts.bindPass = "admin"
-	}
-
-	dcl := []string{}
-	for d := range strings.SplitSeq(opts.ldapRootDomain, ".") {
-		dcl = append(dcl, "dc="+d)
-	}
-	dc := strings.Join(dcl, ",")
-	dn := fmt.Sprintf("cn=admin,%s", dc)
-
-	server := &TestLdapServer{
-		BindDomain: opts.ldapRootDomain,
-		BindPass:   opts.bindPass,
-		BindDn:     dn,
-	}
-
-	userLdif := func(username, dc string) string {
-		template := `
-			dn: cn=%[1]s,%[2]s
-			objectClass: inetOrgPerson
-			cn: %[1]s
-			sn: %[1]s
-			uid: %[1]s
-			userPassword: password
-		`
-		template = fmt.Sprintf(template, username, dc)
-		// LDIF is whitespace sensitive, so remove the leading tab characters we
-		// have from having indented the template.
-		return strings.ReplaceAll(template, "\t", "")
-	}
-	userEinsteinLdif := userLdif("einstein", dc)
-	userNewtonLdif := userLdif("newton", dc)
-
-	groupScientistsLdifTemplate := `
-		dn: cn=scientists,%[1]s
-		objectClass: groupOfUniqueNames
-		cn: scientists
-		uniqueMember: cn=einstein,%[1]s
-		uniqueMember: cn=netwon,%[1]s
-	`
-	groupLdif := fmt.Sprintf(groupScientistsLdifTemplate, dc)
-	// LDIF is whitespace sensitive, so remove the leading tab characters we
-	// have from having indented the template.
-	groupLdif = strings.ReplaceAll(groupLdif, "\t", "")
-
-	dir, err := base62.Random(12)
-	require.NoError(t, err)
-	dir = path.Join("/tmp", dir)
-	outdir := path.Join(dir, "ldap")
-	require.NoError(t, os.Mkdir(dir, os.ModePerm))
-	require.NoError(t, os.Mkdir(outdir, os.ModePerm))
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/%s", outdir, "userEinstein.ldif"), []byte(userEinsteinLdif), 0o666))
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/%s", outdir, "userNewton.ldif"), []byte(userNewtonLdif), 0o666))
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/%s", outdir, "group.ldif"), []byte(groupLdif), 0o666))
-
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: ldapRepository,
-		Tag:        "latest",
-		Networks:   []*dockertest.Network{nw},
-		Mounts:     []string{fmt.Sprintf("%s:/tmp/ldap", outdir)},
-		Env: []string{
-			fmt.Sprintf("LDAP_DOMAIN=%s", server.BindDomain),
-			fmt.Sprintf("LDAP_ADMIN_PASSWORD=%s", server.BindPass),
-		},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { cleanupResource(t, pool, resource) })
-	v.ldapContainer = resource
-	server.Url = fmt.Sprintf("ldap://%s", resource.GetIPInNetwork(nw))
-
-	// Wait until the container is healthy or timeout.
-	timeout := 10 * time.Second
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	t.Cleanup(cancel)
-	for loop := true; loop; {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("LDAP server was not healthy after trying for %s", timeout)
-		default:
-			buf := bytes.NewBuffer(nil)
-			exitCode, _ := resource.Exec([]string{
-				"ldapwhoami", "-x", "-H", "ldap://localhost", "-D", server.BindDn, "-w", server.BindPass,
-			}, dockertest.ExecOptions{
-				StdOut: buf,
-			})
-			// ldapwhoami will output the caller's identity in the form of a DN.
-			// Because we're using the admin user here, we can just look for the
-			// BindDn in stdout.
-			if exitCode == 0 || strings.Contains(buf.String(), server.BindDn) {
-				loop = false
-			}
-		}
-	}
-
-	buf := bytes.NewBuffer(nil)
-	ebuf := bytes.NewBuffer(nil)
-	exitCode, err := resource.Exec([]string{"ldapadd", "-x", "-H", "ldap://localhost", "-D", server.BindDn, "-w", server.BindPass, "-f", "/tmp/ldap/userEinstein.ldif"}, dockertest.ExecOptions{
-		StdOut: buf,
-		StdErr: ebuf,
-	})
-	require.NoError(t, err)
-	require.Empty(t, ebuf)
-	require.Equal(t, 0, exitCode)
-
-	buf.Reset()
-	ebuf.Reset()
-	exitCode, err = resource.Exec([]string{"ldapadd", "-x", "-H", "ldap://localhost", "-D", server.BindDn, "-w", server.BindPass, "-f", "/tmp/ldap/userNewton.ldif"}, dockertest.ExecOptions{
-		StdOut: buf,
-		StdErr: ebuf,
-	})
-	require.NoError(t, err)
-	require.Empty(t, ebuf)
-	require.Equal(t, 0, exitCode)
-
-	buf.Reset()
-	ebuf.Reset()
-	exitCode, err = resource.Exec([]string{"ldapadd", "-x", "-H", "ldap://localhost", "-D", server.BindDn, "-w", server.BindPass, "-f", "/tmp/ldap/group.ldif"}, dockertest.ExecOptions{
-		StdOut: buf,
-		StdErr: ebuf,
-	})
-	require.NoError(t, err)
-	require.Empty(t, ebuf)
-	require.Equal(t, 0, exitCode)
-
-	// Mount and configure Vault LDAP secrets engine.
-	v.MountLdap(t, WithBindDn(server.BindDn), WithBindPass(server.BindPass), WithLdapUrl(server.Url))
-
-	vc := v.client(t).cl
-	mounts, err := vc.Sys().ListMounts()
-	require.NoError(t, err)
-	require.Contains(t, mounts, "ldap/")
-
-	// Add static roles that correspond to the LDAP server users.
-	_, err = vc.Logical().Write("ldap/static-role/einstein", map[string]any{
-		"dn":              "cn=einstein,dc=example,dc=org",
-		"username":        "einstein",
-		"rotation_period": "24h",
-	})
-	require.NoError(t, err)
-
-	_, err = vc.Logical().Write("ldap/static-role/myorg/myproject/newton", map[string]any{
-		"dn":              "cn=newton,dc=example,dc=org",
-		"username":        "newton",
-		"rotation_period": "24h",
-	})
-	require.NoError(t, err)
-
-	// Setup LDAP dynamic credentials.
-	ldifCreateTemplate := `
-		dn: cn={{.Username}},dc=example,dc=org
-		changetype: add
-		objectClass: inetOrgPerson
-		cn: {{.Username}}
-		sn: {{.Username}}
-		uid: {{.Username}}
-		userPassword:{{.Password}}
-
-		dn: cn=scientists,dc=example,dc=org
-		changetype: modify
-		add: uniqueMember
-		uniqueMember: cn={{.Username}},dc=example,dc=org
-	-`
-	ldifCreateTemplate = strings.ReplaceAll(ldifCreateTemplate, "\t", "")
-
-	ldifDeleteTemplate := `
-		dn: cn={{.Username}},dc=example,dc=org
-		changetype: delete
-	`
-	ldifDeleteTemplate = strings.ReplaceAll(ldifDeleteTemplate, "\t", "")
-
-	_, err = vc.Logical().Write("ldap/role/scientists", map[string]any{
-		"username_template": "b_{{.DisplayName}}_{{.RoleName}}_{{random 10}}_{{unix_time}}",
-		"creation_ldif":     ldifCreateTemplate,
-		"deletion_ldif":     ldifDeleteTemplate,
-		"rollback_ldif":     ldifDeleteTemplate,
-		"default_ttl":       "1h",
-		"max_ttl":           "24h",
-	})
-	require.NoError(t, err)
-
-	_, err = vc.Logical().Write("ldap/role/myorg/myproject/scientists", map[string]any{
-		"username_template": "b_{{.DisplayName}}_{{.RoleName}}_{{random 10}}_{{unix_time}}",
-		"creation_ldif":     ldifCreateTemplate,
-		"deletion_ldif":     ldifDeleteTemplate,
-		"rollback_ldif":     ldifDeleteTemplate,
-		"default_ttl":       "1h",
-		"max_ttl":           "24h",
-	})
-	require.NoError(t, err)
-
-	return server
-}
-
 func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *TestDatabase {
 	require := require.New(t)
-	require.NotNil(v.pool)
-	require.NotNil(v.network, "Vault server must be created with docker network")
-	require.NotNil(v.vaultContainer, "vault container doesn't exist")
 	require.Nil(v.postgresContainer, "postgres container exists")
+	require.NotNil(v.network, "Vault server must be created with docker network")
 
 	pool, ok := v.pool.(*dockertest.Pool)
 	require.True(ok)
-	nw, ok := v.network.(*dockertest.Network)
-	require.True(ok)
-	vaultContainer, ok := v.vaultContainer.(*dockertest.Resource)
+	network, ok := v.network.(*dockertest.Network)
 	require.True(ok)
 
 	dockerOptions := &dockertest.RunOptions{
 		Repository: postgresRepository,
 		Tag:        globals.MinimumSupportedPostgresVersion,
-		Networks:   []*dockertest.Network{nw},
+		Networks:   []*dockertest.Network{network},
 		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
 	}
 
@@ -534,10 +316,13 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	}
 	v.addPolicy(t, "database", pc)
 
-	t.Log(vaultContainer.GetIPInNetwork(nw))
+	vaultContainer, ok := v.vaultContainer.(*dockertest.Resource)
+	require.True(ok)
+
+	t.Log(vaultContainer.GetIPInNetwork(network))
 
 	// Configure PostgreSQL secrets engine
-	connUrl := fmt.Sprintf("postgresql://{{username}}:{{password}}@%s:5432/boundarytest?sslmode=disable", resource.GetIPInNetwork(nw))
+	connUrl := fmt.Sprintf("postgresql://{{username}}:{{password}}@%s:5432/boundarytest?sslmode=disable", resource.GetIPInNetwork(network))
 	t.Log(connUrl)
 
 	postgresConfPath := path.Join(mountPath, "config/postgresql")
