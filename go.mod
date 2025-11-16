@@ -11,12 +11,12 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coder/websocket v1.8.14
 	github.com/creack/pty v1.1.24
-	github.com/docker/docker v28.5.1+incompatible
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/fatih/color v1.18.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-ldap/ldap/v3 v3.4.11
+	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
 	github.com/golang/protobuf v1.5.4
@@ -88,14 +88,14 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/zalando/go-keyring v0.2.6
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.43.0
+	golang.org/x/crypto v0.44.0
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
-	golang.org/x/net v0.46.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.37.0
-	golang.org/x/term v0.36.0
-	golang.org/x/text v0.30.0
-	golang.org/x/tools v0.38.0
+	golang.org/x/net v0.47.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/term v0.37.0
+	golang.org/x/text v0.31.0
+	golang.org/x/tools v0.39.0
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de
 	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4
 	google.golang.org/grpc v1.76.0
@@ -214,9 +214,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
+	golang.org/x/telemetry v0.0.0-20251111182119-bc8e575c7b54 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250929231259-57b25ae835d4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
