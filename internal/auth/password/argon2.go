@@ -5,12 +5,13 @@ package password
 
 import (
 	"context"
-	"crypto/rand"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/randomness"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"golang.org/x/crypto/argon2"
@@ -20,6 +21,9 @@ import (
 // hashingPermitPool is the global permit pool used to restrict concurrent
 // password hashing. It can be resized with SetHashingPermits.
 var hashingPermitPool *resizablePermitPool
+
+// SecureRandomness is a wrapper around crypto/rand.Reader to provide secure randomness.
+var SecureRandomReader *randomness.SecureRandomness = randomness.NewSecureRandom()
 
 func init() {
 	hashingPermitPool = newResizablePermitPool(1)
@@ -178,8 +182,9 @@ func newArgon2Credential(ctx context.Context, accountId string, password string,
 		},
 	}
 
+	// Generate a random salt
 	salt := make([]byte, conf.SaltLength)
-	if _, err := rand.Read(salt); err != nil {
+	if _, err := io.ReadFull(SecureRandomReader.SecureRandomReader, salt); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
