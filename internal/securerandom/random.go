@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package randomness
+package securerandom
 
 import (
 	"crypto/rand"
@@ -14,7 +14,7 @@ type SecureRandomness struct {
 }
 
 // NewSecureRandom creates a new SecureRandomness instance.
-func NewSecureRandom() *SecureRandomness {
+func GetSecureReader() *SecureRandomness {
 	return &SecureRandomness{
 		SecureRandomReader: rand.Reader,
 	}
