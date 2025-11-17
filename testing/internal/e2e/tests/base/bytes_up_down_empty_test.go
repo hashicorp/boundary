@@ -70,7 +70,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	session := boundary.WaitForSessionCli(t, ctx, projectId)
+	session := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	assert.Equal(t, targetId, session.TargetId)
 
 	// Wait until bytes up and down is greater than 0

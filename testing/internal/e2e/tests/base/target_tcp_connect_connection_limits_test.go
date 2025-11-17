@@ -67,7 +67,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	// Start connections. Expect an error once the limit is reached
 	for i := 0; i <= sessionConnectionLimit; i++ {

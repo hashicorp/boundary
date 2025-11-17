@@ -71,7 +71,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 
 	// Check that session was closed once time limit is reached
@@ -140,7 +140,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	// Start connections. Expect an error once the time limit is reached
 	t.Log("Creating connections...")

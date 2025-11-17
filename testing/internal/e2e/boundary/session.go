@@ -20,19 +20,28 @@ import (
 // WaitForSessionCli waits for sessions to appear in the session list and returns the most recent session
 // information. If the WithExpectedSessionsCount option is provided, expects to find specified amount of sessions
 // or only 1 otherwise.
-func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string, opt ...SessionOption) *sessions.Session {
-	opts := getSessionOpts(opt...)
+func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string, sessionOpts []SessionOption, e2eOpts ...e2e.Option) *sessions.Session {
+	opts := getSessionOpts(sessionOpts...)
+
+	var options []e2e.Option
+	options = append(options,
+		e2e.WithArgs("sessions", "list", "-scope-id", projectId, "-include-terminated", "-format", "json"),
+	)
+	options = append(options, e2eOpts...)
+
 	t.Log("Waiting for session to appear...")
 	var session *sessions.Session
+
 	err := backoff.RetryNotify(
 		func() error {
 			// List sessions
 			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("sessions", "list", "-scope-id", projectId, "-include-terminated", "-format", "json"),
+				options...,
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
+
 			var sessionListResult sessions.SessionListResult
 			err := json.Unmarshal(output.Stdout, &sessionListResult)
 			if err != nil {

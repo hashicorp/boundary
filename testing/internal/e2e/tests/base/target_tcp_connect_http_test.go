@@ -79,7 +79,7 @@ Server: netcat-can-you-believe-it
 		_, _ = io.Copy(io.Discard, f) // Not checking error here since it will return an error on session close
 	}()
 
-	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 
 	// Create http target and connect to it

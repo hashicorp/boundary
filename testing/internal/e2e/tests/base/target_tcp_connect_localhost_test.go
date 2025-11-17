@@ -65,7 +65,7 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "ssh",
