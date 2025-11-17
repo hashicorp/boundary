@@ -96,13 +96,9 @@ resource "docker_container" "worker" {
   capabilities {
     add = ["IPC_LOCK"]
   }
-  mounts {
-    type   = "tmpfs"
-    target = local.recording_storage_path
-  }
-  mounts {
-    type   = "tmpfs"
-    target = "/boundary/logs"
+  tmpfs = {
+    (local.recording_storage_path) = "mode=1777"
+    "/boundary/logs"               = "mode=1777"
   }
   upload {
     content = templatefile("${abspath(path.module)}/${var.config_file}", {
