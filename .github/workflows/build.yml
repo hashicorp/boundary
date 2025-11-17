@@ -405,7 +405,6 @@ jobs:
       artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
       edition: ${{ needs.product-metadata.outputs.product-edition }}
-      docker-image-name: ${{ needs.build-docker.outputs.name }}
       docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
   bats:

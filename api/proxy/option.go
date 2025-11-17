@@ -39,6 +39,7 @@ type Options struct {
 	WithSkipSessionTeardown      bool
 	withSessionTeardownTimeout   time.Duration
 	withApiClient                *api.Client
+	withInactivityTimeout        time.Duration
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -139,6 +140,15 @@ func WithSessionTeardownTimeout(with time.Duration) Option {
 func WithApiClient(with *api.Client) Option {
 	return func(o *Options) error {
 		o.withApiClient = with
+		return nil
+	}
+}
+
+// WithInactivityTimeout provides an optional duration after which a session
+// with no active connections will be cancelled
+func WithInactivityTimeout(with time.Duration) Option {
+	return func(o *Options) error {
+		o.withInactivityTimeout = with
 		return nil
 	}
 }
