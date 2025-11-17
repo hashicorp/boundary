@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/securerandom"
+	securerandom "github.com/hashicorp/boundary/internal/securerandom"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"golang.org/x/crypto/argon2"
@@ -23,7 +23,8 @@ import (
 var hashingPermitPool *resizablePermitPool
 
 // SecureRandomness is a wrapper around crypto/rand.Reader to provide secure randomness.
-var random *securerandom.SecureRandomness = securerandom.GetSecureReader()
+// var random *securerandom.SecureRandomness = securerandom.GetSecureReader()
+// var random = securerandom.GetSecureReader()
 
 func init() {
 	hashingPermitPool = newResizablePermitPool(1)
@@ -184,7 +185,7 @@ func newArgon2Credential(ctx context.Context, accountId string, password string,
 
 	// Generate a random salt
 	salt := make([]byte, conf.SaltLength)
-	if _, err := io.ReadFull(random.SecureRandomReader, salt); err != nil {
+	if _, err := io.ReadFull(securerandom.Reader(), salt); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt

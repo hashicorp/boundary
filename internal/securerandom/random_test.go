@@ -8,13 +8,13 @@ import (
 )
 
 func TestGetSecureReader(t *testing.T) {
-	sr := GetSecureReader()
-	if sr == nil || sr.SecureRandomReader == nil {
+	sr := getSecureReader()
+	if sr == nil || sr.Reader == nil {
 		t.Fatal("NewSecureRandom returned nil")
 	}
 
 	buf := make([]byte, 32)
-	n, err := sr.SecureRandomReader.Read(buf)
+	n, err := sr.Reader.Read(buf)
 	if err != nil {
 		t.Fatalf("failed to read random bytes: %v", err)
 	}
