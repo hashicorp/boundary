@@ -101,6 +101,9 @@ resource "docker_container" "minio_server" {
     "MINIO_ROOT_PASSWORD=minioadmin",
     "MINIO_REGION=${var.region}",
   ]
+  tmpfs = {
+    "/data" = "size=2G"
+  }
   ports {
     internal = 9000
     external = 9000
