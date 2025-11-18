@@ -4,9 +4,12 @@
 package e2e
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"testing"
@@ -98,6 +101,86 @@ func RunCommand(ctx context.Context, command string, opt ...Option) *CommandResu
 		ExitCode: exitCode,
 		Err:      err,
 		Duration: duration,
+	}
+}
+
+// RunCommandWithPipe runs a command and captures the first line of output from its stdout pipe.
+// This implementation works on cross platforms (Windows, Unix, Linux, macOS) - unlike the pty-based version above (Unix, Linux, macOS).
+// StdoutPipe only captures stdout, as opposed to pty which is an interactive pseudo-terminal
+func RunCommandWithPipe(t testing.TB, ctx context.Context, command string, opt ...Option) (string, error) {
+	ctxCancel, cancel := context.WithCancel(ctx)
+	// channels to capture output and errors from goroutine
+	outputChan := make(chan string, 1)
+	errorChan := make(chan error, 1)
+
+	// Process options
+	opts := getOpts(opt...)
+
+	// Build command with args
+	var cmd *exec.Cmd
+	if opts.withArgs == nil {
+		cmd = exec.CommandContext(ctxCancel, command)
+	} else {
+		cmd = exec.CommandContext(ctxCancel, command, opts.withArgs...)
+	}
+
+	// Apply environment variables
+	if opts.withEnv != nil {
+		cmd.Env = os.Environ()
+		for k, v := range opts.withEnv {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+
+	// Run goroutine in background
+	go func() {
+		// Capture stdout via pipe
+		stdoutPipe, err := cmd.StdoutPipe()
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to create standard out pipe: %w", err)
+			return
+		}
+
+		// Start the command (don't wait for it to finish)
+		err = cmd.Start()
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to start command: %w", err)
+			return
+		}
+
+		// Read first line of output and send to channel
+		scanner := bufio.NewScanner(stdoutPipe)
+		if scanner.Scan() {
+			outputChan <- scanner.Text()
+		} else {
+			if err := scanner.Err(); err != nil {
+				errorChan <- fmt.Errorf("failed read output from pipe: %w", err)
+			} else {
+				errorChan <- errors.New("no output from command")
+			}
+		}
+		// Command continues running after this as proxy connection is intended to stay open
+		// We only need the first line of output
+
+		// Continuously drains the stdout pipe in the background to prevent the command from blocking
+		go func() {
+			_, _ = io.Copy(io.Discard, stdoutPipe)
+		}()
+	}()
+
+	// Cleanup kills the process
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	// Return result of goroutine
+	select {
+	case output := <-outputChan:
+		return output, nil
+	case err := <-errorChan:
+		return "", err
+	case <-ctxCancel.Done():
+		return "", ctxCancel.Err()
 	}
 }
 
