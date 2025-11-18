@@ -22,10 +22,6 @@ import (
 // password hashing. It can be resized with SetHashingPermits.
 var hashingPermitPool *resizablePermitPool
 
-// SecureRandomness is a wrapper around crypto/rand.Reader to provide secure randomness.
-// var random *securerandom.SecureRandomness = securerandom.GetSecureReader()
-// var random = securerandom.GetSecureReader()
-
 func init() {
 	hashingPermitPool = newResizablePermitPool(1)
 }
