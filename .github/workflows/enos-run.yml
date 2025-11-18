@@ -61,7 +61,7 @@ jobs:
           go mod download
           make tools
   enos:
-    name: Integration
+    name: test
     needs:
       - setup
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
