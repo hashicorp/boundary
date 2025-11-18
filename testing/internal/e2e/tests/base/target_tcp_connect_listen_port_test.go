@@ -57,7 +57,7 @@ func TestCliTcpTargetConnectListenPort(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
 	t.Logf("Successfully connected to target with listen port %s", ListenPort)
 
@@ -118,7 +118,7 @@ func TestCliTcpTargetConnectDefaultClientPort(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
 	t.Logf("Successfully connected to target with client port %d", DefaultClientPort)
 

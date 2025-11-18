@@ -64,7 +64,7 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	// Create file to scp
 	testDir := t.TempDir()

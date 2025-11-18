@@ -138,7 +138,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 	assert.Equal(t, targetId, s.TargetId)
 	assert.Equal(t, hostId, s.HostId)

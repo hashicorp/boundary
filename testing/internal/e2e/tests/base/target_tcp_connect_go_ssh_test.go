@@ -55,7 +55,7 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	// Connect to the target using the go experimental ssh library
 	privateKeyRaw, err := os.ReadFile(c.TargetSshKeyPath)

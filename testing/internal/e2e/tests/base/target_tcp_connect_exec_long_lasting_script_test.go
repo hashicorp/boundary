@@ -75,7 +75,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionCli(t, ctx, projectId, nil)
 
 	t.Log("Copying script to host...")
 	output := e2e.RunCommand(ctx, "scp",
