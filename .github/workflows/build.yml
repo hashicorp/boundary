@@ -388,8 +388,8 @@ jobs:
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
 
-  enos:
-    name: Enos
+  e2e:
+    name: e2e
     # Only run the Enos workflow on pull requests that have been originated from
     # the hashicorp/boundary repository. As Enos scenarios require access to
     # Github Actions secrets, it only makes sense to run this workflow when those
