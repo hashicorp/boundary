@@ -4,6 +4,7 @@
 package proxy
 
 import (
+	"crypto/ed25519"
 	"net"
 	"reflect"
 	"runtime"
@@ -11,6 +12,7 @@ import (
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/ssh"
 )
 
 func Test_GetOpts(t *testing.T) {
@@ -62,5 +64,16 @@ func Test_GetOpts(t *testing.T) {
 		assert.NotEqual(opts, testOpts)
 		testOpts.WithTestKerberosServerHostname = testKerberosServerHostname
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithSshHostKeyCallback", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getDefaultOptions()
+		assert.Nil(opts.WithSshHostKeyCallback)
+
+		signer, err := ssh.NewSignerFromKey(ed25519.NewKeyFromSeed([]byte("foobfoobfoobfoobfoobfoobfoobfoob")))
+		assert.NoError(err)
+
+		opts = GetOpts(WithSshHostKeyCallback(ssh.FixedHostKey(signer.PublicKey())))
+		assert.NotNil(opts.WithSshHostKeyCallback)
 	})
 }
