@@ -2,6 +2,17 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.21.0 (2025/11/12)
+
+### New and Improved
+
+* ui: Improved overall load times for sessions by loading filters separately and reducing initial data fetch ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
+
+### Bug fixes
+
+* ui: Show username for OIDC auth method in user menu ([PR](https://github.com/hashicorp/boundary-ui/pull/2930))
+* ui: Fix sanitizing of tokens when logging ([PR](https://github.com/hashicorp/boundary-ui/pull/3036))
+
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
