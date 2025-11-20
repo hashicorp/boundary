@@ -63,7 +63,12 @@ begin;
 
   -- App token permissions project table
   create table app_token_permission_project (
-    private_id wt_private_id primary key,
+    private_id wt_private_id
+      constraint app_token_permission_project_fkey
+        references app_token_permission(private_id)
+        on delete cascade
+        on update cascade
+        primary key,
     app_token_id wt_public_id
       constraint app_token_permission_fkey
         references app_token_project(public_id)

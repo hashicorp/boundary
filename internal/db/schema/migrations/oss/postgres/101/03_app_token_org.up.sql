@@ -63,7 +63,12 @@ begin;
 
   -- App token permissions org table
   create table app_token_permission_org (
-    private_id wt_private_id primary key,
+    private_id wt_private_id
+      constraint app_token_permission_org_fkey
+        references app_token_permission(private_id)
+        on delete cascade
+        on update cascade
+        primary key,
     app_token_id wt_public_id
       constraint app_token_permission_fkey
         references app_token_org(public_id)
@@ -141,21 +146,21 @@ begin;
       join app_token_org
         on app_token_org.public_id = app_token_permission_org.app_token_id
      where app_token_permission_org.private_id = new.permission_id;
-    
+
     if not found then
       raise exception 'permission_id % not found or has no associated app token', new.permission_id;
     end if;
-    
+
     -- Then validate that the project exists and belongs to this org
     perform
       from iam_scope_project
      where iam_scope_project.scope_id = new.scope_id
        and iam_scope_project.parent_id = org_scope_id;
-      
-    if not found then 
+
+    if not found then
       raise exception 'project scope_id % not found or is not a child of org %', new.scope_id, org_scope_id;
     end if;
-    
+
     return new;
   end;
   $$ language plpgsql;  comment on function validate_org_permission_project_scope_and_parent() is

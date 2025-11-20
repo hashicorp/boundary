@@ -86,8 +86,8 @@ begin;
   create function update_app_token_table_update_time() returns trigger
   as $$
   begin
-    update app_token 
-       set update_time = new.update_time 
+    update app_token
+       set update_time = new.update_time
      where public_id = new.public_id;
     return new;
   end;
@@ -102,8 +102,8 @@ begin;
   begin
     -- Only update if approximate_last_access_time has actually changed
     if old.approximate_last_access_time is distinct from new.approximate_last_access_time then
-      update app_token 
-         set approximate_last_access_time = new.approximate_last_access_time 
+      update app_token
+         set approximate_last_access_time = new.approximate_last_access_time
        where public_id = new.public_id;
     end if;
     return new;
@@ -118,7 +118,7 @@ begin;
   as $$
   begin
     perform 1
-      from iam_user 
+      from iam_user
      where public_id = new.created_by_user_id;
     if not found then
       raise exception 'User ID % does not exist in iam_user', new.created_by_user_id;
@@ -137,11 +137,11 @@ begin;
     if old.revoked is distinct from new.revoked then
       -- Only allow change from false to true
       if not (old.revoked = false and new.revoked = true) then
-        raise exception 'App token cannot be unrevoked. revoked value. Current: %, Attempted: %', 
+        raise exception 'App token cannot be unrevoked. revoked value. Current: %, Attempted: %',
           old.revoked, new.revoked;
       end if;
     end if;
-    
+
     return new;
   end;
   $$ language plpgsql;
@@ -193,7 +193,6 @@ begin;
     'insert_app_token_permission_subtype is used to automatically insert a row into the app_token_permission table '
     'whenever a row is inserted into the subtype table';
 
-
   create table app_token_permission_grant (
     permission_id wt_private_id
       constraint app_token_permission_grant_fkey
@@ -218,7 +217,6 @@ begin;
   create trigger upsert_canonical_grant_trigger before insert on app_token_permission_grant
     for each row execute procedure upsert_canonical_grant();
 
-
   create table app_token_cipher (
     app_token_id wt_public_id primary key
       constraint app_token_cipher_app_token_fkey
@@ -239,7 +237,7 @@ begin;
 
   -- Add oplog entries for tracking changes (similar to IAM role tables)
   insert into oplog_ticket (name, version)
-  values 
+  values
     ('app_token', 1),
     ('app_token_global', 1),
     ('app_token_org', 1),

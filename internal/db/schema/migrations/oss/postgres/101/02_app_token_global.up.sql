@@ -62,7 +62,12 @@ begin;
 
   -- App token permissions global table
   create table app_token_permission_global (
-    private_id wt_private_id primary key,
+    private_id wt_private_id
+      constraint app_token_permission_global_fkey
+        references app_token_permission(private_id)
+        on delete cascade
+        on update cascade
+        primary key,
     app_token_id wt_public_id
       constraint app_token_global_fkey
         references app_token_global(public_id)
@@ -111,7 +116,7 @@ begin;
        constraint only_individual_grant_scope_allowed
          check(
           grant_scope = 'individual'
-        ), 
+        ),
     create_time wt_timestamp,
     constraint app_token_permission_global_grant_scope_fkey
       foreign key (grant_scope, permission_id)
@@ -129,7 +134,7 @@ begin;
     perform
        from iam_scope_org
       where iam_scope_org.scope_id = new.scope_id;
-    if not found then 
+    if not found then
       raise exception 'org scope_id % not found', new.scope_id;
     end if;
     return new;
@@ -167,7 +172,7 @@ begin;
     -- grant_scope, it ensures that app_token_permission_global is set to 'individual'
     -- if this table is populated for the corresponding permission.
     -- both children and individual are allowed for this global permission
-    -- because projects can be individually in addition to children 
+    -- because projects can be individually in addition to children
     -- which grants all orgs
     grant_scope text not null
        constraint only_individual_grant_scope_allowed
@@ -191,7 +196,7 @@ begin;
     perform
        from iam_scope_project
       where iam_scope_project.scope_id = new.scope_id;
-    if not found then 
+    if not found then
       raise exception 'project scope_id % not found', new.scope_id;
     end if;
     return new;
