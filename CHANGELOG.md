@@ -6,7 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* ui: Improved overall load times for sessions by loading filters separately and reducing initial data fetch ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
+* ui: Optimized loading of table filters and improved table search support ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
 
 ### Bug fixes
 
