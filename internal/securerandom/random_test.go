@@ -19,7 +19,9 @@ func TestGetSecureReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read random bytes: %v", err)
 	}
+
 	if n != len(buf) {
 		t.Fatalf("expected to read %d bytes, got %d", len(buf), n)
 	}
+
 }
