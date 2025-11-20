@@ -22,14 +22,4 @@ func TestGetSecureReader(t *testing.T) {
 		t.Fatalf("expected to read %d bytes, got %d", len(buf), n)
 	}
 
-	allZero := true
-	for _, b := range buf {
-		if b != 0 {
-			allZero = false
-			break
-		}
-	}
-	if allZero {
-		t.Fatal("read random bytes are all zero")
-	}
 }

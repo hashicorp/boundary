@@ -8,22 +8,21 @@ import (
 	"io"
 )
 
-// SecureRandomness provides cryptographically secure random number generation.
-type secureRandomReader struct {
+// secureRandom provides cryptographically secure random number generation.
+type secureRandom struct {
 	Reader io.Reader
 }
 
-// GetSecureRandom creates a new SecureRandomness instance.
-func getSecureReader() *secureRandomReader {
-	return &secureRandomReader{
+// getSecureRandom creates a new secureRandom instance.
+func getSecureReader() *secureRandom {
+	return &secureRandom{
 		Reader: rand.Reader,
 	}
 }
 
-var randomness *secureRandomReader = getSecureReader()
+var readRandom *secureRandom = getSecureReader()
 
-// Reader returns the package default io.Reader for secure randomness.
-// This is the preferred way to access secure random in place of Randomness.Reader.
-func Reader() io.Reader {
-	return randomness.Reader
+// SecureRandomReader returns the package default io.Reader for secure randomness.
+func SecureRandomReader() io.Reader {
+	return readRandom.Reader
 }
