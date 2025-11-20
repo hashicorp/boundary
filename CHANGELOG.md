@@ -2,6 +2,16 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.21.0 (2025/11/12)
+
+### New and Improved
+
+* ui: Optimized loading of table filters and improved table search support ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
+
+### Bug fixes
+
+* ui: Show username for OIDC auth method in user menu ([PR](https://github.com/hashicorp/boundary-ui/pull/2930))
+
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
