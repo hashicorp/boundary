@@ -15,11 +15,11 @@ func TestGetSecureReader(t *testing.T) {
 
 	buf := make([]byte, 32)
 	n, err := sr.Reader.Read(buf)
+
 	if err != nil {
 		t.Fatalf("failed to read random bytes: %v", err)
 	}
 	if n != len(buf) {
 		t.Fatalf("expected to read %d bytes, got %d", len(buf), n)
 	}
-
 }
