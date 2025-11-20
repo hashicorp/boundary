@@ -49,6 +49,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
@@ -230,6 +232,10 @@ type Worker struct {
 	downstreamConnManager *cluster.DownstreamManager
 
 	HostServiceServer wpbs.HostServiceServer
+
+	// SshKnownHostsCallback is used to provide a ssh.HostKeyCallback for SSH host key verification
+	// when connecting to an SSH target. This is an atomic because it can be updated at runtime via SIGHUP.
+	SshKnownHostsCallback atomic.Pointer[ssh.HostKeyCallback]
 }
 
 func New(ctx context.Context, conf *Config) (*Worker, error) {
@@ -284,6 +290,14 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 
 	if w.conf.RawConfig.Worker.RecordingStoragePath == "" {
 		w.localStorageState.Store(server.NotConfiguredLocalStorageState)
+	}
+
+	if w.conf.RawConfig.Worker.SshKnownHostsPath != "" {
+		cb, err := knownhosts.New(w.conf.RawConfig.Worker.SshKnownHostsPath)
+		if err != nil {
+			return nil, fmt.Errorf("error loading ssh known hosts file: %w", err)
+		}
+		w.SshKnownHostsCallback.Store(&cb)
 	}
 
 	pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
@@ -509,6 +523,19 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 	default:
 		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
 	}
+
+	switch newConf.Worker.SshKnownHostsPath {
+	case "":
+		w.SshKnownHostsCallback.Store(nil)
+	default:
+		cb, err := knownhosts.New(newConf.Worker.SshKnownHostsPath)
+		if err != nil {
+			event.WriteError(w.baseContext, op, fmt.Errorf("error loading ssh known hosts file: %w", err))
+			break
+		}
+		w.SshKnownHostsCallback.Store(&cb)
+	}
+
 	// See comment about this in worker.go
 	session.CloseCallTimeout.Store(w.successfulRoutingInfoGracePeriod.Load())
 

@@ -8,6 +8,7 @@ import (
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-hclog"
+	"golang.org/x/crypto/ssh"
 )
 
 // Option - how Options are passed as arguments.
@@ -30,6 +31,7 @@ type Options struct {
 	WithTestKdcAddress                 string
 	WithTestKerberosServerHostname     string
 	WithLogger                         hclog.Logger
+	WithSshHostKeyCallback             ssh.HostKeyCallback
 }
 
 func getDefaultOptions() Options {
@@ -85,5 +87,13 @@ func WithTestKerberosServerHostname(with string) Option {
 func WithLogger(l hclog.Logger) Option {
 	return func(o *Options) {
 		o.WithLogger = l
+	}
+}
+
+// WithSshHostKeyCallback allows specifying a ssh.HostKeyCallback function
+// to be used for host key verification.
+func WithSshHostKeyCallback(with ssh.HostKeyCallback) Option {
+	return func(o *Options) {
+		o.WithSshHostKeyCallback = with
 	}
 }
