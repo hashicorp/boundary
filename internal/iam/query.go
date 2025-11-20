@@ -734,4 +734,29 @@ select role_id,
        create_time
   from final;
 `
+	// global token grants for recursive requests for global org project resource
+	grantsForTokenGlobalOrgProjectResourcesRecursiveQuery = `grantsForTokenGlobalOrgProjectResourcesRecursiveQuery`
+	// global token grants for recursive requests for global org resource
+	grantsForTokenGlobalOrgResourcesRecursiveQuery = `grantsForTokenGlobalOrgResourcesRecursiveQuery`
+	// org token grants for recursive requests for global org project resource
+	grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery = `grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery`
+	// org token grants for recursive requests for global org resource
+	grantsForTokenOrgGlobalOrgResourcesRecursiveQuery = `grantsForTokenOrgGlobalOrgResourcesRecursiveQuery`
+	// org token grants for recursive requests for project resource
+	grantsForTokenOrgProjectResourcesRecursiveQuery = `grantsForTokenOrgProjectResourcesRecursiveQuery`
+	// project token grants for recursive requests
+	grantsForTokenProjectResourcesRecursiveQuery = `grantsForTokenProjectResourcesRecursiveQuery`
+
+	// global token grants for non-recursive requests for global org project resource
+	grantsForTokenGlobalOrgProjectResourcesQuery = `grantsForTokenGlobalOrgProjectResourcesQuery`
+	// global token grants for non-recursive requests for global org resource
+	grantsForTokenGlobalOrgResourcesQuery = `grantsForTokenGlobalOrgResourcesQuery`
+	// org token grants for non-recursive requests for global org project resource
+	grantsForTokenOrgGlobalOrgProjectResourcesQuery = `grantsForTokenOrgGlobalOrgProjectResourcesQuery`
+	// org token grants for non-recursive requests for global org resource
+	grantsForTokenOrgGlobalOrgResourcesQuery = `grantsForTokenOrgGlobalOrgResourcesQuery`
+	// org token grants for non-recursive requests for project resource
+	grantsForTokenOrgProjectResourcesQuery = `grantsForTokenOrgProjectResourcesQuery`
+	// project token grants for non-recursive requests
+	grantsForTokenProjectResourcesQuery = `grantsForTokenProjectResourcesQuery`
 )
