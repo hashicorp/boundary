@@ -4,6 +4,7 @@
 package iam
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -230,47 +231,62 @@ func TestResolveAppTokenQuery(t *testing.T) {
 	}
 }
 
-func TestGrantsForTokenGlobalRecursive(t *testing.T) {
+func TestGrantsForToken(t *testing.T) {
 	ctx := t.Context()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
 
 	// Create test scopes - this will create global, org, and project scopes
+	// Return values are ignored for now. Will be used when populating expectedGrants.
 	_, _ = TestScopes(t, repo)
 
-	// Create a role in the global scope that will have grants
-	globalRole := TestRole(t, conn, globals.GlobalPrefix)
-
-	// Add grants to the global role - these are the grants that should be returned
-	// for a global token requesting scope resources recursively
-	testGrants := []string{
-		"ids=*;type=scope;actions=list,read",
-		// TODO: Add more grants here
+	testCases := []struct {
+		name           string
+		u              *User
+		grants         []string
+		rTypes         []resource.Type
+		reqScopeId     string
+		recursive      bool
+		wantErr        bool
+		expectedGrants tempGrantTuples
+	}{
+		{
+			name: "global token requesting scope resources recursively",
+			u:    TestUser(t, repo, globals.GlobalPrefix),
+			grants: []string{
+				"ids=*;type=scope;actions=list,read",
+			},
+			rTypes:         []resource.Type{resource.Scope},
+			reqScopeId:     globals.GlobalPrefix,
+			recursive:      true,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				// TODO: Add expected grants here
+			},
+		},
 	}
 
-	_, err := repo.AddRoleGrants(ctx, globalRole.PublicId, 1, testGrants)
-	require.NoError(t, err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []Option
+			if tc.recursive {
+				opts = append(opts, WithRecursive(tc.recursive))
+			}
 
-	// // Create a token in the global scope
-	// // TODO: TestAppToken
-	// token := TestAppToken(t, conn, globals.GlobalPrefix, nil)
+			// Create a token in the global scope with the test grants
+			token := TestAppToken(t, repo, tc.reqScopeId, tc.grants, tc.u, opts...)
 
-	// // Assign the global role to the token
-	// // TODO: AssignRoleToToken
-	// err = repo.AssignRoleToToken(ctx, token.PublicId, globalRole.PublicId, globals.GlobalPrefix)
-	// require.NoError(t, err)
+			// Once the actual SQL queries are implemented, this should return the grants
+			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
+			require.NoError(t, err)
+			require.NotNil(t, gt)
 
-	// // Once the actual SQL queries are implemented, this should return the grants
-	// gt, err := repo.GrantsForToken(ctx, token.PublicId, []resource.Type{resource.Scope}, globals.GlobalPrefix, WithRecursive(true))
-	// if err != nil {
-	// 	t.Logf("Expected error due to undefined query constants: %v", err)
-	// 	return
-	// }
+			// Debug output to verify the returned grants
+			fmt.Printf("Grants returned: %+v\n", gt)
 
-	// require.NoError(t, err)
-	// require.NotNil(t, gt)
-	// fmt.Printf("Grants returned: %+v\n", gt)
-
-	// TODO: Assertions to verify that the returned grants match the testGrants
+			// Uncomment when expectedGrants are populated
+			// assert.Equal(t, tc.expectedGrants, gt)
+		})
+	}
 }

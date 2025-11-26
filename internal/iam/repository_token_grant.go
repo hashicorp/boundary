@@ -84,9 +84,9 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	}
 
 	args = append(args,
-		sql.Named("token_id", tokenId),
+		sql.Named("app_token_ids", pq.Array([]string{tokenId})),
 		sql.Named("request_scope_id", reqScopeId),
-		sql.Named("resource_types", pq.Array(resources)),
+		sql.Named("resources", pq.Array(resources)),
 	)
 
 	var grants []grantsForTokenResult
@@ -121,12 +121,18 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 			resp = append(resp, tempGrantTuple{
 				AppTokenId:            grant.AppTokenId,
 				AppTokenScopeId:       reqScopeId,
-				AppTokenParentScopeId: "", // Not needed for current use case
+				AppTokenParentScopeId: "", // Not needed when GrantThisScope is true
 				GrantScopeId:          reqScopeId,
 				Grant:                 grant.GrantScope,
 			})
+		} else {
+			resp = append(resp, tempGrantTuple{
+				AppTokenId:            grant.AppTokenId,
+				AppTokenScopeId:       reqScopeId,
+				AppTokenParentScopeId: grant.GrantScope,
+				// TODO: Set all necessary fields
+			})
 		}
-		// TODO
 	}
 
 	return resp, nil
@@ -201,9 +207,9 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 
 	// Determine app token scope from tokenId prefix
 	var isAppTokenGlobal, isAppTokenOrg, isAppTokenProject bool
-	isAppTokenGlobal = strings.HasPrefix(tokenId, globals.GlobalPrefix)
-	isAppTokenOrg = strings.HasPrefix(tokenId, globals.OrgPrefix)
-	isAppTokenProject = strings.HasPrefix(tokenId, globals.ProjectPrefix)
+	isAppTokenGlobal = strings.HasPrefix(reqScopeId, globals.GlobalPrefix)
+	isAppTokenOrg = strings.HasPrefix(reqScopeId, globals.OrgPrefix)
+	isAppTokenProject = strings.HasPrefix(reqScopeId, globals.ProjectPrefix)
 
 	switch isRecursive {
 	// Recursive queries - based on token scope and resource allowed scopes
