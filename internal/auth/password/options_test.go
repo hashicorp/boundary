@@ -4,6 +4,8 @@
 package password
 
 import (
+	"crypto/rand"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,5 +69,19 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withOrderByCreateTime = true
 		testOpts.ascending = true
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		customReader := strings.NewReader("test-random-data")
+		opts := GetOpts(WithRandomReader(customReader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = customReader
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("default-random-reader", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts()
+		// Verify the default is crypto/rand.Reader
+		assert.Equal(rand.Reader, opts.withRandomReader)
 	})
 }
