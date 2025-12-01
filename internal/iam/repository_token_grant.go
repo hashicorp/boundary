@@ -115,22 +115,23 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := make(tempGrantTuples, len(grants))
+	resp := make(tempGrantTuples, 0, len(grants))
 	for _, grant := range grants {
 		if grant.GrantThisScope {
 			resp = append(resp, tempGrantTuple{
 				AppTokenId:            grant.AppTokenId,
 				AppTokenScopeId:       reqScopeId,
 				AppTokenParentScopeId: "", // Not needed when GrantThisScope is true
-				GrantScopeId:          reqScopeId,
-				Grant:                 grant.GrantScope,
+				GrantScopeId:          grant.GrantScope,
+				Grant:                 strings.Join(grant.CanonicalGrants, ","),
 			})
 		} else {
 			resp = append(resp, tempGrantTuple{
 				AppTokenId:            grant.AppTokenId,
 				AppTokenScopeId:       reqScopeId,
-				AppTokenParentScopeId: grant.GrantScope,
-				// TODO: Set all necessary fields
+				AppTokenParentScopeId: "", // How to determine parent scope id here?
+				GrantScopeId:          grant.GrantScope,
+				Grant:                 strings.Join(grant.CanonicalGrants, ","),
 			})
 		}
 	}
@@ -138,33 +139,7 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	return resp, nil
 }
 
-/*
-// global token grants for recursive requests for global org project resource
-grantsForTokenGlobalOrgProjectResourcesRecursiveQuery = `grantsForTokenGlobalOrgProjectResourcesRecursiveQuery`
-// global token grants for recursive requests for global org resource
-grantsForTokenGlobalOrgResourcesRecursiveQuery = `grantsForTokenGlobalOrgResourcesRecursiveQuery`
-// org token grants for recursive requests for global org project resource
-grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery = `grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery`
-// org token grants for recursive requests for global org resource
-grantsForTokenOrgGlobalOrgResourcesRecursiveQuery = `grantsForTokenOrgGlobalOrgResourcesRecursiveQuery`
-// org token grants for recursive requests for project resource
-grantsForTokenOrgProjectResourcesRecursiveQuery = `grantsForTokenOrgProjectResourcesRecursiveQuery`
-// project token grants for recursive requests
-grantsForTokenProjectResourcesRecursiveQuery = `grantsForTokenProjectResourcesRecursiveQuery`
-
-// global token grants for non-recursive requests for global org project resource
-grantsForTokenGlobalOrgProjectResourcesQuery = `grantsForTokenGlobalOrgProjectResourcesQuery`
-// global token grants for non-recursive requests for global org resource
-grantsForTokenGlobalOrgResourcesQuery = `grantsForTokenGlobalOrgResourcesQuery`
-// org token grants for non-recursive requests for global org project resource
-grantsForTokenOrgGlobalOrgProjectResourcesQuery = `grantsForTokenOrgGlobalOrgProjectResourcesQuery`
-// org token grants for non-recursive requests for global org resource
-grantsForTokenOrgGlobalOrgResourcesQuery = `grantsForTokenOrgGlobalOrgResourcesQuery`
-// org token grants for non-recursive requests for project resource
-grantsForTokenOrgProjectResourcesQuery = `grantsForTokenOrgProjectResourcesQuery`
-// project token grants for non-recursive requests
-grantsForTokenProjectResourcesQuery = `grantsForTokenProjectResourcesQuery`
-*/
+// resolveAppTokenQuery determines the correct SQL query to use based on the token scope, request scope, resource types, and whether the request is recursive
 func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, res []resource.Type, reqScopeId string, isRecursive bool) (string, error) {
 	const op = "iam.(Repository).resolveAppTokenQuery"
 
