@@ -4,7 +4,6 @@
 package iam
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -13,6 +12,80 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGrantsForToken(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+
+	// Create org and project test scopes when these test cases are added
+	// org, proj = TestScopes(t, repo)
+
+	testCases := []struct {
+		name           string
+		u              *User
+		grants         []string
+		rTypes         []resource.Type
+		reqScopeId     string
+		recursive      bool
+		wantErr        bool
+		expectedGrants tempGrantTuples
+	}{
+		{
+			name: "global token requesting scope resources recursively",
+			u:    TestUser(t, repo, globals.GlobalPrefix),
+
+			grants: []string{
+				"ids=*;type=scope;actions=list,read",
+			},
+			rTypes:     []resource.Type{resource.Scope},
+			reqScopeId: globals.GlobalPrefix,
+			recursive:  true,
+			wantErr:    false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       "global",
+					AppTokenParentScopeId: "",
+					GrantScopeId:          "descendants",
+					Grant:                 "ids=*;type=scope;actions=list,read",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []Option
+			if tc.recursive {
+				opts = append(opts, WithRecursive(tc.recursive))
+			}
+
+			// Create a token with the specified grants
+			token := TestAppToken(t, repo, tc.reqScopeId, tc.grants, tc.u, opts...)
+
+			// Fetch the grants for the token
+			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
+			require.NoError(t, err)
+			require.NotNil(t, gt)
+
+			for _, expected := range tc.expectedGrants {
+				found := false
+				for _, actual := range gt {
+					if actual.AppTokenId == token.PublicId &&
+						actual.AppTokenScopeId == expected.AppTokenScopeId &&
+						actual.AppTokenParentScopeId == expected.AppTokenParentScopeId &&
+						actual.GrantScopeId == expected.GrantScopeId &&
+						actual.Grant == expected.Grant {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found)
+			}
+		})
+	}
+}
 
 type testAppTokenInput struct {
 	tokenId    string
@@ -227,66 +300,6 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, gotQuery, tc.wantQuery)
-		})
-	}
-}
-
-func TestGrantsForToken(t *testing.T) {
-	ctx := t.Context()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrap := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrap)
-
-	// Create test scopes - this will create global, org, and project scopes
-	// Return values are ignored for now. Will be used when populating expectedGrants.
-	_, _ = TestScopes(t, repo)
-
-	testCases := []struct {
-		name           string
-		u              *User
-		grants         []string
-		rTypes         []resource.Type
-		reqScopeId     string
-		recursive      bool
-		wantErr        bool
-		expectedGrants tempGrantTuples
-	}{
-		{
-			name: "global token requesting scope resources recursively",
-			u:    TestUser(t, repo, globals.GlobalPrefix),
-			grants: []string{
-				"ids=*;type=scope;actions=list,read",
-			},
-			rTypes:         []resource.Type{resource.Scope},
-			reqScopeId:     globals.GlobalPrefix,
-			recursive:      true,
-			wantErr:        false,
-			expectedGrants: tempGrantTuples{
-				// TODO: Add expected grants here
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			var opts []Option
-			if tc.recursive {
-				opts = append(opts, WithRecursive(tc.recursive))
-			}
-
-			// Create a token in the global scope with the test grants
-			token := TestAppToken(t, repo, tc.reqScopeId, tc.grants, tc.u, opts...)
-
-			// Once the actual SQL queries are implemented, this should return the grants
-			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
-			require.NoError(t, err)
-			require.NotNil(t, gt)
-
-			// Debug output to verify the returned grants
-			fmt.Printf("Grants returned: %+v\n", gt)
-
-			// Uncomment when expectedGrants are populated
-			// assert.Equal(t, tc.expectedGrants, gt)
 		})
 	}
 }
