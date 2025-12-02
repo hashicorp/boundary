@@ -1,13 +1,14 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package iam
+package apptoken
 
 import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,16 +19,17 @@ func TestGrantsForToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	// Create test scope hierarchy for testing grant scope behavior
 	// This creates: global -> org1 -> project1
 	//                      -> org2 -> project2
-	org1, _ := TestScopes(t, repo, WithName("org1"), WithDescription("Test Org 1"))
+	org1, _ := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
 	// org2, proj2 := TestScopes(t, repo, WithName("org2"), WithDescription("Test Org 2"))
 
 	testCases := []struct {
 		name           string
-		u              *User
+		u              *iam.User
 		grants         []string
 		grantThisScope bool   // whether grants apply to the token's own scope
 		grantScope     string // "descendants", "children", or "individual" (not applicable for project tokens)
@@ -39,7 +41,7 @@ func TestGrantsForToken(t *testing.T) {
 	}{
 		{
 			name:           "global token requesting scope resources recursively with descendants",
-			u:              TestUser(t, repo, globals.GlobalPrefix),
+			u:              iam.TestUser(t, iamRepo, globals.GlobalPrefix),
 			grants:         []string{"ids=*;type=scope;actions=list,read"},
 			grantThisScope: true,
 			grantScope:     "descendants",
@@ -58,7 +60,7 @@ func TestGrantsForToken(t *testing.T) {
 		},
 		{
 			name:           "org token requesting scope resources recursively with children",
-			u:              TestUser(t, repo, org1.PublicId),
+			u:              iam.TestUser(t, iamRepo, org1.PublicId),
 			grants:         []string{"ids=*;type=scope;actions=list,read"},
 			grantThisScope: true,
 			grantScope:     "children",
@@ -77,7 +79,7 @@ func TestGrantsForToken(t *testing.T) {
 		},
 		{
 			name: "org token requesting auth_method resources recursively with children",
-			u:    TestUser(t, repo, org1.PublicId),
+			u:    iam.TestUser(t, iamRepo, org1.PublicId),
 			grants: []string{
 				"ids=*;type=auth-method;actions=list,read",
 			},
@@ -98,7 +100,7 @@ func TestGrantsForToken(t *testing.T) {
 		},
 		{
 			name: "org token requesting target resources recursively with children",
-			u:    TestUser(t, repo, org1.PublicId),
+			u:    iam.TestUser(t, iamRepo, org1.PublicId),
 			grants: []string{
 				"ids=*;type=target;actions=list,read",
 			},
@@ -117,6 +119,48 @@ func TestGrantsForToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "missing resource type",
+			u:    iam.TestUser(t, iamRepo, globals.GlobalPrefix),
+			grants: []string{
+				"ids=*;type=scope;actions=list,read",
+			},
+			grantThisScope: true,
+			grantScope:     "descendants",
+			rTypes:         nil,
+			reqScopeId:     globals.GlobalPrefix,
+			recursive:      true,
+			wantErr:        true,
+			expectedGrants: nil,
+		},
+		{
+			name: "unknown resource type",
+			u:    iam.TestUser(t, iamRepo, globals.GlobalPrefix),
+			grants: []string{
+				"ids=*;type=scope;actions=list,read",
+			},
+			grantThisScope: true,
+			grantScope:     "descendants",
+			rTypes:         []resource.Type{resource.Unknown},
+			reqScopeId:     globals.GlobalPrefix,
+			recursive:      true,
+			wantErr:        true,
+			expectedGrants: nil,
+		},
+		{
+			name: "resource type 'all'",
+			u:    iam.TestUser(t, iamRepo, globals.GlobalPrefix),
+			grants: []string{
+				"ids=*;type=scope;actions=list,read",
+			},
+			grantThisScope: true,
+			grantScope:     "descendants",
+			rTypes:         []resource.Type{resource.All},
+			reqScopeId:     globals.GlobalPrefix,
+			recursive:      true,
+			wantErr:        true,
+			expectedGrants: nil,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -131,6 +175,10 @@ func TestGrantsForToken(t *testing.T) {
 
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, gt)
 
