@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package iam
+package apptoken
 
 import (
 	"context"
@@ -42,7 +42,7 @@ type grantsForTokenResult struct {
 // Use WithRecursive option to indicate that the request is a recursive list request
 // Supported options: WithRecursive
 func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []resource.Type, reqScopeId string, opt ...Option) (tempGrantTuples, error) {
-	const op = "iam.(Repository).GrantsForToken"
+	const op = "apptoken.(Repository).GrantsForToken"
 
 	// validations
 	if res == nil {
