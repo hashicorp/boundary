@@ -22,7 +22,7 @@ func TestGrantsForToken(t *testing.T) {
 	// Create test scope hierarchy for testing grant scope behavior
 	// This creates: global -> org1 -> project1
 	//                      -> org2 -> project2
-	// org1, proj1 := TestScopes(t, repo, WithName("org1"), WithDescription("Test Org 1"))
+	org1, _ := TestScopes(t, repo, WithName("org1"), WithDescription("Test Org 1"))
 	// org2, proj2 := TestScopes(t, repo, WithName("org2"), WithDescription("Test Org 2"))
 
 	testCases := []struct {
@@ -53,6 +53,67 @@ func TestGrantsForToken(t *testing.T) {
 					AppTokenParentScopeId: "",
 					GrantScopeId:          "descendants",
 					Grant:                 "ids=*;type=scope;actions=list,read",
+				},
+			},
+		},
+		{
+			name:           "org token requesting scope resources recursively with children",
+			u:              TestUser(t, repo, org1.PublicId),
+			grants:         []string{"ids=*;type=scope;actions=list,read"},
+			grantThisScope: true,
+			grantScope:     "children",
+			rTypes:         []resource.Type{resource.Scope},
+			reqScopeId:     org1.PublicId,
+			recursive:      true,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "",
+					GrantScopeId:          "children",
+					Grant:                 "ids=*;type=scope;actions=list,read",
+				},
+			},
+		},
+		{
+			name: "org token requesting auth_method resources recursively with children",
+			u:    TestUser(t, repo, org1.PublicId),
+			grants: []string{
+				"ids=*;type=auth-method;actions=list,read",
+			},
+			grantThisScope: true,
+			grantScope:     "children",
+			rTypes:         []resource.Type{resource.AuthMethod},
+			reqScopeId:     org1.PublicId,
+			recursive:      true,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "",
+					GrantScopeId:          "children",
+					Grant:                 "ids=*;type=auth-method;actions=list,read",
+				},
+			},
+		},
+		{
+			name: "org token requesting target resources recursively with children",
+			u:    TestUser(t, repo, org1.PublicId),
+			grants: []string{
+				"ids=*;type=target;actions=list,read",
+			},
+			grantThisScope: true,
+			grantScope:     "children",
+			rTypes:         []resource.Type{resource.Target},
+			reqScopeId:     org1.PublicId,
+			recursive:      true,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "",
+					GrantScopeId:          "children",
+					Grant:                 "ids=*;type=target;actions=list,read",
 				},
 			},
 		},
@@ -127,7 +188,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			input: testAppTokenInput{
 				tokenId:    globals.GlobalPrefix,
 				resource:   []resource.Type{resource.AuthMethod},
-				reqScopeId: globals.OrgPrefix + scopeSuffix,
+				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: true,
 			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery,
@@ -137,7 +198,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			input: testAppTokenInput{
 				tokenId:    globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Scope},
-				reqScopeId: globals.GlobalPrefix,
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: true,
 			wantQuery:   grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery,
@@ -157,7 +218,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			input: testAppTokenInput{
 				tokenId:    globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
-				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: true,
 			wantQuery:   grantsForOrgTokenProjectResourcesRecursiveQuery,
@@ -187,7 +248,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			input: testAppTokenInput{
 				tokenId:    globals.GlobalPrefix,
 				resource:   []resource.Type{resource.AuthMethod},
-				reqScopeId: globals.OrgPrefix + scopeSuffix,
+				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: false,
 			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesQuery,
@@ -217,7 +278,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			input: testAppTokenInput{
 				tokenId:    globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
-				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
 			wantQuery:   grantsForOrgTokenProjectResourcesQuery,
