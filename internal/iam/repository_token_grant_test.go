@@ -19,13 +19,18 @@ func TestGrantsForToken(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
 
-	// Create org and project test scopes when these test cases are added
-	// org, proj = TestScopes(t, repo)
+	// Create test scope hierarchy for testing grant scope behavior
+	// This creates: global -> org1 -> project1
+	//                      -> org2 -> project2
+	// org1, proj1 := TestScopes(t, repo, WithName("org1"), WithDescription("Test Org 1"))
+	// org2, proj2 := TestScopes(t, repo, WithName("org2"), WithDescription("Test Org 2"))
 
 	testCases := []struct {
 		name           string
 		u              *User
 		grants         []string
+		grantThisScope bool   // whether grants apply to the token's own scope
+		grantScope     string // "descendants", "children", or "individual" (not applicable for project tokens)
 		rTypes         []resource.Type
 		reqScopeId     string
 		recursive      bool
@@ -33,16 +38,15 @@ func TestGrantsForToken(t *testing.T) {
 		expectedGrants tempGrantTuples
 	}{
 		{
-			name: "global token requesting scope resources recursively",
-			u:    TestUser(t, repo, globals.GlobalPrefix),
-
-			grants: []string{
-				"ids=*;type=scope;actions=list,read",
-			},
-			rTypes:     []resource.Type{resource.Scope},
-			reqScopeId: globals.GlobalPrefix,
-			recursive:  true,
-			wantErr:    false,
+			name:           "global token requesting scope resources recursively with descendants",
+			u:              TestUser(t, repo, globals.GlobalPrefix),
+			grants:         []string{"ids=*;type=scope;actions=list,read"},
+			grantThisScope: true,
+			grantScope:     "descendants",
+			rTypes:         []resource.Type{resource.Scope},
+			reqScopeId:     globals.GlobalPrefix,
+			recursive:      true,
+			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       "global",
@@ -62,7 +66,7 @@ func TestGrantsForToken(t *testing.T) {
 			}
 
 			// Create a token with the specified grants
-			token := TestAppToken(t, repo, tc.reqScopeId, tc.grants, tc.u, opts...)
+			token := TestAppToken(t, repo, tc.reqScopeId, tc.grants, tc.u, tc.grantThisScope, tc.grantScope)
 
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
@@ -116,7 +120,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenGlobalOrgProjectResourcesRecursiveQuery,
+			wantQuery:   grantsForGlobalTokenGlobalOrgProjectResourcesRecursiveQuery,
 		},
 		{
 			name: "global token grants for recursive requests for global org resources",
@@ -126,7 +130,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenGlobalOrgResourcesRecursiveQuery,
+			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery,
 		},
 		{
 			name: "org token grants for recursive requests for global org project resources",
@@ -136,7 +140,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery,
+			wantQuery:   grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery,
 		},
 		{
 			name: "org token grants for recursive requests for global org resources",
@@ -146,7 +150,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenOrgGlobalOrgResourcesRecursiveQuery,
+			wantQuery:   grantsForOrgTokenGlobalOrgResourcesRecursiveQuery,
 		},
 		{
 			name: "org token grants for recursive requests for project resources",
@@ -156,7 +160,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.ProjectPrefix + scopeSuffix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenOrgProjectResourcesRecursiveQuery,
+			wantQuery:   grantsForOrgTokenProjectResourcesRecursiveQuery,
 		},
 		{
 			name: "project token grants for recursive requests",
@@ -166,7 +170,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.ProjectPrefix + scopeSuffix,
 			},
 			isRecursive: true,
-			wantQuery:   grantsForTokenProjectResourcesRecursiveQuery,
+			wantQuery:   grantsForProjectTokenResourcesRecursiveQuery,
 		},
 		{
 			name: "global token grants for non-recursive requests for global org project resource",
@@ -176,7 +180,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenGlobalOrgProjectResourcesQuery,
+			wantQuery:   grantsForGlobalTokenGlobalOrgProjectResourcesQuery,
 		},
 		{
 			name: "global token grants for non-recursive requests for global org resources",
@@ -186,17 +190,17 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenGlobalOrgResourcesQuery,
+			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesQuery,
 		},
 		{
 			name: "org token grants for non-recursive requests for global org project resources",
 			input: testAppTokenInput{
 				tokenId:    globals.OrgPrefix + scopeSuffix,
-				resource:   []resource.Type{resource.Scope},
-				reqScopeId: globals.GlobalPrefix,
+				resource:   []resource.Type{resource.Scope, resource.Role},
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenOrgGlobalOrgProjectResourcesQuery,
+			wantQuery:   grantsForOrgTokenGlobalOrgResourcesQuery,
 		},
 		{
 			name: "org token grants for non-recursive requests for global org resources",
@@ -206,7 +210,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenOrgGlobalOrgResourcesQuery,
+			wantQuery:   grantsForOrgTokenGlobalOrgResourcesQuery,
 		},
 		{
 			name: "org token grants for non-recursive requests for project resources",
@@ -216,7 +220,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.ProjectPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenOrgProjectResourcesQuery,
+			wantQuery:   grantsForOrgTokenProjectResourcesQuery,
 		},
 		{
 			name: "project token grants for non-recursive requests",
@@ -226,7 +230,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 				reqScopeId: globals.ProjectPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForTokenProjectResourcesQuery,
+			wantQuery:   grantsForProjectTokenResourcesQuery,
 		},
 		{
 			name: "invalid request scope id",

@@ -182,9 +182,9 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 
 	// Determine app token scope from tokenId prefix
 	var isAppTokenGlobal, isAppTokenOrg, isAppTokenProject bool
-	isAppTokenGlobal = strings.HasPrefix(reqScopeId, globals.GlobalPrefix)
-	isAppTokenOrg = strings.HasPrefix(reqScopeId, globals.OrgPrefix)
-	isAppTokenProject = strings.HasPrefix(reqScopeId, globals.ProjectPrefix)
+	isAppTokenGlobal = strings.HasPrefix(tokenId, globals.GlobalPrefix)
+	isAppTokenOrg = strings.HasPrefix(tokenId, globals.OrgPrefix)
+	isAppTokenProject = strings.HasPrefix(tokenId, globals.ProjectPrefix)
 
 	switch isRecursive {
 	// Recursive queries - based on token scope and resource allowed scopes
@@ -192,20 +192,20 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 		switch {
 		case isAppTokenGlobal:
 			if slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org, scope.Project}) {
-				return grantsForTokenGlobalOrgProjectResourcesRecursiveQuery, nil
+				return grantsForGlobalTokenGlobalOrgProjectResourcesRecursiveQuery, nil
 			} else if slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org}) {
-				return grantsForTokenGlobalOrgResourcesRecursiveQuery, nil
+				return grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery, nil
 			}
 		case isAppTokenOrg:
 			if slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org, scope.Project}) {
-				return grantsForTokenOrgGlobalOrgProjectResourcesRecursiveQuery, nil
+				return grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery, nil
 			} else if slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org}) {
-				return grantsForTokenOrgGlobalOrgResourcesRecursiveQuery, nil
+				return grantsForOrgTokenGlobalOrgResourcesRecursiveQuery, nil
 			} else if slices.Equal(resourceAllowedIn, []scope.Type{scope.Project}) {
-				return grantsForTokenOrgProjectResourcesRecursiveQuery, nil
+				return grantsForOrgTokenProjectResourcesRecursiveQuery, nil
 			}
 		case isAppTokenProject:
-			return grantsForTokenProjectResourcesRecursiveQuery, nil
+			return grantsForProjectTokenResourcesRecursiveQuery, nil
 		}
 
 		// Non-recursive queries - based on token scope, request scope, and resource allowed scopes
@@ -216,21 +216,21 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global for %s resources", res))
 			}
 			if isAppTokenGlobal {
-				return grantsForTokenGlobalOrgProjectResourcesQuery, nil
+				return grantsForGlobalTokenGlobalOrgProjectResourcesQuery, nil
 			}
 		case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org}):
 			switch {
 			case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
 				if isAppTokenGlobal {
-					return grantsForTokenGlobalOrgResourcesQuery, nil
+					return grantsForGlobalTokenGlobalOrgResourcesQuery, nil
 				} else if isAppTokenOrg {
-					return grantsForTokenOrgGlobalOrgResourcesQuery, nil
+					return grantsForOrgTokenGlobalOrgResourcesQuery, nil
 				}
 			case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
 				if isAppTokenGlobal {
-					return grantsForTokenGlobalOrgResourcesQuery, nil
+					return grantsForGlobalTokenGlobalOrgResourcesQuery, nil
 				} else if isAppTokenOrg {
-					return grantsForTokenOrgGlobalOrgResourcesQuery, nil
+					return grantsForOrgTokenGlobalOrgResourcesQuery, nil
 				}
 			default:
 				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global or org for %s resources", res))
@@ -239,23 +239,23 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 			switch {
 			case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
 				if isAppTokenGlobal {
-					return grantsForTokenGlobalOrgProjectResourcesQuery, nil
+					return grantsForGlobalTokenGlobalOrgProjectResourcesQuery, nil
 				} else if isAppTokenOrg {
-					return grantsForTokenOrgGlobalOrgProjectResourcesQuery, nil
+					return grantsForOrgTokenGlobalOrgProjectResourcesQuery, nil
 				}
 			case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
 				if isAppTokenGlobal {
-					return grantsForTokenGlobalOrgResourcesQuery, nil
+					return grantsForGlobalTokenGlobalOrgResourcesQuery, nil
 				} else if isAppTokenOrg {
-					return grantsForTokenOrgGlobalOrgResourcesQuery, nil
+					return grantsForOrgTokenGlobalOrgResourcesQuery, nil
 				}
 			case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
 				if isAppTokenGlobal {
-					return grantsForTokenGlobalOrgProjectResourcesQuery, nil
+					return grantsForGlobalTokenGlobalOrgProjectResourcesQuery, nil
 				} else if isAppTokenOrg {
-					return grantsForTokenOrgProjectResourcesQuery, nil
+					return grantsForOrgTokenProjectResourcesQuery, nil
 				} else if isAppTokenProject {
-					return grantsForTokenProjectResourcesQuery, nil
+					return grantsForProjectTokenResourcesQuery, nil
 				}
 			default:
 				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope id %s", reqScopeId))
@@ -265,9 +265,9 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be project for %s resources", res))
 			}
 			if isAppTokenOrg {
-				return grantsForTokenOrgProjectResourcesQuery, nil
+				return grantsForOrgTokenProjectResourcesQuery, nil
 			} else if isAppTokenProject {
-				return grantsForTokenProjectResourcesQuery, nil
+				return grantsForProjectTokenResourcesQuery, nil
 			}
 		}
 	}

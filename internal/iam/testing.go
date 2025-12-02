@@ -820,13 +820,13 @@ func testAuthMethod(t testing.TB, conn *db.DB, scopeId string) string {
 	return id
 }
 
+// TestAppToken creates an app token for testing with the specified grants.
 // TODO: Implement TestAppToken once AppToken functionality is added
-func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []string, user *User, opt ...Option) *apptoken.AppToken {
+func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []string, user *User, grantThisScope bool, grantScope string) *apptoken.AppToken {
 	t.Helper()
 
 	publicId := testPublicId(t, "appt_")
-	tempTestAddGrants(t, repo, publicId, scopeId, grants, user)
-
+	tempTestAddGrants(t, repo, publicId, scopeId, grants, user, grantThisScope, grantScope)
 	return &apptoken.AppToken{
 		PublicId:    publicId,
 		ScopeId:     scopeId,
@@ -836,7 +836,7 @@ func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []strin
 
 // tempTestAddGrants is a temporary test function to add grants to the database for testing
 // TODO: Replace with proper AppToken creation function once AppToken functionality is added
-func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, grants []string, user *User) {
+func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, grants []string, user *User, grantThisScope bool, grantScope string) {
 	t.Helper()
 	ctx := context.Background()
 	require := require.New(t)
@@ -894,8 +894,11 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 
 	// Create a permission for this token
 	permissionId := testPublicId(t, "aptp_")
-	grantThisScope := true
-	grantScope := "descendants" // or "children" or "this"
+
+	// Default to 'descendants' if not specified for global/org scopes
+	if grantScope == "" && (strings.HasPrefix(scopeId, globals.GlobalPrefix) || strings.HasPrefix(scopeId, globals.OrgPrefix)) {
+		grantScope = globals.GrantScopeDescendants
+	}
 
 	var permArgs []any
 	if strings.HasPrefix(scopeId, globals.ProjectPrefix) {
@@ -919,6 +922,15 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 		require.NoError(err)
 
 		canonicalGrant := perm.CanonicalString()
+
+		// Insert into iam_grant lookup table (required for query JOINs)
+		// The database trigger will automatically extract and set the resource type
+		_, err = repo.writer.Exec(ctx, `
+			insert into iam_grant (canonical_grant)
+			values ($1)
+			on conflict (canonical_grant) do nothing
+		`, []any{canonicalGrant})
+		require.NoError(err)
 
 		// Insert the grant with both raw_grant and canonical_grant
 		_, err = repo.writer.Exec(ctx, insertGrantSQL, []any{permissionId, grant, canonicalGrant})
