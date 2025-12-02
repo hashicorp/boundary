@@ -180,11 +180,11 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 		}
 	}
 
-	// Determine app token scope from tokenId prefix
+	// Determine app token scope from reqScopeId prefix
 	var isAppTokenGlobal, isAppTokenOrg, isAppTokenProject bool
-	isAppTokenGlobal = strings.HasPrefix(tokenId, globals.GlobalPrefix)
-	isAppTokenOrg = strings.HasPrefix(tokenId, globals.OrgPrefix)
-	isAppTokenProject = strings.HasPrefix(tokenId, globals.ProjectPrefix)
+	isAppTokenGlobal = strings.HasPrefix(reqScopeId, globals.GlobalPrefix)
+	isAppTokenOrg = strings.HasPrefix(reqScopeId, globals.OrgPrefix)
+	isAppTokenProject = strings.HasPrefix(reqScopeId, globals.ProjectPrefix)
 
 	switch isRecursive {
 	// Recursive queries - based on token scope and resource allowed scopes
@@ -261,9 +261,6 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope id %s", reqScopeId))
 			}
 		case slices.Equal(resourceAllowedIn, []scope.Type{scope.Project}):
-			if !strings.HasPrefix(reqScopeId, globals.ProjectPrefix) {
-				return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be project for %s resources", res))
-			}
 			if isAppTokenOrg {
 				return grantsForOrgTokenProjectResourcesQuery, nil
 			} else if isAppTokenProject {
