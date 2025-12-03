@@ -11,22 +11,16 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-var ErrMetadataScopeNotFound = errors.New(context.Background(), errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
-
 // Repository is the iam database repository
 type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-
-	// defaultLimit provides a default for limiting the number of results returned from the repo
-	defaultLimit int
 }
 
-// NewRepository creates a new iam Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
+// NewRepository creates a new apptoken Repository
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
-	const op = "iam.NewRepository"
+	const op = "apptoken.NewRepository"
 	if r == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}

@@ -144,7 +144,7 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 
 // resolveAppTokenQuery determines the correct SQL query to use based on the token scope, request scope, resource types, and whether the request is recursive
 func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, res []resource.Type, reqScopeId string, isRecursive bool) (string, error) {
-	const op = "iam.(Repository).resolveAppTokenQuery"
+	const op = "apptoken.(Repository).resolveAppTokenQuery"
 
 	// validations
 	if res == nil {
