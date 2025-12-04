@@ -75,8 +75,5 @@ func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken,
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if at.PublicId == "" {
-		return nil, nil // Token not found
-	}
 	return &at, nil
 }
