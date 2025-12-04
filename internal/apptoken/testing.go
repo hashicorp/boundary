@@ -6,6 +6,7 @@ package apptoken
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -77,8 +78,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		insertTokenSQL = `
-			insert into app_token_global (public_id, scope_id, description, created_by_user_id, create_time, update_time)
-			values ($1, $2, $3, $4, now(), now())
+			insert into app_token_global (public_id, scope_id, name, description, created_by_user_id, create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
 			insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope, create_time)
@@ -90,8 +91,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 		`
 	case strings.HasPrefix(scopeId, globals.OrgPrefix):
 		insertTokenSQL = `
-			insert into app_token_org (public_id, scope_id, description, created_by_user_id, create_time, update_time)
-			values ($1, $2, $3, $4, now(), now())
+			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
 			insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope, create_time)
@@ -103,8 +104,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 		`
 	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
 		insertTokenSQL = `
-			insert into app_token_project (public_id, scope_id, description, created_by_user_id,create_time, update_time)
-			values ($1, $2, $3, $4, now(), now())
+			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id,create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
 			insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope, create_time)
@@ -119,7 +120,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 	}
 
 	// Insert the app token
-	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{tokenId, scopeId, "test app token", user.PublicId})
+	name := fmt.Sprintf("Test App Token %s", tokenId)
+	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{tokenId, scopeId, name, "test app token", user.PublicId})
 	require.NoError(err)
 
 	// Create a permission for this token
