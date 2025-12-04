@@ -8,7 +8,7 @@ import (
 	"os"
 
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v3"
 )
 
 func main() {
