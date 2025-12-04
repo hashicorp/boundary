@@ -215,14 +215,14 @@ left join iam_scope_project
 	// project token grants for recursive requests
 	grantsForProjectTokenResourcesRecursiveQuery = `grantsForProjectTokenResourcesRecursiveQuery`
 
-	// global token grants for non-recursive requests for global org project resource
-	grantsForGlobalTokenGlobalOrgProjectResourcesQuery = `grantsForGlobalTokenGlobalOrgProjectResourcesQuery`
-	// global token grants for non-recursive requests for global org resource
-	grantsForGlobalTokenGlobalOrgResourcesQuery = `grantsForGlobalTokenGlobalOrgResourcesQuery`
-	// org token grants for non-recursive requests for global org project resource
-	grantsForOrgTokenGlobalOrgProjectResourcesQuery = `grantsForOrgTokenGlobalOrgProjectResourcesQuery`
-	// org token grants for non-recursive requests for global org resource
-	grantsForOrgTokenGlobalOrgResourcesQuery = `grantsForOrgTokenGlobalOrgResourcesQuery`
+	// global token grants for non-recursive requests for global resource
+	grantsForGlobalTokenGlobalResourcesQuery = `grantsForGlobalTokenGlobalResourcesQuery`
+	// global token grants for non-recursive requests for org resource
+	grantsForGlobalTokenOrgResourcesQuery = `grantsForGlobalTokenOrgResourcesQuery`
+	// global token grants for non-recursive requests for project resource
+	grantsForGlobalTokenProjectResourcesQuery = `grantsForGlobalTokenProjectResourcesQuery`
+	// org token grants for non-recursive requests for org resource
+	grantsForOrgTokenOrgResourcesQuery = `grantsForOrgTokenOrgResourcesQuery`
 	// org token grants for non-recursive requests for project resource
 	grantsForOrgTokenProjectResourcesQuery = `grantsForOrgTokenProjectResourcesQuery`
 	// project token grants for non-recursive requests
