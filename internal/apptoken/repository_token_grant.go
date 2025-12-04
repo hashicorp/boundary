@@ -72,8 +72,18 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	// get options
 	opts := getOpts(opt...)
 
+	// get AppToken to get scope
+	appToken, err := r.getAppTokenById(ctx, tokenId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if appToken == nil {
+		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
+	}
+	tokenScope := appToken.ScopeId
+
 	// find the correct query to use
-	query, err := r.resolveAppTokenQuery(ctx, tokenId, res, reqScopeId, opts.withRecursive)
+	query, err := r.resolveAppTokenQuery(ctx, tokenScope, res, reqScopeId, opts.withRecursive)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -143,7 +153,7 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 }
 
 // resolveAppTokenQuery determines the correct SQL query to use based on the token scope, request scope, resource types, and whether the request is recursive
-func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, res []resource.Type, reqScopeId string, isRecursive bool) (string, error) {
+func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenScope string, res []resource.Type, reqScopeId string, isRecursive bool) (string, error) {
 	const op = "apptoken.(Repository).resolveAppTokenQuery"
 
 	// validations
@@ -156,8 +166,8 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 	if slices.Contains(res, resource.All) {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be all")
 	}
-	if tokenId == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing token id")
+	if tokenScope == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing token scope")
 	}
 	if reqScopeId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
@@ -185,9 +195,9 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenId string, r
 
 	// Determine app token scope from reqScopeId prefix
 	var isAppTokenGlobal, isAppTokenOrg, isAppTokenProject bool
-	isAppTokenGlobal = strings.HasPrefix(reqScopeId, globals.GlobalPrefix)
-	isAppTokenOrg = strings.HasPrefix(reqScopeId, globals.OrgPrefix)
-	isAppTokenProject = strings.HasPrefix(reqScopeId, globals.ProjectPrefix)
+	isAppTokenGlobal = strings.HasPrefix(tokenScope, globals.GlobalPrefix)
+	isAppTokenOrg = strings.HasPrefix(tokenScope, globals.OrgPrefix)
+	isAppTokenProject = strings.HasPrefix(tokenScope, globals.ProjectPrefix)
 
 	switch isRecursive {
 	// Recursive queries - based on token scope and resource allowed scopes
