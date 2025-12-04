@@ -113,7 +113,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 // Returns nil, db.ErrorRecordNotFound if the account doesn't exist.
 // Returns nil, nil if old does not match the stored password for accountId.
 // Returns nil, error with code PasswordsEqual if old and new are equal.
-func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
+func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32, opt ...Option) (*Account, error) {
 	const op = "password.(Repository).ChangePassword"
 	if accountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
@@ -166,7 +166,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	if cc.MinPasswordLength > len(new) {
 		return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
-	newCred, err := newArgon2Credential(ctx, accountId, new, cc.argon2())
+	newCred, err := newArgon2Credential(ctx, accountId, new, cc.argon2(), opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -264,7 +264,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 
 // SetPassword sets the password for accountId to password. If password
 // contains an empty string, the password for accountId will be deleted.
-func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
+func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32, opt ...Option) (*Account, error) {
 	const op = "password.(Repository).SetPassword"
 	if accountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
@@ -297,7 +297,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		if cc.MinPasswordLength > len(password) {
 			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
-		newCred, err = newArgon2Credential(ctx, accountId, password, cc.argon2())
+		newCred, err = newArgon2Credential(ctx, accountId, password, cc.argon2(), opt...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

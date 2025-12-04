@@ -5,6 +5,7 @@ package password
 
 import (
 	"context"
+	"io"
 	"runtime"
 	"slices"
 	"strconv"
@@ -541,6 +542,116 @@ func measureCredentialCreations(ctx context.Context, t testing.TB, publicId stri
 	}
 }
 
+func TestArgon2Credential_SaltGeneration(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	// Setup test data
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
+	authMethod := authMethods[0]
+	authMethodId := authMethod.GetPublicId()
+
+	accts := TestMultipleAccounts(t, conn, authMethodId, 3)
+
+	var confs []*Argon2Configuration
+	err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
+	require.NoError(t, err)
+	require.NotEmpty(t, confs)
+
+	t.Run("salt-has-correct-length", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		cred, err := newArgon2Credential(ctx, accts[0].PublicId, "testpassword", confs[0])
+		require.NoError(err)
+		require.NotNil(cred)
+
+		// Verify salt length matches configuration
+		assert.Equal(int(confs[0].SaltLength), len(cred.Salt))
+		assert.NotEmpty(cred.Salt)
+	})
+
+	t.Run("salts-are-unique", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		// Generate multiple credentials with the same password
+		cred1, err := newArgon2Credential(ctx, accts[0].PublicId, "samepassword", confs[0])
+		require.NoError(err)
+		require.NotNil(cred1)
+
+		cred2, err := newArgon2Credential(ctx, accts[1].PublicId, "samepassword", confs[0])
+		require.NoError(err)
+		require.NotNil(cred2)
+
+		cred3, err := newArgon2Credential(ctx, accts[2].PublicId, "samepassword", confs[0])
+		require.NoError(err)
+		require.NotNil(cred3)
+
+		// Verify all salts are different
+		assert.NotEqual(cred1.Salt, cred2.Salt)
+		assert.NotEqual(cred1.Salt, cred3.Salt)
+		assert.NotEqual(cred2.Salt, cred3.Salt)
+
+		// Verify derived keys are different (due to different salts)
+		assert.NotEqual(cred1.DerivedKey, cred2.DerivedKey)
+		assert.NotEqual(cred1.DerivedKey, cred3.DerivedKey)
+		assert.NotEqual(cred2.DerivedKey, cred3.DerivedKey)
+	})
+
+	t.Run("custom-salt-length", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		// Create a configuration with a custom salt length
+		customConf := NewArgon2Configuration()
+		customConf.SaltLength = 16
+		customConf.PrivateId, err = newArgon2ConfigurationId(ctx)
+		require.NoError(err)
+		customConf.PasswordMethodId = authMethodId
+		customConf.Iterations = 4 // Make it different from default
+		err = rw.Create(ctx, customConf)
+		require.NoError(err)
+
+		cred, err := newArgon2Credential(ctx, accts[0].PublicId, "testpassword", customConf)
+		require.NoError(err)
+		require.NotNil(cred)
+
+		// Verify salt length matches custom configuration
+		assert.Equal(16, len(cred.Salt))
+	})
+
+	t.Run("custom-random-reader", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		// Create a deterministic reader for testing
+		fixedSalt := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+			17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+
+		reader := &fixedReader{data: fixedSalt}
+
+		cred, err := newArgon2Credential(ctx, accts[0].PublicId, "testpassword", confs[0],
+			WithRandomReader(reader))
+		require.NoError(err)
+		require.NotNil(cred)
+
+		// Verify salt matches the fixed data from our reader
+		assert.Equal(fixedSalt, cred.Salt)
+	})
+
+	t.Run("random-reader-error", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		// Create a reader that always returns an error
+		cred, err := newArgon2Credential(ctx, accts[0].PublicId, "testpassword", confs[0],
+			WithRandomReader(&errorReader{}))
+
+		require.Error(err)
+		assert.Nil(cred)
+		assert.True(errors.Match(errors.T(errors.Io), err))
+	})
+}
+
 func meanInt(in []uint64) float64 {
 	return sumInt(in) / float64(len(in))
 }
@@ -551,4 +662,26 @@ func sumInt(in []uint64) float64 {
 		sum += float64(n)
 	}
 	return sum
+}
+
+// fixedReader implements io.Reader with predetermined data for testing
+type fixedReader struct {
+	data []byte
+	pos  int
+}
+
+func (r *fixedReader) Read(p []byte) (n int, err error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n = copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
+}
+
+// errorReader implements io.Reader but always returns an error for testing
+type errorReader struct{}
+
+func (r *errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New(context.Background(), errors.Io, "errorReader.Read", "intentional test error")
 }
