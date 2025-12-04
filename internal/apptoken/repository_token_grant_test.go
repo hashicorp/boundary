@@ -222,7 +222,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name: "global token grants for recursive requests for global org project resources",
+			name: "global token recursive requests for global org project resources",
 			input: testAppTokenInput{
 				tokenScope: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.Scope},
@@ -232,7 +232,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForGlobalTokenGlobalOrgProjectResourcesRecursiveQuery,
 		},
 		{
-			name: "global token grants for recursive requests for global org resources",
+			name: "global token recursive requests for global org resources",
 			input: testAppTokenInput{
 				tokenScope: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.AuthMethod},
@@ -242,7 +242,17 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery,
 		},
 		{
-			name: "org token grants for recursive requests for global org project resources",
+			name: "global token recursive requests for project resources",
+			input: testAppTokenInput{
+				tokenScope: globals.GlobalPrefix,
+				resource:   []resource.Type{resource.Target},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			isRecursive: true,
+			wantQuery:   grantsForGlobalTokenProjectResourcesRecursiveQuery,
+		},
+		{
+			name: "org token recursive requests for global org project resources",
 			input: testAppTokenInput{
 				tokenScope: globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Scope},
@@ -252,7 +262,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery,
 		},
 		{
-			name: "org token grants for recursive requests for global org resources",
+			name: "org token recursive requests for global org resources",
 			input: testAppTokenInput{
 				tokenScope: globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.AuthMethod},
@@ -262,7 +272,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForOrgTokenGlobalOrgResourcesRecursiveQuery,
 		},
 		{
-			name: "org token grants for recursive requests for project resources",
+			name: "org token recursive requests for project resources",
 			input: testAppTokenInput{
 				tokenScope: globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
@@ -272,7 +282,7 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForOrgTokenProjectResourcesRecursiveQuery,
 		},
 		{
-			name: "project token grants for recursive requests",
+			name: "project token recursive requests",
 			input: testAppTokenInput{
 				tokenScope: globals.ProjectPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
@@ -282,57 +292,57 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			wantQuery:   grantsForProjectTokenResourcesRecursiveQuery,
 		},
 		{
-			name: "global token grants for non-recursive requests for global org project resource",
+			name: "global token non-recursive requests for global resource",
 			input: testAppTokenInput{
 				tokenScope: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.Scope},
 				reqScopeId: globals.GlobalPrefix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForGlobalTokenGlobalOrgProjectResourcesQuery,
+			wantQuery:   grantsForGlobalTokenGlobalResourcesQuery,
 		},
 		{
-			name: "global token grants for non-recursive requests for global org resources",
+			name: "global token non-recursive requests for org resources",
 			input: testAppTokenInput{
 				tokenScope: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.AuthMethod},
-				reqScopeId: globals.GlobalPrefix,
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForGlobalTokenGlobalOrgResourcesQuery,
+			wantQuery:   grantsForGlobalTokenOrgResourcesQuery,
 		},
 		{
-			name: "org token grants for non-recursive requests for global org project resources",
+			name: "global token non-recursive requests for project resources",
+			input: testAppTokenInput{
+				tokenScope: globals.GlobalPrefix,
+				resource:   []resource.Type{resource.Target},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			isRecursive: false,
+			wantQuery:   grantsForGlobalTokenProjectResourcesQuery,
+		},
+		{
+			name: "org token non-recursive requests for org resources",
 			input: testAppTokenInput{
 				tokenScope: globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Scope, resource.Role},
 				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			wantQuery:   grantsForOrgTokenGlobalOrgResourcesQuery,
+			wantQuery:   grantsForOrgTokenOrgResourcesQuery,
 		},
 		{
-			name: "org token grants for non-recursive requests for global org resources",
-			input: testAppTokenInput{
-				tokenScope: globals.OrgPrefix + scopeSuffix,
-				resource:   []resource.Type{resource.AuthMethod},
-				reqScopeId: globals.OrgPrefix + scopeSuffix,
-			},
-			isRecursive: false,
-			wantQuery:   grantsForOrgTokenGlobalOrgResourcesQuery,
-		},
-		{
-			name: "org token grants for non-recursive requests for project resources",
+			name: "org token non-recursive requests for project resources",
 			input: testAppTokenInput{
 				tokenScope: globals.OrgPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
-				reqScopeId: globals.OrgPrefix + scopeSuffix,
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
 			},
 			isRecursive: false,
 			wantQuery:   grantsForOrgTokenProjectResourcesQuery,
 		},
 		{
-			name: "project token grants for non-recursive requests",
+			name: "project token non-recursive requests",
 			input: testAppTokenInput{
 				tokenScope: globals.ProjectPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Target},
@@ -340,6 +350,16 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			},
 			isRecursive: false,
 			wantQuery:   grantsForProjectTokenResourcesQuery,
+		},
+		{
+			name: "invalid global request scope for org token",
+			input: testAppTokenInput{
+				tokenScope: globals.OrgPrefix + scopeSuffix,
+				resource:   []resource.Type{resource.Scope},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			isRecursive: false,
+			errorMsg:    "no matching query found for token scope, request scope",
 		},
 		{
 			name: "invalid request scope id",

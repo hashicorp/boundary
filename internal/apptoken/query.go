@@ -317,4 +317,16 @@ left join iam_scope_project
     group by app_token_permission_global.private_id,
              app_token_global.public_id;
     `
+	// global token grants for non-recursive requests for global resource
+	grantsForGlobalTokenGlobalResourcesQuery = `grantsForGlobalTokenGlobalResourcesQuery`
+	// global token grants for non-recursive requests for org resource
+	grantsForGlobalTokenOrgResourcesQuery = `grantsForGlobalTokenOrgResourcesQuery`
+	// global token grants for non-recursive requests for project resource
+	grantsForGlobalTokenProjectResourcesQuery = `grantsForGlobalTokenProjectResourcesQuery`
+	// org token grants for non-recursive requests for org resource
+	grantsForOrgTokenOrgResourcesQuery = `grantsForOrgTokenOrgResourcesQuery`
+	// org token grants for non-recursive requests for project resource
+	grantsForOrgTokenProjectResourcesQuery = `grantsForOrgTokenProjectResourcesQuery`
+	// project token grants for non-recursive requests
+	grantsForProjectTokenResourcesQuery = `grantsForProjectTokenResourcesQuery`
 )
