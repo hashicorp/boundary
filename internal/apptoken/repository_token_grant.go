@@ -28,14 +28,15 @@ type tempGrantTuples []tempGrantTuple
 
 // grantsForTokenResults represents the raw results from the grants for token queries
 type grantsForTokenResult struct {
-	PermissionId      string
-	Description       string
-	CreateTime        string
-	GrantThisScope    bool
-	GrantScope        string
-	AppTokenId        string
-	CanonicalGrants   []string
-	ActiveGrantScopes []string
+	permissionId          string
+	description           string
+	createTime            string
+	grantThisScope        bool
+	grantScope            string
+	appTokenId            string
+	appTokenParentScopeId string
+	canonicalGrants       []string
+	activeGrantScopes     []string
 }
 
 // GrantsForToken retrieves all grants for the given app token id and resource types within the given request scope id.
@@ -110,14 +111,15 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	for rows.Next() {
 		var g grantsForTokenResult
 		if err := rows.Scan(
-			&g.PermissionId,
-			&g.Description,
-			&g.CreateTime,
-			&g.GrantThisScope,
-			&g.GrantScope,
-			&g.AppTokenId,
-			pq.Array(&g.CanonicalGrants),
-			pq.Array(&g.ActiveGrantScopes),
+			&g.permissionId,
+			&g.description,
+			&g.createTime,
+			&g.grantThisScope,
+			&g.grantScope,
+			&g.appTokenId,
+			&g.appTokenParentScopeId,
+			pq.Array(&g.canonicalGrants),
+			pq.Array(&g.activeGrantScopes),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -129,21 +131,21 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 
 	resp := make(tempGrantTuples, 0, len(grants))
 	for _, grant := range grants {
-		if grant.GrantThisScope {
+		if grant.grantThisScope {
 			resp = append(resp, tempGrantTuple{
-				AppTokenId:            grant.AppTokenId,
-				AppTokenScopeId:       reqScopeId,
+				AppTokenId:            grant.appTokenId,
+				AppTokenScopeId:       appToken.ScopeId,
 				AppTokenParentScopeId: "", // Not needed when GrantThisScope is true
-				GrantScopeId:          grant.GrantScope,
-				Grant:                 strings.Join(grant.CanonicalGrants, ","),
+				GrantScopeId:          grant.grantScope,
+				Grant:                 strings.Join(grant.canonicalGrants, ","),
 			})
 		} else {
 			resp = append(resp, tempGrantTuple{
-				AppTokenId:            grant.AppTokenId,
-				AppTokenScopeId:       reqScopeId,
-				AppTokenParentScopeId: "", // How to determine parent scope id here?
-				GrantScopeId:          grant.GrantScope,
-				Grant:                 strings.Join(grant.CanonicalGrants, ","),
+				AppTokenId:            grant.appTokenId,
+				AppTokenScopeId:       appToken.ScopeId,
+				AppTokenParentScopeId: grant.appTokenParentScopeId,
+				GrantScopeId:          grant.grantScope,
+				Grant:                 strings.Join(grant.canonicalGrants, ","),
 			})
 		}
 	}
