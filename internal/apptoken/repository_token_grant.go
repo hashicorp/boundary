@@ -80,10 +80,9 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	if appToken == nil {
 		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
 	}
-	tokenScope := appToken.ScopeId
 
 	// find the correct query to use
-	query, err := r.resolveAppTokenQuery(ctx, tokenScope, res, reqScopeId, opts.withRecursive)
+	query, err := r.resolveAppTokenQuery(ctx, appToken.ScopeId, res, reqScopeId, opts.withRecursive)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
