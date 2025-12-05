@@ -16,6 +16,7 @@ const (
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                                                   as app_token_id,
+          ''                                                                                           as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant)                               as canonical_grants,
           array_agg(distinct coalesce(iam_scope_org.scope_id, iam_scope_project.scope_id))
             filter (where    coalesce(iam_scope_org.scope_id, iam_scope_project.scope_id) is not null) as active_grant_scopes
@@ -53,6 +54,7 @@ left join iam_scope_project
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                     as app_token_id,
+          ''                                                             as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
           array_agg(distinct iam_scope_org.scope_id)                     as active_grant_scopes
      from app_token_global
@@ -85,6 +87,7 @@ left join iam_scope_org
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                     as app_token_id,
+          ''                                                             as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
           array_agg(distinct iam_scope_project.scope_id)                 as active_grant_scopes
      from app_token_global
@@ -119,6 +122,7 @@ left join iam_scope_project
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
+          'global'                                                       as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
           array_agg(distinct iam_scope_project.scope_id)                 as active_grant_scopes
      from app_token_org
@@ -151,6 +155,7 @@ left join iam_scope_project
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
+          'global'                                                       as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
           array_agg(distinct app_token_org.scope_id)                     as active_grant_scopes
      from app_token_org
@@ -180,6 +185,7 @@ left join iam_scope_project
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
+          'global'                                                       as app_token_parent_scope_id,
           array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
           array_agg(distinct iam_scope_project.scope_id)                 as active_grant_scopes
      from app_token_org
