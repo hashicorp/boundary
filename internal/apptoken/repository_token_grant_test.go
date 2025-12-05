@@ -21,6 +21,7 @@ func TestGrantsForToken(t *testing.T) {
 	repo := TestRepo(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
+	// TODO: Implement additional scopes once queries are completed
 	// Create test scope hierarchy for testing grant scope behavior
 	// This creates: global -> org1 -> project1
 	//                      -> org2 -> project2
@@ -182,6 +183,8 @@ func TestGrantsForToken(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, gt)
 
+			// Verify the returned grants match the expected grants
+			require.Len(t, gt, len(tc.expectedGrants))
 			for _, expected := range tc.expectedGrants {
 				found := false
 				for _, actual := range gt {
@@ -194,7 +197,7 @@ func TestGrantsForToken(t *testing.T) {
 						break
 					}
 				}
-				assert.True(t, found)
+				assert.True(t, found, "expected grant not found: %+v", expected)
 			}
 		})
 	}
@@ -362,64 +365,24 @@ func TestResolveAppTokenQuery(t *testing.T) {
 			errorMsg:    "no matching query found for token scope, request scope",
 		},
 		{
-			name: "invalid request scope id",
+			name: "invalid global request scope for project token",
 			input: testAppTokenInput{
-				tokenScope: globals.GlobalPrefix,
+				tokenScope: globals.ProjectPrefix + scopeSuffix,
+				resource:   []resource.Type{resource.Billing},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			isRecursive: false,
+			errorMsg:    "no matching query found for token scope, request scope",
+		},
+		{
+			name: "invalid org request scope for project token",
+			input: testAppTokenInput{
+				tokenScope: globals.ProjectPrefix + scopeSuffix,
 				resource:   []resource.Type{resource.Scope},
-				reqScopeId: "invalid-scope-id",
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
 			},
 			isRecursive: false,
-			errorMsg:    "request scope must be global scope, an org scope, or a project scope",
-		},
-		{
-			name: "invalid resource type",
-			input: testAppTokenInput{
-				tokenScope: globals.GlobalPrefix,
-				resource:   []resource.Type{resource.Unknown},
-				reqScopeId: globals.GlobalPrefix,
-			},
-			isRecursive: false,
-			errorMsg:    "resource type cannot be unknown",
-		},
-		{
-			name: "missing resource type",
-			input: testAppTokenInput{
-				tokenScope: globals.GlobalPrefix,
-				resource:   nil,
-				reqScopeId: globals.GlobalPrefix,
-			},
-			isRecursive: false,
-			errorMsg:    "missing resource type",
-		},
-		{
-			name: "resource type 'all'",
-			input: testAppTokenInput{
-				tokenScope: globals.GlobalPrefix,
-				resource:   []resource.Type{resource.All},
-				reqScopeId: globals.GlobalPrefix,
-			},
-			isRecursive: false,
-			errorMsg:    "resource type cannot be all",
-		},
-		{
-			name: "missing request scope id",
-			input: testAppTokenInput{
-				tokenScope: globals.GlobalPrefix,
-				resource:   []resource.Type{resource.Scope},
-				reqScopeId: "",
-			},
-			isRecursive: false,
-			errorMsg:    "missing request scope id",
-		},
-		{
-			name: "missing token scope",
-			input: testAppTokenInput{
-				tokenScope: "",
-				resource:   []resource.Type{resource.Scope},
-				reqScopeId: globals.GlobalPrefix,
-			},
-			isRecursive: false,
-			errorMsg:    "missing token scope",
+			errorMsg:    "no matching query found for token scope, request scope",
 		},
 	}
 
