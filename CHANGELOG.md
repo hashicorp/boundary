@@ -2,15 +2,22 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.21.0 (2025/11/12)
+## 0.21.0 (2025/12/11)
 
 ### New and Improved
 
+* Vault LDAP has been added as a credential provider ([PR](https://github.com/hashicorp/boundary/pull/6222))
 * ui: Optimized loading of table filters and improved table search support ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
+* cli: `boundary connect` will close unused sessions when there is no longer a
+  connection being actively proxied. This behavior can be modified via the
+  `-inactive-timeout=<duration>` command-line argument ([PR](https://github.com/hashicorp/boundary/pull/6232))
 
 ### Bug fixes
 
 * ui: Show username for OIDC auth method in user menu ([PR](https://github.com/hashicorp/boundary-ui/pull/2930))
+* `boundary connect rdp` no longer opens a new window for each call on mac.
+* Removed the error log during RDP basic settings exchange: When you connect to
+  an RDP target using the built-in Windows Remote Desktop Connection app.
 
 ## 0.20.0 (2025/09/25)
 
