@@ -4,6 +4,7 @@
 package password
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,6 +67,15 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withOrderByCreateTime = true
 		testOpts.ascending = true
+		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts := GetOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
 		assert.Equal(opts, testOpts)
 	})
 }
