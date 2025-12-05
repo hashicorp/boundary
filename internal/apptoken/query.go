@@ -211,4 +211,36 @@ left join iam_scope_project
           app_token_permission_org.grant_scope,
           app_token_org.public_id;
     `
+
+	// grantsForProjectTokenRecursiveQuery gets a project app token's grants for resources
+	// applicable to any project scope.
+	grantsForProjectTokenRecursiveQuery = `
+   select app_token_permission_project.private_id                        as permission_id,
+          app_token_permission_project.description,
+          app_token_permission_project.create_time,
+          app_token_permission_project.grant_this_scope,
+          'individual'                                                   as grant_scope,
+          app_token_project.public_id                                    as app_token_id,
+          iam_scope_project.parent_id                                    as app_token_parent_scope_id,
+          array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
+          array_agg(iam_scope_project.scope_id)                          as active_grant_scopes
+     from app_token_project
+     join iam_scope_project
+       on iam_scope_project.scope_id = app_token_project.scope_id
+     join app_token_permission_project
+       on app_token_project.public_id = app_token_permission_project.app_token_id
+      and app_token_project.public_id = any(@app_token_ids)
+     join app_token_permission_grant
+       on app_token_permission_project.private_id = app_token_permission_grant.permission_id
+     join iam_grant
+       on app_token_permission_grant.canonical_grant = iam_grant.canonical_grant
+      and iam_grant.resource = any(@resources)
+    where app_token_permission_project.grant_this_scope = true
+ group by app_token_permission_project.private_id,
+          app_token_permission_project.description,
+          app_token_permission_project.create_time,
+          app_token_permission_project.grant_this_scope,
+          app_token_project.public_id,
+          iam_scope_project.parent_id;
+    `
 )
