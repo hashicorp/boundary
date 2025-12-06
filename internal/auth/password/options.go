@@ -3,12 +3,7 @@
 
 package password
 
-import (
-	"crypto/rand"
-	"io"
-
-	"github.com/hashicorp/boundary/internal/pagination"
-)
+import "github.com/hashicorp/boundary/internal/pagination"
 
 // GetOpts - iterate the inbound Options and return a struct.
 func GetOpts(opt ...Option) options {
@@ -35,13 +30,11 @@ type options struct {
 	withOrderByCreateTime  bool
 	ascending              bool
 	withStartPageAfterItem pagination.Item
-	withRandomReader       io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
-		withConfig:       NewArgon2Configuration(),
-		withRandomReader: rand.Reader,
+		withConfig: NewArgon2Configuration(),
 	}
 }
 
@@ -111,14 +104,5 @@ func WithOrderByCreateTime(ascending bool) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
-	}
-}
-
-// WithRandomReader provides an option to specify a random reader for generating
-// cryptographic salts and other random data. If not specified, crypto/rand.Reader
-// will be used. This is primarily useful for testing purposes.
-func WithRandomReader(reader io.Reader) Option {
-	return func(o *options) {
-		o.withRandomReader = reader
 	}
 }
