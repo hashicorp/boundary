@@ -7,6 +7,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### New and Improved
 
 * Vault LDAP has been added as a credential provider ([PR](https://github.com/hashicorp/boundary/pull/6222))
+* Added support for host key verification when connecting to an SSH target by
+  providing a `known_hosts` file. ([PR](https://github.com/hashicorp/boundary/pull/6263))
 * ui: Optimized loading of table filters and improved table search support ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
 * cli: `boundary connect` will close unused sessions when there is no longer a
   connection being actively proxied. This behavior can be modified via the
