@@ -5,6 +5,7 @@ package password
 
 import (
 	"context"
+	"crypto/rand"
 	"runtime"
 	"slices"
 	"strconv"
@@ -431,7 +432,7 @@ func TestArgon2Credential_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newArgon2Credential(context.Background(), tt.args.accountId, tt.args.password, tt.args.conf)
+			got, err := newArgon2Credential(context.Background(), tt.args.accountId, tt.args.password, tt.args.conf, rand.Reader)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -507,7 +508,7 @@ func measureCredentialCreations(ctx context.Context, t testing.TB, publicId stri
 			defer wg.Done()
 			<-start
 			t.Log("Credential " + strconv.Itoa(i) + " starting")
-			_, err := newArgon2Credential(ctx, publicId, "password", conf)
+			_, err := newArgon2Credential(ctx, publicId, "password", conf, rand.Reader)
 			assert.NoError(t, err)
 			t.Log("Credential " + strconv.Itoa(i) + " finished")
 		}()

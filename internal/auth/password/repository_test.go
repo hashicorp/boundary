@@ -5,6 +5,8 @@ package password
 
 import (
 	"context"
+	"crypto/rand"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -20,6 +22,7 @@ func TestRepository_New(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	testReader := strings.NewReader("notrandom")
 
 	type args struct {
 		r    db.Reader
@@ -47,21 +50,24 @@ func TestRepository_New(t *testing.T) {
 				writer:       rw,
 				kms:          kmsCache,
 				defaultLimit: db.DefaultLimit,
+				randomReader: rand.Reader,
 			},
 		},
 		{
 			name: "valid with limit",
 			args: args{
-				r:    rw,
-				w:    rw,
-				kms:  kmsCache,
-				opts: []Option{WithLimit(5)},
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
+				opts: []Option{WithLimit(5),
+					WithRandomReader(testReader)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
 				defaultLimit: 5,
+				randomReader: testReader,
 			},
 		},
 		{
