@@ -202,7 +202,7 @@ func (r *Repository) selectRecursiveQuery(ctx context.Context, isGlobal, isOrg, 
 			return grantsForOrgTokenProjectResourcesRecursiveQuery, nil
 		}
 	case isProject:
-		return grantsForProjectTokenResourcesRecursiveQuery, nil
+		return grantsForProjectTokenRecursiveQuery, nil
 	}
 	return "", errors.New(ctx, errors.InvalidParameter, op, "no matching recursive query found")
 }
@@ -228,7 +228,7 @@ func (r *Repository) selectNonRecursiveQuery(ctx context.Context, isGlobal, isOr
 		}
 	case isProject:
 		if isReqProject && slices.Contains(resourceAllowedIn, scope.Project) {
-			return grantsForProjectTokenResourcesQuery, nil
+			return grantsForProjectTokenQuery, nil
 		}
 	}
 	return "", errors.New(ctx, errors.InvalidParameter, op, "no matching non-recursive query found")
