@@ -59,8 +59,10 @@ func TestRepository_New(t *testing.T) {
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-				opts: []Option{WithLimit(5),
-					WithRandomReader(testReader)},
+				opts: []Option{
+					WithLimit(5),
+					WithRandomReader(testReader),
+				},
 			},
 			want: &Repository{
 				reader:       rw,
