@@ -5,6 +5,7 @@ package password
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"testing"
 	"time"
@@ -55,7 +56,7 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 		wrapper, _ = kmsCache.GetWrapper(context.Background(), org.GetPublicId(), 1)
 
 		// actually store it
-		cred, err := newArgon2Credential(ctx, acct.PublicId, "this is a password", conf)
+		cred, err := newArgon2Credential(ctx, acct.PublicId, "this is a password", conf, rand.Reader)
 		require.NoError(t, err)
 
 		require.NoError(t, cred.encrypt(ctx, wrapper))

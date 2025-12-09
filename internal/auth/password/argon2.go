@@ -5,7 +5,7 @@ package password
 
 import (
 	"context"
-	"crypto/rand"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -152,7 +152,7 @@ type Argon2Credential struct {
 	tableName string
 }
 
-func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration, randReader io.Reader) (*Argon2Credential, error) {
 	const op = "password.newArgon2Credential"
 	if accountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
@@ -178,8 +178,9 @@ func newArgon2Credential(ctx context.Context, accountId string, password string,
 		},
 	}
 
+	// Generate a random salt
 	salt := make([]byte, conf.SaltLength)
-	if _, err := rand.Read(salt); err != nil {
+	if _, err := io.ReadFull(randReader, salt); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
