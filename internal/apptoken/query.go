@@ -100,13 +100,8 @@ left join app_token_permission_global_individual_project_grant_scope proj_grants
        on app_token_permission_global.private_id = proj_grants.permission_id
 left join iam_scope_project
        on proj_grants.scope_id = iam_scope_project.scope_id
-left join app_token_permission_global_individual_org_grant_scope org_grants
-       on app_token_permission_global.private_id = org_grants.permission_id
-    where org_grants.permission_id is null
-       or (
-          app_token_permission_global.grant_scope = 'descendants' and
-          proj_grants.scope_id is not null
-       )
+    where app_token_permission_global.grant_scope = 'descendants'
+       or proj_grants.scope_id is not null
  group by app_token_permission_global.private_id,
           app_token_permission_global.description,
           app_token_permission_global.create_time,
