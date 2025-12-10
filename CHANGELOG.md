@@ -24,7 +24,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Removed the error log during RDP basic settings exchange: When you connect to
   an RDP target using the built-in Windows Remote Desktop Connection app.
 
-
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
