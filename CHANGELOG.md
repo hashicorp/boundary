@@ -13,6 +13,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: `boundary connect` will close unused sessions when there is no longer a
   connection being actively proxied. This behavior can be modified via the
   `-inactive-timeout=<duration>` command-line argument ([PR](https://github.com/hashicorp/boundary/pull/6232))
+* AWS KMS credential handling now allows the use of shared credential files. Additionally, the `default` profile is now included in the credential chain by default if it exists. ([PR](https://github.com/hashicorp/boundary/pull/6286))
 
 ### Bug fixes
 
@@ -20,6 +21,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * `boundary connect rdp` no longer opens a new window for each call on mac.
 * Removed the error log during RDP basic settings exchange: When you connect to
   an RDP target using the built-in Windows Remote Desktop Connection app.
+
 
 ## 0.20.0 (2025/09/25)
 
