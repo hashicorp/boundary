@@ -9,10 +9,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Vault LDAP has been added as a credential provider ([PR](https://github.com/hashicorp/boundary/pull/6222))
 * Added support for host key verification when connecting to an SSH target by
   providing a `known_hosts` file. ([PR](https://github.com/hashicorp/boundary/pull/6263))
+* Added new credential type for password. ([PR](https://github.com/hashicorp/boundary/pull/6207))
 * ui: Optimized loading of table filters and improved table search support ([PR](https://github.com/hashicorp/boundary-ui/pull/3053))
 * cli: `boundary connect` will close unused sessions when there is no longer a
   connection being actively proxied. This behavior can be modified via the
   `-inactive-timeout=<duration>` command-line argument ([PR](https://github.com/hashicorp/boundary/pull/6232))
+* cli: `boundary connect redis` can now consume password credentials ([PR](https://github.com/hashicorp/boundary/pull/6213))
 * AWS KMS credential handling now allows the use of shared credential files. Additionally, the `default` profile is now included in the credential chain by default if it exists. ([PR](https://github.com/hashicorp/boundary/pull/6286))
 
 ### Bug fixes
