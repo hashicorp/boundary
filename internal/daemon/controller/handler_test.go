@@ -92,6 +92,8 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.NotEmpty(t, cookies[handlers.JsVisibleCookieName].Value)
 	assert.True(t, cookies[handlers.HttpOnlyCookieName].HttpOnly)
 	assert.False(t, cookies[handlers.JsVisibleCookieName].HttpOnly)
+	assert.Equal(t, cookies[handlers.HttpOnlyCookieName].Path, "/")
+	assert.Equal(t, cookies[handlers.JsVisibleCookieName].Path, "/")
 	tok = cookies[handlers.JsVisibleCookieName].Value
 
 	pubId = attrs["id"].(string)
