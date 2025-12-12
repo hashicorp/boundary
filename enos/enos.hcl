@@ -32,8 +32,7 @@ provider "aws" "default" {
 provider "enos" "default" {
   transport = {
     ssh = {
-      user             = "ubuntu"
-      private_key_path = abspath(var.aws_ssh_private_key_path)
+      user = "ubuntu"
     }
   }
 }
