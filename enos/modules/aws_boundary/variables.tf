@@ -115,6 +115,12 @@ variable "ssh_aws_keypair" {
   type        = string
 }
 
+variable "ssh_private_key" {
+  description = "SSH private key content for connecting to instances"
+  type        = string
+  sensitive   = true
+}
+
 variable "ubuntu_ami_id" {
   description = "Ubuntu LTS AMI from enos-infra"
   type        = string

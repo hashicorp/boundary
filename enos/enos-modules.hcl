@@ -114,6 +114,10 @@ module "map2list" {
   source = "./modules/map2list"
 }
 
+module "aws_ssh_keypair" {
+  source = "./modules/aws_ssh_keypair"
+}
+
 module "aws_target" {
   source       = "./modules/aws_target"
   target_count = var.target_count
