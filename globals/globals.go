@@ -13,7 +13,7 @@ const (
 	AnonymousUserId        = "u_anon"
 	RecoveryUserId         = "u_recovery"
 
-	MinimumSupportedPostgresVersion = "12"
+	MinimumSupportedPostgresVersion = "15"
 
 	GrantScopeThis        = "this"
 	GrantScopeChildren    = "children"
