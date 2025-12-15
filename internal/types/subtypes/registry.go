@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package subtypes provides helpers to work with boundary resource subtypes.

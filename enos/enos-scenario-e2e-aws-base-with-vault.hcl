@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_aws_base_with_vault" {
