@@ -3,6 +3,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"io"
 	"os"
 	"testing"
 
@@ -37,6 +39,7 @@ type options struct {
 	withObservationsEnabled    bool
 	withIPv6Enabled            bool
 	testWithErrorEventsEnabled bool
+	withRandomReader           io.Reader
 }
 
 func getDefaultOptions() (options, error) {
@@ -72,6 +75,8 @@ func getDefaultOptions() (options, error) {
 	}
 	opts.testWithErrorEventsEnabled = errEvents
 
+	opts.withRandomReader = rand.Reader
+
 	return opts, nil
 }
 
@@ -103,6 +108,14 @@ func WithObservationsEnabled(enable bool) Option {
 func WithIPv6Enabled(enable bool) Option {
 	return func(o *options) error {
 		o.withIPv6Enabled = enable
+		return nil
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) error {
+		o.withRandomReader = reader
 		return nil
 	}
 }

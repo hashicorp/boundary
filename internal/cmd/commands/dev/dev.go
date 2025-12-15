@@ -503,9 +503,10 @@ func (c *Command) Run(args []string) int {
 		c.Config, err = config.DevController(
 			config.WithObservationsEnabled(true),
 			config.WithSysEventsEnabled(true),
+			config.WithRandomReader(c.SecureRandomReader),
 		)
 	default:
-		c.Config, err = config.DevCombined()
+		c.Config, err = config.DevCombined(config.WithRandomReader(c.SecureRandomReader))
 	}
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
@@ -905,7 +906,7 @@ func (c *Command) Run(args []string) int {
 				Worker: &store.Worker{
 					ScopeId: scope.Global.String(),
 				},
-			}, server.WithCreateControllerLedActivationToken(true))
+			}, server.WithCreateControllerLedActivationToken(true), server.WithRandomReader(c.SecureRandomReader))
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
 				if err := c.controller.Shutdown(); err != nil {

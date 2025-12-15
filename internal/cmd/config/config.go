@@ -6,7 +6,6 @@ package config
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -471,10 +470,10 @@ type License struct {
 // workers. Supported options: WithObservationsEnabled, WithSysEventsEnabled,
 // WithAuditEventsEnabled, TestWithErrorEventsEnabled
 func DevWorker(opt ...Option) (*Config, error) {
-	workerAuthStorageKey := DevKeyGeneration()
+	workerAuthStorageKey := DevKeyGeneration(opt...)
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing options: %w", err)
+		panic(fmt.Errorf("error parsing options: %w", err))
 	}
 	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
 	if opts.withIPv6Enabled {
@@ -491,11 +490,15 @@ func DevWorker(opt ...Option) (*Config, error) {
 	return parsed, nil
 }
 
-func DevKeyGeneration() string {
+func DevKeyGeneration(opt ...Option) string {
 	var numBytes int64 = 32
 	randBuf := new(bytes.Buffer)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		panic(fmt.Errorf("error parsing options: %w", err))
+	}
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
-		R: rand.Reader,
+		R: opts.withRandomReader,
 		N: numBytes,
 	})
 	if err != nil {
@@ -516,10 +519,10 @@ func DevController(opt ...Option) (*Config, error) {
 		return nil, fmt.Errorf("error parsing options: %w", err)
 	}
 
-	controllerKey := DevKeyGeneration()
-	workerAuthKey := DevKeyGeneration()
-	bsrKey := DevKeyGeneration()
-	recoveryKey := DevKeyGeneration()
+	controllerKey := DevKeyGeneration(opt...)
+	workerAuthKey := DevKeyGeneration(opt...)
+	bsrKey := DevKeyGeneration(opt...)
+	recoveryKey := DevKeyGeneration(opt...)
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
 	if opts.withIPv6Enabled {
@@ -547,11 +550,11 @@ func DevCombined(opt ...Option) (*Config, error) {
 		return nil, fmt.Errorf("error parsing options: %w", err)
 	}
 
-	controllerKey := DevKeyGeneration()
-	workerAuthKey := DevKeyGeneration()
-	workerAuthStorageKey := DevKeyGeneration()
-	bsrKey := DevKeyGeneration()
-	recoveryKey := DevKeyGeneration()
+	controllerKey := DevKeyGeneration(opt...)
+	workerAuthKey := DevKeyGeneration(opt...)
+	workerAuthStorageKey := DevKeyGeneration(opt...)
+	bsrKey := DevKeyGeneration(opt...)
+	recoveryKey := DevKeyGeneration(opt...)
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
 	if opts.withIPv6Enabled {
