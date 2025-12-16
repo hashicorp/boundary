@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -22,6 +23,7 @@ type Repository struct {
 	// defaultLimit provides a default for limiting the number of results
 	// returned from the repo
 	defaultLimit int
+	randomReader io.Reader
 }
 
 // NewRepository creates a new Repository. The returned repository should
@@ -53,5 +55,6 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		kms:          kms,
 		scheduler:    scheduler,
 		defaultLimit: opts.withLimit,
+		randomReader: opts.withRandomReader,
 	}, nil
 }

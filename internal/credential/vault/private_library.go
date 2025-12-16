@@ -8,7 +8,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
@@ -936,16 +935,18 @@ func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultCl
 	return client, nil
 }
 
-func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int) (string, []byte, error) {
+func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int, opt ...Option) (string, []byte, error) {
 	const op = "vault.generatePublicPrivateKeys"
 	pemBlock := pem.Block{}
 	var sshKey ssh.PublicKey
+
+	opts := getOpts(opt...)
 
 	switch keyType {
 	case KeyTypeRsa:
 		pemBlock.Type = "RSA PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		key, err := rsa.GenerateKey(rand.Reader, keyBits)
+		key, err := rsa.GenerateKey(opts.withRandomReader, keyBits)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -958,7 +959,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int)
 	case KeyTypeEd25519:
 		pemBlock.Type = "OPENSSH PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+		pubKey, privKey, err := ed25519.GenerateKey(opts.withRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -985,7 +986,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int)
 			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "invalid KeyBits. when KeyType=ecdsa, KeyBits must be one of: 256, 384, or 521")
 		}
 
-		key, err := ecdsa.GenerateKey(curve, rand.Reader)
+		key, err := ecdsa.GenerateKey(curve, opts.withRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}

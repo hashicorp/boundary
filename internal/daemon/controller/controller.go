@@ -433,7 +433,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
+		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler, vault.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
