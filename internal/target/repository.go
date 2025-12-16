@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -48,7 +49,8 @@ type Repository struct {
 	// has access to in terms of actions and resources and we use it to build queries.
 	// These are passed in on the repository constructor using `WithPermissions`, meaning the
 	// `Repository` object is contextualized to whatever the request context is.
-	permissions []perms.Permission
+	permissions  []perms.Permission
+	randomReader io.Reader
 }
 
 // NewRepository creates a new target Repository.
@@ -86,6 +88,7 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		kms:          kms,
 		defaultLimit: opts.WithLimit,
 		permissions:  opts.WithPermissions,
+		randomReader: opts.withRandomReader,
 	}, nil
 }
 
@@ -141,7 +144,7 @@ func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, pu
 			}
 
 			if opts.WithAlias != nil {
-				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds())
+				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds(), WithRandomReader(r.randomReader), WithAlias(opts.WithAlias))
 				if err != nil && !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}

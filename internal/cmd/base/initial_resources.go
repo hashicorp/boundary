@@ -510,7 +510,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		return nil, fmt.Errorf("failed to add config keys to kms: %w", err)
 	}
 
-	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache, target.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target repository: %w", err)
 	}

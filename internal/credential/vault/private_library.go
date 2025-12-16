@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -518,6 +519,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	defer rows.Close()
 
 	var libs []*privateCredentialLibraryAllTypes
+
 	for rows.Next() {
 		var lib privateCredentialLibraryAllTypes
 		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
@@ -538,6 +540,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	}
 
 	var decryptedLibs []issuingCredentialLibrary
+
 	for _, pl := range libs {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
@@ -547,7 +550,12 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 		if err := pl.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		decryptedLibs = append(decryptedLibs, pl.toTypedIssuingCredentialLibrary())
+		typedLib := pl.toTypedIssuingCredentialLibrary()
+		if sshLib, ok := typedLib.(*sshCertIssuingCredentialLibrary); ok {
+			sshLib.RandomReader = r.randomReader
+		}
+		decryptedLibs = append(decryptedLibs, typedLib)
+
 	}
 
 	return decryptedLibs, nil
@@ -882,6 +890,7 @@ type sshCertIssuingCredentialLibrary struct {
 	Extensions                []byte
 	Purpose                   credential.Purpose
 	AdditionalValidPrincipals string
+	RandomReader              io.Reader
 }
 
 func (lib *sshCertIssuingCredentialLibrary) GetPublicId() string            { return lib.PublicId }
@@ -1110,7 +1119,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 	// by definition, if match exists, then match[1] == "sign" or "issue"
 	switch match[1] {
 	case "sign":
-		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits)
+		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits, WithRandomReader(lib.RandomReader))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

@@ -454,12 +454,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return ldap.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(ctx, dbase, dbase, c.kms)
+		return password.NewRepository(ctx, dbase, dbase, c.kms, password.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.AuthMethodRepoFn = func() (*auth.AuthMethodRepository, error) {
 		return auth.NewAuthMethodRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		o = append(o, target.WithRandomReader(c.conf.SecureRandomReader))
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
