@@ -86,15 +86,15 @@ scenario "e2e_database" {
     depends_on = [step.create_base_infra, step.generate_ssh_key]
 
     variables {
-      ami_id          = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      ssh_aws_keypair = step.generate_ssh_key.key_pair_name
-      ssh_private_key = step.generate_ssh_key.private_key_pem
-      enos_user       = var.enos_user
-      instance_type   = var.target_instance_type
-      vpc_id          = step.create_base_infra.vpc_id
-      target_count    = 1
-      additional_tags = step.create_tag_inputs.tag_map
-      subnet_ids      = step.get_subnets.list
+      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      aws_ssh_keypair_name = module.generate_ssh_key.key_pair_name
+      aws_ssh_private_key  = module.generate_ssh_key.private_key_pem
+      enos_user            = var.enos_user
+      instance_type        = var.target_instance_type
+      vpc_id               = step.create_base_infra.vpc_id
+      target_count         = 1
+      additional_tags      = step.create_tag_inputs.tag_map
+      subnet_ids           = step.get_subnets.list
     }
   }
 

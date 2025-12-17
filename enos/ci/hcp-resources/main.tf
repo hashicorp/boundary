@@ -99,8 +99,8 @@ module "worker" {
   db_create               = false
   aws_region              = var.aws_region
   hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
-  aws_ssh_keypair_name         = module.generate_ssh_key.aws_ssh_keypair_name
-  aws_ssh_private_key = module.generate_ssh_key.private_key_pem
+  aws_ssh_keypair_name    = module.generate_ssh_key.key_pair_name
+  aws_ssh_private_key     = module.generate_ssh_key.private_key_pem
   boundary_license        = module.license.license
   kms_key_arn             = module.base_infra.kms_key_arn
   ubuntu_ami_id           = module.base_infra.ami_ids["ubuntu"]["amd64"]
@@ -136,8 +136,8 @@ module "target" {
   source = "../../modules/aws_target"
 
   target_count         = var.target_count
-  aws_ssh_keypair_name         = module.generate_ssh_key.aws_ssh_keypair_name
-  aws_ssh_private_key = module.generate_ssh_key.private_key_pem
+  aws_ssh_keypair_name = module.generate_ssh_key.key_pair_name
+  aws_ssh_private_key  = module.generate_ssh_key.private_key_pem
   instance_type        = local.target_instance_type
   enos_user            = local.cluster_tag
   environment          = local.environment_tag
