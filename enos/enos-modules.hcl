@@ -23,7 +23,6 @@ module "aws_boundary" {
 
   alb_listener_api_port = var.alb_listener_api_port
   boundary_binary_name  = var.boundary_binary_name
-  ssh_aws_keypair       = var.aws_ssh_keypair_name
 }
 
 module "aws_worker" {
@@ -35,8 +34,6 @@ module "aws_worker" {
     "Enos User" : var.enos_user,
     "Environment" : var.environment
   }
-
-  ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
 module "aws_bucket" {
@@ -146,8 +143,6 @@ module "vault" {
     "Enos User" : var.enos_user,
     "Environment" : var.environment
   }
-
-  ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
 module "test_e2e" {
