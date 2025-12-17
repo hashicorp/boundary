@@ -123,6 +123,12 @@ variable "ssh_aws_keypair" {
   type        = string
 }
 
+variable "ssh_private_key" {
+  description = "SSH private key content for connecting to instances"
+  type        = string
+  sensitive   = true
+}
+
 variable "storage_backend" {
   type        = string
   description = "The type of Vault storage backend which will be used"
