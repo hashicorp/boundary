@@ -26,8 +26,8 @@ func TestOutgoingSplitCookie(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, OutgoingResponseFilter(context.Background(), rec, &pbs.AuthenticateResponse{Attrs: &pbs.AuthenticateResponse_Attributes{Attributes: attrs}, Type: "cookie"}))
 	assert.ElementsMatch(t, rec.Result().Cookies(), []*http.Cookie{
-		{Name: HttpOnlyCookieName, Value: "34567890", HttpOnly: true, Raw: "wt-http-token-cookie=34567890; HttpOnly"},
-		{Name: JsVisibleCookieName, Value: "t_abc_12", Raw: "wt-js-token-cookie=t_abc_12"},
+		{Name: HttpOnlyCookieName, Value: "34567890", HttpOnly: true, Path: "/", Raw: "wt-http-token-cookie=34567890; Path=/; HttpOnly"},
+		{Name: JsVisibleCookieName, Value: "t_abc_12", Path: "/", Raw: "wt-js-token-cookie=t_abc_12; Path=/"},
 	})
 }
 
