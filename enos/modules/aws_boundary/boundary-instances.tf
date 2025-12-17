@@ -12,7 +12,7 @@ resource "aws_instance" "controller" {
     aws_security_group.boundary_aux_sg.id,
   ]
   subnet_id            = tolist(data.aws_subnets.infra.ids)[count.index % length(data.aws_subnets.infra.ids)]
-  key_name             = var.ssh_aws_keypair
+  key_name             = var.aws_ssh_keypair_name
   iam_instance_profile = aws_iam_instance_profile.boundary_profile.name
   monitoring           = var.controller_monitoring
   ipv6_address_count   = local.network_stack[var.ip_version].ipv6_address_count
@@ -45,7 +45,7 @@ resource "aws_instance" "worker" {
   instance_type          = var.worker_instance_type
   vpc_security_group_ids = [aws_security_group.boundary_sg.id]
   subnet_id              = tolist(data.aws_subnets.infra.ids)[count.index % length(data.aws_subnets.infra.ids)]
-  key_name               = var.ssh_aws_keypair
+  key_name               = var.aws_ssh_keypair_name
   iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
   ipv6_address_count     = local.network_stack[var.ip_version].ipv6_address_count
@@ -83,7 +83,9 @@ resource "enos_bundle_install" "controller" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -100,7 +102,9 @@ resource "enos_remote_exec" "update_path_controller" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -138,7 +142,9 @@ resource "enos_file" "controller_config" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -153,7 +159,9 @@ resource "enos_boundary_init" "controller" {
 
   transport = {
     ssh = {
-      host = try(var.ip_version == "6" ? aws_instance.controller[0].ipv6_addresses[0] : aws_instance.controller[0].public_ip, null)
+      host             = try(var.ip_version == "6" ? aws_instance.controller[0].ipv6_addresses[0] : aws_instance.controller[0].public_ip, null)
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 
@@ -170,7 +178,9 @@ resource "enos_boundary_start" "controller_start" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 
@@ -195,7 +205,9 @@ resource "enos_remote_exec" "create_controller_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -212,7 +224,9 @@ resource "enos_bundle_install" "worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -229,7 +243,9 @@ resource "enos_remote_exec" "update_path_worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -257,7 +273,9 @@ resource "enos_file" "worker_config" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -274,7 +292,9 @@ resource "enos_boundary_start" "worker_start" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -294,7 +314,9 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -314,7 +336,9 @@ resource "enos_remote_exec" "create_worker_auth_storage_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }
@@ -326,7 +350,9 @@ resource "enos_remote_exec" "get_worker_token" {
   inline = ["timeout 10s bash -c 'set -eo pipefail; until journalctl -u boundary.service | cat | grep \"Worker Auth Registration Request: .*\" | rev | cut -d \" \" -f 1 | rev | xargs; do sleep 2; done'"]
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host             = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      user             = "ubuntu"
+      private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
 }

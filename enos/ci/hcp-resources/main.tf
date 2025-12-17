@@ -27,11 +27,22 @@ provider "aws" {
   region = var.aws_region
 }
 
+locals {
+  aws_ssh_private_key_path = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
+}
+
+module "generate_ssh_key" {
+  source = "../../modules/aws_ssh_keypair"
+
+  local_key_path         = local.aws_ssh_private_key_path
+  local_aws_keypair_name = var.aws_ssh_keypair_name != null ? var.aws_ssh_keypair_name : null
+}
+
 provider "enos" {
   transport = {
     ssh = {
       user             = "ubuntu"
-      private_key_path = abspath(var.aws_ssh_private_key_path)
+      private_key_path = module.generate_ssh_key.private_key_path
     }
   }
 }
@@ -85,28 +96,29 @@ module "base_infra" {
 }
 
 module "worker" {
-  depends_on = [module.base_infra]
+  depends_on = [module.base_infra, module.generate_ssh_key]
   source     = "../../modules/aws_boundary"
 
-  controller_count        = 0
-  worker_count            = var.worker_count
-  db_create               = false
-  aws_region              = var.aws_region
-  hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
-  ssh_aws_keypair         = var.aws_ssh_keypair_name
-  boundary_license        = module.license.license
-  kms_key_arn             = module.base_infra.kms_key_arn
-  ubuntu_ami_id           = module.base_infra.ami_ids["ubuntu"]["amd64"]
-  vpc_id                  = module.base_infra.vpc_id
-  vpc_tag_module          = module.base_infra.vpc_tag_module
-  worker_instance_type    = local.worker_instance_type
-  worker_type_tags        = [local.egress_tag]
-  worker_config_file_path = "templates/worker_hcp_bsr.hcl"
-  recording_storage_path  = "/recordings"
-  local_artifact_path     = local.boundary_zip_path
-  environment             = local.environment_tag
-  project_name            = local.project_tag
-  common_tags             = local.tags
+  controller_count         = 0
+  worker_count             = var.worker_count
+  db_create                = false
+  aws_region               = var.aws_region
+  hcp_boundary_cluster_id  = var.hcp_boundary_cluster_id
+  aws_ssh_keypair_name     = module.generate_ssh_key.key_pair_name
+  aws_ssh_private_key_path = module.generate_ssh_key.private_key_path
+  boundary_license         = module.license.license
+  kms_key_arn              = module.base_infra.kms_key_arn
+  ubuntu_ami_id            = module.base_infra.ami_ids["ubuntu"]["amd64"]
+  vpc_id                   = module.base_infra.vpc_id
+  vpc_tag_module           = module.base_infra.vpc_tag_module
+  worker_instance_type     = local.worker_instance_type
+  worker_type_tags         = [local.egress_tag]
+  worker_config_file_path  = "templates/worker_hcp_bsr.hcl"
+  recording_storage_path   = "/recordings"
+  local_artifact_path      = local.boundary_zip_path
+  environment              = local.environment_tag
+  project_name             = local.project_tag
+  common_tags              = local.tags
 }
 
 module "storage_bucket" {
@@ -128,14 +140,15 @@ module "target_tags" {
 module "target" {
   source = "../../modules/aws_target"
 
-  target_count         = var.target_count
-  aws_ssh_keypair_name = var.aws_ssh_keypair_name
-  instance_type        = local.target_instance_type
-  enos_user            = local.cluster_tag
-  environment          = local.environment_tag
-  project_name         = local.project_tag
-  ami_id               = module.base_infra.ami_ids["ubuntu"]["amd64"]
-  vpc_id               = module.base_infra.vpc_id
-  subnet_ids           = module.worker.subnet_ids
-  additional_tags      = module.target_tags.tag_map
+  target_count             = var.target_count
+  aws_ssh_keypair_name     = module.generate_ssh_key.key_pair_name
+  aws_ssh_private_key_path = module.generate_ssh_key.private_key_path
+  instance_type            = local.target_instance_type
+  enos_user                = local.cluster_tag
+  environment              = local.environment_tag
+  project_name             = local.project_tag
+  ami_id                   = module.base_infra.ami_ids["ubuntu"]["amd64"]
+  vpc_id                   = module.base_infra.vpc_id
+  subnet_ids               = module.worker.subnet_ids
+  additional_tags          = module.target_tags.tag_map
 }

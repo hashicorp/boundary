@@ -5,7 +5,6 @@ scenario "e2e_docker_base_with_gcp" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
-    provider.enos.default,
     provider.google.default
   ]
 

@@ -51,11 +51,12 @@ variable "target_user" {
   type        = string
   default     = ""
 }
+
 variable "aws_ssh_private_key_path" {
-  description = "Local Path to key used to SSH onto created hosts"
+  description = "Path to the private key used to SSH into AWS instances"
   type        = string
-  default     = ""
 }
+
 variable "target_address" {
   description = "Address of target"
   type        = string
@@ -258,10 +259,10 @@ variable "ip_version" {
 }
 
 locals {
-  aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
   package_name             = reverse(split("/", var.test_package))[0]
+  aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
 }
 
 resource "enos_local_exec" "run_e2e_test" {

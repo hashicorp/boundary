@@ -19,29 +19,6 @@
 // Recommend setting this to true unless running in CI.
 // e2e_debug_no_run = true
 
-// The AWS region you want to create the resources in. Make sure you choose a
-// region where you've got an AWS keypair. Applies to AWS scenarios only.
-// aws_region = "us-east-1"
-
-// The name of the AWS keypair in EC2 -> Key Pairs. Ensure this key pair is
-// available in the selected region. Applies to AWS scenarios only.
-// aws_ssh_keypair_name = "mykeypair"
-
-// The path to the local copy of the private key associated with your keypair.
-// Applies to AWS scenarios only.
-// aws_ssh_private_key_path = "/Users/<user>/.ssh/mykeypair.pem
-
-// Name of user. This is used to tag resources in AWS to more easily identify
-// your resources. Can be set to any string.
-/// Applies to AWS scenarios only.
-// enos_user = "enos"
-
-// ENTERPRISE ONLY
-// Path to a license file
-// boundary_license_path = "./support/boundary.hclic"
-// Directly set the boundary license. Overrides boundary license file.
-// boundary_license = ""
-
 // ==============================================================================
 // OPTIONAL VARIABLES
 // ==============================================================================
@@ -51,7 +28,10 @@
 // variant. If you execute variants with the local builder this does not need
 // to be set. In CI we use this to point to the artifacts generated as part
 // of the build workflow.
-// crt_bundle_path = "./boundary_linux_amd64.zip"
+// crt_bundle_path = "~/Downloads/boundary_linux_amd64.zip"
+
+// Docker image file for boundary. This is used for docker scenarios
+// boundary_docker_image_file = "~/Downloads/boundary-docker-image.tar"
 
 // Number of controller instances to create. Applies to AWS scenarios only.
 // controller_count = 1
@@ -100,3 +80,30 @@
 // The boundary version for the worker in scenarios with a worker and controller version
 // mismatch. Will pull the official boundary docker image for given version.
 // worker_version = "0.21"
+
+// If you want to use your own ssh key instead of terraform generating one for
+// you, use this variable.
+// The name of the AWS keypair in EC2 -> Key Pairs. Ensure this key pair is
+// available in the selected region. Applies to AWS scenarios only.
+// aws_ssh_keypair_name = "mykeypair"
+
+// If you want to use your own ssh key instead of terraform generating one for
+// you, use this variable.
+// The path to the local copy of the private key associated with your keypair.
+// aws_ssh_private_key_path = "/Users/<user>/.ssh/mykeypair.pem"
+
+// Name of user. This is used to tag resources in AWS to more easily identify
+// your resources. Can be set to any string.
+/// Applies to AWS scenarios only.
+// enos_user = "enos"
+
+// The AWS region you want to create the resources in. Make sure you choose a
+// region where you've got an AWS keypair. Applies to AWS scenarios only.
+// aws_region = "us-east-1"
+
+// ENTERPRISE ONLY
+// Path to a license file
+// boundary_license_path = "./support/boundary.hclic"
+// Directly set the boundary license. Overrides boundary license file.
+// This can also be set by an environment variable ENOS_VAR_boundary_license
+// boundary_license = ""
