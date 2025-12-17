@@ -150,7 +150,7 @@ resource "enos_remote_exec" "wait" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.target[each.key].ipv6_addresses[0] : aws_instance.target[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.target[each.key].ipv6_addresses[0] : aws_instance.target[each.key].public_ip
       private_key = var.ssh_private_key
     }
   }

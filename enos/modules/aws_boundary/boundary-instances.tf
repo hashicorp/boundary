@@ -83,7 +83,7 @@ resource "enos_bundle_install" "controller" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      host        = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
       private_key = var.ssh_private_key
     }
   }
@@ -101,8 +101,8 @@ resource "enos_remote_exec" "update_path_controller" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -140,8 +140,8 @@ resource "enos_file" "controller_config" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -156,8 +156,8 @@ resource "enos_boundary_init" "controller" {
 
   transport = {
     ssh = {
-      host = try(var.ip_version == "6" ? aws_instance.controller[0].ipv6_addresses[0] : aws_instance.controller[0].public_ip, null)
-       private_key = var.ssh_private_key
+      host        = try(var.ip_version == "6" ? aws_instance.controller[0].ipv6_addresses[0] : aws_instance.controller[0].public_ip, null)
+      private_key = var.ssh_private_key
     }
   }
 
@@ -174,8 +174,8 @@ resource "enos_boundary_start" "controller_start" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 
@@ -200,8 +200,8 @@ resource "enos_remote_exec" "create_controller_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -218,7 +218,7 @@ resource "enos_bundle_install" "worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
       private_key = var.ssh_private_key
     }
   }
@@ -236,7 +236,7 @@ resource "enos_remote_exec" "update_path_worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
       private_key = var.ssh_private_key
     }
   }
@@ -264,8 +264,8 @@ resource "enos_file" "worker_config" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -282,8 +282,8 @@ resource "enos_boundary_start" "worker_start" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -303,8 +303,8 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -324,8 +324,8 @@ resource "enos_remote_exec" "create_worker_auth_storage_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
@@ -337,8 +337,8 @@ resource "enos_remote_exec" "get_worker_token" {
   inline = ["timeout 10s bash -c 'set -eo pipefail; until journalctl -u boundary.service | cat | grep \"Worker Auth Registration Request: .*\" | rev | cut -d \" \" -f 1 | rev | xargs; do sleep 2; done'"]
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
-       private_key = var.ssh_private_key
+      host        = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
+      private_key = var.ssh_private_key
     }
   }
 }
