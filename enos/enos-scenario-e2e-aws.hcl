@@ -16,10 +16,10 @@ scenario "e2e_aws" {
   }
 
   locals {
-    boundary_install_dir     = abspath(var.boundary_install_dir)
-    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    vault_license_path       = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
+    boundary_install_dir  = abspath(var.boundary_install_dir)
+    local_boundary_dir    = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    boundary_license_path = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    vault_license_path    = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
 
     build_path = {
       "local" = "/tmp",
@@ -109,9 +109,9 @@ scenario "e2e_aws" {
         version = var.vault_version
         edition = "oss"
       }
-      vpc_id = step.create_base_infra.vpc_id
-      ssh_aws_keypair          = step.generate_ssh_key.key_pair_name
-      ssh_private_key          = step.generate_ssh_key.private_key_pem
+      vpc_id          = step.create_base_infra.vpc_id
+      ssh_aws_keypair = step.generate_ssh_key.key_pair_name
+      ssh_private_key = step.generate_ssh_key.private_key_pem
     }
   }
 
@@ -164,21 +164,21 @@ scenario "e2e_aws" {
 
   step "create_targets_with_tag1" {
     module     = module.aws_target
-    depends_on = [step.create_base_infra,step.generate_ssh_key]
+    depends_on = [step.create_base_infra, step.generate_ssh_key]
 
     variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      ssh_aws_keypair          = step.generate_ssh_key.key_pair_name
-      ssh_private_key          = step.generate_ssh_key.private_key_pem
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-      target_count         = var.target_count <= 1 ? 2 : var.target_count
-      additional_tags      = step.create_tag1_inputs.tag_map
-      subnet_ids           = step.create_boundary_cluster.subnet_ids
-      ingress_cidr         = matrix.ip_version == "4" ? ["10.0.0.0/8"] : []
-      ingress_ipv6_cidr    = step.create_boundary_cluster.worker_ipv6_cidr
-      ip_version           = matrix.ip_version
+      ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      ssh_aws_keypair   = step.generate_ssh_key.key_pair_name
+      ssh_private_key   = step.generate_ssh_key.private_key_pem
+      enos_user         = var.enos_user
+      instance_type     = var.target_instance_type
+      vpc_id            = step.create_base_infra.vpc_id
+      target_count      = var.target_count <= 1 ? 2 : var.target_count
+      additional_tags   = step.create_tag1_inputs.tag_map
+      subnet_ids        = step.create_boundary_cluster.subnet_ids
+      ingress_cidr      = matrix.ip_version == "4" ? ["10.0.0.0/8"] : []
+      ingress_ipv6_cidr = step.create_boundary_cluster.worker_ipv6_cidr
+      ip_version        = matrix.ip_version
     }
   }
 
@@ -225,8 +225,8 @@ scenario "e2e_aws" {
       worker_type_tags     = [local.isolated_tag]
       ip_version           = matrix.ip_version
       config_file_path     = "templates/worker.hcl"
-      ssh_aws_keypair          = step.generate_ssh_key.key_pair_name
-      ssh_private_key          = step.generate_ssh_key.private_key_pem
+      ssh_aws_keypair      = step.generate_ssh_key.key_pair_name
+      ssh_private_key      = step.generate_ssh_key.private_key_pem
     }
   }
 
@@ -253,18 +253,18 @@ scenario "e2e_aws" {
     ]
 
     variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      ssh_aws_keypair          = step.generate_ssh_key.key_pair_name
-      ssh_private_key          = step.generate_ssh_key.private_key_pem
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 1
-      subnet_ids           = step.create_isolated_worker.subnet_ids
-      ingress_cidr         = matrix.ip_version == "4" ? ["10.13.9.0/24"] : []
-      ingress_ipv6_cidr    = step.create_isolated_worker.worker_ipv6_cidr
-      additional_tags      = step.create_tag2_inputs.tag_map
-      ip_version           = matrix.ip_version
+      ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      ssh_aws_keypair   = step.generate_ssh_key.key_pair_name
+      ssh_private_key   = step.generate_ssh_key.private_key_pem
+      enos_user         = var.enos_user
+      instance_type     = var.target_instance_type
+      vpc_id            = step.create_base_infra.vpc_id
+      target_count      = 1
+      subnet_ids        = step.create_isolated_worker.subnet_ids
+      ingress_cidr      = matrix.ip_version == "4" ? ["10.13.9.0/24"] : []
+      ingress_ipv6_cidr = step.create_isolated_worker.worker_ipv6_cidr
+      additional_tags   = step.create_tag2_inputs.tag_map
+      ip_version        = matrix.ip_version
     }
   }
 
