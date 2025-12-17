@@ -154,9 +154,9 @@ scenario "e2e_aws_rdp_base" {
         version = var.vault_version
         edition = "oss"
       }
-      vpc_id          = step.create_base_infra.vpc_id
-      ssh_aws_keypair = step.generate_ssh_key.key_pair_name
-      ssh_private_key = step.generate_ssh_key.private_key_pem
+      vpc_id               = step.create_base_infra.vpc_id
+      aws_ssh_keypair_name = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key  = step.generate_ssh_key.private_key_pem
     }
   }
 
@@ -211,8 +211,8 @@ scenario "e2e_aws_rdp_base" {
       ip_version                  = local.ip_version
       recording_storage_path      = "/recording"
       alb_sg_additional_ips       = step.create_windows_client.public_ip_list
-      ssh_aws_keypair             = step.generate_ssh_key.key_pair_name
-      ssh_private_key             = step.generate_ssh_key.private_key_pem
+      aws_ssh_keypair_name        = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key         = step.generate_ssh_key.private_key_pem
     }
   }
 
