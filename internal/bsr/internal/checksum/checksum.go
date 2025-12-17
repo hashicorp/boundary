@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package checksum provides a wrapper to compute a checksum on a writable file

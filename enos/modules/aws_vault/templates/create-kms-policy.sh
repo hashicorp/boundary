@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 function retry {
@@ -26,7 +26,7 @@ export VAULT_ADDR=http://localhost:8200
 export VAULT_TOKEN='${vault_root_token}'
 
 cat > ./kms-transit.hcl << EOF
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 path "transit/encrypt/boundary-recovery" {
