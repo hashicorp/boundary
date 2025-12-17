@@ -14,9 +14,9 @@ scenario "e2e_aws_base" {
   }
 
   locals {
-    boundary_install_dir     = abspath(var.boundary_install_dir)
-    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    boundary_install_dir = abspath(var.boundary_install_dir)
+    license_path         = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    local_boundary_dir   = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -114,7 +114,7 @@ scenario "e2e_aws_base" {
   }
 
   step "create_target" {
-    module     = module.aws_target
+    module = module.aws_target
     depends_on = [
       step.create_base_infra,
       step.generate_ssh_key

@@ -24,11 +24,11 @@ scenario "e2e_aws_rdp_base" {
   }
 
   locals {
-    boundary_install_dir     = abspath(var.boundary_install_dir)
-    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
-    boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    ip_version               = "4"
+    boundary_install_dir   = abspath(var.boundary_install_dir)
+    local_boundary_dir     = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    local_boundary_src_dir = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
+    boundary_license_path  = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    ip_version             = "4"
 
     build_path_linux = {
       "local" = "/tmp",
@@ -150,7 +150,7 @@ scenario "e2e_aws_rdp_base" {
       storage_backend = "raft"
       unseal_method   = "shamir"
       ip_version      = local.ip_version
-      vault_release   = {
+      vault_release = {
         version = var.vault_version
         edition = "oss"
       }
