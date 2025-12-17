@@ -154,6 +154,7 @@ scenario "e2e_ui_aws" {
 
     variables {
       ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      // !!
       aws_ssh_keypair_name = var.aws_ssh_keypair_name
       enos_user            = var.enos_user
       instance_type        = var.target_instance_type

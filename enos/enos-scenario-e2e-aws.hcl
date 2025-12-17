@@ -109,9 +109,9 @@ scenario "e2e_aws" {
         version = var.vault_version
         edition = "oss"
       }
-      vpc_id          = step.create_base_infra.vpc_id
-      ssh_aws_keypair = step.generate_ssh_key.key_pair_name
-      ssh_private_key = step.generate_ssh_key.private_key_pem
+      vpc_id               = step.create_base_infra.vpc_id
+      aws_ssh_keypair_name = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key  = step.generate_ssh_key.private_key_pem
     }
   }
 
@@ -212,6 +212,7 @@ scenario "e2e_aws" {
     variables {
       vpc_id               = step.create_base_infra.vpc_id
       availability_zones   = step.create_base_infra.availability_zone_names
+      ssh_aws_keypair      = step.generate_ssh_key.key_pair_name
       kms_key_arn          = step.create_base_infra.kms_key_arn
       ubuntu_ami_id        = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_cidr             = step.create_base_infra.vpc_cidr
@@ -288,7 +289,7 @@ scenario "e2e_aws" {
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
-      aws_ssh_private_key_path = step.generate_ssh_key.ssh_private_key_path
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       target_user              = "ubuntu"
       target_port              = "22"
       aws_access_key_id        = step.iam_setup.access_key_id
