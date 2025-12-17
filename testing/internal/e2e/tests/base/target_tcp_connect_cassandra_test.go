@@ -109,7 +109,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	_, err = f.Write([]byte("DESCRIBE KEYSPACES;\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte(fmt.Sprintf("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s';\n", keyspace)))
+	_, err = fmt.Fprintf(f, "SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s';\n", keyspace)
 	require.NoError(t, err)
 	_, err = f.Write([]byte("exit\n"))
 	require.NoError(t, err)

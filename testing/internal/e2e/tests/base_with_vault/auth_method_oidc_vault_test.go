@@ -49,10 +49,10 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	require.NoError(t, err)
 	authPolicyFile, err := os.OpenFile(authPolicyPath, os.O_APPEND|os.O_WRONLY, 0o644)
 	require.NoError(t, err)
-	_, err = authPolicyFile.WriteString(fmt.Sprintf(
-		`path "identity/oidc/provider/my-provider/authorize" { capabilities = [ "read" ] }%s`,
-		"\n",
-	))
+	_, err = fmt.Fprintf(authPolicyFile,
+		"path \"identity/oidc/provider/my-provider/authorize\" { capabilities = [ \"read\" ] }\n",
+	)
+	require.NoError(t, err)
 	require.NoError(t, err)
 	authPolicyName := vault.WritePolicy(t, ctx, authPolicyPath)
 	t.Cleanup(func() {
@@ -359,9 +359,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	res, err := http.Post(
 		fmt.Sprintf("%s/v1/auth-methods/%s:authenticate", boundary.GetAddr(t), authMethodId),
 		"application/json",
-		strings.NewReader(
-			fmt.Sprintf(`{"command": "start"}`),
-		),
+		strings.NewReader(`{"command": "start"}`),
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {

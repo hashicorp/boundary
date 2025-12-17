@@ -373,11 +373,10 @@ func WaitForNumberOfHostsInHostSetCli(t testing.TB, ctx context.Context, hostSet
 
 			actualHostSetCount = len(hostSetsReadResult.Item.HostIds)
 			if actualHostSetCount != expectedHostCount {
-				return errors.New(
-					fmt.Sprintf("Number of hosts in host set do not match expected. EXPECTED: %d, ACTUAL: %d",
-						expectedHostCount,
-						actualHostSetCount,
-					))
+				return fmt.Errorf("Number of hosts in host set do not match expected. EXPECTED: %d, ACTUAL: %d",
+					expectedHostCount,
+					actualHostSetCount,
+				)
 			}
 
 			t.Logf("Found %d host(s)", actualHostSetCount)

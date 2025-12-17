@@ -48,8 +48,7 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 	// Connect to a target and enable port forwarding
 	localPort := "8080"
 	destPort := "8000"
-	var cmd *exec.Cmd
-	cmd = exec.CommandContext(ctx,
+	cmd := exec.CommandContext(ctx,
 		"boundary",
 		"connect", "ssh",
 		"-target-id", targetId, "--",
@@ -72,9 +71,9 @@ Server: netcat-can-you-believe-it
 <html>Hello World!</html>
 `
 	go func() {
-		_, err = f.Write([]byte(fmt.Sprintf("echo '%s' > somepage.html\n", htmlPage)))
+		_, err = fmt.Fprintf(f, "echo '%s' > somepage.html\n", htmlPage)
 		require.NoError(t, err)
-		_, err = f.Write([]byte(fmt.Sprintf("while true; do nc -l -p %s -q 1 < somepage.html; done\n", destPort)))
+		_, err = fmt.Fprintf(f, "while true; do nc -l -p %s -q 1 < somepage.html; done\n", destPort)
 		require.NoError(t, err)
 		_, _ = io.Copy(io.Discard, f) // Not checking error here since it will return an error on session close
 	}()

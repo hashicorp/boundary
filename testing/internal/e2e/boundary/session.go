@@ -95,10 +95,10 @@ func WaitForSessionStatusCli(t testing.TB, ctx context.Context, sessionId string
 			s := sessionReadResult.Item
 
 			if s.Status != status {
-				return errors.New(fmt.Sprintf("Waiting for session status... Expected: %s, Actual: %s",
+				return fmt.Errorf("Waiting for session status... Expected: %s, Actual: %s",
 					status,
 					sessionReadResult.Item.Status,
-				))
+				)
 			}
 
 			return nil

@@ -104,6 +104,7 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 			t.Logf("Could not access Vault URL: %s. Retrying...", err.Error())
 			return err
 		}
+		defer response.Body.Close()
 
 		if response.StatusCode != http.StatusOK {
 			return fmt.Errorf("Could not connect to %s. Status Code: %d", v.UriLocalhost, response.StatusCode)
@@ -165,7 +166,9 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 	// Start a Boundary server and wait until Boundary has finished loading
 	b := infra.StartBoundary(t, pool, network, boundaryRepo, boundaryTag, db.UriNetwork)
 	t.Cleanup(func() {
-		pool.Purge(b.Resource)
+		if err := pool.Purge(b.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
 
