@@ -150,7 +150,7 @@ resource "aws_instance" "worker" {
   instance_type          = var.worker_instance_type
   vpc_security_group_ids = [aws_security_group.default.id]
   subnet_id              = var.create_subnet ? aws_subnet.default[0].id : var.subnet_ids[0]
-  key_name               = var.ssh_aws_keypair
+  key_name               = var.aws_ssh_keypair_name
   iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
 
@@ -188,7 +188,8 @@ resource "enos_bundle_install" "worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -204,7 +205,8 @@ resource "enos_remote_exec" "update_path_worker" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -234,7 +236,8 @@ resource "enos_file" "worker_config" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -250,7 +253,8 @@ resource "enos_boundary_start" "worker_start" {
   recording_storage_path = var.recording_storage_path != "" ? var.recording_storage_path : null
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -269,7 +273,8 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      host        = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
