@@ -71,6 +71,8 @@ func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
 // Shuffle returns a randomly-shuffled copy of the caller's Workers (using
 // crypto/rand). If the caller's WorkerList has one element or less, this
 // function is a no-op.
+// Supported options:
+//   - WithRandomReader
 func (w WorkerList) Shuffle(opt ...Option) (WorkerList, error) {
 	if len(w) <= 1 {
 		return w, nil

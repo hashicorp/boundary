@@ -473,7 +473,7 @@ func DevWorker(opt ...Option) (*Config, error) {
 	workerAuthStorageKey := DevKeyGeneration(opt...)
 	opts, err := getOpts(opt...)
 	if err != nil {
-		panic(fmt.Errorf("error parsing options: %w", err))
+		return nil, fmt.Errorf("error parsing options: %w", err)
 	}
 	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
 	if opts.withIPv6Enabled {
@@ -495,10 +495,11 @@ func DevKeyGeneration(opt ...Option) string {
 	randBuf := new(bytes.Buffer)
 	opts, err := getOpts(opt...)
 	if err != nil {
-		panic(fmt.Errorf("error parsing options: %w", err))
+		return fmt.Errorf("error parsing options: %w", err).Error()
 	}
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: opts.withRandomReader,
+
 		N: numBytes,
 	})
 	if err != nil {

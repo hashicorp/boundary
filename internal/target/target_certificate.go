@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"math"
 	"math/big"
 	"net"
@@ -27,12 +28,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func generatePrivAndPubKeys(ctx context.Context, opt ...Option) (privKeyBytes []byte, pubKeyBytes []byte, err error) {
+func generatePrivAndPubKeys(ctx context.Context, randomReader io.Reader) (privKeyBytes []byte, pubKeyBytes []byte, err error) {
 	const op = "target.generatePrivAndPubKeys"
 	// Generate a private key using the P521 curve
-
-	opts := GetOpts(opt...)
-	key, err := ecdsa.GenerateKey(elliptic.P521(), opts.withRandomReader)
+	key, err := ecdsa.GenerateKey(elliptic.P521(), randomReader)
 	if err != nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "failed to generate ECDSA key")
 	}
@@ -99,7 +98,9 @@ func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time
 func generateKeysAndCert(ctx context.Context, notValidAfter time.Time, opt ...Option) (privKey []byte, pubKey []byte, cert []byte, err error) {
 	const op = "target.generateKeysAndCert"
 
-	privKey, pubKey, err = generatePrivAndPubKeys(ctx, opt...)
+	opts := GetOpts(opt...)
+
+	privKey, pubKey, err = generatePrivAndPubKeys(ctx, opts.withRandomReader)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}

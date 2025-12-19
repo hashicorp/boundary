@@ -144,7 +144,7 @@ func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, pu
 			}
 
 			if opts.WithAlias != nil {
-				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds(), WithRandomReader(r.randomReader), WithAlias(opts.WithAlias))
+				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds(), WithRandomReader(r.randomReader))
 				if err != nil && !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}

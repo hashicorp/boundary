@@ -4,7 +4,6 @@
 package server
 
 import (
-	"crypto/rand"
 	"fmt"
 	"net/http"
 	"os"
@@ -188,7 +187,7 @@ listener "tcp" {
 func TestReloadControllerRateLimits(t *testing.T) {
 	td := t.TempDir()
 
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeDB, url, _, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -196,8 +195,8 @@ func TestReloadControllerRateLimits(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	cfgHcl := fmt.Sprintf(ratelimitConfig, url, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))
 
@@ -287,7 +286,7 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 	td := t.TempDir()
 
 	// Create and migrate database A and B.
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeDB, url, _, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -295,8 +294,8 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	cfgHcl := fmt.Sprintf(ratelimitConfig, url, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))
 
@@ -381,7 +380,7 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 func TestReloadControllerRateLimitsDisable(t *testing.T) {
 	td := t.TempDir()
 
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeDB, url, _, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -389,8 +388,8 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	cfgHcl := fmt.Sprintf(ratelimitConfig, url, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))
 
@@ -479,7 +478,7 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 func TestReloadControllerRateLimitsEnable(t *testing.T) {
 	td := t.TempDir()
 
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeDB, url, _, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -487,8 +486,8 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	// Start with rate limiting diasabled
 	cfgHcl := fmt.Sprintf(ratelimitConfigDisabledReload, url, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))

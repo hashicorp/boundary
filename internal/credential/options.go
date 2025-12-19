@@ -4,7 +4,9 @@
 package credential
 
 import (
+	"crypto/rand"
 	"errors"
+	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/pagination"
@@ -36,10 +38,13 @@ type options struct {
 	WithWriter             db.Writer
 	WithLimit              int
 	WithStartPageAfterItem pagination.Item
+	WithRandomReader       io.Reader
 }
 
 func getDefaultOptions() *options {
-	return &options{}
+	return &options{
+		WithRandomReader: rand.Reader,
+	}
 }
 
 // WithTemplateData provides a way to pass in template information
@@ -84,6 +89,14 @@ func WithLimit(l int) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) error {
 		o.WithStartPageAfterItem = item
+		return nil
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) error {
+		o.WithRandomReader = reader
 		return nil
 	}
 }

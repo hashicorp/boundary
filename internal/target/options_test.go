@@ -5,6 +5,7 @@ package target
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -280,6 +281,14 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithTargetId("testId"))
 		testOpts := getDefaultOptions()
 		testOpts.withTargetId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts := GetOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
 		assert.Equal(opts, testOpts)
 	})
 }

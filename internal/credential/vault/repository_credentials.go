@@ -72,6 +72,9 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	var creds []credential.Dynamic
 	var minLease time.Duration
 	runJobsInterval := r.scheduler.GetRunJobsInterval()
+
+	// passing SecureRandomReader to credential libraries
+	opt = append(opt, credential.WithRandomReader(r.randomReader))
 	for _, lib := range libs {
 		cred, err := lib.retrieveCredential(ctx, op, opt...)
 		if err != nil {

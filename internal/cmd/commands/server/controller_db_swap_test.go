@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"sync"
@@ -90,7 +89,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 	db.CloseSwappedDbDuration = 5 * time.Second
 
 	// Create and migrate database A and B.
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeA, urlA, dbNameA, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -102,8 +101,8 @@ func TestReloadControllerDatabase(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	cfgHcl := fmt.Sprintf(dbSwapConfig, urlA, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))
 
@@ -225,7 +224,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	td := t.TempDir()
 
 	// Create and migrate database A and B.
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
 
 	closeA, urlA, dbNameA, err := getInitDatabase(t, controllerKey)
 	require.NoError(t, err)
@@ -237,8 +236,8 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
 
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 	cfgHcl := fmt.Sprintf(dbSwapConfig, urlA, controllerKey, workerAuthKey, recoveryKey)
 	require.NoError(t, os.WriteFile(td+"/config.hcl", []byte(cfgHcl), 0o644))
 

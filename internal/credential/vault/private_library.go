@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -519,7 +518,6 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	defer rows.Close()
 
 	var libs []*privateCredentialLibraryAllTypes
-
 	for rows.Next() {
 		var lib privateCredentialLibraryAllTypes
 		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
@@ -540,7 +538,6 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	}
 
 	var decryptedLibs []issuingCredentialLibrary
-
 	for _, pl := range libs {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
@@ -550,12 +547,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 		if err := pl.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		typedLib := pl.toTypedIssuingCredentialLibrary()
-		if sshLib, ok := typedLib.(*sshCertIssuingCredentialLibrary); ok {
-			sshLib.RandomReader = r.randomReader
-		}
-		decryptedLibs = append(decryptedLibs, typedLib)
-
+		decryptedLibs = append(decryptedLibs, pl.toTypedIssuingCredentialLibrary())
 	}
 
 	return decryptedLibs, nil
@@ -890,7 +882,6 @@ type sshCertIssuingCredentialLibrary struct {
 	Extensions                []byte
 	Purpose                   credential.Purpose
 	AdditionalValidPrincipals string
-	RandomReader              io.Reader
 }
 
 func (lib *sshCertIssuingCredentialLibrary) GetPublicId() string            { return lib.PublicId }
@@ -944,18 +935,21 @@ func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultCl
 	return client, nil
 }
 
-func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int, opt ...Option) (string, []byte, error) {
+func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int, opt ...credential.Option) (string, []byte, error) {
 	const op = "vault.generatePublicPrivateKeys"
 	pemBlock := pem.Block{}
 	var sshKey ssh.PublicKey
 
-	opts := getOpts(opt...)
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return "", nil, errors.Wrap(ctx, err, op)
+	}
 
 	switch keyType {
 	case KeyTypeRsa:
 		pemBlock.Type = "RSA PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		key, err := rsa.GenerateKey(opts.withRandomReader, keyBits)
+		key, err := rsa.GenerateKey(opts.WithRandomReader, keyBits)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -968,7 +962,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int,
 	case KeyTypeEd25519:
 		pemBlock.Type = "OPENSSH PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		pubKey, privKey, err := ed25519.GenerateKey(opts.withRandomReader)
+		pubKey, privKey, err := ed25519.GenerateKey(opts.WithRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -995,7 +989,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int,
 			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "invalid KeyBits. when KeyType=ecdsa, KeyBits must be one of: 256, 384, or 521")
 		}
 
-		key, err := ecdsa.GenerateKey(curve, opts.withRandomReader)
+		key, err := ecdsa.GenerateKey(curve, opts.WithRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -1119,7 +1113,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 	// by definition, if match exists, then match[1] == "sign" or "issue"
 	switch match[1] {
 	case "sign":
-		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits, WithRandomReader(lib.RandomReader))
+		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits, credential.WithRandomReader(opts.WithRandomReader))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
