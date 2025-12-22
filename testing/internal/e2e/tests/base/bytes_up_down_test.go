@@ -143,7 +143,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 			newBytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
 			newBytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
 
-			if bytesUp <= 0 || bytesDown <= 0 {
+			if newBytesDown <= bytesDown {
 				return fmt.Errorf(
 					"bytes_up: %d, bytes_down: %d, bytes_up/bytes_down is not greater than previous value",
 					newBytesUp,
