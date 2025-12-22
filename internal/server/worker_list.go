@@ -71,10 +71,13 @@ func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
 // Shuffle returns a randomly-shuffled copy of the caller's Workers (using
 // crypto/rand). If the caller's WorkerList has one element or less, this
 // function is a no-op.
-func (w WorkerList) Shuffle() (WorkerList, error) {
+// Supported options:
+//   - WithRandomReader
+func (w WorkerList) Shuffle(opt ...Option) (WorkerList, error) {
 	if len(w) <= 1 {
 		return w, nil
 	}
+	opts := GetOpts(opt...)
 
 	ret := make(WorkerList, len(w))
 	copy(ret, w)
@@ -83,7 +86,7 @@ func (w WorkerList) Shuffle() (WorkerList, error) {
 	// math/rand.Shuffle, but using the crypto/rand package instead. The same
 	// caveats as math/rand.Shuffle apply.
 	for i := len(ret) - 1; i > 0; i-- {
-		j, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		j, err := rand.Int(opts.withRandomReader, big.NewInt(int64(i+1)))
 		if err != nil {
 			return nil, err
 		}

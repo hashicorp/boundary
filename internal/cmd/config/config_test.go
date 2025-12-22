@@ -4,6 +4,7 @@
 package config
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -892,7 +893,7 @@ func TestDevCombinedIpv6(t *testing.T) {
 
 func TestDevKeyGeneration(t *testing.T) {
 	t.Parallel()
-	dk := DevKeyGeneration()
+	dk := DevKeyGeneration(WithRandomReader(rand.Reader))
 	buf, err := base64.StdEncoding.DecodeString(dk)
 	require.NoError(t, err)
 	require.Len(t, buf, 32)

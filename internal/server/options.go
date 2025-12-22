@@ -5,6 +5,8 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -66,6 +68,7 @@ type options struct {
 	withFilterWorkersByLocalStorageState            bool
 	WithReader                                      db.Reader
 	WithWriter                                      db.Writer
+	withRandomReader                                io.Reader
 }
 
 func getDefaultOptions() options {
@@ -73,6 +76,7 @@ func getDefaultOptions() options {
 		withNewIdFunc:         newWorkerId,
 		withOperationalState:  ActiveOperationalState.String(),
 		withLocalStorageState: UnknownWorkerType.String(),
+		withRandomReader:      rand.Reader,
 	}
 }
 
@@ -313,5 +317,12 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 	return func(o *options) {
 		o.WithReader = r
 		o.WithWriter = w
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = reader
 	}
 }

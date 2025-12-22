@@ -108,7 +108,7 @@ func fetchTargetProxyServerCertificate(ctx context.Context, r db.Reader, w db.Wr
 	return maybeRegenerateCert(ctx, targetCert, w, wrapper, sessionMaxSeconds)
 }
 
-func fetchTargetAliasProxyServerCertificate(ctx context.Context, r db.Reader, w db.Writer, targetId, scopeId string, alias *talias.Alias, wrapper wrapping.Wrapper, sessionMaxSeconds uint32) (*ServerCertificate, error) {
+func fetchTargetAliasProxyServerCertificate(ctx context.Context, r db.Reader, w db.Writer, targetId, scopeId string, alias *talias.Alias, wrapper wrapping.Wrapper, sessionMaxSeconds uint32, opt ...Option) (*ServerCertificate, error) {
 	const op = "target.fetchTargetProxyServerCert"
 	switch {
 	case wrapper == nil:
@@ -146,7 +146,7 @@ func fetchTargetAliasProxyServerCertificate(ctx context.Context, r db.Reader, w 
 	// Create the cert, if not found- alias certs are not created as part of target creation.
 	var err error
 	if aliasCert.Certificate == nil {
-		aliasCert, err = NewTargetAliasProxyCertificate(ctx, targetId, alias)
+		aliasCert, err = NewTargetAliasProxyCertificate(ctx, targetId, alias, opt...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new target alias proxy certificate"))
 		}

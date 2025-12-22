@@ -3,7 +3,12 @@
 
 package vault
 
-import "github.com/hashicorp/boundary/globals"
+import (
+	"crypto/rand"
+	"io"
+
+	"github.com/hashicorp/boundary/globals"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -46,10 +51,13 @@ type options struct {
 	withCriticalOptions           string
 	withExtensions                string
 	withAdditionalValidPrincipals []string
+	withRandomReader              io.Reader
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withRandomReader: rand.Reader,
+	}
 }
 
 // WithDescription provides an optional description.
@@ -245,5 +253,12 @@ func WithExtensions(s string) Option {
 func WithAdditionalValidPrincipals(p []string) Option {
 	return func(o *options) {
 		o.withAdditionalValidPrincipals = p
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = reader
 	}
 }

@@ -4,6 +4,8 @@
 package target
 
 import (
+	"crypto/rand"
+	"io"
 	"net"
 	"time"
 
@@ -58,6 +60,7 @@ type options struct {
 	WithAlias                  *talias.Alias
 	withAliases                []*talias.Alias
 	withTargetId               string
+	withRandomReader           io.Reader
 }
 
 func getDefaultOptions() options {
@@ -86,6 +89,7 @@ func getDefaultOptions() options {
 		WithAddress:                "",
 		WithNetResolver:            net.DefaultResolver,
 		withTargetId:               "",
+		withRandomReader:           rand.Reader,
 	}
 }
 
@@ -299,5 +303,12 @@ func WithAlias(in *talias.Alias) Option {
 func WithTargetId(in string) Option {
 	return func(o *options) {
 		o.withTargetId = in
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = reader
 	}
 }
