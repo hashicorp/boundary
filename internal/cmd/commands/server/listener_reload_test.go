@@ -12,7 +12,6 @@
 package server
 
 import (
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -93,9 +92,9 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	td := t.TempDir()
 
-	controllerKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	workerAuthKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
-	recoveryKey := config.DevKeyGeneration(config.WithRandomReader(rand.Reader))
+	controllerKey := config.DevKeyGeneration()
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 
 	cmd := testServerCommand(t, testServerCommandOpts{
 		CreateDevDatabase: true,
