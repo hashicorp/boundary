@@ -818,7 +818,6 @@ func TestNewTokenRevocationJob(t *testing.T) {
 }
 
 func TestTokenRevocationJob_RunLimits(t *testing.T) {
-
 	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
