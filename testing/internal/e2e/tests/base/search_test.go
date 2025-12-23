@@ -226,12 +226,10 @@ func TestCliSearch(t *testing.T) {
 			}
 
 			if statusResult.Item.Users[0].Resources[idx].Count != currentCount+c.MaxPageSize+1 {
-				return errors.New(
-					fmt.Sprintf(
-						"Did not see expected number of targets in status, EXPECTED: %d, ACTUAL: %d",
-						currentCount+c.MaxPageSize+1,
-						statusResult.Item.Users[0].Resources[idx].Count,
-					),
+				return fmt.Errorf(
+					"Did not see expected number of targets in status, EXPECTED: %d, ACTUAL: %d",
+					currentCount+c.MaxPageSize+1,
+					statusResult.Item.Users[0].Resources[idx].Count,
 				)
 			}
 
@@ -353,12 +351,10 @@ func TestCliSearch(t *testing.T) {
 			}
 
 			if len(searchResult.Item.Targets) != len(targetIds) {
-				return errors.New(
-					fmt.Sprintf(
-						"Search did not return expected number of targets, EXPECTED: %d, ACTUAL: %d",
-						len(targetIds),
-						len(searchResult.Item.Targets),
-					),
+				return fmt.Errorf(
+					"Search did not return expected number of targets, EXPECTED: %d, ACTUAL: %d",
+					len(targetIds),
+					len(searchResult.Item.Targets),
 				)
 			}
 

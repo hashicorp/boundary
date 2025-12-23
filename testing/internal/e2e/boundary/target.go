@@ -145,7 +145,7 @@ func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaul
 	if opts.WithDefaultClientPort != 0 {
 		args = append(args, e2e.WithArgs("-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort)))
 	}
-	if opts.WithEnableSessionRecording != false {
+	if opts.WithEnableSessionRecording {
 		args = append(args, e2e.WithArgs("-enable-session-recording", fmt.Sprintf("%v", opts.WithEnableSessionRecording)))
 	}
 	if opts.WithStorageBucketId != "" {
@@ -212,7 +212,7 @@ func UpdateTargetCli(t testing.TB, ctx context.Context, targetId string, opt ...
 	if opts.WithDefaultClientPort != 0 {
 		args = append(args, "-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort))
 	}
-	if opts.WithEnableSessionRecording != false {
+	if opts.WithEnableSessionRecording {
 		args = append(args, "-enable-session-recording", fmt.Sprintf("%v", opts.WithEnableSessionRecording))
 	}
 	if opts.WithStorageBucketId != "" {

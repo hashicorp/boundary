@@ -6,7 +6,6 @@ package base_plus_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -453,18 +452,18 @@ func getRateLimitStat(rateLimitHeader, stat string) (int, error) {
 		if strings.Contains(s, stat) {
 			parts := strings.Split(s, "=")
 			if len(parts) != 2 {
-				return 0, errors.New(fmt.Sprintf("Expected length of 2: VALUE: %s", parts))
+				return 0, fmt.Errorf("Expected length of 2: VALUE: %s", parts)
 			}
 			count, err := strconv.Atoi(parts[1])
 			if err != nil {
-				return 0, errors.New(fmt.Sprintf("Expected a number: VALUE: %s", parts[1]))
+				return 0, fmt.Errorf("Expected a number: VALUE: %s", parts[1])
 			}
 
 			return count, nil
 		}
 	}
 
-	return 0, errors.New(fmt.Sprintf("Could not parse header, STAT: %s, HEADER: %s", stat, rateLimitHeader))
+	return 0, fmt.Errorf("Could not parse header, STAT: %s, HEADER: %s", stat, rateLimitHeader)
 }
 
 func getRateLimitPolicyStat(rateLimitPolicyHeader, stat string) (limit int, period int, err error) {
@@ -473,23 +472,23 @@ func getRateLimitPolicyStat(rateLimitPolicyHeader, stat string) (limit int, peri
 		if strings.Contains(s, stat) {
 			parts := strings.Split(s, ";")
 			if len(parts) != 3 {
-				return 0, 0, errors.New(fmt.Sprintf("Expected length of 3: VALUE: %s", parts))
+				return 0, 0, fmt.Errorf("Expected length of 3: VALUE: %s", parts)
 			}
 			limit, err := strconv.Atoi(parts[0])
 			if err != nil {
-				return 0, 0, errors.New(fmt.Sprintf("Expected a number: VALUE: %s", parts[0]))
+				return 0, 0, fmt.Errorf("Expected a number: VALUE: %s", parts[0])
 			}
 			policyParts := strings.Split(parts[1], "=")
 			if len(policyParts) != 2 {
-				return 0, 0, errors.New(fmt.Sprintf("Expected length of 2: VALUE: %s", policyParts))
+				return 0, 0, fmt.Errorf("Expected length of 2: VALUE: %s", policyParts)
 			}
 			period, err := strconv.Atoi(policyParts[1])
 			if err != nil {
-				return 0, 0, errors.New(fmt.Sprintf("Expected a number: VALUE: %d", period))
+				return 0, 0, fmt.Errorf("Expected a number: VALUE: %d", period)
 			}
 			return limit, period, nil
 		}
 	}
 
-	return 0, 0, errors.New(fmt.Sprintf("Could not parse header, STAT: %s, HEADER: %s", stat, rateLimitPolicyHeader))
+	return 0, 0, fmt.Errorf("Could not parse header, STAT: %s, HEADER: %s", stat, rateLimitPolicyHeader)
 }
