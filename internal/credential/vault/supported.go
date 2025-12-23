@@ -190,12 +190,12 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 
 	server.Shutdown = func(t *testing.T) {
 		cleanupResource(t, pool, resource)
-		server.stopped = true
+		server.stopped.Store(true)
 	}
 
 	if !opts.skipCleanup {
 		t.Cleanup(func() {
-			if !server.stopped {
+			if !server.stopped.Load() {
 				cleanupResource(t, pool, resource)
 			}
 		})
