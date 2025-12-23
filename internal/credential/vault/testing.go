@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1197,7 +1198,7 @@ type TestVaultServer struct {
 	ldapContainer     any
 	postgresContainer any
 
-	stopped  bool
+	stopped  atomic.Bool
 	Shutdown func(t *testing.T)
 }
 
