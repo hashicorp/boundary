@@ -96,3 +96,7 @@
 // only required for running automation on RDP e2e test cases
 // Token requires read access to hashicorp repositories
 // github_token = ""
+
+// The boundary version for the worker in scenarios with a worker and controller version
+// mismatch. Will pull the official boundary docker image for given version.
+// worker_version = "0.21"

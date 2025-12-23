@@ -283,3 +283,9 @@ variable "github_token" {
   type        = string
   default     = ""
 }
+
+variable "worker_version" {
+  description = "Manually set worker version to test different worker/controller version combinations"
+  type        = string
+  default     = null
+}
