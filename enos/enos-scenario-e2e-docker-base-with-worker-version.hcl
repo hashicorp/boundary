@@ -23,8 +23,6 @@ scenario "e2e_docker_base_with_worker_version" {
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     image_base_name            = var.boundary_edition == "oss" ? "hashicorp/boundary" : "hashicorp/boundary-enterprise"
     worker_version_tag         = var.worker_version != null ? var.worker_version : "latest"
-    #worker_version             = var.worker_version != "" ? (var.boundary_edition == "oss" ? "hashicorp/boundary:${var.worker_version}" : "hashicorp/boundary-enterprise:${var.worker_version}-ent") : (var.boundary_edition == "oss" ? "hashicorp/boundary:latest" : "hashicorp/boundary-enterprise:latest")
-
 
     network_cluster  = "e2e_cluster"
     network_host     = "e2e_host"
