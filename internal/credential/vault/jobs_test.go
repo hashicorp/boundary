@@ -1430,6 +1430,86 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	assert.Equal(string(ExpiredCredential), lookupCred.Status)
 }
 
+func TestCredentialRenewalJob_RunExpired_VaultUnreachable(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	require.NoError(err)
+
+	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
+	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	require.NoError(err)
+	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(ctx, j)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	require.NoError(err)
+
+	libPath := path.Join("database", "creds", "opened")
+	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
+	require.NoError(err)
+	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	require.NoError(err)
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+
+	repoToken := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+
+	credRenewal, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	_, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, 5*time.Second)
+
+	v.Shutdown(t)
+	// trigger a job run and validate that credential is still active
+	err = credRenewal.Run(ctx, 0)
+	require.NoError(err)
+	// Credential status should still be active
+	lookupCred := allocCredential()
+	lookupCred.PublicId = cred.PublicId
+	require.NoError(rw.LookupById(ctx, lookupCred))
+	assert.Equal(string(ActiveCredential), lookupCred.Status)
+
+	// wait until credentials expire and rerun the job
+	time.Sleep(5 * time.Second)
+	err = credRenewal.Run(ctx, 0)
+	require.NoError(err)
+	// The active credential should have been processed
+	assert.Equal(1, credRenewal.numCreds)
+	// Credential status should have been updated to expired
+	lookupCred = allocCredential()
+	lookupCred.PublicId = cred.PublicId
+	require.NoError(rw.LookupById(ctx, lookupCred))
+	assert.Equal(string(ExpiredCredential), lookupCred.Status)
+}
+
 func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
