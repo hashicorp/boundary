@@ -14,10 +14,9 @@ scenario "e2e_aws_base" {
   }
 
   locals {
-    aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-    boundary_install_dir     = abspath(var.boundary_install_dir)
-    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    boundary_install_dir = abspath(var.boundary_install_dir)
+    license_path         = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    local_boundary_dir   = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -76,12 +75,21 @@ scenario "e2e_aws_base" {
     }
   }
 
+  step "generate_ssh_key" {
+    module = module.aws_ssh_keypair
+
+    variables {
+      enos_user = var.enos_user
+    }
+  }
+
   step "create_boundary_cluster" {
     module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
-      step.build_boundary
+      step.build_boundary,
+      step.generate_ssh_key
     ]
 
     variables {
@@ -100,16 +108,22 @@ scenario "e2e_aws_base" {
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
       aws_region               = var.aws_region
+      aws_ssh_keypair_name     = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key      = step.generate_ssh_key.private_key_pem
     }
   }
 
   step "create_target" {
-    module     = module.aws_target
-    depends_on = [step.create_base_infra]
+    module = module.aws_target
+    depends_on = [
+      step.create_base_infra,
+      step.generate_ssh_key
+    ]
 
     variables {
       ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      aws_ssh_keypair_name = var.aws_ssh_keypair_name
+      aws_ssh_keypair_name = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key  = step.generate_ssh_key.private_key_pem
       enos_user            = var.enos_user
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
@@ -122,7 +136,8 @@ scenario "e2e_aws_base" {
     module = module.test_e2e
     depends_on = [
       step.create_boundary_cluster,
-      step.create_target
+      step.create_target,
+      step.generate_ssh_key
     ]
 
     variables {
@@ -133,7 +148,7 @@ scenario "e2e_aws_base" {
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
-      aws_ssh_private_key_path = local.aws_ssh_private_key_path
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       target_address           = step.create_target.target_private_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
