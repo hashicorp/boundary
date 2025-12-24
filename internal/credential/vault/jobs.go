@@ -169,10 +169,10 @@ func (r *TokenRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	return nil
 }
 
-func isForbiddenError(err error) bool {
+func isHttpErrorCode(err error, code int) bool {
 	var respErr *vault.ResponseError
 	ok := errors.As(err, &respErr)
-	return ok && respErr.StatusCode == http.StatusForbidden
+	return ok && respErr.StatusCode == code
 }
 
 func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error {
@@ -203,7 +203,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		// cleaned up.
 		// Also, check if the token has already expired based on time to avoid attempting
 		// to renew the expired token against an Vault server that may no longer exist.
-		if isForbiddenError(err) || time.Now().After(token.ExpirationTime.AsTime()) {
+		if isHttpErrorCode(err, http.StatusForbidden) || time.Now().After(token.ExpirationTime.AsTime()) {
 			query, values := token.updateStatusQuery(ExpiredToken)
 			numRows, err := r.writer.Exec(ctx, query, values)
 			if err != nil {
@@ -591,26 +591,29 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	}
 	cred := c.toCredential()
 
-	var respErr *vault.ResponseError
 	// Subtract last renewal time from previous expiration time to get lease duration
 	leaseDuration := c.ExpirationTime.AsTime().Sub(c.LastRenewalTime.AsTime())
 	renewedCred, err := vc.renewLease(ctx, c.ExternalId, leaseDuration)
-	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
+	if err != nil {
 		// Vault returned a 400 when attempting a renew lease, the lease is either expired
 		// or the leaseId is malformed.  Set status to "expired".
-		query, values := cred.updateStatusQuery(ExpiredCredential)
-		numRows, err := r.writer.Exec(ctx, query, values)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
+		// Also mark as expired if we are past the expiration time to avoid attempting
+		// to renew the expired credential against an Vault server that may no longer exist.
+		if isHttpErrorCode(err, http.StatusBadRequest) || time.Now().After(c.ExpirationTime.AsTime()) {
+			query, values := cred.updateStatusQuery(ExpiredCredential)
+			numRows, err := r.writer.Exec(ctx, query, values)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if numRows != 1 {
+				return errors.New(ctx, errors.Unknown, op, "credential expired but failed to update repo")
+			}
+			// exit early as we mark the credential as expired
+			return nil
 		}
-		if numRows != 1 {
-			return errors.New(ctx, errors.Unknown, op, "credential expired but failed to update repo")
-		}
-		return nil
-	}
-	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
 	}
+
 	if renewedCred == nil {
 		return errors.New(ctx, errors.Unknown, op, "vault returned empty credential")
 	}
