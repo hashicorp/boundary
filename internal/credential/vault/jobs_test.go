@@ -2068,6 +2068,109 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	assert.Error(testDb.ValidateCredential(t, secret))
 }
 
+func TestCredentialRevocationJob_Run_UnreachableVault(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	testDb := v.MountDatabase(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	require.NoError(err)
+
+	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
+	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	require.NoError(err)
+	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(ctx, j)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	require.NoError(err)
+
+	libPath := path.Join("database", "creds", "opened")
+	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
+	require.NoError(err)
+	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	require.NoError(err)
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+
+	repoToken := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+
+	r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	// create a credential that will expire in 10 seconds marked for revocation
+	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, RevokeCredential, 10*time.Second)
+
+	// Shutdown Vault to simulate Vault becoming unreachable
+	v.Shutdown(t)
+
+	// first attempt will attempt to revoke credentials but fail to connect to Vault
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+	// No credentials should have been revoked as expiration is 10 seconds from now
+	// when Vault is unreachable
+	assert.Equal(1, r.numCreds)
+
+	// Verify the cred has a status of active with an empty libraryId
+	lookupCred := allocCredential()
+	lookupCred.PublicId = cred.PublicId
+	require.NoError(rw.LookupById(ctx, lookupCred))
+	assert.Equal(string(RevokeCredential), lookupCred.Status)
+
+	// secret should still be valid in test database
+	assert.NoError(testDb.ValidateCredential(t, secret))
+
+	// sleep until credentials expire
+	time.Sleep(10 * time.Second)
+
+	// second attempt should attempt to revoke again but failed to connect to Vault
+	// credentials should be marked as 'revoked' because it is past expiration time
+	// This matches the existing behavior as of 0.21.0 where attempting to revoke expired credentials
+	// results in credentials being marked as 'revoked'
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+	// found and processed 1 credential
+	assert.Equal(1, r.numProcessed)
+	assert.Equal(1, r.numCreds)
+
+	// cred should now have a status of revoke and empty sessionId
+	lookupCred = allocCredential()
+	lookupCred.PublicId = cred.PublicId
+	require.NoError(rw.LookupById(ctx, lookupCred))
+	assert.Equal(string(RevokedCredential), lookupCred.Status)
+
+	// secret should no longer be valid in test database
+	// This cannot be validated because the test credential lease is actually 12h
+	// the value stored in `credential_vault_credential` is overridden by the test instead of using the actual lease duration.
+	// Credentials will be valid for 12h rather than the specified expiration time of 10 seconds.
+	// assert.Error(testDb.ValidateCredential(t, secret))
+}
+
 func TestNewCredentialStoreCleanupJob(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
