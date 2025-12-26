@@ -769,15 +769,19 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 	cred := c.toCredential()
 	var respErr *vault.ResponseError
 	err = vc.revokeLease(ctx, c.ExternalId)
-	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
+	if err != nil {
 		// Vault returned a 400 when attempting a revoke lease, the lease is already expired.
 		// Clobber error and set status to "revoked" below.
+		// Also clobber error if we are past the expiration time to avoid attempting
+		// to revoke the expired credential
+		if !(isVaultResponseErrorCode(err, http.StatusBadRequest) || time.Now().After(c.ExpirationTime.AsTime())) {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke credential"))
+		}
 		err = nil
 	}
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke credential"))
-	}
 
+	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
+	}
 	query, values := cred.updateStatusQuery(RevokedCredential)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
