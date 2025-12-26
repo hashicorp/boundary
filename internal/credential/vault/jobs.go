@@ -169,7 +169,8 @@ func (r *TokenRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	return nil
 }
 
-func isHttpErrorCode(err error, code int) bool {
+// isVaultResponseErrorCode checks if the given error is a vault.ResponseError with the specified HTTP status code.
+func isVaultResponseErrorCode(err error, code int) bool {
 	var respErr *vault.ResponseError
 	ok := errors.As(err, &respErr)
 	return ok && respErr.StatusCode == code
@@ -203,7 +204,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		// cleaned up.
 		// Also, check if the token has already expired based on time to avoid attempting
 		// to renew the expired token against an Vault server that may no longer exist.
-		if isHttpErrorCode(err, http.StatusForbidden) || time.Now().After(token.ExpirationTime.AsTime()) {
+		if isVaultResponseErrorCode(err, http.StatusForbidden) || time.Now().After(token.ExpirationTime.AsTime()) {
 			query, values := token.updateStatusQuery(ExpiredToken)
 			numRows, err := r.writer.Exec(ctx, query, values)
 			if err != nil {
@@ -599,7 +600,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		// or the leaseId is malformed.  Set status to "expired".
 		// Also mark as expired if we are past the expiration time to avoid attempting
 		// to renew the expired credential against an Vault server that may no longer exist.
-		if isHttpErrorCode(err, http.StatusBadRequest) || time.Now().After(c.ExpirationTime.AsTime()) {
+		if isVaultResponseErrorCode(err, http.StatusBadRequest) || time.Now().After(c.ExpirationTime.AsTime()) {
 			query, values := cred.updateStatusQuery(ExpiredCredential)
 			numRows, err := r.writer.Exec(ctx, query, values)
 			if err != nil {
