@@ -76,7 +76,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	recoveryWrapper, _ := wrapperWithKey(t)
 	workerAuthWrapper, key := wrapperWithKey(t)
 	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController.Shutdown()
+	t.Cleanup(testController.Shutdown)
 
 	wg := &sync.WaitGroup{}
 
@@ -98,21 +98,33 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Fatalf("timeout")
 	}
 
-	fetchWorkerTags := func(name string, key string, values []string) {
+	waitForWorkerTags := func(name string, key string, values []string) {
 		t.Helper()
-		serversRepo, err := testController.Controller().ServersRepoFn()
-		require.NoError(err)
-		w, err := server.TestLookupWorkerByName(testController.Context(), t, name, serversRepo)
-		require.NoError(err)
-		require.NotNil(w)
-		v, ok := w.CanonicalTags()[key]
-		require.True(ok)
-		require.ElementsMatch(values, v)
+		maxWait := time.NewTimer(time.Second * 15)
+		for {
+			select {
+			case <-maxWait.C:
+				t.Fatal("timed out waiting for worker tags")
+			case <-time.After(500 * time.Millisecond):
+				serversRepo, err := testController.Controller().ServersRepoFn()
+				require.NoError(err)
+				w, err := server.TestLookupWorkerByName(testController.Context(), t, name, serversRepo)
+				require.NoError(err)
+				require.NotNil(w)
+				v, ok := w.CanonicalTags()[key]
+				if !ok {
+					continue
+				}
+				require.True(ok)
+				require.ElementsMatch(values, v)
+				return
+			}
+		}
 	}
 
 	// Give time to populate up to the controller
-	time.Sleep(10 * time.Second)
-	fetchWorkerTags("test", "type", []string{"dev", "local"})
+	//time.Sleep(10 * time.Second)
+	waitForWorkerTags("test", "type", []string{"dev", "local"})
 
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
 
@@ -123,8 +135,8 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Fatalf("timeout")
 	}
 
-	time.Sleep(10 * time.Second)
-	fetchWorkerTags("test", "foo", []string{"bar", "baz"})
+	//time.Sleep(10 * time.Second)
+	waitForWorkerTags("test", "foo", []string{"bar", "baz"})
 
 	cmd.ShutdownCh <- struct{}{}
 
