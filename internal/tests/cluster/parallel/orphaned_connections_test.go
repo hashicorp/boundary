@@ -40,7 +40,7 @@ func TestSpeedyOrphanedConnectionCleanup(t *testing.T) {
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
 		PublicClusterAddr:      pl.Addr().String(),
-		WorkerRPCGracePeriod:   2 * time.Second,
+		WorkerRPCGracePeriod:   10 * time.Second,
 		// Run the scheduler more often to speed up cleanup of orphaned connections
 		SchedulerRunJobInterval: time.Second,
 	})
@@ -64,7 +64,7 @@ func TestSpeedyOrphanedConnectionCleanup(t *testing.T) {
 		WorkerAuthKms:    c.Config().WorkerAuthKms,
 		InitialUpstreams: []string{proxy.ListenerAddr()},
 		Logger:           logger.Named("w1"),
-		SuccessfulControllerRPCGracePeriodDuration: 2 * time.Second,
+		SuccessfulControllerRPCGracePeriodDuration: 10 * time.Second,
 		WorkerRPCInterval:                          time.Second,
 	})
 
