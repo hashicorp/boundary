@@ -45,7 +45,6 @@ worker {
 `
 
 func TestServer_ReloadInitialUpstreams(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 
 	rootWrapper, _ := wrapperWithKey(t)
