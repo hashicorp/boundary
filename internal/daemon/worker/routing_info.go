@@ -113,10 +113,12 @@ func (w *Worker) startRoutingInfoTicking(cancelCtx context.Context) {
 // RoutingInfo request.
 func (w *Worker) LastRoutingInfoSuccess() *LastRoutingInfo {
 	s, ok := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
-	if !ok {
+	if !ok || s == nil {
 		return nil
 	}
-	return s
+	// make a deep copy to avoid race conditions from accessing underlying data
+	copied := *s
+	return &copied
 }
 
 func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
@@ -178,7 +180,9 @@ func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 		// In the case that the control plane has gone down and come up with different IPs,
 		// append initial upstreams/ cluster addr to the resolver to try
 		if pastGrace, _, _ := w.isPastGrace(); pastGrace && w.GrpcClientConn.Load().GetState() == connectivity.TransientFailure {
-			lastRoutingInfo := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
+			routingInfo := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
+			copied := *routingInfo
+			lastRoutingInfo := &copied
 			if lastRoutingInfo != nil && lastRoutingInfo.LastCalculatedUpstreams != nil {
 				addrs := lastRoutingInfo.LastCalculatedUpstreams
 
