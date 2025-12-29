@@ -123,7 +123,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)
@@ -158,7 +158,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server reload")
 	}
 
 	// Assert that the schema manager ptr and value changed
@@ -258,7 +258,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)
@@ -292,7 +292,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server reload")
 	}
 
 	// Assert that the schema manager ptr and value did not change.

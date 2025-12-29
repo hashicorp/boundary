@@ -204,7 +204,6 @@ func TestReloadControllerRateLimits(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
 		args := []string{"-config", td + "/config.hcl"}
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
@@ -217,7 +216,7 @@ func TestReloadControllerRateLimits(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading
@@ -262,7 +261,7 @@ func TestReloadControllerRateLimits(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for reload signal")
 	}
 
 	// Make another request, the limit should have reset and the new limit
