@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -26,12 +25,12 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	accountid, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, testAccountName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		boundary.AuthenticateAdminCli(t, t.Context())
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountid),
 		)
@@ -40,7 +39,7 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		boundary.AuthenticateAdminCli(t, t.Context())
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
 		)
@@ -50,7 +49,7 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	require.NoError(t, err)
 
 	// Authenticate user and assign a name to its auth token
-	boundary.AuthenticateCli(t, context.Background(), bc.AuthMethodId, testAccountName, acctPassword,
+	boundary.AuthenticateCli(t, t.Context(), bc.AuthMethodId, testAccountName, acctPassword,
 		e2e.WithArgs("-token-name", testAccountName),
 	)
 

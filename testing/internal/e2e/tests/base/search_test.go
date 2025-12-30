@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +30,7 @@ func TestCliSearch(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// If cache is already running, stop it so that we can start it with a
 	// shorter refresh interval
@@ -93,7 +92,7 @@ func TestCliSearch(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))

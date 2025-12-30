@@ -24,7 +24,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create test organization
@@ -33,7 +33,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 
 	// Delete organization after the test is completed
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -60,7 +60,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start a session
-	ctxCancel, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(t.Context())
 	proxyPort := "12345"
 	cmdChan := make(chan *e2e.CommandResult)
 	go func() {

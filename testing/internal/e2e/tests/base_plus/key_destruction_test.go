@@ -22,7 +22,7 @@ import (
 func TestCliKeyDestruction(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	t.Log("Creating scope...")
@@ -244,14 +244,14 @@ func TestApiKeyDestruction(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sc := scopes.NewClient(client)
 
 	t.Log("Creating scope...")
 	scope, err := sc.Create(ctx, "global", scopes.WithName("testscope"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := sc.Delete(context.Background(), scope.Item.Id)
+		_, err := sc.Delete(t.Context(), scope.Item.Id)
 		require.NoError(t, err)
 	})
 
@@ -274,7 +274,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := amc.Delete(context.Background(), am.Item.Id)
+		_, err := amc.Delete(t.Context(), am.Item.Id)
 		require.NoError(t, err)
 	})
 
@@ -329,7 +329,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	// second after the last successful run. We need to re-encrypt data in 1 table,
 	// and then remove the key. This job should take between 1 and 2 minutes to run,
 	// depending on the timing of the first started run.
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	t.Cleanup(cancel)
 	for {
 		jobs, err = sc.ListKeyVersionDestructionJobs(ctx, scope.Item.Id)

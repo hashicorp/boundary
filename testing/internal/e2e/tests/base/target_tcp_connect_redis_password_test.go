@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"io"
 	"os/exec"
 	"testing"
@@ -22,7 +21,7 @@ func TestCliTcpTargetConnectRedisPassword(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	// Setup
-	ctx := context.Background()
+	ctx := t.Context()
 	redisInfo := infra.SetupRedisContainer(t)
 	boundary.AuthenticateAdminCli(t, ctx)
 
@@ -30,7 +29,7 @@ func TestCliTcpTargetConnectRedisPassword(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))

@@ -5,7 +5,6 @@ package base_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -29,7 +28,7 @@ func TestCliAuthenticatePrimary(t *testing.T) {
 	require.NoError(t, err)
 
 	var cmd *exec.Cmd
-	ctx := context.Background()
+	ctx := t.Context()
 	cmd = exec.CommandContext(ctx, "boundary", "authenticate", "-addr", bc.Address, "-format", "json")
 
 	f, err := pty.Start(cmd)

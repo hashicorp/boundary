@@ -25,12 +25,12 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -51,7 +51,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start a session
-	ctxCancel, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(t.Context())
 	port := "12345"
 	sessionChannel := make(chan *e2e.CommandResult)
 	go func() {

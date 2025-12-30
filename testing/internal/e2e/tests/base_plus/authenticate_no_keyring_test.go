@@ -5,7 +5,6 @@ package base_plus_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,7 +26,7 @@ import (
 // daemon tried to access the keyring when there wasn't one on the system.
 func TestCliAuthenticateNoKeyring(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)

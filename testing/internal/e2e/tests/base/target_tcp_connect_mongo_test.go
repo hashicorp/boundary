@@ -5,7 +5,6 @@ package base_test
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/url"
 	"os/exec"
@@ -24,7 +23,7 @@ import (
 // target using `connect mongo`
 func TestCliTcpTargetConnectMongo(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
@@ -62,7 +61,7 @@ func TestCliTcpTargetConnectMongo(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))

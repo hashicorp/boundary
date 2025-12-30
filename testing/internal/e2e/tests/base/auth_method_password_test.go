@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"encoding/json"
 	"slices"
 	"testing"
@@ -26,12 +25,12 @@ import (
 func TestCliAuthMethodPassword(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -53,7 +52,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	newAuthMethodId := newAuthMethodResult.Item.Id
 	// Need to manually clean up auth method until ICU-7833 is addressed
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("auth-methods", "delete", "-id", newAuthMethodId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -153,14 +152,14 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -246,13 +245,13 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	adminToken := client.Token()
-	ctx := context.Background()
+	ctx := t.Context()
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		client.SetToken(adminToken)
 		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)

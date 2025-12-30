@@ -27,12 +27,12 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -49,7 +49,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a session where no additional commands are run
-	ctxCancel, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(t.Context())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
 		t.Log("Starting session...")

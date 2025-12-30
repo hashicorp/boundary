@@ -5,7 +5,6 @@ package base_test
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -32,7 +31,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	// Increase timeout to accommodate Cassandra's longer startup duration due to gossip needing to settle
 	pool.MaxWait = 90 * time.Second
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// e2e_cluster network is created by the e2e infra setup
 	network, err := pool.NetworksByName("e2e_cluster")
@@ -61,7 +60,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))

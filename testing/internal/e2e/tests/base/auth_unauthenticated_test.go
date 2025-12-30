@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -20,7 +19,7 @@ import (
 func TestCliUnauthenticatedUserAccess(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Check one authenticated request

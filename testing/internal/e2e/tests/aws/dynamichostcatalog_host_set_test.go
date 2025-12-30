@@ -36,12 +36,12 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -139,7 +139,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target
-	ctxCancel, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(t.Context())
 	go func() {
 		e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
@@ -189,7 +189,7 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)

@@ -26,12 +26,12 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := context.Background()
+		ctx := t.Context()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -54,7 +54,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		boundary.AuthenticateAdminCli(t, t.Context())
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
@@ -65,7 +65,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	t.Cleanup(func() {
 		if !userIsDeleted {
 			t.Log("Deleting user...")
-			boundary.AuthenticateAdminCli(t, context.Background())
+			boundary.AuthenticateAdminCli(t, t.Context())
 			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("users", "delete", "-id", userId),
 			)
@@ -82,7 +82,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target to create a session
-	ctxCancel, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(t.Context())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
 		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)

@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -20,7 +19,7 @@ import (
 func TestCliVersion(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 

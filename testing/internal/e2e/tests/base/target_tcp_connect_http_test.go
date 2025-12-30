@@ -4,7 +4,6 @@
 package base_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -26,7 +25,7 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)

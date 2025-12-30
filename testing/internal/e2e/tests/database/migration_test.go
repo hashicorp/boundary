@@ -45,7 +45,7 @@ func TestDatabaseMigration(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	boundaryRepo := "hashicorp/boundary"
 	boundaryTag := "latest"
