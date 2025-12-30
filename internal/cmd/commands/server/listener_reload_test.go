@@ -106,12 +106,11 @@ func TestServer_ReloadListener(t *testing.T) {
 	cmd.WorkerAuthKms = nil
 	cmd.RecoveryKms = nil
 
-	defer func() {
+	t.Cleanup(func() {
 		if cmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(cmd.DevDatabaseCleanupFunc())
 		}
-	}()
-
+	})
 	// Setup initial certs
 	inBytes, err := os.ReadFile(wd + "bundle1.pem")
 	require.NoError(err)
