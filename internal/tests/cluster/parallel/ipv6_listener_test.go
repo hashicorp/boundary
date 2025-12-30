@@ -60,7 +60,7 @@ func TestIPv6Listener(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
 		Logger:            logger.Named("w1"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 
 	wg.Add(2)

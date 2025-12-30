@@ -79,7 +79,7 @@ func TestWorkerTagging(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  c1.ClusterAddrs(),
 		Logger:            logger.Named("w2"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 	w2Addr := w2.ProxyAddrs()[0]
 
@@ -96,7 +96,7 @@ func TestWorkerTagging(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  c1.ClusterAddrs(),
 		Logger:            logger.Named("w3"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 	w3Addr := w3.ProxyAddrs()[0]
 

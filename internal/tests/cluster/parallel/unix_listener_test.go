@@ -86,7 +86,7 @@ func TestUnixListener(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  c1.ClusterAddrs(),
 		Logger:            logger.Named("w1"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)

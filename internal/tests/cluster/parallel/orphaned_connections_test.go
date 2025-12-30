@@ -42,7 +42,7 @@ func TestSpeedyOrphanedConnectionCleanup(t *testing.T) {
 		PublicClusterAddr:      pl.Addr().String(),
 		WorkerRPCGracePeriod:   10 * time.Second,
 		// Run the scheduler more often to speed up cleanup of orphaned connections
-		SchedulerRunJobInterval: time.Second,
+		SchedulerRunJobInterval: 500 * time.Millisecond,
 	})
 
 	helper.ExpectWorkers(t, c)
@@ -65,7 +65,7 @@ func TestSpeedyOrphanedConnectionCleanup(t *testing.T) {
 		InitialUpstreams: []string{proxy.ListenerAddr()},
 		Logger:           logger.Named("w1"),
 		SuccessfulControllerRPCGracePeriodDuration: 10 * time.Second,
-		WorkerRPCInterval:                          time.Second,
+		WorkerRPCInterval:                          500 * time.Millisecond,
 	})
 
 	helper.ExpectWorkers(t, c, w)

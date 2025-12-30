@@ -88,7 +88,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			PublicClusterAddr:      pl.Addr().String(),
 			WorkerRPCGracePeriod:   controllerGracePeriod(burdenCase),
 			// Run the scheduler more often to speed up cleanup of orphaned connections
-			SchedulerRunJobInterval: time.Second,
+			SchedulerRunJobInterval: 500 * time.Millisecond,
 		})
 
 		helper.ExpectWorkers(t, c1)
