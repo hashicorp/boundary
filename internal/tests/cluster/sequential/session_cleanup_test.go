@@ -283,7 +283,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			InitialUpstreams: []string{p1.ListenerAddr(), p2.ListenerAddr()},
 			Logger:           logger.Named("w1"),
 			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
-			WorkerRPCInterval:                          time.Second,
+			WorkerRPCInterval:                          500 * time.Millisecond,
 		})
 
 		wg.Add(2)
