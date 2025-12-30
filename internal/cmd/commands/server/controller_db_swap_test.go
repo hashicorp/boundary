@@ -110,7 +110,6 @@ func TestReloadControllerDatabase(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
 		args := []string{"-config", td + "/config.hcl"}
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
@@ -118,6 +117,13 @@ func TestReloadControllerDatabase(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -253,6 +259,14 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {

@@ -211,6 +211,13 @@ func TestReloadControllerRateLimits(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -311,6 +318,14 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 		}
 	}()
 
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
+
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
@@ -404,6 +419,13 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -503,6 +525,13 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		select {
+		case cmd.ShutdownCh <- struct{}{}:
+		default:
+		}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
