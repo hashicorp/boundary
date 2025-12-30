@@ -133,11 +133,6 @@ func TestServer_ReloadListener(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
-
 	testCertificateSerial := func(serial string) {
 		conn, err := tls.Dial("tcp", "127.0.0.1:9700", &tls.Config{
 			RootCAs: certPool,
@@ -170,4 +165,6 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }

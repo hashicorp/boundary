@@ -180,7 +180,7 @@ listener "tcp" {
 listener "tcp" {
 	address = "127.0.0.1:9501"
 	purpose = "cluster"
-}
+}  
 `
 )
 
@@ -211,10 +211,6 @@ func TestReloadControllerRateLimits(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -280,6 +276,9 @@ func TestReloadControllerRateLimits(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=5, remaining=4, reset=60`, r.Header.Get("Ratelimit"))
 	assert.Equal(t, `5;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }
 
 func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
@@ -311,10 +310,6 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -376,6 +371,9 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
 	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }
 
 func TestReloadControllerRateLimitsDisable(t *testing.T) {
@@ -406,10 +404,6 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -475,6 +469,9 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, ``, r.Header.Get("Ratelimit"))
 	assert.Equal(t, ``, r.Header.Get("Ratelimit-Policy"))
+
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }
 
 func TestReloadControllerRateLimitsEnable(t *testing.T) {
@@ -506,10 +503,6 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -575,4 +568,7 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
 	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }

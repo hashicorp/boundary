@@ -91,10 +91,6 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
-	t.Cleanup(func() {
-		cmd.ShutdownCh <- struct{}{}
-		wg.Wait()
-	})
 
 	select {
 	case <-cmd.startedCh:
@@ -127,7 +123,6 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	}
 
 	// Give time to populate up to the controller
-	//time.Sleep(10 * time.Second)
 	waitForWorkerTags("test", "type", []string{"dev", "local"})
 
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
@@ -139,8 +134,9 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Fatalf("timeout")
 	}
 
-	//time.Sleep(10 * time.Second)
 	waitForWorkerTags("test", "foo", []string{"bar", "baz"})
+	cmd.ShutdownCh <- struct{}{}
+	wg.Wait()
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
