@@ -64,7 +64,7 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
-	address = "127.0.0.1:7500"
+	address = "127.0.0.1:9700"
 	tls_cert_file = "%s/bundle.pem"
 	tls_key_file = "%s/bundle.pem"
 	cors_enabled = true
