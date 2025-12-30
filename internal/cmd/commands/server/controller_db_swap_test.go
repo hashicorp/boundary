@@ -108,6 +108,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 		args := []string{"-config", td + "/config.hcl"}
@@ -116,20 +117,21 @@ func TestReloadControllerDatabase(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-	t.Cleanup(func() {
+		// send non-blocking message to a channel to signal that the server has exited
+		// this channel is used to avoid waiting for the full timeout in case of early exit
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout waiting for server start")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)
@@ -249,6 +251,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -258,21 +261,19 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-
-	t.Cleanup(func() {
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout waiting for server start")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)

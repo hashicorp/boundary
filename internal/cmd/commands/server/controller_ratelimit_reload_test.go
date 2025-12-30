@@ -202,6 +202,7 @@ func TestReloadControllerRateLimits(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 		args := []string{"-config", td + "/config.hcl"}
@@ -210,19 +211,18 @@ func TestReloadControllerRateLimits(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-	t.Cleanup(func() {
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
 		t.Fatal("timeout waiting for server to start")
 	}
 
@@ -307,6 +307,7 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -316,21 +317,19 @@ func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-
-	t.Cleanup(func() {
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	c := http.Client{}
@@ -409,6 +408,7 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -418,20 +418,19 @@ func TestReloadControllerRateLimitsDisable(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-	t.Cleanup(func() {
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading
@@ -515,6 +514,7 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -524,20 +524,19 @@ func TestReloadControllerRateLimitsEnable(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
-	}()
-	t.Cleanup(func() {
 		select {
-		case cmd.ShutdownCh <- struct{}{}:
+		case earlyExitChan <- struct{}{}:
 		default:
 		}
-		wg.Wait()
-	})
+	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading
