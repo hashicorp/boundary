@@ -64,7 +64,7 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
-	address = "127.0.0.1:9500"
+	address = "127.0.0.1:7500"
 	tls_cert_file = "%s/bundle.pem"
 	tls_key_file = "%s/bundle.pem"
 	cors_enabled = true
@@ -72,12 +72,12 @@ listener "tcp" {
 }
 
 listener "tcp" {
-	address = "127.0.0.1:9501"
+	address = "127.0.0.1:9701"
 	purpose = "cluster"
 }
 
 listener "tcp" {
-	address = "127.0.0.1:9502"
+	address = "127.0.0.1:9702"
 	purpose = "proxy"
 }
 `
@@ -134,9 +134,13 @@ func TestServer_ReloadListener(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		cmd.ShutdownCh <- struct{}{}
+		wg.Wait()
+	})
 
 	testCertificateSerial := func(serial string) {
-		conn, err := tls.Dial("tcp", "127.0.0.1:9500", &tls.Config{
+		conn, err := tls.Dial("tcp", "127.0.0.1:9700", &tls.Config{
 			RootCAs: certPool,
 		})
 		require.NoError(err)
@@ -167,7 +171,4 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
-
-	cmd.ShutdownCh <- struct{}{}
-	wg.Wait()
 }

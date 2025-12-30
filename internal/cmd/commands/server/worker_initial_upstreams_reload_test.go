@@ -77,6 +77,10 @@ func TestServer_ReloadInitialUpstreams(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		cmd.ShutdownCh <- struct{}{}
+		wg.Wait()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -185,7 +189,4 @@ pollSecondController:
 			poll.Reset(time.Second)
 		}
 	}
-
-	cmd.ShutdownCh <- struct{}{}
-	wg.Wait()
 }

@@ -59,12 +59,12 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
-	address = "127.0.0.1:9500"
+	address = "127.0.0.1:9600"
 	tls_disable = true
 }
 
 listener "tcp" {
-	address = "127.0.0.1:9501"
+	address = "127.0.0.1:9601"
 	purpose = "cluster"
 }
 `
@@ -118,6 +118,10 @@ func TestReloadControllerDatabase(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		cmd.ShutdownCh <- struct{}{}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -215,9 +219,6 @@ func TestReloadControllerDatabase(t *testing.T) {
 	require.NoError(t, row.Err())
 	require.NoError(t, row.Scan(&lock))
 	require.Equal(t, 1, lock)
-
-	cmd.ShutdownCh <- struct{}{}
-	wg.Wait()
 }
 
 func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
@@ -253,6 +254,10 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
+	t.Cleanup(func() {
+		cmd.ShutdownCh <- struct{}{}
+		wg.Wait()
+	})
 
 	// Wait until things are up and running (or timeout).
 	select {
@@ -315,9 +320,6 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	require.NoError(t, row.Err())
 	require.NoError(t, row.Scan(&lock))
 	require.Equal(t, 1, lock)
-
-	cmd.ShutdownCh <- struct{}{}
-	wg.Wait()
 }
 
 func TestReloadControllerDatabase_VariousNilValues(t *testing.T) {
