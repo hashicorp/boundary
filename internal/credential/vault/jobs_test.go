@@ -2087,7 +2087,7 @@ func TestCredentialRevocationJob_Run_UnreachableVault(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRevocationJob(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 	err = sche.RegisterJob(ctx, j)
 	require.NoError(err)
@@ -2124,7 +2124,7 @@ func TestCredentialRevocationJob_Run_UnreachableVault(t *testing.T) {
 	require.NoError(err)
 
 	// create a credential that will expire in 10 seconds marked for revocation
-	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, RevokeCredential, 10*time.Second)
+	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, RevokeCredential, 5*time.Second)
 
 	// Shutdown Vault to simulate Vault becoming unreachable
 	v.Shutdown(t)
@@ -2136,7 +2136,7 @@ func TestCredentialRevocationJob_Run_UnreachableVault(t *testing.T) {
 	// when Vault is unreachable
 	assert.Equal(1, r.numCreds)
 
-	// Verify the cred has a status of active with an empty libraryId
+	// Verify the cred has a status of active
 	lookupCred := allocCredential()
 	lookupCred.PublicId = cred.PublicId
 	require.NoError(rw.LookupById(ctx, lookupCred))
@@ -2146,7 +2146,7 @@ func TestCredentialRevocationJob_Run_UnreachableVault(t *testing.T) {
 	assert.NoError(testDb.ValidateCredential(t, secret))
 
 	// sleep until credentials expire
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// second attempt should attempt to revoke again but failed to connect to Vault
 	// credentials should be marked as 'revoked' because it is past expiration time
