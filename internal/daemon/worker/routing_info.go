@@ -181,6 +181,8 @@ func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 		// append initial upstreams/ cluster addr to the resolver to try
 		if pastGrace, _, _ := w.isPastGrace(); pastGrace && w.GrpcClientConn.Load().GetState() == connectivity.TransientFailure {
 			routingInfo := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
+			// make a deep copy to avoid race conditions from accessing underlying data
+			// since routingInfo may be modified later in this function
 			copied := *routingInfo
 			lastRoutingInfo := &copied
 			if lastRoutingInfo != nil && lastRoutingInfo.LastCalculatedUpstreams != nil {
