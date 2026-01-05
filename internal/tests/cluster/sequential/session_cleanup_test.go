@@ -88,7 +88,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			PublicClusterAddr:      pl.Addr().String(),
 			WorkerRPCGracePeriod:   controllerGracePeriod(burdenCase),
 			// Run the scheduler more often to speed up cleanup of orphaned connections
-			SchedulerRunJobInterval: time.Second,
+			SchedulerRunJobInterval: 500 * time.Millisecond,
 		})
 
 		helper.ExpectWorkers(t, c1)
@@ -283,7 +283,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			InitialUpstreams: []string{p1.ListenerAddr(), p2.ListenerAddr()},
 			Logger:           logger.Named("w1"),
 			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
-			WorkerRPCInterval:                          time.Second,
+			WorkerRPCInterval:                          500 * time.Millisecond,
 		})
 
 		wg.Add(2)

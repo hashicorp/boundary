@@ -53,7 +53,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
 		Logger:            logger.Named("w1"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 
 	wg.Add(2)
@@ -99,7 +99,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 		WorkerAuthKms:     c1.Config().WorkerAuthKms,
 		InitialUpstreams:  c1.ClusterAddrs(),
 		Logger:            logger.Named("w3"),
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 
 	wg.Add(2)
@@ -157,7 +157,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 		InitialUpstreams: initialUpstreams,
 		Logger:           logger.Named("w1"),
 		SuccessfulControllerRPCGracePeriodDuration: 1 * time.Second,
-		WorkerRPCInterval:                          time.Second,
+		WorkerRPCInterval:                          500 * time.Millisecond,
 	})
 
 	// Wait for worker to send routing info

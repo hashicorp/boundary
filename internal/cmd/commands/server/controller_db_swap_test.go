@@ -59,12 +59,12 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
-	address = "127.0.0.1:9500"
+	address = "127.0.0.1:9600"
 	tls_disable = true
 }
 
 listener "tcp" {
-	address = "127.0.0.1:9501"
+	address = "127.0.0.1:9601"
 	purpose = "cluster"
 }
 `
@@ -108,22 +108,30 @@ func TestReloadControllerDatabase(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
-
 		args := []string{"-config", td + "/config.hcl"}
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
+		// send non-blocking message to a channel to signal that the server has exited
+		// this channel is used to avoid waiting for the full timeout in case of early exit
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
+		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)
@@ -158,7 +166,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server reload")
 	}
 
 	// Assert that the schema manager ptr and value changed
@@ -243,6 +251,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -252,13 +261,19 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
 			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
+		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	require.NotNil(t, cmd.schemaManager)
@@ -292,7 +307,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for server reload")
 	}
 
 	// Assert that the schema manager ptr and value did not change.
