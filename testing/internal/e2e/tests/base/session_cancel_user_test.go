@@ -61,7 +61,8 @@ func TestCliSessionCancelUser(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, t.Context())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
@@ -70,7 +71,8 @@ func TestCliSessionCancelUser(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, t.Context())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
 		)
@@ -181,6 +183,7 @@ func TestApiCreateUser(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -204,6 +207,7 @@ func TestApiCreateUser(t *testing.T) {
 	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		aClient := accounts.NewClient(client)
 		_, err := aClient.Delete(ctx, accountId)
 		require.NoError(t, err)
@@ -211,6 +215,7 @@ func TestApiCreateUser(t *testing.T) {
 	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		uClient := users.NewClient(client)
 		_, err := uClient.Delete(ctx, userId)
 		require.NoError(t, err)

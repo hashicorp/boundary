@@ -224,6 +224,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		_ = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"workers", "remove-worker-tags",
@@ -279,6 +280,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		_ = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"workers", "remove-worker-tags",
@@ -376,6 +378,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		_ = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"workers", "remove-worker-tags",

@@ -38,6 +38,7 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
@@ -49,6 +50,7 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
@@ -78,6 +80,7 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	roleId, err := boundary.CreateRoleCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("roles", "delete", "-id", roleId),
