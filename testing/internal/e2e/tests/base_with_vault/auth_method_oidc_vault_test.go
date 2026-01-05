@@ -39,6 +39,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	output := e2e.RunCommand(ctx, "vault", e2e.WithArgs("auth", "enable", "userpass"))
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault", e2e.WithArgs("auth", "disable", "userpass"))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -56,6 +57,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	require.NoError(t, err)
 	authPolicyName := vault.WritePolicy(t, ctx, authPolicyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", authPolicyName),
 		)

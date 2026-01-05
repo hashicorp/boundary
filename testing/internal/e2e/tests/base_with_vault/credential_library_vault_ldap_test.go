@@ -4,6 +4,7 @@
 package base_with_vault_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -66,6 +67,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 	// Configure Vault for LDAP.
 	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(t.Context(), "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
@@ -237,6 +239,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 	// Configure Vault for LDAP.
 	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(t.Context(), "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)

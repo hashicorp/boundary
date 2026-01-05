@@ -4,6 +4,7 @@
 package base_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -30,6 +31,7 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})

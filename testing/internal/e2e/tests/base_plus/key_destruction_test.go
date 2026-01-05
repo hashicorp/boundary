@@ -38,6 +38,7 @@ func TestCliKeyDestruction(t *testing.T) {
 	var scopeReply scopes.ScopeCreateResult
 	require.NoError(t, json.Unmarshal(output.Stdout, &scopeReply))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"scopes", "delete",
@@ -81,6 +82,7 @@ func TestCliKeyDestruction(t *testing.T) {
 	var amReply authmethods.AuthMethodCreateResult
 	require.NoError(t, json.Unmarshal(output.Stdout, &amReply))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"auth-methods", "delete",
