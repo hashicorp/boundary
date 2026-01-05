@@ -4,7 +4,6 @@
 package apptoken
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"strings"
@@ -23,7 +22,7 @@ import (
 // TestRepo creates a repository for AppToken testing.
 func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	require := require.New(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
@@ -46,7 +45,7 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 
 func testPublicId(t testing.TB, prefix string) string {
 	t.Helper()
-	publicId, err := db.NewPublicId(context.Background(), prefix)
+	publicId, err := db.NewPublicId(t.Context(), prefix)
 	require.NoError(t, err)
 	return publicId
 }
@@ -69,7 +68,7 @@ func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []strin
 // TODO: Replace with proper AppToken creation function once AppToken functionality is added
 func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, grants []string, user *iam.User, grantThisScope bool, grantScope string) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	require := require.New(t)
 
 	// Determine which table to insert into based on scope prefix
