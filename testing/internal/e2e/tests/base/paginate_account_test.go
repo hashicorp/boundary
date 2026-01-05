@@ -4,6 +4,7 @@
 package base_test
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"strconv"
@@ -35,7 +36,7 @@ func TestCliPaginateAccounts(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -43,7 +44,7 @@ func TestCliPaginateAccounts(t *testing.T) {
 	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("auth-methods", "delete", "-id", amId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -139,7 +140,7 @@ func TestApiPaginateAccounts(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		client.SetToken(adminToken)
 		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -147,7 +148,7 @@ func TestApiPaginateAccounts(t *testing.T) {
 	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		client.SetToken(adminToken)
 		_, err := amClient.Delete(ctx, amId)
 		require.NoError(t, err)

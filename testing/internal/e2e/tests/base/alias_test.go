@@ -4,6 +4,7 @@
 package base_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -29,7 +30,7 @@ func TestCliAlias(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -63,6 +64,8 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 	aliasTargetAddressId := newAliasResult.Item.Id
 	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("aliases", "delete", "-id", aliasTargetAddressId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -147,6 +150,8 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 	aliasTargetHostId := newAliasResult.Item.Id
 	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("aliases", "delete", "-id", aliasTargetHostId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})

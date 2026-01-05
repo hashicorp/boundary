@@ -4,6 +4,7 @@
 package base_test
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"testing"
@@ -31,7 +32,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -141,7 +142,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		ctx := t.Context()
+		ctx := context.Background()
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
