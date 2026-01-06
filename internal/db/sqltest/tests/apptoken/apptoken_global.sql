@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(28);
+select plan(30);
 select wtt_load('widgets', 'iam');
 
 -- insert app_token_global and make sure app_token has a value
@@ -17,31 +17,31 @@ prepare insert_app_token_global as
     update_time,
     approximate_last_access_time,
     expiration_time
-  ) values ('r_1111111111', 'global', true, 'u_____walter', now(), now(), now(), now() + interval '7 day');
+  ) values ('appt_1111111111', 'global', true, 'u_____walter', now(), now(), now(), now() + interval '7 day');
 select lives_ok('insert_app_token_global');
 -- ensure app_token has a value
-select is(count(*), 1::bigint) from app_token where public_id = 'r_1111111111';
+select is(count(*), 1::bigint) from app_token where public_id = 'appt_1111111111';
 
 -- try to unrevoke a revoked app token global, should fail
 prepare unrevoke_app_token_global as
   update app_token_global
   set revoked = false
-  where public_id = 'r_1111111111';
+  where public_id = 'appt_1111111111';
 select throws_like('unrevoke_app_token_global', 'App token cannot be unrevoked. revoked value. Current: t, Attempted: f');
 
 -- update the approximate_last_access_time
 prepare update_approximate_last_access_time as
   update app_token_global
   set approximate_last_access_time = now() + interval '2 days'
-  where public_id = 'r_1111111111';
+  where public_id = 'appt_1111111111';
 select lives_ok('update_approximate_last_access_time');
 -- ensure approximate_last_access_time was updated
 select is(count(*), 1::bigint) from app_token_global
- where public_id = 'r_1111111111'
+ where public_id = 'appt_1111111111'
    and approximate_last_access_time > now() + interval '1 day';
 -- ensure approximate_last_access_time was updated in app_token table as well
 select is(count(*), 1::bigint) from app_token
- where public_id = 'r_1111111111'
+ where public_id = 'appt_1111111111'
    and approximate_last_access_time > now() + interval '1 day';
 
 -- insert into app_token_cipher table for the app token
@@ -50,10 +50,10 @@ prepare insert_app_token_cipher as
     app_token_id,
     key_id,
     token
-  ) values ('r_1111111111', 'kdkv__colors', 'ciphertext_example');
+  ) values ('appt_1111111111', 'kdkv__colors', 'ciphertext_example');
 select lives_ok('insert_app_token_cipher');
 -- ensure app_token_cipher has a value
-select is(count(*), 1::bigint) from app_token_cipher where app_token_id = 'r_1111111111';
+select is(count(*), 1::bigint) from app_token_cipher where app_token_id = 'appt_1111111111';
 
 -- insert into app_token_cipher with non-existent app_token_id, should fail
 prepare insert_app_token_cipher_invalid_token as
@@ -71,7 +71,7 @@ prepare insert_duplicate_app_token_cipher as
     app_token_id,
     key_id,
     token
-  ) values ('r_1111111111', 'kdkv__colors', 'ciphertext_three');
+  ) values ('appt_1111111111', 'kdkv__colors', 'ciphertext_three');
 select throws_like('insert_duplicate_app_token_cipher',
   'duplicate key value violates unique constraint "app_token_cipher_pkey"');
 
@@ -101,7 +101,7 @@ prepare insert_app_token_permission_global as
     app_token_id,
     grant_scope,
     create_time
-  ) values ('p_1111111111', 'r_1111111111', 'individual', now());
+  ) values ('p_1111111111', 'appt_1111111111', 'individual', now());
 select lives_ok('insert_app_token_permission_global');
 -- ensure app_token_permission has a value
 select is(count(*), 1::bigint) from app_token_permission where private_id = 'p_1111111111';
@@ -113,8 +113,28 @@ prepare insert_duplicate_app_token_permission_global as
     app_token_id,
     grant_scope,
     create_time
-  ) values ('p_1111111111', 'r_1111111111', 'individual', now());
+  ) values ('p_1111111111', 'appt_1111111111', 'individual', now());
 select throws_like('insert_duplicate_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
+
+-- insert app_token_permission_global with descendant grant_scope and private_id, should fail
+prepare insert_descendant_app_token_permission_global as
+  insert into app_token_permission_global (
+    private_id,
+    app_token_id,
+    grant_scope,
+    create_time
+  ) values ('p_1111111111', 'p____bwidget', 'descendant', now());
+select throws_like('insert_descendant_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
+
+-- insert app_token_permission_global with children grant_scope and private_id, should fail
+prepare insert_children_app_token_permission_global as
+  insert into app_token_permission_global (
+    private_id,
+    app_token_id,
+    grant_scope,
+    create_time
+  ) values ('p_1111111111', 'o_____widget', 'children', now());
+select throws_like('insert_children_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- insert app_token_permission_global_individual_org_grant_scope with:
 -- individual grant_scope, permission_id that exists in app_token_permission_global, valid org scope id
@@ -211,16 +231,16 @@ select throws_like('insert_app_token_pgi_project_grant_scope_invalid_scope_id',
 -- delete token from app_token and ensure cascading delete to app_token_global and app_token_permission_global
 prepare delete_app_token as
   delete from app_token
-  where public_id = 'r_1111111111';
+  where public_id = 'appt_1111111111';
 select lives_ok('delete_app_token');
 -- ensure app_token is deleted
-select is(count(*), 0::bigint) from app_token where public_id = 'r_1111111111';
+select is(count(*), 0::bigint) from app_token where public_id = 'appt_1111111111';
 -- ensure token is automatically entered in app_token_deleted
-select is(count(*), 1::bigint) from app_token_deleted where public_id = 'r_1111111111';
+select is(count(*), 1::bigint) from app_token_deleted where public_id = 'appt_1111111111';
 -- ensure app_token_global is deleted
-select is(count(*), 0::bigint) from app_token_global where public_id = 'r_1111111111';
+select is(count(*), 0::bigint) from app_token_global where public_id = 'appt_1111111111';
 -- ensure app_token_permission_global is deleted
-select is(count(*), 0::bigint) from app_token_permission_global where app_token_id = 'r_1111111111';
+select is(count(*), 0::bigint) from app_token_permission_global where app_token_id = 'appt_1111111111';
 
 select * from finish();
 rollback;

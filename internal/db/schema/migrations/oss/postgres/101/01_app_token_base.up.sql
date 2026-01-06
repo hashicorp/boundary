@@ -137,7 +137,7 @@ begin;
     if old.revoked is distinct from new.revoked then
       -- Only allow change from false to true
       if not (old.revoked = false and new.revoked = true) then
-        raise exception 'App token cannot be unrevoked. revoked value. Current: %, Attempted: %',
+        raise exception 'App token cannot be unrevoked. Current: %, Attempted: %',
           old.revoked, new.revoked;
       end if;
     end if;
@@ -212,7 +212,7 @@ begin;
     primary key(permission_id, canonical_grant)
   );
   comment on table app_token_permission_grant is
-    'app_token_permission_grant contains grants assigned to app tokens in project scope';
+    'app_token_permission_grant contains grants assigned to app tokens';
 
   create trigger upsert_canonical_grant_trigger before insert on app_token_permission_grant
     for each row execute procedure upsert_canonical_grant();
@@ -231,7 +231,7 @@ begin;
     token bytea not null unique
   );
   comment on table app_token_cipher is
-    'app_token_cipher is the table for application token encryption keys. '
+    'app_token_cipher is the table for app token encryption keys. '
     'This was split out from the app_token table to avoid re-encrypting tokens when tokens are no longer valid. '
     'When an app token becomes invalid, the associated row in this table may be deleted.';
 

@@ -80,7 +80,6 @@ begin;
         references app_token_global_grant_scope_enm(name)
         on delete restrict
         on update cascade,
-    create_time wt_timestamp,
     constraint app_token_permission_global_grant_scope_private_id_uq
       unique(grant_scope, private_id)
   );
@@ -117,7 +116,6 @@ begin;
          check(
           grant_scope = 'individual'
         ),
-    create_time wt_timestamp,
     constraint app_token_permission_global_grant_scope_fkey
       foreign key (grant_scope, permission_id)
       references app_token_permission_global(grant_scope, private_id)
@@ -141,7 +139,7 @@ begin;
   end;
   $$ language plpgsql;
     comment on function validate_global_permission_org_scope() is
-      'validate_global_permission_org_scope is used to enforced that scope ID added to app_token_permission_global_individual_project_grant_scope'
+      'validate_global_permission_org_scope is used to enforce that scope ID added to app_token_permission_global_individual_project_grant_scope'
       'exists and is an org scope';
 
   -- Add trigger for app_token_permission_global_individual_org_grant_scope
