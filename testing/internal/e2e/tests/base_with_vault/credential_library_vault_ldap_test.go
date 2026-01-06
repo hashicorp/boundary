@@ -67,7 +67,8 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 	// Configure Vault for LDAP.
 	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
-		output := e2e.RunCommand(context.Background(), "vault",
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -78,13 +79,14 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		// Destroy LDAP secrets engine and LDAP policy.
-		output := e2e.RunCommand(context.Background(), "vault",
+		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultLdapPath),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 
-		output = e2e.RunCommand(context.Background(), "vault",
+		output = e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", ldapPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -215,8 +217,9 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 	orgId, err := boundary.CreateOrgCli(t, t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(context.Background(), "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -238,7 +241,8 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 	// Configure Vault for LDAP.
 	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
-		output := e2e.RunCommand(context.Background(), "vault",
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
@@ -249,13 +253,14 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 		c.LdapDomainDn, c.LdapUserName, c.LdapGroupName,
 	)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		// Destroy LDAP secrets engine and LDAP policy.
-		output := e2e.RunCommand(context.Background(), "vault",
+		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultLdapPath),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 
-		output = e2e.RunCommand(context.Background(), "vault",
+		output = e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", ldapPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))

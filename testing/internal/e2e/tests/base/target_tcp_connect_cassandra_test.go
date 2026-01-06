@@ -32,7 +32,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	// Increase timeout to accommodate Cassandra's longer startup duration due to gossip needing to settle
 	pool.MaxWait = 90 * time.Second
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// e2e_cluster network is created by the e2e infra setup
 	network, err := pool.NetworksByName("e2e_cluster")

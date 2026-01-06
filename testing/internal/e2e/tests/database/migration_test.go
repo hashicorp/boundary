@@ -45,7 +45,7 @@ func TestDatabaseMigration(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	boundaryRepo := "hashicorp/boundary"
 	boundaryTag := "latest"
@@ -291,6 +291,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 
 	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
@@ -299,6 +300,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 
 	passwordSecretName, passwordPolicyName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", passwordPolicyName),
 		)

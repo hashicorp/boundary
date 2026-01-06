@@ -22,7 +22,7 @@ func TestCliTcpTargetConnectRedisPassword(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	// Setup
-	ctx := context.Background()
+	ctx := t.Context()
 	redisInfo := infra.SetupRedisContainer(t)
 	boundary.AuthenticateAdminCli(t, ctx)
 

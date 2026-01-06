@@ -22,7 +22,7 @@ import (
 func TestCliKeyDestruction(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	t.Log("Creating scope...")
@@ -38,6 +38,7 @@ func TestCliKeyDestruction(t *testing.T) {
 	var scopeReply scopes.ScopeCreateResult
 	require.NoError(t, json.Unmarshal(output.Stdout, &scopeReply))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"scopes", "delete",
@@ -81,6 +82,7 @@ func TestCliKeyDestruction(t *testing.T) {
 	var amReply authmethods.AuthMethodCreateResult
 	require.NoError(t, json.Unmarshal(output.Stdout, &amReply))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"auth-methods", "delete",
@@ -244,7 +246,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sc := scopes.NewClient(client)
 
 	t.Log("Creating scope...")

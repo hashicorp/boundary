@@ -29,7 +29,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -57,6 +57,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Configure vault
 	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
@@ -68,6 +69,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
 		)
@@ -77,6 +79,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create credentials in vault
 	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
@@ -85,6 +88,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", passwordPolicyName),
 		)
@@ -93,6 +97,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", domainPolicyName),
 		)
@@ -230,7 +235,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
 	require.NoError(t, err)
@@ -238,6 +243,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -264,6 +270,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
 		)
@@ -273,6 +280,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	// Create credentials in vault
 	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
@@ -281,6 +289,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", passwordPolicyName),
 		)
@@ -289,6 +298,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", domainPolicyName),
 		)

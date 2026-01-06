@@ -24,7 +24,7 @@ import (
 // target using `connect mysql`
 func TestCliTcpTargetConnectMysql(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)

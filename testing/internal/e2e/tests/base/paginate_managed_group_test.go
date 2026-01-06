@@ -28,7 +28,7 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	adminToken := client.Token()
-	ctx := context.Background()
+	ctx := t.Context()
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	mgClient := managedgroups.NewClient(client)

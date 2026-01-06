@@ -24,7 +24,7 @@ func TestScopePermissions(t *testing.T) {
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create Org and 2 Projects
@@ -46,6 +46,7 @@ func TestScopePermissions(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, testAccountName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
@@ -57,6 +58,7 @@ func TestScopePermissions(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
@@ -108,6 +110,7 @@ func TestScopePermissions(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("roles", "remove-grants", "-id", loginGrantsRoleId, "-grant", "ids=*;type=scope;actions=list"))
@@ -124,6 +127,7 @@ func TestScopePermissions(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	t.Cleanup(func() {
+		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("roles", "add-grants", "-id", authenticatedUserGrantsRoleId, "-grant", "ids=*;type=scope;actions=read"),

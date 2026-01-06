@@ -24,7 +24,7 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -52,7 +52,8 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
@@ -61,7 +62,8 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
 		)

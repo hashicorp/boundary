@@ -34,7 +34,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -62,7 +62,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
@@ -71,7 +72,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", userId),
 		)
@@ -180,7 +182,7 @@ func TestApiCreateGroup(t *testing.T) {
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
 	require.NoError(t, err)
@@ -188,6 +190,7 @@ func TestApiCreateGroup(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -211,6 +214,7 @@ func TestApiCreateGroup(t *testing.T) {
 	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		aClient := accounts.NewClient(client)
 		_, err := aClient.Delete(ctx, accountId)
 		require.NoError(t, err)
@@ -218,6 +222,7 @@ func TestApiCreateGroup(t *testing.T) {
 	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		uClient := users.NewClient(client)
 		_, err := uClient.Delete(ctx, userId)
 		require.NoError(t, err)
