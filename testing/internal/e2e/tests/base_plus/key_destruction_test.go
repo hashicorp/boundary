@@ -253,7 +253,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	scope, err := sc.Create(ctx, "global", scopes.WithName("testscope"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := sc.Delete(t.Context(), scope.Item.Id)
+		_, err := sc.Delete(context.Background(), scope.Item.Id)
 		require.NoError(t, err)
 	})
 
@@ -276,7 +276,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := amc.Delete(t.Context(), am.Item.Id)
+		_, err := amc.Delete(context.Background(), am.Item.Id)
 		require.NoError(t, err)
 	})
 

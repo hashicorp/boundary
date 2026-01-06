@@ -36,7 +36,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, t.Context(), client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := scopes.NewClient(client).Delete(t.Context(), orgId)
+		_, err := scopes.NewClient(client).Delete(context.Background(), orgId)
 		require.NoError(t, err)
 	})
 	projectId, err := boundary.CreateProjectApi(t, t.Context(), client, orgId)

@@ -243,6 +243,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
