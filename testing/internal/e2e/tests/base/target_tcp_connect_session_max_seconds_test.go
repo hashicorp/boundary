@@ -50,7 +50,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 
 	// Start a long-running session
 	var start time.Time
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	sessionChannel := make(chan *e2e.CommandResult)
 	go func() {
 		start = time.Now()
@@ -124,7 +124,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 
 	// Start a session
 	var start time.Time
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	port := "12345"
 	sessionChannel := make(chan *e2e.CommandResult)
 	go func() {

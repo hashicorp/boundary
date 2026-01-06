@@ -60,7 +60,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start a session
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	proxyPort := "12345"
 	cmdChan := make(chan *e2e.CommandResult)
 	go func() {

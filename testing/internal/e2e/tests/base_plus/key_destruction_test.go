@@ -331,7 +331,7 @@ func TestApiKeyDestruction(t *testing.T) {
 	// second after the last successful run. We need to re-encrypt data in 1 table,
 	// and then remove the key. This job should take between 1 and 2 minutes to run,
 	// depending on the timing of the first started run.
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
 	for {
 		jobs, err = sc.ListKeyVersionDestructionJobs(ctx, scope.Item.Id)

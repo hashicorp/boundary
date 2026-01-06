@@ -123,7 +123,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target to create a session
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
 		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)

@@ -50,7 +50,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a session where no additional commands are run
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 
 	// Run commands on the target to send data through connection

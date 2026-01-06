@@ -139,7 +139,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target
-	ctxCancel, cancel := context.WithCancel(t.Context())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	go func() {
 		e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
