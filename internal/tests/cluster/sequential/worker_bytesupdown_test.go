@@ -46,10 +46,11 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                 conf,
-		InitialResourcesSuffix: "1234567890",
-		Logger:                 logger.Named("c1"),
-		WorkerRPCGracePeriod:   helper.DefaultControllerRPCGracePeriod,
+		Config:                  conf,
+		InitialResourcesSuffix:  "1234567890",
+		Logger:                  logger.Named("c1"),
+		WorkerRPCGracePeriod:    helper.DefaultControllerRPCGracePeriod,
+		SchedulerRunJobInterval: 500 * time.Millisecond,
 	})
 
 	helper.ExpectWorkers(t, c1)
@@ -71,7 +72,7 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		Logger:           logger.Named("w1"),
 		SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
 		EnableIPv6:        true,
-		WorkerRPCInterval: time.Second,
+		WorkerRPCInterval: 500 * time.Millisecond,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)
