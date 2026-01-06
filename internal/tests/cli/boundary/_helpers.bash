@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 export BOUNDARY_ADDR="${BOUNDARY_ADDR:-http://127.0.0.1:9200}"
