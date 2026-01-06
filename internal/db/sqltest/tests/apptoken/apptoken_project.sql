@@ -27,7 +27,7 @@ prepare unrevoke_app_token_project as
   update app_token_project
   set revoked = false
   where public_id = 'r_1111111111';
-select throws_like('unrevoke_app_token_project', 'App token cannot be unrevoked. revoked value. Current: t, Attempted: f');
+select throws_like('unrevoke_app_token_project', 'App token cannot be unrevoked. Current: t, Attempted: f');
 
 -- update the approximate_last_access_time
 prepare update_approximate_last_access_time as
@@ -58,9 +58,8 @@ prepare insert_app_token_permission_project as
   insert into app_token_permission_project (
     private_id,
     app_token_id,
-    grant_this_scope,
-    create_time
-  ) values ('p_1111111111', 'r_1111111111', 'true', now());
+    grant_this_scope
+  ) values ('p_1111111111', 'r_1111111111', 'true');
 select lives_ok('insert_app_token_permission_project');
 -- ensure app_token_permission has a value
 select is(count(*), 1::bigint) from app_token_permission where private_id = 'p_1111111111';
@@ -70,9 +69,8 @@ prepare insert_duplicate_app_token_permission_project as
   insert into app_token_permission_project (
     private_id,
     app_token_id,
-    grant_this_scope,
-    create_time
-  ) values ('p_1111111111', 'r_1111111111', true, now());
+    grant_this_scope
+  ) values ('p_1111111111', 'r_1111111111', true);
 select throws_like('insert_duplicate_app_token_permission_project', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- delete token from app_token and ensure cascading delete to app_token_project and app_token_permission_project

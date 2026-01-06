@@ -27,7 +27,7 @@ prepare unrevoke_app_token_org as
   update app_token_org
   set revoked = false
   where public_id = 'r_1111111111';
-select throws_like('unrevoke_app_token_org', 'App token cannot be unrevoked. revoked value. Current: t, Attempted: f');
+select throws_like('unrevoke_app_token_org', 'App token cannot be unrevoked. Current: t, Attempted: f');
 
 -- try to insert app_token_org with user that doesn't exist, should fail
 prepare insert_app_token_org_invalid_user as
@@ -43,9 +43,8 @@ prepare insert_app_token_permission_org as
   insert into app_token_permission_org (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'r_1111111111', 'individual', now());
+    grant_scope
+  ) values ('p_1111111111', 'r_1111111111', 'individual');
 select lives_ok('insert_app_token_permission_org');
 -- ensure app_token_permission has a value
 select is(count(*), 1::bigint) from app_token_permission where private_id = 'p_1111111111';
@@ -55,9 +54,8 @@ prepare insert_duplicate_app_token_permission_org as
   insert into app_token_permission_org (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'r_1111111111', 'individual', now());
+    grant_scope
+  ) values ('p_1111111111', 'r_1111111111', 'individual');
 select throws_like('insert_duplicate_app_token_permission_org', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- insert app_token_permission_org_individual_grant_scope with:

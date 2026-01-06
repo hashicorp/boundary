@@ -75,8 +75,7 @@ begin;
         on delete cascade
         on update cascade,
     description text,
-    grant_this_scope boolean not null default false,
-    create_time wt_timestamp
+    grant_this_scope boolean not null default false
   );
   comment on table app_token_permission_project is
     'app_token_permission_project is a subtype table of the app_token_permission table. It is used to store permissions that are scoped to a project.';
@@ -84,15 +83,11 @@ begin;
   -- Create index on app_token_id for better query performance
   create index app_token_permission_project_app_token_id_idx on app_token_permission_project (app_token_id);
 
-  -- Add triggers for app_token_permission_project
-  create trigger default_create_time_column before insert on app_token_permission_project
-    for each row execute procedure default_create_time();
-
   create trigger update_time_column before update on app_token_permission_project
     for each row execute procedure update_time_column();
 
   create trigger immutable_columns before update on app_token_permission_project
-    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_scope', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_scope', 'grant_scope');
 
   create trigger insert_app_token_permission_subtype before insert on app_token_permission_project
     for each row execute procedure insert_app_token_permission_subtype();

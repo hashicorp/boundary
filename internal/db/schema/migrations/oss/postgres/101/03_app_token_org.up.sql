@@ -81,7 +81,6 @@ begin;
         references app_token_org_grant_scope_enm(name)
         on delete restrict
         on update cascade,
-    create_time wt_timestamp,
     -- Ensure this org permission belongs to the same app token as the base permission
     constraint app_token_permission_org_grant_scope_public_id_uq
       unique(grant_scope, private_id)
@@ -92,15 +91,11 @@ begin;
   -- Create index on app_token_id for better query performance
   create index app_token_permission_org_app_token_id_idx on app_token_permission_org (app_token_id);
 
-  -- Add triggers for app_token_permission_org
-  create trigger default_create_time_column before insert on app_token_permission_org
-    for each row execute procedure default_create_time();
-
   create trigger update_time_column before update on app_token_permission_org
     for each row execute procedure update_time_column();
 
   create trigger immutable_columns before update on app_token_permission_org
-    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_scope', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_this_scope', 'grant_scope');
 
   create trigger insert_app_token_permission_subtype before insert on app_token_permission_org
     for each row execute procedure insert_app_token_permission_subtype();
@@ -128,7 +123,6 @@ begin;
       references app_token_permission_org(grant_scope, private_id)
         on delete cascade
         on update cascade,
-    create_time wt_timestamp,
     primary key(permission_id, scope_id)
   );
   comment on table app_token_permission_org_individual_grant_scope is
@@ -166,12 +160,8 @@ begin;
   $$ language plpgsql;  comment on function validate_org_permission_project_scope_and_parent() is
     'validate_org_permission_project_scope_and_parent ensures the project exists and belongs to the org of the token scope.';
 
-  -- Add trigger for app_token_permission_org_individual_grant_scope
-  create trigger default_create_time_column before insert on app_token_permission_org_individual_grant_scope
-    for each row execute procedure default_create_time();
-
   create trigger immutable_columns before update on app_token_permission_org_individual_grant_scope
-    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'grant_scope');
 
   -- Trigger to validate project scope relationship
   create trigger validate_org_permission_project_scope_and_parent_trigger before insert on app_token_permission_org_individual_grant_scope

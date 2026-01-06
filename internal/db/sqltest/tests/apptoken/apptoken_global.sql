@@ -27,7 +27,7 @@ prepare unrevoke_app_token_global as
   update app_token_global
   set revoked = false
   where public_id = 'appt_1111111111';
-select throws_like('unrevoke_app_token_global', 'App token cannot be unrevoked. revoked value. Current: t, Attempted: f');
+select throws_like('unrevoke_app_token_global', 'App token cannot be unrevoked. Current: t, Attempted: f');
 
 -- update the approximate_last_access_time
 prepare update_approximate_last_access_time as
@@ -99,9 +99,8 @@ prepare insert_app_token_permission_global as
   insert into app_token_permission_global (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'appt_1111111111', 'individual', now());
+    grant_scope
+  ) values ('p_1111111111', 'appt_1111111111', 'individual');
 select lives_ok('insert_app_token_permission_global');
 -- ensure app_token_permission has a value
 select is(count(*), 1::bigint) from app_token_permission where private_id = 'p_1111111111';
@@ -111,9 +110,8 @@ prepare insert_duplicate_app_token_permission_global as
   insert into app_token_permission_global (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'appt_1111111111', 'individual', now());
+    grant_scope
+  ) values ('p_1111111111', 'appt_1111111111', 'individual');
 select throws_like('insert_duplicate_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- insert app_token_permission_global with descendant grant_scope and private_id, should fail
@@ -121,9 +119,8 @@ prepare insert_descendant_app_token_permission_global as
   insert into app_token_permission_global (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'p____bwidget', 'descendant', now());
+    grant_scope
+  ) values ('p_1111111111', 'p____bwidget', 'descendant');
 select throws_like('insert_descendant_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- insert app_token_permission_global with children grant_scope and private_id, should fail
@@ -131,9 +128,8 @@ prepare insert_children_app_token_permission_global as
   insert into app_token_permission_global (
     private_id,
     app_token_id,
-    grant_scope,
-    create_time
-  ) values ('p_1111111111', 'o_____widget', 'children', now());
+    grant_scope
+  ) values ('p_1111111111', 'o_____widget', 'children');
 select throws_like('insert_children_app_token_permission_global', 'duplicate key value violates unique constraint "app_token_permission_pkey"');
 
 -- insert app_token_permission_global_individual_org_grant_scope with:

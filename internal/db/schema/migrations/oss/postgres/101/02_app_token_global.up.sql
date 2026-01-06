@@ -89,12 +89,8 @@ begin;
   -- Create index on app_token_id for better query performance
   create index app_token_permission_global_app_token_id_idx on app_token_permission_global (app_token_id);
 
-  -- Add triggers for app_token_permission_global
-  create trigger default_create_time_column before insert on app_token_permission_global
-    for each row execute procedure default_create_time();
-
   create trigger immutable_columns before update on app_token_permission_global
-    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_scope', 'grant_this_scope', 'create_time');
+    for each row execute procedure immutable_columns('app_token_id', 'scope_id', 'label', 'grant_scope', 'grant_this_scope');
 
   create trigger insert_app_token_permission_subtype before insert on app_token_permission_global
     for each row execute procedure insert_app_token_permission_subtype();
@@ -142,12 +138,8 @@ begin;
       'validate_global_permission_org_scope is used to enforce that scope ID added to app_token_permission_global_individual_project_grant_scope'
       'exists and is an org scope';
 
-  -- Add trigger for app_token_permission_global_individual_org_grant_scope
-  create trigger default_create_time_column before insert on app_token_permission_global_individual_org_grant_scope
-    for each row execute procedure default_create_time();
-
   create trigger immutable_columns before update on app_token_permission_global_individual_org_grant_scope
-    for each row execute procedure immutable_columns('scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('scope_id', 'grant_scope');
 
   -- Trigger to validate org scope exists
   create trigger validate_global_permission_org_scope_trigger before insert on app_token_permission_global_individual_org_grant_scope
@@ -177,7 +169,6 @@ begin;
          check(
           grant_scope in ('individual', 'children')
         ),
-    create_time wt_timestamp,
     constraint app_token_permission_global_grant_scope_fkey
       foreign key (grant_scope, permission_id)
       references app_token_permission_global(grant_scope, private_id)
@@ -204,12 +195,8 @@ begin;
       'validate_global_permission_project_scope is used to enforced that scope ID added to app_token_permission_global_individual_project_grant_scope'
       'exists and is a project scope';
 
-  -- Add trigger for app_token_permission_global_individual_project_grant_scope
-  create trigger default_create_time_column before insert on app_token_permission_global_individual_project_grant_scope
-    for each row execute procedure default_create_time();
-
   create trigger immutable_columns before update on app_token_permission_global_individual_project_grant_scope
-    for each row execute procedure immutable_columns('scope_id', 'grant_scope', 'create_time');
+    for each row execute procedure immutable_columns('scope_id', 'grant_scope');
 
   -- Trigger to validate project scope exists
   create trigger validate_global_permission_project_scope_trigger before insert on app_token_permission_global_individual_project_grant_scope
