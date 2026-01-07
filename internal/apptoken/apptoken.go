@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // An AppToken is an application token used for machine-to-machine authentication.
@@ -64,4 +65,42 @@ func (a *AppToken) IsActive() bool {
 	default:
 		return true
 	}
+}
+
+// GetPublicId returns the public id of the AppToken
+func (a *AppToken) GetPublicId() string {
+	return a.PublicId
+}
+
+// GetResourceType returns the resource type of the AppToken
+func (at AppToken) GetResourceType() resource.Type {
+	return resource.AppToken
+}
+
+// GetUpdateTime returns nil because AppToken does not have an update time
+func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
+	return nil
+}
+
+// GetCreateTime returns the AppToken create time
+func (at AppToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns 0 so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetVersion() uint32 {
+	return 0
 }

@@ -2192,7 +2192,7 @@ func Test_AnonRestrictions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			for i := resource.Type(1); i <= resource.Alias; i++ {
+			for i := resource.Type(1); i <= resource.AppToken; i++ {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
