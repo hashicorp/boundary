@@ -6,7 +6,9 @@ package apptoken
 import (
 	"time"
 
+	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // An AppToken is an application token used for machine-to-machine authentication.
@@ -26,6 +28,26 @@ type AppToken struct {
 	Permissions               []AppTokenPermission
 }
 
+type appTokenView struct {
+	*store.AppToken
+	tableName string `gorm:"-"`
+}
+
+func (atv *appTokenView) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  atv.PublicId,
+		ScopeId:                   atv.ScopeId,
+		Name:                      atv.Name,
+		Description:               atv.Description,
+		CreateTime:                atv.CreateTime,
+		ApproximateLastAccessTime: atv.ApproximateLastAccessTime,
+		ExpirationTime:            atv.ExpirationTime,
+		TimeToStaleSeconds:        atv.TimeToStaleSeconds,
+		CreatedByUserId:           atv.CreatedByUserId,
+		Revoked:                   atv.Revoked,
+	}
+}
+
 // AppTokenPermission represents the permissions granted to an AppToken.
 // The individual scopes granted to an AppTokenPermission will remain constant over time.
 // When a scope is removed, it is moved from GrantedScopes to DeletedScopes.
@@ -42,8 +64,6 @@ type DeletedScope struct {
 	ScopeId   string
 	TimeStamp *timestamp.Timestamp
 }
-
-// Methods
 
 // IsActive returns true if the app token is active (not revoked and not expired)
 // An AppToken is considered inactive if:
@@ -64,4 +84,42 @@ func (a *AppToken) IsActive() bool {
 	default:
 		return true
 	}
+}
+
+// GetPublicId returns the public id of the AppToken
+func (a *AppToken) GetPublicId() string {
+	return a.PublicId
+}
+
+// GetResourceType returns the resource type of the AppToken
+func (at AppToken) GetResourceType() resource.Type {
+	return resource.AppToken
+}
+
+// GetUpdateTime returns nil because AppToken does not have an update time
+func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
+	return nil
+}
+
+// GetCreateTime returns the AppToken create time
+func (at AppToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns 0 so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetVersion() uint32 {
+	return 0
 }
