@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -56,6 +57,26 @@ func (a *AppToken) GetScopeId() string {
 		return ""
 	}
 	return a.ScopeId
+}
+
+type appTokenView struct {
+	*store.AppToken
+	tableName string `gorm:"-"`
+}
+
+func (atv *appTokenView) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  atv.PublicId,
+		ScopeId:                   atv.ScopeId,
+		Name:                      atv.Name,
+		Description:               atv.Description,
+		CreateTime:                atv.CreateTime,
+		ApproximateLastAccessTime: atv.ApproximateLastAccessTime,
+		ExpirationTime:            atv.ExpirationTime,
+		TimeToStaleSeconds:        atv.TimeToStaleSeconds,
+		CreatedByUserId:           atv.CreatedByUserId,
+		Revoked:                   atv.Revoked,
+	}
 }
 
 // IsActive returns true if the app token is active (not revoked and not expired)
@@ -298,4 +319,42 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
+}
+
+// GetPublicId returns the public id of the AppToken
+func (a *AppToken) GetPublicId() string {
+	return a.PublicId
+}
+
+// GetResourceType returns the resource type of the AppToken
+func (at AppToken) GetResourceType() resource.Type {
+	return resource.AppToken
+}
+
+// GetUpdateTime returns nil because AppToken does not have an update time
+func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
+	return nil
+}
+
+// GetCreateTime returns the AppToken create time
+func (at AppToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns an empty string so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns 0 so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetVersion() uint32 {
+	return 0
 }

@@ -79,6 +79,11 @@ func Test_AllowedIn(t *testing.T) {
 			wantErr:  errors.New(context.Background(), errors.InvalidParameter, "scope.AllowedIn", "resource type '*' is not supported"),
 		},
 		{
+			testName:   "AppToken",
+			resource:   resource.AppToken,
+			wantScopes: []Type{Global, Org},
+		},
+		{
 			testName:   "AuthMethod",
 			resource:   resource.AuthMethod,
 			wantScopes: []Type{Global, Org},
