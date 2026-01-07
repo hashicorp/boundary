@@ -304,4 +304,37 @@ left join iam_scope_project
              app_token_permission_global.grant_scope,
              app_token_global.public_id;
     `
+
+	// grantsForGlobalTokenOrgRequestScopeQuery gets a global app token's grants for resources
+	// applicable to org request scopes.
+	grantsForGlobalTokenOrgRequestScopeQuery = `
+      select app_token_permission_global.private_id                                                            as permission_id,
+             app_token_permission_global.description,
+             app_token_permission_global.create_time,
+             app_token_permission_global.grant_this_scope,
+             app_token_permission_global.grant_scope,
+             app_token_global.public_id                                                                        as app_token_id,
+             ''                                                                                                as app_token_parent_scope_id,
+             array_agg(distinct app_token_permission_grant.canonical_grant)                                    as canonical_grants,
+             array_agg(distinct(org_grant_scope.scope_id)) filter (where org_grant_scope.scope_id is not null) as active_grant_scopes
+        from app_token_global
+        join app_token_permission_global
+          on app_token_global.public_id = app_token_permission_global.app_token_id
+        join app_token_permission_grant
+          on app_token_permission_global.private_id = app_token_permission_grant.permission_id
+        join iam_grant
+          on app_token_permission_grant.canonical_grant = iam_grant.canonical_grant
+         and iam_grant.resource = any(@resources)
+        left join app_token_permission_global_individual_org_grant_scope org_grant_scope
+          on app_token_permission_global.private_id = org_grant_scope.permission_id
+         and org_grant_scope.scope_id = @request_scope_id
+       where app_token_permission_global.grant_scope != 'individual'
+          or org_grant_scope.scope_id is not null
+    group by app_token_permission_global.private_id,
+             app_token_permission_global.description,
+             app_token_permission_global.create_time,
+             app_token_permission_global.grant_this_scope,
+             app_token_permission_global.grant_scope,
+             app_token_global.public_id;
+    `
 )
