@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(15);
+select plan(16);
 select wtt_load('widgets', 'iam');
 
 -- insert app_token_project and make sure app_token has a value
@@ -86,6 +86,8 @@ select is(count(*), 1::bigint) from app_token_deleted where public_id = 'r_11111
 select is(count(*), 0::bigint) from app_token_project where public_id = 'r_1111111111';
 -- ensure app_token_permission_project is deleted
 select is(count(*), 0::bigint) from app_token_permission_project where app_token_id = 'r_1111111111';
+-- ensure app_token_cipher is deleted
+select is(count(*), 0::bigint) from app_token_cipher where app_token_id = 'r_1111111111';
 
 select * from finish();
 rollback;
