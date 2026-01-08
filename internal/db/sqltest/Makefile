@@ -19,6 +19,7 @@ PROVE_OPTS ?=
 TESTS ?= tests/setup/*.sql \
 		 tests/account/*/*.sql \
 		 tests/alias/*.sql \
+		 tests/apptoken/*.sql \
 		 tests/auth/*/*.sql \
 		 tests/census/*.sql \
 		 tests/controller/*.sql \
