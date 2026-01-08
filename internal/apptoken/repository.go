@@ -5,6 +5,7 @@ package apptoken
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -79,4 +80,10 @@ func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken,
 		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
 	}
 	return &at, nil
+}
+
+func (r *Repository) listAppTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).listAppTokens"
+
+	return nil, time.Time{}, errors.New(ctx, errors.Internal, op, "not implemented")
 }

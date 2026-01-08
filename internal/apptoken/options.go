@@ -3,6 +3,11 @@
 
 package apptoken
 
+import (
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
+)
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -17,18 +22,41 @@ func getOpts(opt ...Option) options {
 // Option - how Options are passed as arguments
 type Option func(*options)
 
-func getDefaultOptions() options {
-	return options{}
-}
-
 // options = how options are represented
 type options struct {
-	withRecursive bool
+	withRecursive          bool
+	withLimit              int
+	withStartPageAfterItem pagination.Item
+}
+
+func getDefaultOptions() options {
+	return options{
+		withLimit: db.DefaultLimit,
+	}
 }
 
 // WithRecursive indicates that this request is a recursive request
 func WithRecursive(isRecursive bool) Option {
 	return func(o *options) {
 		o.withRecursive = isRecursive
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.   If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+func WithLimit(limit int) Option {
+	return func(o *options) {
+		if limit > 0 {
+			o.withLimit = limit
+		}
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
