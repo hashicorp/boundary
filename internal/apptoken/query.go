@@ -12,7 +12,6 @@ const (
 	grantsForGlobalTokenGlobalOrgProjectResourcesRecursiveQuery = `
    select app_token_permission_global.private_id                                                       as permission_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                                                   as app_token_id,
@@ -39,7 +38,6 @@ left join iam_scope_project
        on project_grant_scope.scope_id = iam_scope_project.scope_id
  group by app_token_permission_global.private_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id;
@@ -50,7 +48,6 @@ left join iam_scope_project
 	grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery = `
    select app_token_permission_global.private_id                         as permission_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                     as app_token_id,
@@ -72,7 +69,6 @@ left join iam_scope_org
        on org_grant_scope.scope_id = iam_scope_org.scope_id
  group by app_token_permission_global.private_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id;
@@ -83,7 +79,6 @@ left join iam_scope_org
 	grantsForGlobalTokenProjectResourcesRecursiveQuery = `
    select app_token_permission_global.private_id                         as permission_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id                                     as app_token_id,
@@ -107,7 +102,6 @@ left join iam_scope_project
        or project_grant_scope.scope_id is not null
  group by app_token_permission_global.private_id,
           app_token_permission_global.description,
-          app_token_permission_global.create_time,
           app_token_permission_global.grant_this_scope,
           app_token_permission_global.grant_scope,
           app_token_global.public_id;
@@ -118,7 +112,6 @@ left join iam_scope_project
 	grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery = `
    select app_token_permission_org.private_id                            as permission_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
@@ -140,7 +133,6 @@ left join iam_scope_project
        on project_grant_scope.scope_id = iam_scope_project.scope_id
  group by app_token_permission_org.private_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id;
@@ -151,7 +143,6 @@ left join iam_scope_project
 	grantsForOrgTokenGlobalOrgResourcesRecursiveQuery = `
    select app_token_permission_org.private_id                            as permission_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
@@ -170,7 +161,6 @@ left join iam_scope_project
     where app_token_permission_org.grant_this_scope = true
  group by app_token_permission_org.private_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id;
@@ -181,7 +171,6 @@ left join iam_scope_project
 	grantsForOrgTokenProjectResourcesRecursiveQuery = `
    select app_token_permission_org.private_id                            as permission_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id                                        as app_token_id,
@@ -205,7 +194,6 @@ left join iam_scope_project
        or project_grant_scope.scope_id is not null
  group by app_token_permission_org.private_id,
           app_token_permission_org.description,
-          app_token_permission_org.create_time,
           app_token_permission_org.grant_this_scope,
           app_token_permission_org.grant_scope,
           app_token_org.public_id;
@@ -216,7 +204,6 @@ left join iam_scope_project
 	grantsForProjectTokenRecursiveQuery = `
    select app_token_permission_project.private_id                        as permission_id,
           app_token_permission_project.description,
-          app_token_permission_project.create_time,
           app_token_permission_project.grant_this_scope,
           'individual'                                                   as grant_scope,
           app_token_project.public_id                                    as app_token_id,
@@ -237,7 +224,6 @@ left join iam_scope_project
     where app_token_permission_project.grant_this_scope = true
  group by app_token_permission_project.private_id,
           app_token_permission_project.description,
-          app_token_permission_project.create_time,
           app_token_permission_project.grant_this_scope,
           app_token_project.public_id,
           iam_scope_project.parent_id;
@@ -248,7 +234,6 @@ left join iam_scope_project
 	grantsForProjectTokenQuery = `
    select app_token_permission_project.private_id                        as permission_id,
           app_token_permission_project.description,
-          app_token_permission_project.create_time,
           app_token_permission_project.grant_this_scope,
           'individual'                                                   as grant_scope,
           app_token_project.public_id                                    as app_token_id,
@@ -270,7 +255,6 @@ left join iam_scope_project
     where app_token_permission_project.grant_this_scope = true
  group by app_token_permission_project.private_id,
           app_token_permission_project.description,
-          app_token_permission_project.create_time,
           app_token_permission_project.grant_this_scope,
           app_token_project.public_id,
           iam_scope_project.parent_id;
@@ -281,7 +265,6 @@ left join iam_scope_project
 	grantsForGlobalTokenGlobalRequestScopeQuery = `
       select app_token_permission_global.private_id                         as permission_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id                                     as app_token_id,
@@ -299,7 +282,6 @@ left join iam_scope_project
        where app_token_permission_global.grant_this_scope
     group by app_token_permission_global.private_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id;
@@ -310,7 +292,6 @@ left join iam_scope_project
 	grantsForGlobalTokenOrgRequestScopeQuery = `
       select app_token_permission_global.private_id                                                            as permission_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id                                                                        as app_token_id,
@@ -332,7 +313,6 @@ left join iam_scope_project
           or org_grant_scope.scope_id is not null
     group by app_token_permission_global.private_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id;
@@ -343,7 +323,6 @@ left join iam_scope_project
 	grantsForGlobalTokenProjectRequestScopeQuery = `
       select app_token_permission_global.private_id                                                                    as permission_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id                                                                                as app_token_id,
@@ -365,7 +344,6 @@ left join iam_scope_project
           or project_grant_scope.scope_id is not null
     group by app_token_permission_global.private_id,
              app_token_permission_global.description,
-             app_token_permission_global.create_time,
              app_token_permission_global.grant_this_scope,
              app_token_permission_global.grant_scope,
              app_token_global.public_id;
