@@ -386,4 +386,20 @@ left join iam_scope_project
 	grantsForOrgTokenOrgResourcesQuery = `grantsForOrgTokenOrgResourcesQuery`
 	// org token grants for non-recursive requests for project resource
 	grantsForOrgTokenProjectResourcesQuery = `grantsForOrgTokenProjectResourcesQuery`
+
+	// TODO: This will be properly implemented with the Create method
+	// getAppTokenByIdQuery retrieves an AppToken by its public ID
+	getAppTokenByIdQuery = `
+	 select public_id, scope_id
+	   from app_token_global
+	  where public_id = $1
+	  union all
+	 select public_id, scope_id
+	   from app_token_org
+	  where public_id = $1
+	  union all
+	 select public_id, scope_id
+	   from app_token_project
+	  where public_id = $1
+	`
 )

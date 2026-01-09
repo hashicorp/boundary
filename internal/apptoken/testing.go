@@ -81,8 +81,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
-			insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope, create_time)
-			values ($1, $2, $3, $4, $5, now())
+			insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope)
+			values ($1, $2, $3, $4, $5)
 		`
 		insertGrantSQL = `
 			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
@@ -94,8 +94,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
-			insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope, create_time)
-			values ($1, $2, $3, $4, $5, now())
+			insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope)
+			values ($1, $2, $3, $4, $5)
 		`
 		insertGrantSQL = `
 			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
@@ -107,8 +107,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 			values ($1, $2, $3, $4, $5, now(), now())
 		`
 		insertPermissionSQL = `
-			insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope, create_time)
-			values ($1, $2, $3, $4, now())
+			insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope)
+			values ($1, $2, $3, $4)
 		`
 		insertGrantSQL = `
 			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)

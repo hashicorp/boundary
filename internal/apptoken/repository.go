@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-// Repository is the iam database repository
+// Repository is the apptoken database repository
 type Repository struct {
 	reader db.Reader
 	writer db.Writer
@@ -46,21 +46,7 @@ func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken,
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing id")
 	}
 
-	query := `
-	select public_id, scope_id
-	  from app_token_global
-	 where public_id = $1
-	union all
-	select public_id, scope_id
-	  from app_token_org
-	 where public_id = $1
-	union all
-	select public_id, scope_id
-	  from app_token_project
-	 where public_id = $1
-	`
-
-	rows, err := r.reader.Query(ctx, query, []any{id})
+	rows, err := r.reader.Query(ctx, getAppTokenByIdQuery, []any{id})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -29,7 +29,6 @@ type tempGrantTuples []tempGrantTuple
 type grantsForTokenResult struct {
 	PermissionId          string
 	Description           string
-	CreateTime            string
 	GrantThisScope        bool
 	GrantScope            string
 	AppTokenId            string
@@ -105,20 +104,29 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	}
 	defer rows.Close()
 	for rows.Next() {
+		var activeGrantScopes any
 		var g grantsForTokenResult
 		if err := rows.Scan(
 			&g.PermissionId,
 			&g.Description,
-			&g.CreateTime,
 			&g.GrantThisScope,
 			&g.GrantScope,
 			&g.AppTokenId,
 			&g.AppTokenParentScopeId,
 			pq.Array(&g.CanonicalGrants),
-			pq.Array(&g.ActiveGrantScopes),
+			&activeGrantScopes,
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+
+		// The active grant scopes can sometimes come back as NULL rather than an empty array
+		// so we need to skip scanning in that case
+		if activeGrantScopes != nil && activeGrantScopes != "{NULL}" {
+			if err := pq.Array(&g.ActiveGrantScopes).Scan(activeGrantScopes); err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+		}
+
 		grants = append(grants, g)
 	}
 	if err := rows.Err(); err != nil {
@@ -167,10 +175,9 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenScope string
 
 	var query string
 	var err error
-	switch isRecursive {
-	case true:
+	if isRecursive {
 		query, err = r.selectRecursiveQuery(ctx, isAppTokenGlobal, isAppTokenOrg, isAppTokenProject, resourceAllowedIn)
-	default:
+	} else {
 		query, err = r.selectNonRecursiveQuery(ctx, isAppTokenGlobal, isAppTokenOrg, isAppTokenProject, isRequestScopeGlobal, isRequestScopeOrg, isRequestScopeProject, resourceAllowedIn)
 	}
 	if err != nil {

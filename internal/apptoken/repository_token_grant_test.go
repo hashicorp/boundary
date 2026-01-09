@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,12 +22,9 @@ func TestGrantsForToken(t *testing.T) {
 	repo := TestRepo(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	// TODO: Implement additional scopes once queries are completed
 	// Create test scope hierarchy for testing grant scope behavior
 	// This creates: global -> org1 -> project1
-	//                      -> org2 -> project2
 	org1, proj1 := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
-	// org2, proj2 := TestScopes(t, repo, WithName("org2"), WithDescription("Test Org 2"))
 
 	testCases := []struct {
 		name           string
@@ -114,7 +112,7 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "",
+					AppTokenParentScopeId: "global",
 					GrantScopeId:          "children",
 					Grant:                 "ids=*;type=scope;actions=list,read",
 				},
@@ -135,7 +133,7 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "",
+					AppTokenParentScopeId: "global",
 					GrantScopeId:          "children",
 					Grant:                 "ids=*;type=auth-method;actions=list,read",
 				},
@@ -156,7 +154,7 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "",
+					AppTokenParentScopeId: "global",
 					GrantScopeId:          "children",
 					Grant:                 "ids=*;type=target;actions=list,read",
 				},
@@ -250,6 +248,8 @@ func TestGrantsForToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
 			var opts []Option
 			if tc.recursive {
 				opts = append(opts, WithRecursive(tc.recursive))
@@ -261,14 +261,14 @@ func TestGrantsForToken(t *testing.T) {
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
 			if tc.wantErr {
-				require.Error(t, err)
+				require.Error(err)
 				return
 			}
-			require.NoError(t, err)
-			require.NotNil(t, gt)
+			require.NoError(err)
+			require.NotNil(gt)
 
 			// Verify the returned grants match the expected grants
-			require.Len(t, gt, len(tc.expectedGrants))
+			require.Len(gt, len(tc.expectedGrants))
 			for _, expected := range tc.expectedGrants {
 				found := false
 				for _, actual := range gt {
@@ -281,7 +281,7 @@ func TestGrantsForToken(t *testing.T) {
 						break
 					}
 				}
-				assert.True(t, found, "expected grant not found: %+v\n%+v", expected, gt)
+				assert.True(found, "expected grant not found: %+v\n%+v", expected, gt)
 			}
 		})
 	}
@@ -472,14 +472,321 @@ func TestResolveAppTokenQuery(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
 			gotQuery, err := repo.resolveAppTokenQuery(ctx, tc.input.tokenScope, tc.input.resource, tc.input.reqScopeId, tc.isRecursive)
 			if tc.errorMsg != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsg)
+				require.Error(err)
+				assert.Contains(err.Error(), tc.errorMsg)
 				return
 			}
-			require.NoError(t, err)
-			assert.Equal(t, gotQuery, tc.wantQuery)
+			require.NoError(err)
+			assert.Equal(gotQuery, tc.wantQuery)
+		})
+	}
+}
+
+func TestSelectRecursiveQuery(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+
+	testcases := []struct {
+		name              string
+		isGlobal          bool
+		isOrg             bool
+		isProject         bool
+		resourceAllowedIn []scope.Type
+		wantQuery         string
+		wantErr           bool
+	}{
+		{
+			name:              "global token with global org project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org, scope.Project},
+			wantQuery:         grantsForGlobalTokenGlobalOrgProjectResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token with global org resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org},
+			wantQuery:         grantsForGlobalTokenGlobalOrgResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token with project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForGlobalTokenProjectResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "org token with global org project resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org, scope.Project},
+			wantQuery:         grantsForOrgTokenGlobalOrgProjectResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "org token with global org resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org},
+			wantQuery:         grantsForOrgTokenGlobalOrgResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "org token with project resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForOrgTokenProjectResourcesRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "project token",
+			isGlobal:          false,
+			isOrg:             false,
+			isProject:         true,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForProjectTokenRecursiveQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token with unmatched resource allowed in",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Org},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "org token with unmatched resource allowed in",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Org},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "no token scope set",
+			isGlobal:          false,
+			isOrg:             false,
+			isProject:         false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			gotQuery, err := repo.selectRecursiveQuery(ctx, tc.isGlobal, tc.isOrg, tc.isProject, tc.resourceAllowedIn)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Contains(err.Error(), "no matching recursive query found")
+				assert.Empty(gotQuery)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.wantQuery, gotQuery)
+		})
+	}
+}
+
+func TestSelectNonRecursiveQuery(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+
+	testcases := []struct {
+		name              string
+		isGlobal          bool
+		isOrg             bool
+		isProject         bool
+		isReqGlobal       bool
+		isReqOrg          bool
+		isReqProject      bool
+		resourceAllowedIn []scope.Type
+		wantQuery         string
+		wantErr           bool
+	}{
+		{
+			name:              "global token global request with global org project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       true,
+			isReqOrg:          false,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org, scope.Project},
+			wantQuery:         grantsForGlobalTokenGlobalResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token global request with global org resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       true,
+			isReqOrg:          false,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org},
+			wantQuery:         grantsForGlobalTokenGlobalResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token global request with project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       true,
+			isReqOrg:          false,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "global token org request with global org project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          true,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Global, scope.Org, scope.Project},
+			wantQuery:         grantsForGlobalTokenOrgResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "global token org request with project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          true,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "global token project request with project resources",
+			isGlobal:          true,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          false,
+			isReqProject:      true,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForGlobalTokenProjectResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "org token org request with org resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          true,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Org},
+			wantQuery:         grantsForOrgTokenOrgResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "org token org request with project resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          true,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "org token project request with project resources",
+			isGlobal:          false,
+			isOrg:             true,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          false,
+			isReqProject:      true,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForOrgTokenProjectResourcesQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "project token project request with project resources",
+			isGlobal:          false,
+			isOrg:             false,
+			isProject:         true,
+			isReqGlobal:       false,
+			isReqOrg:          false,
+			isReqProject:      true,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         grantsForProjectTokenQuery,
+			wantErr:           false,
+		},
+		{
+			name:              "project token org request",
+			isGlobal:          false,
+			isOrg:             false,
+			isProject:         true,
+			isReqGlobal:       false,
+			isReqOrg:          true,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Org},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+		{
+			name:              "no token scope set",
+			isGlobal:          false,
+			isOrg:             false,
+			isProject:         false,
+			isReqGlobal:       false,
+			isReqOrg:          false,
+			isReqProject:      false,
+			resourceAllowedIn: []scope.Type{scope.Project},
+			wantQuery:         "",
+			wantErr:           true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			gotQuery, err := repo.selectNonRecursiveQuery(ctx, tc.isGlobal, tc.isOrg, tc.isProject, tc.isReqGlobal, tc.isReqOrg, tc.isReqProject, tc.resourceAllowedIn)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Contains(err.Error(), "no matching non-recursive query found")
+				assert.Empty(gotQuery)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.wantQuery, gotQuery)
 		})
 	}
 }
