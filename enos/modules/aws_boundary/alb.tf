@@ -24,10 +24,48 @@ resource "aws_alb" "boundary_alb" {
   )
 }
 
+resource "tls_private_key" "private_key" {
+  depends_on = [aws_alb.boundary_alb]
+  count      = var.protocol == "https" ? 1 : 0
+
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "certificate" {
+  depends_on = [aws_alb.boundary_alb]
+  count      = var.protocol == "https" ? 1 : 0
+
+  private_key_pem = tls_private_key.private_key[0].private_key_pem
+
+  subject {
+    common_name = aws_alb.boundary_alb.dns_name
+  }
+
+  dns_names = [aws_alb.boundary_alb.dns_name]
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+resource "aws_acm_certificate" "cert" {
+  depends_on = [aws_alb.boundary_alb]
+  count      = var.protocol == "https" ? 1 : 0
+
+  private_key      = tls_private_key.private_key[0].private_key_pem
+  certificate_body = tls_self_signed_cert.certificate[0].cert_pem
+}
+
 resource "aws_alb_target_group" "boundary_tg" {
+  depends_on      = [aws_acm_certificate.cert]
   name            = "boundary-tg-${random_string.cluster_id.result}"
-  port            = var.listener_api_port
   protocol        = "HTTP"
+  port            = var.listener_api_port
   vpc_id          = var.vpc_id
   ip_address_type = var.ip_version == "6" ? "ipv6" : "ipv4"
 
@@ -57,7 +95,11 @@ resource "aws_lb_target_group_attachment" "boundary" {
 resource "aws_alb_listener" "boundary" {
   load_balancer_arn = aws_alb.boundary_alb.arn
   port              = var.alb_listener_api_port
-  protocol          = "HTTP"
+  protocol          = var.protocol == "https" ? "HTTPS" : "HTTP"
+
+  # These MUST be null if protocol is HTTP
+  ssl_policy      = var.protocol == "https" ? "ELBSecurityPolicy-2016-08" : null
+  certificate_arn = var.protocol == "https" ? aws_acm_certificate.cert[0].arn : null
 
   default_action {
     target_group_arn = aws_alb_target_group.boundary_tg.arn

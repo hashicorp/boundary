@@ -194,6 +194,11 @@ variable "worker_tag_egress" {
   type        = string
   default     = ""
 }
+variable "alb_cert" {
+  description = "public cert for the alb"
+  type       = string
+  default    = ""
+}
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
@@ -236,6 +241,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_LDAP_GROUP_NAME           = var.ldap_group_name
     E2E_WORKER_TOKEN              = var.worker_token
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
+    E2E_ALB_CERT                  = var.alb_cert
   }
 
   inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" pnpm --cwd ${var.local_boundary_ui_src_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]

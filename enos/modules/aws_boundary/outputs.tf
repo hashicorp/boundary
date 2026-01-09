@@ -252,3 +252,8 @@ output "worker_ipv6_cidr" {
   description = "List of ipv6 subnets of all workers"
   value       = distinct([for ip in flatten(aws_instance.worker.*.ipv6_addresses) : cidrsubnet("${ip}/64", 0, 0)])
 }
+
+output "alb_cert" {
+  description = "Public cert for the alb"
+  value       = try(tls_self_signed_cert.certificate[0].cert_pem, null)
+}
