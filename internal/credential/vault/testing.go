@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1196,6 +1197,9 @@ type TestVaultServer struct {
 	vaultContainer    any
 	ldapContainer     any
 	postgresContainer any
+
+	stopped  atomic.Bool
+	Shutdown func(t *testing.T)
 }
 
 // NewTestVaultServer creates and returns a TestVaultServer. Some Vault
