@@ -108,3 +108,10 @@ if ("${github_token}" -ne "") {
     cd $src_destination
     go mod download
 }
+
+# Set Settings > System > For Developers > Terminal to Windows Terminal
+# Allows for consistent terminal (default was "Let Windows decide")
+$registryPath = "HKCU:\Console\%%Startup"
+if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force }
+Set-ItemProperty -Path $registryPath -Name "DelegationConsole" -Value "{2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}"
+Set-ItemProperty -Path $registryPath -Name "DelegationTerminal" -Value "{E12CFF52-A866-4C77-9A90-F570A7AA2C6B}"
