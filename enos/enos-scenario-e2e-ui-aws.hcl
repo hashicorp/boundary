@@ -10,7 +10,8 @@ scenario "e2e_ui_aws" {
   ]
 
   matrix {
-    builder = ["local", "crt"]
+    builder  = ["local", "crt"]
+    protocol = ["http", "https"]
   }
 
   locals {
@@ -106,6 +107,7 @@ scenario "e2e_ui_aws" {
       worker_instance_type     = var.worker_instance_type
       worker_type_tags         = [local.egress_tag]
       aws_region               = var.aws_region
+      protocol                 = matrix.protocol
     }
   }
 
@@ -212,6 +214,7 @@ scenario "e2e_ui_aws" {
       aws_host_set_ips          = step.create_targets_with_tag.target_private_ips
       worker_tag_egress         = local.egress_tag
       aws_region                = var.aws_region
+      alb_cert                  = matrix.protocol == "https" ? step.create_boundary_cluster.alb_cert : ""
     }
   }
 
