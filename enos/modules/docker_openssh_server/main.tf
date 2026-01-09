@@ -99,6 +99,10 @@ output "address" {
   value = docker_container.openssh_server.network_data[0].ip_address
 }
 
+output "container_name" {
+  value = var.container_name
+}
+
 output "port" {
   value = "2222"
 }
