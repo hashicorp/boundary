@@ -37,9 +37,6 @@ left join app_token_permission_global_individual_project_grant_scope project_gra
 left join iam_scope_project
        on project_grant_scope.scope_id = iam_scope_project.scope_id
  group by app_token_permission_global.private_id,
-          app_token_permission_global.description,
-          app_token_permission_global.grant_this_scope,
-          app_token_permission_global.grant_scope,
           app_token_global.public_id;
     `
 
@@ -68,9 +65,6 @@ left join app_token_permission_global_individual_org_grant_scope org_grant_scope
 left join iam_scope_org
        on org_grant_scope.scope_id = iam_scope_org.scope_id
  group by app_token_permission_global.private_id,
-          app_token_permission_global.description,
-          app_token_permission_global.grant_this_scope,
-          app_token_permission_global.grant_scope,
           app_token_global.public_id;
     `
 
@@ -101,9 +95,6 @@ left join iam_scope_project
     where app_token_permission_global.grant_scope = 'descendants'
        or project_grant_scope.scope_id is not null
  group by app_token_permission_global.private_id,
-          app_token_permission_global.description,
-          app_token_permission_global.grant_this_scope,
-          app_token_permission_global.grant_scope,
           app_token_global.public_id;
     `
 
@@ -132,9 +123,6 @@ left join app_token_permission_org_individual_grant_scope project_grant_scope
 left join iam_scope_project
        on project_grant_scope.scope_id = iam_scope_project.scope_id
  group by app_token_permission_org.private_id,
-          app_token_permission_org.description,
-          app_token_permission_org.grant_this_scope,
-          app_token_permission_org.grant_scope,
           app_token_org.public_id;
     `
 
@@ -160,9 +148,6 @@ left join iam_scope_project
       and iam_grant.resource = any(@resources)
     where app_token_permission_org.grant_this_scope = true
  group by app_token_permission_org.private_id,
-          app_token_permission_org.description,
-          app_token_permission_org.grant_this_scope,
-          app_token_permission_org.grant_scope,
           app_token_org.public_id;
     `
 
@@ -193,9 +178,6 @@ left join iam_scope_project
     where app_token_permission_org.grant_scope = 'children'
        or project_grant_scope.scope_id is not null
  group by app_token_permission_org.private_id,
-          app_token_permission_org.description,
-          app_token_permission_org.grant_this_scope,
-          app_token_permission_org.grant_scope,
           app_token_org.public_id;
     `
 
@@ -223,8 +205,6 @@ left join iam_scope_project
       and iam_grant.resource = any(@resources)
     where app_token_permission_project.grant_this_scope = true
  group by app_token_permission_project.private_id,
-          app_token_permission_project.description,
-          app_token_permission_project.grant_this_scope,
           app_token_project.public_id,
           iam_scope_project.parent_id;
     `
@@ -254,8 +234,6 @@ left join iam_scope_project
       and iam_grant.resource = any(@resources)
     where app_token_permission_project.grant_this_scope = true
  group by app_token_permission_project.private_id,
-          app_token_permission_project.description,
-          app_token_permission_project.grant_this_scope,
           app_token_project.public_id,
           iam_scope_project.parent_id;
     `
@@ -281,9 +259,6 @@ left join iam_scope_project
          and iam_grant.resource = any(@resources)
        where app_token_permission_global.grant_this_scope
     group by app_token_permission_global.private_id,
-             app_token_permission_global.description,
-             app_token_permission_global.grant_this_scope,
-             app_token_permission_global.grant_scope,
              app_token_global.public_id;
     `
 
@@ -312,9 +287,6 @@ left join iam_scope_project
        where app_token_permission_global.grant_scope != 'individual'
           or org_grant_scope.scope_id is not null
     group by app_token_permission_global.private_id,
-             app_token_permission_global.description,
-             app_token_permission_global.grant_this_scope,
-             app_token_permission_global.grant_scope,
              app_token_global.public_id;
     `
 
@@ -343,9 +315,6 @@ left join iam_scope_project
        where app_token_permission_global.grant_scope = 'descendants'
           or project_grant_scope.scope_id is not null
     group by app_token_permission_global.private_id,
-             app_token_permission_global.description,
-             app_token_permission_global.grant_this_scope,
-             app_token_permission_global.grant_scope,
              app_token_global.public_id;
     `
 )
