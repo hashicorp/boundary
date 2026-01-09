@@ -318,10 +318,10 @@ left join iam_scope_project
              app_token_global.public_id;
     `
 
-	// org token grants for non-recursive requests for org resource
-	grantsForOrgTokenOrgResourcesQuery = `grantsForOrgTokenOrgResourcesQuery`
-	// org token grants for non-recursive requests for project resource
-	grantsForOrgTokenProjectResourcesQuery = `grantsForOrgTokenProjectResourcesQuery`
+	// org token grants for non-recursive requests for org request scope
+	grantsForOrgTokenOrgRequestScopeQuery = `grantsForOrgTokenOrgRequestScopeQuery`
+	// org token grants for non-recursive requests for project request scope
+	grantsForOrgTokenProjectRequestScopeQuery = `grantsForOrgTokenProjectRequestScopeQuery`
 
 	// TODO: This will be properly implemented with the Create method
 	// getAppTokenByIdQuery retrieves an AppToken by its public ID

@@ -178,7 +178,7 @@ func (r *Repository) resolveAppTokenQuery(ctx context.Context, tokenScope string
 	if isRecursive {
 		query, err = r.selectRecursiveQuery(ctx, isAppTokenGlobal, isAppTokenOrg, isAppTokenProject, resourceAllowedIn)
 	} else {
-		query, err = r.selectNonRecursiveQuery(ctx, isAppTokenGlobal, isAppTokenOrg, isAppTokenProject, isRequestScopeGlobal, isRequestScopeOrg, isRequestScopeProject, resourceAllowedIn)
+		query, err = r.selectNonRecursiveQuery(ctx, isAppTokenGlobal, isAppTokenOrg, isAppTokenProject, isRequestScopeGlobal, isRequestScopeOrg, isRequestScopeProject)
 	}
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op, errors.WithMsg("no matching query found for token scope, request scope"))
@@ -215,26 +215,26 @@ func (r *Repository) selectRecursiveQuery(ctx context.Context, isGlobal, isOrg, 
 }
 
 // selectNonRecursiveQuery selects the appropriate non-recursive query based on the app token scope, request scope, and resource allowed-in scopes
-func (r *Repository) selectNonRecursiveQuery(ctx context.Context, isGlobal, isOrg, isProject bool, isReqGlobal, isReqOrg, isReqProject bool, resourceAllowedIn []scope.Type) (string, error) {
+func (r *Repository) selectNonRecursiveQuery(ctx context.Context, isGlobal, isOrg, isProject bool, isReqGlobal, isReqOrg, isReqProject bool) (string, error) {
 	const op = "apptoken.(Repository).selectNonRecursiveQuery"
 
 	switch {
 	case isGlobal:
-		if isReqGlobal && slices.Contains(resourceAllowedIn, scope.Global) {
-			return grantsForGlobalTokenGlobalResourcesQuery, nil
-		} else if isReqOrg && slices.Contains(resourceAllowedIn, scope.Org) {
-			return grantsForGlobalTokenOrgResourcesQuery, nil
-		} else if isReqProject && slices.Contains(resourceAllowedIn, scope.Project) {
-			return grantsForGlobalTokenProjectResourcesQuery, nil
+		if isReqGlobal {
+			return grantsForGlobalTokenGlobalRequestScopeQuery, nil
+		} else if isReqOrg {
+			return grantsForGlobalTokenOrgRequestScopeQuery, nil
+		} else if isReqProject {
+			return grantsForGlobalTokenProjectRequestScopeQuery, nil
 		}
 	case isOrg:
-		if isReqOrg && slices.Contains(resourceAllowedIn, scope.Org) {
-			return grantsForOrgTokenOrgResourcesQuery, nil
-		} else if isReqProject && slices.Contains(resourceAllowedIn, scope.Project) {
-			return grantsForOrgTokenProjectResourcesQuery, nil
+		if isReqOrg {
+			return grantsForOrgTokenOrgRequestScopeQuery, nil
+		} else if isReqProject {
+			return grantsForOrgTokenProjectRequestScopeQuery, nil
 		}
 	case isProject:
-		if isReqProject && slices.Contains(resourceAllowedIn, scope.Project) {
+		if isReqProject {
 			return grantsForProjectTokenQuery, nil
 		}
 	}
