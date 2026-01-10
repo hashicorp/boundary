@@ -252,6 +252,7 @@ left join iam_scope_project
         from app_token_global
         join app_token_permission_global
           on app_token_global.public_id = app_token_permission_global.app_token_id
+         and app_token_global.public_id = any(@app_token_ids)
         join app_token_permission_grant
           on app_token_permission_global.private_id = app_token_permission_grant.permission_id
         join iam_grant
@@ -276,6 +277,7 @@ left join iam_scope_project
         from app_token_global
         join app_token_permission_global
           on app_token_global.public_id = app_token_permission_global.app_token_id
+         and app_token_global.public_id = any(@app_token_ids)
         join app_token_permission_grant
           on app_token_permission_global.private_id = app_token_permission_grant.permission_id
         join iam_grant
@@ -304,6 +306,7 @@ left join iam_scope_project
         from app_token_global
         join app_token_permission_global
           on app_token_global.public_id = app_token_permission_global.app_token_id
+         and app_token_global.public_id = any(@app_token_ids)
         join app_token_permission_grant
           on app_token_permission_global.private_id = app_token_permission_grant.permission_id
         join iam_grant
