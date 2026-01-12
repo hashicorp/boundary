@@ -43,7 +43,6 @@ type grantsForTokenResult struct {
 func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []resource.Type, reqScopeId string, opt ...Option) (tempGrantTuples, error) {
 	const op = "apptoken.(Repository).GrantsForToken"
 
-	// validations
 	if res == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
 	}
@@ -68,7 +67,6 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")
 	}
 
-	// get options
 	opts := getOpts(opt...)
 
 	// get AppToken to get scope
