@@ -35,7 +35,7 @@ output "test_username" {
 }
 output "test_password" {
   description = "The password of the test account"
-  value       = nonsensitive(local.test_password)
+  value       = nonsensitive(rsadecrypt(aws_instance.client.password_data, tls_private_key.rsa-4096-key.private_key_pem))
 }
 
 output "test_dir" {
