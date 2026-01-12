@@ -286,7 +286,52 @@ func TestGrantsForToken(t *testing.T) {
 				},
 			},
 		},
-		// TODO: Add org token non-recursive test cases
+		{
+			name: "org token requesting org scope for account,auth-method non-recursively",
+			u:    iam.TestUser(t, iamRepo, org1.PublicId),
+			grants: []string{
+				"ids=*;type=account;actions=list,read",
+				"ids=*;type=auth-method;actions=list",
+			},
+			grantThisScope: true,
+			grantScope:     "children",
+			rTypes:         []resource.Type{resource.Account, resource.AuthMethod},
+			tokenScopeId:   org1.PublicId,
+			reqScopeId:     org1.PublicId,
+			recursive:      false,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "global",
+					GrantScopeId:          "children",
+					Grant:                 "ids=*;type=account;actions=list,read,ids=*;type=auth-method;actions=list",
+				},
+			},
+		},
+		{
+			name: "org token requesting project scope for host,targets non-recursively",
+			u:    iam.TestUser(t, iamRepo, org1.PublicId),
+			grants: []string{
+				"ids=*;type=host;actions=list",
+				"ids=*;type=target;actions=list,read",
+			},
+			grantThisScope: false,
+			grantScope:     "children",
+			rTypes:         []resource.Type{resource.Host, resource.Target},
+			tokenScopeId:   org1.PublicId,
+			reqScopeId:     proj1.PublicId,
+			recursive:      false,
+			wantErr:        false,
+			expectedGrants: tempGrantTuples{
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "global",
+					GrantScopeId:          "children",
+					Grant:                 "ids=*;type=host;actions=list,ids=*;type=target;actions=list,read",
+				},
+			},
+		},
 		{
 			name: "missing resource type",
 			u:    iam.TestUser(t, iamRepo, globals.GlobalPrefix),
