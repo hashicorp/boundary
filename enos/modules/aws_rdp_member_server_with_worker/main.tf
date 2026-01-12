@@ -262,7 +262,6 @@ ${var.domain_admin_password}
 }
 
 locals {
-  admin_password        = rsadecrypt(aws_instance.worker.password_data, file(var.domain_controller_private_key))
   private_key           = abspath(var.domain_controller_private_key)
   boundary_cli_zip_path = var.boundary_cli_zip_path != "" ? abspath(var.boundary_cli_zip_path) : ""
   test_dir              = "C:/Test/" # needs to end in a / to ensure it creates the directory
