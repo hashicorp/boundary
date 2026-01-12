@@ -1,0 +1,27 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.apptoken.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/apptoken/store;store";
+
+// AppTokenPermissionGrant represents app token permission grants
+message AppTokenPermissionGrant {
+  // @inject_tag: gorm:"primary_key"
+  string canonical_grant = 1;
+
+  // individual id for the app token's permission
+  // @inject_tag: `gorm:"default:null"`
+  string permission_id = 2;
+
+  // raw_grant of the app token permission
+  // @inject_tag: `gorm:"default:null"`
+  string raw_grant = 3 [(custom_options.v1.mask_mapping) = {
+    this: "raw_grant"
+    that: "raw_grant"
+  }];
+}
