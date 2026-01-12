@@ -439,10 +439,6 @@ resource "aws_instance" "domain_controller" {
   }
 }
 
-locals {
-  password = rsadecrypt(aws_instance.domain_controller.password_data, tls_private_key.rsa_4096_key.private_key_pem)
-}
-
 resource "local_sensitive_file" "private_key" {
   depends_on = [tls_private_key.rsa_4096_key]
 

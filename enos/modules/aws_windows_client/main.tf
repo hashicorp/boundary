@@ -275,7 +275,6 @@ resource "aws_instance" "client" {
 }
 
 locals {
-  admin_password        = rsadecrypt(aws_instance.client.password_data, tls_private_key.rsa-4096-key.private_key_pem)
   boundary_cli_zip_path = var.boundary_cli_zip_path != "" ? abspath(var.boundary_cli_zip_path) : ""
   test_dir              = "C:/Test/" # needs to end in a / to ensure it creates the directory
 }
