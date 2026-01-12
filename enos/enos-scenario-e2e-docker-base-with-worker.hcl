@@ -99,7 +99,7 @@ scenario "e2e_docker_base_with_worker" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster, local.network_database]
       database_network = local.network_database
       postgres_address = step.create_boundary_database.address
@@ -143,7 +143,7 @@ scenario "e2e_docker_base_with_worker" {
       step.create_boundary
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file      = "worker-config.hcl"
       container_name   = "worker"

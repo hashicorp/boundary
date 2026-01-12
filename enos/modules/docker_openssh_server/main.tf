@@ -5,7 +5,7 @@ terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "3.0.1"
+      version = "3.6.2"
     }
 
     tls = {
@@ -97,6 +97,10 @@ output "user" {
 
 output "address" {
   value = docker_container.openssh_server.network_data[0].ip_address
+}
+
+output "container_name" {
+  value = var.container_name
 }
 
 output "port" {
