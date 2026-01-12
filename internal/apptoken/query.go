@@ -317,4 +317,63 @@ left join iam_scope_project
     group by app_token_permission_global.private_id,
              app_token_global.public_id;
     `
+
+	// grantsForOrgTokenOrgRequestScopeQuery gets an org app token's grants for resources
+	// applicable to an org request scope.
+	grantsForOrgTokenOrgRequestScopeQuery = `
+      select app_token_permission_org.private_id                            as permission_id,
+             app_token_permission_org.description,
+             app_token_permission_org.grant_this_scope,
+             app_token_permission_org.grant_scope,
+             app_token_org.public_id                                        as app_token_id,
+             'global'                                                       as app_token_parent_scope_id,
+             array_agg(distinct app_token_permission_grant.canonical_grant) as canonical_grants,
+             array_agg(app_token_org.scope_id)                              as active_grant_scopes
+        from app_token_org
+        join app_token_permission_org
+          on app_token_org.public_id = app_token_permission_org.app_token_id
+         and app_token_org.public_id = any(@app_token_ids)
+         and app_token_org.scope_id  = @request_scope_id
+        join app_token_permission_grant
+          on app_token_permission_org.private_id = app_token_permission_grant.permission_id
+        join iam_grant
+          on app_token_permission_grant.canonical_grant = iam_grant.canonical_grant
+         and iam_grant.resource = any(@resources)
+       where app_token_permission_org.grant_this_scope
+    group by app_token_permission_org.private_id,
+             app_token_org.public_id;
+    `
+
+	// grantsForOrgTokenProjectRequestScopeQuery gets an org app token's grants for resources
+	// applicable to a project request scope.
+	grantsForOrgTokenProjectRequestScopeQuery = `
+      select app_token_permission_org.private_id                                                                       as permission_id,
+             app_token_permission_org.description,
+             app_token_permission_org.grant_this_scope,
+             app_token_permission_org.grant_scope,
+             app_token_org.public_id                                                                                   as app_token_id,
+             'global'                                                                                                  as app_token_parent_scope_id,
+             array_agg(distinct app_token_permission_grant.canonical_grant)                                            as canonical_grants,
+             array_agg(distinct(project_grant_scope.scope_id)) filter (where project_grant_scope.scope_id is not null) as active_grant_scopes
+        from app_token_org
+        join app_token_permission_org
+          on app_token_org.public_id = app_token_permission_org.app_token_id
+         and app_token_org.public_id = any(@app_token_ids)
+        join app_token_permission_grant
+          on app_token_permission_org.private_id = app_token_permission_grant.permission_id
+        join iam_grant
+          on app_token_permission_grant.canonical_grant = iam_grant.canonical_grant
+         and iam_grant.resource = any(@resources)
+        join iam_scope_project
+          on iam_scope_project.parent_id = app_token_org.scope_id
+   left join app_token_permission_org_individual_grant_scope project_grant_scope
+          on app_token_permission_org.private_id = project_grant_scope.permission_id
+       where project_grant_scope.scope_id = @request_scope_id
+          or (
+             app_token_permission_org.grant_scope = 'children' and
+             iam_scope_project.scope_id = @request_scope_id
+          )
+    group by app_token_permission_org.private_id,
+             app_token_org.public_id;
+    `
 )
