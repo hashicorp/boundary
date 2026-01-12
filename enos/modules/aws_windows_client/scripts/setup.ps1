@@ -111,8 +111,8 @@ if ("${github_token}" -ne "") {
 
 # Setting default terminal app to Windows Terminal (modern terminal)
 # aka Settings > System > For Developers > Terminal to Windows Terminal
-# By defualt, Windows11 has preferred terminal app set as "Let Windows decide"
-# which causes inconsistent terminal experience affecting images use for RDP tests
+# By default, Windows11 has preferred terminal app set as "Let Windows decide"
+# which causes inconsistent terminal experience affecting images used for RDP tests
 # Two properties need to be set in registry to change default terminal app
 # DelegationTerminal determines which terminal UI to use
 # DelegationConsole determines how the data is communicated between the terminal and the operating system
