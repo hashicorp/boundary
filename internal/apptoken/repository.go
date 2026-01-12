@@ -27,11 +27,9 @@ type Repository struct {
 	defaultLimit int
 }
 
-// NewRepository creates a new apptoken Repository
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "apptoken.NewRepository"
 	if r == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
