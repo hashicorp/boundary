@@ -225,37 +225,6 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	return token, nil
 }
 
-func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) error {
-	const op = "apptoken.(Repository).DeleteAppToken"
-	if publicId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
-	}
-
-	tokenToDelete := &appTokenGlobal{}
-	err := r.reader.LookupByPublicId(ctx, tokenToDelete)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up app token"))
-	}
-
-	// delete from app_token_global table
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			if err := w.DeleteByPublicId(ctx, tokenToDelete); err != nil {
-				return err
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("deleting app token"))
-	}
-
-	return nil
-}
-
 func (r *Repository) writeToDb(ctx context.Context, tokenToCreate interface{}) error {
 	_, err := r.writer.DoTx(
 		ctx,
