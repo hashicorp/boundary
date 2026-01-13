@@ -17,6 +17,22 @@ import (
 	"github.com/hashicorp/go-bexpr"
 )
 
+type SortBy string
+
+const (
+	SortByDefault     SortBy = ""
+	SortByName        SortBy = "name"
+	SortByCreatedTime SortBy = "created_time"
+)
+
+type SortDirection string
+
+const (
+	SortDirectionDefault SortDirection = ""
+	Ascending            SortDirection = "asc"
+	Descending           SortDirection = "desc"
+)
+
 type SearchableResource string
 
 const (
