@@ -159,9 +159,10 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				GrantScope:     globalPermGrantScope,
 			},
 		}
-		r.writeToDb(ctx, globalPermToCreate)
+
+		err = r.writeToDb(ctx, globalPermToCreate)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating apptoken global permission"))
 		}
 
 		for _, grant := range perm.Grants {
@@ -180,9 +181,9 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 					RawGrant:       grant,
 				},
 			}
-			r.writeToDb(ctx, permissionGrantToCreate)
+			err = r.writeToDb(ctx, permissionGrantToCreate)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating apptoken permission grant"))
 			}
 		}
 
@@ -199,9 +200,9 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 						ScopeId:      gs,
 					},
 				}
-				r.writeToDb(ctx, individualOrgGlobalPermToCreate)
+				err = r.writeToDb(ctx, individualOrgGlobalPermToCreate)
 				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating apptoken individual org grant scope"))
 				}
 			case strings.HasPrefix(gs, globals.ProjectPrefix):
 				individualProjGlobalPermToCreate := &appTokenPermissionGlobalIndividualProjectGrantScope{
@@ -211,9 +212,9 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 						ScopeId:      gs,
 					},
 				}
-				r.writeToDb(ctx, individualProjGlobalPermToCreate)
+				err = r.writeToDb(ctx, individualProjGlobalPermToCreate)
 				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating apptoken individual project grant scope"))
 				}
 			default:
 				return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid grant scope")
@@ -222,6 +223,37 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	}
 
 	return token, nil
+}
+
+func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) error {
+	const op = "apptoken.(Repository).DeleteAppToken"
+	if publicId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
+	}
+
+	tokenToDelete := &appTokenGlobal{}
+	err := r.reader.LookupByPublicId(ctx, tokenToDelete)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up app token"))
+	}
+
+	// delete from app_token_global table
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if err := w.DeleteByPublicId(ctx, tokenToDelete); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("deleting app token"))
+	}
+
+	return nil
 }
 
 func (r *Repository) writeToDb(ctx context.Context, tokenToCreate interface{}) error {
