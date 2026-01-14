@@ -499,7 +499,6 @@ func DevKeyGeneration(opt ...Option) string {
 	}
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: opts.withRandomReader,
-
 		N: numBytes,
 	})
 	if err != nil {

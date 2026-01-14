@@ -5,9 +5,11 @@ package proxy
 
 import (
 	"crypto/ed25519"
+	"io"
 	"net"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -75,5 +77,12 @@ func Test_GetOpts(t *testing.T) {
 
 		opts = GetOpts(WithSshHostKeyCallback(ssh.FixedHostKey(signer.PublicKey())))
 		assert.NotNil(opts.WithSshHostKeyCallback)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		reader := io.Reader(&strings.Reader{})
+		opts := GetOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.WithRandomReader = reader
+		assert.Equal(t, opts, testOpts)
 	})
 }
