@@ -77,6 +77,10 @@ type SearchParams struct {
 	Filter string
 	// Max result set size is an override to the default max result set size
 	MaxResultSetSize int
+	// Which column to sort results by, default is resource specific
+	SortBy SortBy
+	// Which direction to sort results by (asc, desc), default is resource specific
+	SortDirection SortDirection
 }
 
 // SearchResult returns the results from searching the cache.
