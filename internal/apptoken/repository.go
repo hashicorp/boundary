@@ -55,7 +55,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 
 	id, err := newAppTokenId(ctx)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("57"))
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var tokenToCreate *appTokenGlobal
@@ -70,6 +70,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				Revoked:            token.Revoked,
 				CreatedByUserId:    token.CreatedByUserId,
 				TimeToStaleSeconds: token.TimeToStaleSeconds,
+				ExpirationTime:     token.ExpirationTime,
 			},
 		}
 	default:
@@ -188,7 +189,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		}
 
 		for _, gs := range perm.GrantedScopes {
-			if gs == "this" || gs == "children" || gs == "descendants" {
+			if gs == "this" || gs == "children" || gs == "descendants" || globalPermGrantScope == "descendants" {
 				continue
 			}
 			switch {
@@ -196,8 +197,9 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				individualOrgGlobalPermToCreate := &appTokenPermissionGlobalIndividualOrgGrantScope{
 					AppTokenPermissionGlobalIndividualOrgGrantScope: &store.AppTokenPermissionGlobalIndividualOrgGrantScope{
 						PermissionId: permId,
-						GrantScope:   globalPermGrantScope,
-						ScopeId:      gs,
+						// this can only ever be individual for individual orgs in global grant scopes
+						GrantScope: globalPermGrantScope,
+						ScopeId:    gs,
 					},
 				}
 				err = r.writeToDb(ctx, individualOrgGlobalPermToCreate)

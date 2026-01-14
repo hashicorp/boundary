@@ -6,9 +6,11 @@ package apptoken
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -44,10 +46,38 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid-global-one-perm",
+			name: "valid-global-extensive-no-perms",
+			at: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				Name:               "test-token",
+				Description:        "a test token",
+				Revoked:            false,
+				TimeToStaleSeconds: 36000,
+				ExpirationTime:     timestamp.New(timestamp.Now().AsTime().Add(1000 * time.Hour)),
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid-global-same-name",
 			at: &AppToken{
 				ScopeId:         globals.GlobalPrefix,
 				CreatedByUserId: u.PublicId,
+				Name:            "test-token",
+			},
+			wantErr:    true,
+			wantErrMsg: "duplicate key value violates unique constraint \"app_token_global_name_scope_id_uq\"",
+		},
+		{
+			name: "valid-global-one-perm",
+			at: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				Name:               "test-token-perms",
+				Description:        "a test token",
+				Revoked:            false,
+				TimeToStaleSeconds: 36000,
+				ExpirationTime:     timestamp.New(timestamp.Now().AsTime().Add(1000 * time.Hour)),
 				Permissions: []AppTokenPermission{
 					{
 						Label:         "test",
