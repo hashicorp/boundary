@@ -5,9 +5,14 @@ package cache
 
 import (
 	stderrors "errors"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-dbw"
 )
+
+// unsafeSortChars contains characters that could break SQL ORDER BY clauses
+const unsafeSortChars = " \t\n\r,;()'\"\\-"
 
 type testRefreshWaitChs struct {
 	firstSempahore  chan struct{}
@@ -26,6 +31,8 @@ type options struct {
 	withMaxResultSetSize             int
 	withTestRefreshWaitChs           *testRefreshWaitChs
 	withUseNonPagedListing           bool
+	withSortBy                       SortBy        // validated DB column name
+	withSortDirection                SortDirection // "asc" or "desc"
 }
 
 // Option - how options are passed as args
@@ -138,4 +145,36 @@ func WithUseNonPagedListing(b bool) Option {
 		o.withUseNonPagedListing = b
 		return nil
 	}
+}
+
+// WithSort configures sorting for query results.
+// Empty sortBy is silently ignored. Empty direction defaults to ascending in the repository layer.
+// Validates column against sortableColumns and rejects SQL-unsafe characters.
+func WithSort(sortBy SortBy, direction SortDirection, sortableColumns []SortBy) Option {
+	return func(o *options) error {
+		if sortBy == SortByDefault {
+			return nil
+		}
+
+		switch {
+		case !sliceContains(sortableColumns, sortBy):
+			return fmt.Errorf("invalid sort column %q: not allowed for this resource type", sortBy)
+		case strings.ContainsAny(string(sortBy), unsafeSortChars):
+			return fmt.Errorf("invalid sort column %q: contains unsafe characters", sortBy)
+		}
+
+		o.withSortBy = sortBy
+		o.withSortDirection = direction
+		return nil
+	}
+}
+
+// sliceContains checks if a value exists in a slice.
+func sliceContains[T comparable](slice []T, val T) bool {
+	for _, v := range slice {
+		if v == val {
+			return true
+		}
+	}
+	return false
 }
