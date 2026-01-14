@@ -154,6 +154,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Targets = finalResults
 				},
+				sortableColumns: []SortBy{SortByName, SortByCreatedAt},
 			},
 			Sessions: &resourceSearchFns[*sessions.Session]{
 				list:  repo.ListSessions,
@@ -167,6 +168,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Sessions = finalResults
 				},
+				sortableColumns: []SortBy{SortByCreatedAt},
 			},
 			ImplicitScopes: &resourceSearchFns[*scopes.Scope]{
 				list:  repo.ListImplicitScopes,
@@ -222,6 +224,10 @@ func (s *SearchService) Search(ctx context.Context, params SearchParams) (*Searc
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid resource")
 	case params.AuthTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
+	case !params.SortBy.Valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sort by value")
+	case !params.SortDirection.Valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sort direction value")
 	}
 	rSearcher, ok := s.searchableResources[params.Resource]
 	if !ok {
@@ -249,6 +255,8 @@ type resourceSearchFns[T any] struct {
 	// filter takes results and a ready-to-use evaluator and filters the items
 	// in the result
 	filter func(*SearchResult, *bexpr.Evaluator)
+	// sortableColumns is a list of columns that can be used for sorting
+	sortableColumns []SortBy
 }
 
 // resourceSearcher is an interface that only resourceSearchFns[T] is expected
