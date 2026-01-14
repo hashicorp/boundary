@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"io"
 	"reflect"
 	"time"
 
@@ -27,7 +26,6 @@ type Repository struct {
 	kms    *kms.Kms
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
-	randomReader io.Reader
 }
 
 // NewRepository creates a new server Repository. Supports the options: WithLimit
@@ -54,7 +52,6 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.withLimit,
-		randomReader: opts.withRandomReader,
 	}, nil
 }
 
