@@ -265,7 +265,7 @@ func parseSortDirection(sd string) (cache.SortDirection, bool) {
 	case "asc", "ascending":
 		return cache.Ascending, true
 	case "desc", "descending":
-		return cache.Ascending, true
+		return cache.Descending, true
 	case "":
 		return cache.SortDirectionDefault, true
 	default:
