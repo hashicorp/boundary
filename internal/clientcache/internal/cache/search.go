@@ -20,9 +20,19 @@ import (
 type SortBy string
 
 const (
-	SortByDefault SortBy = ""
-	SortByName    SortBy = "name"
+	SortByDefault   SortBy = ""
+	SortByName      SortBy = "name"
+	SortByCreatedAt SortBy = "created_at"
 )
+
+// Valid returns true if the SortBy value is a known good value
+func (s SortBy) Valid() bool {
+	switch s {
+	case SortByDefault, SortByName, SortByCreatedAt:
+		return true
+	}
+	return false
+}
 
 type SortDirection string
 
@@ -31,6 +41,15 @@ const (
 	Ascending            SortDirection = "asc"
 	Descending           SortDirection = "desc"
 )
+
+// Valid returns true if the SortDirection value is a known good value
+func (d SortDirection) Valid() bool {
+	switch d {
+	case SortDirectionDefault, Ascending, Descending:
+		return true
+	}
+	return false
+}
 
 type SearchableResource string
 
@@ -76,6 +95,10 @@ type SearchParams struct {
 	Filter string
 	// Max result set size is an override to the default max result set size
 	MaxResultSetSize int
+	// SortBy specifies the field to sort by (restricted to known good values)
+	SortBy SortBy
+	// SortDirection specifies the direction to sort (asc or desc)
+	SortDirection SortDirection
 }
 
 // SearchResult returns the results from searching the cache.
