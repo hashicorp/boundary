@@ -224,12 +224,12 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) 
 				gs == globals.GrantScopeDescendants {
 				continue
 			}
-			switch {
-			case strings.HasPrefix(gs, globals.OrgPrefix):
-				individualOrgGlobalPermToCreate := &appTokenPermissionGlobalIndividualOrgGrantScope{
-					AppTokenPermissionGlobalIndividualOrgGrantScope: &store.AppTokenPermissionGlobalIndividualOrgGrantScope{
+
+			if strings.HasPrefix(gs, globals.ProjectPrefix) {
+				individualProjOrgPermToCreate := &appTokenPermissionOrgIndividualProjectGrantScope{
+					AppTokenPermissionOrgIndividualProjectGrantScope: &store.AppTokenPermissionOrgIndividualProjectGrantScope{
 						PermissionId: permId,
-						GrantScope:   globalPermGrantScope,
+						GrantScope:   orgPermGrantScope,
 						ScopeId:      gs,
 					},
 				}
