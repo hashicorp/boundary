@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
@@ -57,6 +58,8 @@ const (
 	forceRefreshKey     = "force_refresh"
 	authTokenIdKey      = "auth_token_id"
 	maxResultSetSizeKey = "max_result_set_size"
+	sortByKey           = "sort_by"
+	sortDirectionKey    = "sort_direction"
 )
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
@@ -84,6 +87,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		maxResultSetSizeInt, maxResultSetSizeIntErr := strconv.Atoi(maxResultSetSizeStr)
 		query := q.Get(queryKey)
 		filter := q.Get(filterKey)
+		sb := q.Get(sortByKey)
+		sd := q.Get(sortDirectionKey)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
@@ -118,6 +123,20 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		case searchableResource == cache.ImplicitScopes && filter != "":
 			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("filter is not supported for resource %q", resource)))
 			writeError(w, fmt.Sprintf("filter is not supported for resource %q", resource), http.StatusBadRequest)
+			return
+		}
+
+		sortBy, valid := parseSortBy(sb, searchableResource)
+		if !valid {
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_by parameter %q not valid for resource %q", sb, searchableResource)))
+			writeError(w, fmt.Sprintf("sort_by parameter %q not valid for resource %q", sb, searchableResource), http.StatusBadRequest)
+			return
+		}
+
+		sortDirection, valid := parseSortDirection(sd)
+		if !valid {
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_direction parameter %q not valid", sb)))
+			writeError(w, fmt.Sprintf("sort_direction parameter %q not valid ", sb), http.StatusBadRequest)
 			return
 		}
 
@@ -175,6 +194,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 			Query:            query,
 			Filter:           filter,
 			MaxResultSetSize: maxResultSetSizeInt,
+			SortBy:           sortBy,
+			SortDirection:    sortDirection,
 		})
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when performing search", "auth_token_id", authTokenId, "resource", searchableResource, "query", query, "filter", filter))
@@ -236,4 +257,42 @@ func writeUnsupportedError(w http.ResponseWriter) {
 		return
 	}
 	http.Error(w, string(b), http.StatusBadRequest)
+}
+
+func parseSortDirection(sd string) (cache.SortDirection, bool) {
+	sd = strings.ToLower(sd)
+	switch sd {
+	case "asc", "ascending":
+		return cache.Ascending, true
+	case "desc", "descending":
+		return cache.Ascending, true
+	case "":
+		return cache.SortDirectionDefault, true
+	default:
+		return cache.SortDirectionDefault, false
+	}
+}
+
+func parseSortBy(sb string, sr cache.SearchableResource) (cache.SortBy, bool) {
+	sb = strings.ToLower(sb)
+	by := cache.SortBy(sb)
+
+	if by == cache.SortByDefault {
+		return cache.SortByDefault, true
+	}
+
+	switch sr {
+	case cache.Targets:
+		if by != cache.SortByName {
+			return cache.SortByDefault, false
+		}
+		return by, true
+	case cache.Sessions:
+		if by != cache.SortByCreatedAt {
+			return cache.SortByDefault, false
+		}
+		return by, true
+	default:
+		return cache.SortByDefault, false
+	}
 }
