@@ -36,37 +36,37 @@ const (
 type Alias struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the alias.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the scope of which this alias is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Scope information for this alias.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional user-set name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set descripton for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation fails if the version does not match the latest known good version.
 	// Version is not required when you create an alias.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// Value of the alias. This is the value referenced by the user that
 	// is resolved to the destination id.
-	Value string `protobuf:"bytes,90,opt,name=value,proto3" json:"value,omitempty" class:"public"` // @gotags: `class:"public"`
+	Value string `protobuf:"bytes,90,opt,name=value,proto3" json:"value,omitempty"` // @gotags: `class:"public"`
 	// destination_id is the id of the resource that this alias points to.
-	DestinationId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=destination_id,proto3" json:"destination_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	DestinationId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=destination_id,proto3" json:"destination_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// type is the type of the alias.
-	Type string `protobuf:"bytes,110,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,110,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Alias_Attributes
 	//	*Alias_TargetAliasAttributes
 	Attrs isAlias_Attrs `protobuf_oneof:"attrs"`
 	// The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -231,7 +231,7 @@ func (*Alias_TargetAliasAttributes) isAlias_Attrs() {}
 type TargetAliasAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The arguments to provide to authorize_session of the target.
-	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty"` // @gotags: `class:"public"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -281,7 +281,7 @@ type AuthorizeSessionArguments struct {
 	// in this value through the -host-id flag. If the host-id flag is also
 	// specified when calling authorize-session an error will be returned unless
 	// the provided host-id matches this value.
-	HostId        string `protobuf:"bytes,100,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostId        string `protobuf:"bytes,100,opt,name=host_id,proto3" json:"host_id,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

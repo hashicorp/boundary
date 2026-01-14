@@ -36,25 +36,25 @@ const (
 type Account struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the account.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Scope information for the account.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation fails if the version does not match the latest known good version.
 	// Version is not required when you create an account.
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The type of this account. If you do not set an account type, Boundary infers it from the type of the auth method.
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the auth method that is associated with this account.
-	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Account_Attributes
@@ -63,9 +63,9 @@ type Account struct {
 	//	*Account_LdapAccountAttributes
 	Attrs isAccount_Attrs `protobuf_oneof:"attrs"`
 	// Indicates the IDs of the managed groups that currently contain this account
-	ManagedGroupIds []string `protobuf:"bytes,110,rep,name=managed_group_ids,proto3" json:"managed_group_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ManagedGroupIds []string `protobuf:"bytes,110,rep,name=managed_group_ids,proto3" json:"managed_group_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -253,9 +253,9 @@ func (*Account_LdapAccountAttributes) isAccount_Attrs() {}
 type PasswordAccountAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The login name of this account. This is unique per auth method.
-	LoginName string `protobuf:"bytes,10,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	LoginName string `protobuf:"bytes,10,opt,name=login_name,proto3" json:"login_name,omitempty"` // @gotags: `class:"sensitive"`
 	// The password for this account.
-	Password      *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Password      *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -309,14 +309,14 @@ type OidcAccountAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// issuer is a case sensitive URL that maps to the OIDC iss claim.
 	// This value is immutable after creation time.
-	Issuer string `protobuf:"bytes,80,opt,name=issuer,proto3" json:"issuer,omitempty" class:"public"` // @gotags: `class:"public"`
+	Issuer string `protobuf:"bytes,80,opt,name=issuer,proto3" json:"issuer,omitempty"` // @gotags: `class:"public"`
 	// subject is a case sensitive string that maps to the OIDC sub claim.
 	// This value is immutable after creation time.
-	Subject string `protobuf:"bytes,90,opt,name=subject,proto3" json:"subject,omitempty" class:"public"` // @gotags: `class:"public"`
+	Subject string `protobuf:"bytes,90,opt,name=subject,proto3" json:"subject,omitempty"` // @gotags: `class:"public"`
 	// A string that maps to the OIDC name claim.
-	FullName string `protobuf:"bytes,100,opt,name=full_name,proto3" json:"full_name,omitempty" class:"public"` // @gotags: `class:"public"`
+	FullName string `protobuf:"bytes,100,opt,name=full_name,proto3" json:"full_name,omitempty"` // @gotags: `class:"public"`
 	// A string that maps to the OIDC email claim.
-	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" class:"public"` // @gotags: `class:"public"`
+	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty"` // @gotags: `class:"public"`
 	// The marshaled claims from the token.
 	TokenClaims *structpb.Struct `protobuf:"bytes,120,opt,name=token_claims,json=tokenClaims,proto3" json:"token_claims,omitempty"`
 	// The marshaled claims from userinfo.
@@ -403,24 +403,24 @@ type LdapAccountAttributes struct {
 	// login_name of the authenticated user. This is the login_name (or username)
 	// entered by the user when authenticating (typically the uid or cn
 	// attribute). Account login names must be lower case.
-	LoginName string `protobuf:"bytes,100,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	LoginName string `protobuf:"bytes,100,opt,name=login_name,proto3" json:"login_name,omitempty"` // @gotags: `class:"sensitive"`
 	// A string that maps to the name attribute for the
 	// authenticated user. This attribute is updated every time a user
 	// successfully authenticates.
-	FullName string `protobuf:"bytes,110,opt,name=full_name,proto3" json:"full_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	FullName string `protobuf:"bytes,110,opt,name=full_name,proto3" json:"full_name,omitempty"` // @gotags: `class:"sensitive"`
 	// A string that maps to the email address attribute for
 	// the authenticated user. This attribute is updated every time a user
 	// successfully authenticates.
-	Email string `protobuf:"bytes,120,opt,name=email,proto3" json:"email,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Email string `protobuf:"bytes,120,opt,name=email,proto3" json:"email,omitempty"` // @gotags: `class:"sensitive"`
 	// The distinguished name authenticated user's entry. Will
 	// be null until the user's first successful authentication. This attribute
 	// is updated every time a user successfully authenticates.
-	Dn string `protobuf:"bytes,130,opt,name=dn,proto3" json:"dn,omitempty" class:"public"` // @gotags: `class:"public"`
+	Dn string `protobuf:"bytes,130,opt,name=dn,proto3" json:"dn,omitempty"` // @gotags: `class:"public"`
 	// The json marshalled groups the
 	// authenticated user is a member of. Will be null until the user's first
 	// successful authentication. This attribute is updated every time a user
 	// successfully authenticates.
-	MemberOfGroups []string `protobuf:"bytes,140,rep,name=member_of_groups,json=memberOfGroups,proto3" json:"member_of_groups,omitempty" class:"public"` // @gotags: `class:"public"`
+	MemberOfGroups []string `protobuf:"bytes,140,rep,name=member_of_groups,json=memberOfGroups,proto3" json:"member_of_groups,omitempty"` // @gotags: `class:"public"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }

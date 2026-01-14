@@ -31,22 +31,22 @@ type TestAuthenticateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Auth Method in the system that should be used for authentication.
 	// @inject_tag: `class:"public"`
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
 	// @inject_tag: `class:"public"`
 	//
 	// Deprecated: Marked as deprecated in testing/event/v1/event.proto.
-	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty" class:"public"`
+	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser.
 	// @inject_tag: `class:"public"`
-	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" class:"public"`
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 	// Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
 	Attributes *structpb.Struct `protobuf:"bytes,4,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	// The command to perform.
 	// @inject_tag: `class:"public"`
-	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"`
+	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -123,7 +123,7 @@ type TestAuthenticateResponse struct {
 	Attributes *structpb.Struct `protobuf:"bytes,4,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	// The command that was performed.
 	// @inject_tag: `class:"public"`
-	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"`
+	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
