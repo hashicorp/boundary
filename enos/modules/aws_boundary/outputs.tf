@@ -38,7 +38,7 @@ output "rds_db_name" {
 
 output "alb_boundary_api_addr" {
   description = "The address of the boundary API"
-  value       = "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
+  value       = var.protocol == "http" ? "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}" : "https://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
 }
 
 // Boundary init outputs
