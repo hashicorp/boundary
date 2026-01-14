@@ -63,12 +63,10 @@ const (
 	sortDirectionKey    = "sort_direction"
 )
 
-var (
-	sortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
-		cache.Targets:  []cache.SortBy{cache.SortByName},
-		cache.Sessions: []cache.SortBy{cache.SortByCreatedTime},
-	}
-)
+var sortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
+	cache.Targets:  {cache.SortByName},
+	cache.Sessions: {cache.SortByCreatedTime},
+}
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchHandlerFunc"
