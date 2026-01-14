@@ -22,9 +22,9 @@ func TestParseSortBy(t *testing.T) {
 		{"", cache.Sessions, true, cache.SortByDefault},
 		{"ljkdhnsfg", cache.Targets, false, cache.SortByDefault},
 		{"xcvbxcvb", cache.Sessions, false, cache.SortByDefault},
-		{"name ", cache.Targets, false, cache.SortByDefault}, // Unicode no break space
-		{"name‮", cache.Targets, false, cache.SortByDefault}, // Unicode RtL override
-		{"‮name", cache.Targets, false, cache.SortByDefault}, // Unicode RtL override
+		{"name ", cache.Targets, false, cache.SortByDefault},      // Unicode no break space
+		{"name\u202e", cache.Targets, false, cache.SortByDefault}, // Unicode RtL override
+		{"\u202ename", cache.Targets, false, cache.SortByDefault}, // Unicode RtL override
 	}
 	for _, tc := range testCases {
 		actualSortBy, actualValid := parseSortBy(tc.inputSb, tc.inputSr)
@@ -46,8 +46,8 @@ func TestParseSortDirection(t *testing.T) {
 		{"", true, cache.SortDirectionDefault},
 		{"asdasd", false, cache.SortDirectionDefault},
 		{"asc ", false, cache.SortDirectionDefault},
-		{"name‮", false, cache.SortDirectionDefault},
-		{"‮name", false, cache.SortDirectionDefault},
+		{"name\u202e", false, cache.SortDirectionDefault},
+		{"\u202ename", false, cache.SortDirectionDefault},
 	}
 	for _, tc := range testCases {
 		actualSortDirection, actualValid := parseSortDirection(tc.inputSd)
