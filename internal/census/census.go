@@ -6,6 +6,7 @@ package census
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -14,7 +15,7 @@ import (
 )
 
 // RegisterJob registers the census job with the provided scheduler.
-func RegisterJob(ctx context.Context, s *scheduler.Scheduler, lurEnabled bool, r db.Reader, w db.Writer) error {
+func RegisterJob(ctx context.Context, s *scheduler.Scheduler, lurEnabled bool, r db.Reader, w db.Writer, randomReader io.Reader) error {
 	const op = "census.RegisterJob"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
@@ -26,7 +27,7 @@ func RegisterJob(ctx context.Context, s *scheduler.Scheduler, lurEnabled bool, r
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
 
-	censusJob, err := NewCensusJobFn(ctx, lurEnabled, r, w)
+	censusJob, err := NewCensusJobFn(ctx, lurEnabled, r, w, randomReader)
 	if err != nil {
 		return fmt.Errorf("error creating census job: %w", err)
 	}

@@ -4,6 +4,8 @@
 package proxy
 
 import (
+	"crypto/rand"
+	"io"
 	"net"
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -32,6 +34,7 @@ type Options struct {
 	WithTestKerberosServerHostname     string
 	WithLogger                         hclog.Logger
 	WithSshHostKeyCallback             ssh.HostKeyCallback
+	WithRandomReader                   io.Reader
 }
 
 func getDefaultOptions() Options {
@@ -39,6 +42,7 @@ func getDefaultOptions() Options {
 		WithInjectedApplicationCredentials: nil,
 		WithPostConnectionHook:             nil,
 		WithLogger:                         hclog.NewNullLogger(),
+		WithRandomReader:                   rand.Reader,
 	}
 }
 
@@ -95,5 +99,12 @@ func WithLogger(l hclog.Logger) Option {
 func WithSshHostKeyCallback(with ssh.HostKeyCallback) Option {
 	return func(o *Options) {
 		o.WithSshHostKeyCallback = with
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *Options) {
+		o.WithRandomReader = reader
 	}
 }
