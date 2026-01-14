@@ -73,79 +73,102 @@ resource "aws_instance" "member_server" {
                   # Set up SSH so we can remotely manage the instance
                   # Note: Windows Server 2016 does not support OpenSSH
                   %{if var.server_version != "2016"~}
-                  # set variables for retry loops
-                  $timeout = 300
-                  $interval = 30
+                  $sshSetupScript = @'
+  # Wait for network to be available
+  $networkTimeout = 120
+  $networkElapsed = 0
+  do {
+    $network = Test-NetConnection -ComputerName "169.254.169.254" -Port 80 -WarningAction SilentlyContinue
+    if ($network.TcpTestSucceeded) {
+      Write-Host "Network is available"
+      break
+    }
+    Write-Host "Waiting for network..."
+    Start-Sleep -Seconds 10
+    $networkElapsed += 10
+  } while ($networkElapsed -lt $networkTimeout)
 
-                  # Install OpenSSH Server and Client
-                  # Loop to make sure that SSH installs correctly
-                  $elapsed = 0
-                  do {
-                    try {
-                      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-                      Set-Service -Name sshd -StartupType 'Automatic'
-                      Start-Service sshd
-                      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
-                      if ($result) {
-                        Write-Host "Successfully added and started openSSH server"
-                        break
-                      }
-                    } catch {
-                        Write-Host "SSH server was not installed, retrying"
-                        Start-Sleep -Seconds $interval
-                        $elapsed += $interval
-                    }
-                    if ($elapsed -ge $timeout) {
-                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                        exit 1
-                    }
-                  } while ($true)
+  if ($networkElapsed -ge $networkTimeout) {
+    Write-Host "Network not available after timeout. Exiting."
+    exit 1
+  }
 
-                  $elapsed = 0
-                  do {
-                    try {
-                      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-                      Set-Service -Name ssh-agent -StartupType Automatic
-                      Start-Service ssh-agent
-                      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
-                      if ($result) {
-                          Write-Host "Successfully added and started openSSH agent"
-                          break
-                    }
-                    } catch {
-                        Write-Host "SSH server was not installed, retrying"
-                        Start-Sleep -Seconds $interval
-                        $elapsed += $interval
-                    }
-                    if ($elapsed -ge $timeout) {
-                        Write-Host "SSH server installation failed after 5 minutes. Exiting."
-                        exit 1
-                    }
-                  } while ($true)
+  # set variables for retry loops
+  $timeout = 300
+  $interval = 30
+  # Install OpenSSH Server and Client
+  # Loop to make sure that SSH installs correctly
+  $elapsed = 0
+  do {
+    try {
+      Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+      Set-Service -Name sshd -StartupType 'Automatic'
+      Start-Service sshd
+      $result = Get-Process -Name "sshd" -ErrorAction SilentlyContinue
+      if ($result) {
+        Write-Host "Successfully added and started openSSH server"
+        break
+      }
+    } catch {
+        Write-Host "SSH server was not installed, retrying"
+        Start-Sleep -Seconds $interval
+        $elapsed += $interval
+    }
+    if ($elapsed -ge $timeout) {
+        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+        exit 1
+    }
+  } while ($true)
+  $elapsed = 0
+  do {
+    try {
+      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+      Set-Service -Name ssh-agent -StartupType Automatic
+      Start-Service ssh-agent
+      $result = Get-Process -Name "ssh-agent" -ErrorAction SilentlyContinue
+      if ($result) {
+          Write-Host "Successfully added and started openSSH agent"
+          break
+      }
+    } catch {
+        Write-Host "SSH server was not installed, retrying"
+        Start-Sleep -Seconds $interval
+        $elapsed += $interval
+    }
+    if ($elapsed -ge $timeout) {
+        Write-Host "SSH server installation failed after 5 minutes. Exiting."
+        exit 1
+    }
+  } while ($true)
+  # Set PowerShell as the default SSH shell
+  New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
+  # Configure SSH server to use private key authentication so that scripts don't have to use passwords
+  # Save the private key from instance metadata
+  $ImdsToken = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/api/token' -Method 'PUT' -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = 2160} -UseBasicParsing).Content
+  $ImdsHeaders = @{'X-aws-ec2-metadata-token' = $ImdsToken}
+  $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
+  $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
+  New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
+  # Set the correct permissions on the authorized_keys file
+  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
+  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
+  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
+  # Ensure the SSH agent pulls in the new key.
+  Set-Service -Name ssh-agent -StartupType "Automatic"
+  Restart-Service -Name ssh-agent
+  Restart-Service -Name sshd
+  # Open the firewall for SSH connections
+  New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+'@
+                  Set-Content -Path "C:\ssh-setup.ps1" -Value $sshSetupScript
 
-                  # Set PowerShell as the default SSH shell
-                  New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value (Get-Command powershell.exe).Path -PropertyType String -Force
-
-                  # Configure SSH server to use private key authentication so that scripts don't have to use passwords
-                  # Save the private key from instance metadata
-                  $ImdsToken = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/api/token' -Method 'PUT' -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = 2160} -UseBasicParsing).Content
-                  $ImdsHeaders = @{'X-aws-ec2-metadata-token' = $ImdsToken}
-                  $AuthorizedKey = (Invoke-WebRequest -Uri 'http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key' -Headers $ImdsHeaders -UseBasicParsing).Content
-                  $AuthorizedKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
-                  New-Item -Path $AuthorizedKeysPath -ItemType File -Value $AuthorizedKey -Force
-                  # Set the correct permissions on the authorized_keys file
-                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
-                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F" /grant "SYSTEM:F"
-                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Users"
-                  icacls "C:\ProgramData\ssh\administrators_authorized_keys" /remove "Authenticated Users"
-
-                  # Ensure the SSH agent pulls in the new key.
-                  Set-Service -Name ssh-agent -StartupType "Automatic"
-                  Restart-Service -Name ssh-agent
-                  Restart-Service -Name sshd
-
-                  # Open the firewall for SSH connections
-                  New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+                  # Register a scheduled task to run the SSH setup script at next boot
+                  $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\ssh-setup.ps1"
+                  $Trigger = New-ScheduledTaskTrigger -AtStartup
+                  $Trigger.Delay = 'PT2M'  # Wait 2 minutes after startup to allow networking services to load
+                  $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+                  Register-ScheduledTask -TaskName "SetupOpenSSH" -Action $Action -Trigger $Trigger -Principal $Principal;
                   %{endif~}
 
                   # Open firewall ports for RDP functionality

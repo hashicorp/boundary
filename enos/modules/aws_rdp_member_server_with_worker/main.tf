@@ -97,6 +97,25 @@ resource "aws_instance" "worker" {
                   # Force an immediate time synchronization
                   w32tm /resync /force
 
+                  # Wait for network to be available
+                  $networkTimeout = 120
+                  $networkElapsed = 0
+                  do {
+                    $network = Test-NetConnection -ComputerName "169.254.169.254" -Port 80 -WarningAction SilentlyContinue
+                    if ($network.TcpTestSucceeded) {
+                      Write-Host "Network is available"
+                      break
+                    }
+                    Write-Host "Waiting for network..."
+                    Start-Sleep -Seconds 10
+                    $networkElapsed += 10
+                  } while ($networkElapsed -lt $networkTimeout)
+
+                  if ($networkElapsed -ge $networkTimeout) {
+                    Write-Host "Network not available after timeout. Exiting."
+                    exit 1
+                  }
+
                   # set variables for retry loops
                   $timeout = 300
                   $interval = 30
