@@ -225,6 +225,47 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	return token, nil
 }
 
+func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, error) {
+	const op = "apptoken.(Repository).DeleteAppToken"
+	if publicId == "" {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
+	}
+
+	tokenToDelete := &appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{},
+	}
+	tokenToDelete.PublicId = publicId
+	err := r.reader.LookupByPublicId(ctx, tokenToDelete)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("looking up app token"))
+	}
+
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			rowsDeleted, err = w.Delete(
+				ctx,
+				tokenToDelete,
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	return rowsDeleted, nil
+}
+
 func (r *Repository) writeToDb(ctx context.Context, tokenToCreate interface{}) error {
 	_, err := r.writer.DoTx(
 		ctx,

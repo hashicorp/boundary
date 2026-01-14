@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRepository_CreateAppToken(t *testing.T) {
@@ -313,4 +314,51 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+}
+
+func TestRepository_DeleteAppToken(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+
+	t.Run("successful-delete", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		at := &AppToken{
+			ScopeId:         globals.GlobalPrefix,
+			CreatedByUserId: u.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					GrantedScopes: []string{"this", "descendants"},
+				},
+			},
+		}
+		createdAt, err := repo.CreateAppToken(context.Background(), at)
+		require.NoError(err)
+		require.NotNil(createdAt)
+		idToDelete := createdAt.PublicId
+
+		d, err := repo.DeleteAppToken(context.Background(), idToDelete)
+		require.Equal(1, d)
+		assert.NoError(err)
+
+		// verify it's gone
+		var atCheck appTokenGlobal
+		atCheck.PublicId = idToDelete
+		err = repo.reader.LookupByPublicId(context.Background(), &atCheck)
+		assert.Error(err)
+		assert.True(errors.IsNotFoundError(err))
+	})
+
+	t.Run("invalid-id", func(t *testing.T) {
+		require := require.New(t)
+		idToDelete := "invalid-id"
+
+		d, err := repo.DeleteAppToken(context.Background(), idToDelete)
+		require.Equal(0, d)
+		require.Error(err)
+	})
 }
