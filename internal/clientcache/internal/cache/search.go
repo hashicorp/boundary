@@ -275,13 +275,18 @@ type resourceSearcher interface {
 func (l *resourceSearchFns[T]) search(ctx context.Context, p SearchParams) (*SearchResult, error) {
 	const op = "cache.(resourceSearchFns).search"
 
+	opts := []Option{WithMaxResultSetSize(p.MaxResultSetSize)}
+	if p.SortBy != SortByDefault {
+		opts = append(opts, WithSort(p.SortBy, p.SortDirection, l.sortableColumns))
+	}
+
 	var found *SearchResult
 	var err error
 	switch p.Query {
 	case "":
-		found, err = l.list(ctx, p.AuthTokenId, WithMaxResultSetSize(p.MaxResultSetSize))
+		found, err = l.list(ctx, p.AuthTokenId, opts...)
 	default:
-		found, err = l.query(ctx, p.AuthTokenId, p.Query, WithMaxResultSetSize(p.MaxResultSetSize))
+		found, err = l.query(ctx, p.AuthTokenId, p.Query, opts...)
 	}
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
