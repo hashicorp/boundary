@@ -25,6 +25,15 @@ const (
 	SortByCreatedAt SortBy = "created_at"
 )
 
+// Valid returns true if the SortBy value is a known good value
+func (s SortBy) Valid() bool {
+	switch s {
+	case SortByDefault, SortByName, SortByCreatedAt:
+		return true
+	}
+	return false
+}
+
 type SortDirection string
 
 const (
@@ -32,6 +41,15 @@ const (
 	Ascending            SortDirection = "asc"
 	Descending           SortDirection = "desc"
 )
+
+// Valid returns true if the SortDirection value is a known good value
+func (d SortDirection) Valid() bool {
+	switch d {
+	case SortDirectionDefault, Ascending, Descending:
+		return true
+	}
+	return false
+}
 
 type SearchableResource string
 
