@@ -275,4 +275,9 @@ left join iam_scope_project
           app_token_project.public_id,
           iam_scope_project.parent_id;
     `
+
+	scopeIdFromAppTokenIdQuery = `
+	 select scope_id
+		 from app_token
+		where public_id = @public_id;`
 )

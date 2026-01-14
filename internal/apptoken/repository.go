@@ -5,6 +5,8 @@ package apptoken
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // Repository is the apptoken database repository
@@ -225,19 +228,35 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	return token, nil
 }
 
+// DeleteAppToken will delete an app token from the repository.
 func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, error) {
 	const op = "apptoken.(Repository).DeleteAppToken"
 	if publicId == "" {
 		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
 	}
 
-	tokenToDelete := &appTokenGlobal{
-		AppTokenGlobal: &store.AppTokenGlobal{},
-	}
-	tokenToDelete.PublicId = publicId
-	err := r.reader.LookupByPublicId(ctx, tokenToDelete)
+	scopeType, err := getAppTokenScopeType(ctx, r.reader, publicId)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("looking up app token"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot find scope for app token %s", publicId))
+	}
+
+	var res any
+	switch scopeType {
+	case scope.Global:
+		gRole := allocGlobalAppToken()
+		gRole.PublicId = publicId
+		res = &gRole
+	// TODO: uncomment once org and project app tokens are supported
+	// case scope.Org:
+	// 	oRole := allocOrgAppToken()
+	// 	oRole.PublicId = publicId
+	// 	res = &oRole
+	// case scope.Project:
+	// 	pRole := allocProjectAppToken()
+	// 	pRole.PublicId = publicId
+	// 	res = &pRole
+	default:
+		return db.NoRowsAffected, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for app token: %s", publicId))
 	}
 
 	var rowsDeleted int
@@ -248,7 +267,7 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, 
 		func(_ db.Reader, w db.Writer) error {
 			rowsDeleted, err = w.Delete(
 				ctx,
-				tokenToDelete,
+				res,
 			)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
@@ -264,6 +283,47 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, 
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return rowsDeleted, nil
+}
+
+// getAppTokenScopeType returns scope.Type of the apptokenId by reading it from the base type apptoken table
+func getAppTokenScopeType(ctx context.Context, r db.Reader, apptokenId string) (scope.Type, error) {
+	const op = "apptoken.getAppTokenScopeType"
+	if apptokenId == "" {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing apptoken id")
+	}
+	if r == nil {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromAppTokenIdQuery, []any{sql.Named("public_id", apptokenId)})
+	if err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup apptoken scope for :%s", apptokenId)))
+	}
+	var scopeIds []string
+	for rows.Next() {
+		if err := r.ScanRows(ctx, rows, &scopeIds); err != nil {
+			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying apptoken scope for :%s", apptokenId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying apptoken scope for :%s", apptokenId)))
+	}
+	if len(scopeIds) == 0 {
+		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("apptoken %s not found", apptokenId))
+	}
+	if len(scopeIds) > 1 {
+		return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", len(scopeIds)))
+	}
+	scopeId := scopeIds[0]
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		return scope.Global, nil
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		return scope.Org, nil
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		return scope.Project, nil
+	default:
+		return scope.Unknown, fmt.Errorf("unknown scope type for apptoken %s", apptokenId)
+	}
 }
 
 func (r *Repository) writeToDb(ctx context.Context, tokenToCreate interface{}) error {

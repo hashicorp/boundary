@@ -323,7 +323,7 @@ func TestRepository_DeleteAppToken(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 
-	t.Run("successful-delete", func(t *testing.T) {
+	t.Run("successful-delete-global", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		at := &AppToken{
 			ScopeId:         globals.GlobalPrefix,
@@ -346,7 +346,7 @@ func TestRepository_DeleteAppToken(t *testing.T) {
 		assert.NoError(err)
 
 		// verify it's gone
-		var atCheck appTokenGlobal
+		atCheck := allocGlobalAppToken()
 		atCheck.PublicId = idToDelete
 		err = repo.reader.LookupByPublicId(context.Background(), &atCheck)
 		assert.Error(err)

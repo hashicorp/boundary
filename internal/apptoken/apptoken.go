@@ -121,6 +121,25 @@ func (atg *appTokenGlobal) SetTableName(n string) {
 	atg.tableName = n
 }
 
+func allocGlobalAppToken() appTokenGlobal {
+	return appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{},
+	}
+}
+
+// TODO: uncomment once org and project app tokens are supported
+// func allocOrgAppToken() appTokenOrg {
+// 	return appTokenOrg{
+// 		AppTokenOrg: &store.AppTokenOrg{},
+// 	}
+// }
+
+// func allocProjectAppToken() appTokenProject {
+// 	return appTokenProject{
+// 		AppTokenProject: &store.AppTokenProject{},
+// 	}
+// }
+
 // for app_token_cipher
 type appTokenCipher struct {
 	*store.AppTokenCipher
