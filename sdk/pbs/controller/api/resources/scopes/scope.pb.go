@@ -32,15 +32,15 @@ const (
 type ScopeInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the scope.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The type of the scope.
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The name of the scope, if any.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// The description of the scope, if any.
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// The ID of the parent scope, if any. This field is empty if it is the "global" scope.
-	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -114,33 +114,33 @@ func (x *ScopeInfo) GetParentScopeId() string {
 type Scope struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the scope.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the scope this resource is in. If this is the "global" scope this field will be empty.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set descripton for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The type of the resource.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the primary auth method for this scope.  A primary auth method
 	// is allowed to vivify users when new accounts are created and is the source for the users account info
-	PrimaryAuthMethodId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=primary_auth_method_id,proto3" json:"primary_auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	PrimaryAuthMethodId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=primary_auth_method_id,proto3" json:"primary_auth_method_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	// The authorized actions for the scope's collections.
 	AuthorizedCollectionActions map[string]*structpb.ListValue `protobuf:"bytes,310,rep,name=authorized_collection_actions,proto3" json:"authorized_collection_actions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The attached storage policy id.
-	StoragePolicyId string `protobuf:"bytes,320,opt,name=storage_policy_id,proto3" json:"storage_policy_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	StoragePolicyId string `protobuf:"bytes,320,opt,name=storage_policy_id,proto3" json:"storage_policy_id,omitempty"` // @gotags: `class:"public"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -270,11 +270,11 @@ func (x *Scope) GetStoragePolicyId() string {
 type KeyVersion struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the key version.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	// The iteration of the Key that this version represents.
-	Version uint32 `protobuf:"varint,20,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,20,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// When this version was created.
-	CreatedTime   *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime   *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,15 +334,15 @@ func (x *KeyVersion) GetCreatedTime() *timestamppb.Timestamp {
 type Key struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Key.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	// Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The purpose of the Key.
-	Purpose string `protobuf:"bytes,30,opt,name=purpose,proto3" json:"purpose,omitempty" class:"public"` // @gotags: `class:"public"`
+	Purpose string `protobuf:"bytes,30,opt,name=purpose,proto3" json:"purpose,omitempty"` // @gotags: `class:"public"`
 	// The time this Key was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
 	// The type of the Key.
-	Type string `protobuf:"bytes,50,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,50,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public"`
 	// The versions of the key.
 	Versions      []*KeyVersion `protobuf:"bytes,60,rep,name=versions,proto3" json:"versions,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -425,18 +425,18 @@ func (x *Key) GetVersions() []*KeyVersion {
 type KeyVersionDestructionJob struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Key version this job relates to.
-	KeyVersionId string `protobuf:"bytes,10,opt,name=key_version_id,json=keyVersionId,proto3" json:"key_version_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	KeyVersionId string `protobuf:"bytes,10,opt,name=key_version_id,json=keyVersionId,proto3" json:"key_version_id,omitempty"` // @gotags: `class:"public"`
 	// Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The current status of the key version destruction job. One of "pending", "running" or "completed".
-	Status string `protobuf:"bytes,30,opt,name=status,proto3" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
+	Status string `protobuf:"bytes,30,opt,name=status,proto3" json:"status,omitempty"` // @gotags: `class:"public"`
 	// The time this key version destruction job was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
 	// The number of rows that have been successfully re-encrypted with a new key version.
 	// All rows must be re-encrypted before the key version can be destroyed.
-	CompletedCount int64 `protobuf:"varint,50,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	CompletedCount int64 `protobuf:"varint,50,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty"` // @gotags: `class:"public"`
 	// The total number of rows that need re-encrypting.
-	TotalCount    int64 `protobuf:"varint,60,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	TotalCount    int64 `protobuf:"varint,60,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

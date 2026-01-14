@@ -31,7 +31,7 @@ const (
 
 type GetWorkerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,9 +119,9 @@ func (x *GetWorkerResponse) GetItem() *workers.Worker {
 
 type ListWorkersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	Recursive     bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
-	Filter        string                 `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"sensitive"`                 // @gotags: `class:"sensitive"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive     bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"`          // @gotags: `class:"public" eventstream:"observation"`
+	Filter        string                 `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`                 // @gotags: `class:"sensitive"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -267,7 +267,7 @@ func (x *CreateWorkerLedRequest) GetItem() *workers.Worker {
 
 type CreateWorkerLedResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *workers.Worker        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -363,7 +363,7 @@ func (x *CreateControllerLedRequest) GetItem() *workers.Worker {
 
 type CreateControllerLedResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *workers.Worker        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -415,7 +415,7 @@ func (x *CreateControllerLedResponse) GetItem() *workers.Worker {
 
 type UpdateWorkerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	Item          *workers.Worker        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -519,7 +519,7 @@ func (x *UpdateWorkerResponse) GetItem() *workers.Worker {
 
 type DeleteWorkerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -599,11 +599,11 @@ func (*DeleteWorkerResponse) Descriptor() ([]byte, []int) {
 
 type AddWorkerTagsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                                                            // @gotags: `class:"public"`
-	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
+	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                                                                            // @gotags: `class:"public"`
+	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -705,11 +705,11 @@ func (x *AddWorkerTagsResponse) GetItem() *workers.Worker {
 
 type SetWorkerTagsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                                                            // @gotags: `class:"public"`
-	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
+	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                                                                            // @gotags: `class:"public"`
+	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -811,11 +811,11 @@ func (x *SetWorkerTagsResponse) GetItem() *workers.Worker {
 
 type RemoveWorkerTagsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                                                            // @gotags: `class:"public"`
-	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
+	Version       uint32                         `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                                                                            // @gotags: `class:"public"`
+	ApiTags       map[string]*structpb.ListValue `protobuf:"bytes,3,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -917,7 +917,7 @@ func (x *RemoveWorkerTagsResponse) GetItem() *workers.Worker {
 
 type ReadCertificateAuthorityRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1005,7 +1005,7 @@ func (x *ReadCertificateAuthorityResponse) GetItem() *workers.CertificateAuthori
 
 type ReinitializeCertificateAuthorityRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

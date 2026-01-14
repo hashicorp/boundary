@@ -34,28 +34,28 @@ const (
 type HostCatalog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the host.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Scope of which this Host Catalog is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The ID of the plugin of which this catalog is created.
-	PluginId string `protobuf:"bytes,34,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	PluginId string `protobuf:"bytes,34,opt,name=plugin_id,proto3" json:"plugin_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Plugin information for this resource.
 	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The type of Host Catalog.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*HostCatalog_Attributes
@@ -63,11 +63,11 @@ type HostCatalog struct {
 	// Secrets specific to the catalog type. These are never output.
 	Secrets *structpb.Struct `protobuf:"bytes,110,opt,name=secrets,proto3" json:"secrets,omitempty"`
 	// Output only. The HMAC of the last secrets supplied via the API, if any.
-	SecretsHmac string `protobuf:"bytes,120,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	SecretsHmac string `protobuf:"bytes,120,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty"` // @gotags: `class:"public"`
 	// Optional worker filter for plugin-subtype host catalogs. Boundary Enterprise only.
-	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,130,opt,name=worker_filter,json=workerFilter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,130,opt,name=worker_filter,json=workerFilter,proto3" json:"worker_filter,omitempty"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	// Output only. The authorized actions for the scope's collections.
 	AuthorizedCollectionActions map[string]*structpb.ListValue `protobuf:"bytes,310,rep,name=authorized_collection_actions,proto3" json:"authorized_collection_actions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // classified as public via taggable implementation
 	unknownFields               protoimpl.UnknownFields

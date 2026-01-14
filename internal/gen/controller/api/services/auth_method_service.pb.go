@@ -35,7 +35,7 @@ const (
 type GetAuthMethodRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// ID of the auth method being requested.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -124,22 +124,22 @@ func (x *GetAuthMethodResponse) GetItem() *authmethods.AuthMethod {
 type ListAuthMethodsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The scope ID in which to list auth methods.
-	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Whether to recursively list auth methods in the provided scope's child scopes.
-	Recursive bool `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// You can specify that the filter should only return items that match.
 	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
-	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"` // @gotags: `class:"public"`
 	// An opaque token that Boundary uses to continue an existing iteration or
 	// request updated items. If you do not specify a token, pagination
 	// starts from the beginning. To learn more about list pagination
 	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
-	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If you do not set a page size, Boundary uses the configured default page size.
 	// If the page_size is greater than the default page size configured,
 	// Boundary truncates the page size to this number.
-	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
+	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,22 +217,22 @@ type ListAuthMethodsResponse struct {
 	// Delta signifies that this is part of a paginated result
 	// or an update to a previously completed pagination.
 	// Complete signifies that it is the last page.
-	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public"` // @gotags: `class:"public"`
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing pagination or
 	// request updated items. Use this token in the next list request
 	// to request the next page.
-	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
 	// The name of the field which the items are sorted by.
-	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public"` // @gotags: `class:"public"`
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty"` // @gotags: `class:"public"`
 	// The direction of the sort, either "asc" or "desc".
-	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
 	// as part of a pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty"` // @gotags: `class:"public"`
 	// An estimate at the total items available. This may change during pagination.
-	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -362,7 +362,7 @@ func (x *CreateAuthMethodRequest) GetItem() *authmethods.AuthMethod {
 
 type CreateAuthMethodResponse struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Uri           string                  `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                  `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *authmethods.AuthMethod `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -415,7 +415,7 @@ func (x *CreateAuthMethodResponse) GetItem() *authmethods.AuthMethod {
 type UpdateAuthMethodRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the auth method that should be updated
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// A subset of the auth method containing the fields to update.
 	Item          *authmethods.AuthMethod `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask  `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
@@ -521,7 +521,7 @@ func (x *UpdateAuthMethodResponse) GetItem() *authmethods.AuthMethod {
 type DeleteAuthMethodRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the auth method to delete.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -603,11 +603,11 @@ func (*DeleteAuthMethodResponse) Descriptor() ([]byte, []int) {
 type OidcChangeStateAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// state must be `inactive`, `active-private`, or `active-public`
-	State string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
+	State string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"` // @gotags: `class:"public"`
 	// This flag is only useful for an OIDC auth method. It should not be used
 	// unless the OIDC provider's config is incorrectly set and is stopping the
 	// activation of this auth method.
-	DisableDiscoveredConfigValidation bool `protobuf:"varint,2,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty" class:"public"` // @gotags: `class:"public"`
+	DisableDiscoveredConfigValidation bool `protobuf:"varint,2,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"` // @gotags: `class:"public"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -658,10 +658,10 @@ func (x *OidcChangeStateAttributes) GetDisableDiscoveredConfigValidation() bool 
 
 type ChangeStateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*ChangeStateRequest_Attributes
@@ -806,8 +806,8 @@ func (x *ChangeStateResponse) GetItem() *authmethods.AuthMethod {
 // field names and types.
 type PasswordLoginAttributes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	LoginName     string                 `protobuf:"bytes,1,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"`     // @gotags: `class:"secret"`
+	LoginName     string                 `protobuf:"bytes,1,opt,name=login_name,proto3" json:"login_name,omitempty"` // @gotags: `class:"sensitive"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`     // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -863,7 +863,7 @@ type OidcStartAttributes struct {
 	// An object which will be marshaled as JSON and roundtripped in the token command call.
 	RoundtripPayload *structpb.Struct `protobuf:"bytes,1,opt,name=roundtrip_payload,proto3" json:"roundtrip_payload,omitempty"`
 	// Cached marshaled payload. This is not ingressed from the client; anything found will be thrown out.
-	CachedRoundtripPayload string `protobuf:"bytes,2,opt,name=cached_roundtrip_payload,json=cachedRoundtripPayload,proto3" json:"cached_roundtrip_payload,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	CachedRoundtripPayload string `protobuf:"bytes,2,opt,name=cached_roundtrip_payload,json=cachedRoundtripPayload,proto3" json:"cached_roundtrip_payload,omitempty"` // @gotags: `class:"sensitive"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -917,8 +917,8 @@ func (x *OidcStartAttributes) GetCachedRoundtripPayload() string {
 // to define the expected field names and types.
 type LdapLoginAttributes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	LoginName     string                 `protobuf:"bytes,10,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
-	Password      string                 `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"`     // @gotags: `class:"secret"`
+	LoginName     string                 `protobuf:"bytes,10,opt,name=login_name,proto3" json:"login_name,omitempty"` // @gotags: `class:"sensitive"`
+	Password      string                 `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"`     // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -970,15 +970,15 @@ func (x *LdapLoginAttributes) GetPassword() string {
 type AuthenticateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the auth method in the system that should be used for authentication.
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
 	//
 	// Deprecated: Marked as deprecated in controller/api/services/v1/auth_method_service.proto.
-	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty" class:"public"` // @gotags: `class:"public"`
+	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty"` // @gotags: `class:"public"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*AuthenticateRequest_Attributes
@@ -989,7 +989,7 @@ type AuthenticateRequest struct {
 	//	*AuthenticateRequest_LdapLoginAttributes
 	Attrs isAuthenticateRequest_Attrs `protobuf_oneof:"attrs"`
 	// The command to perform. One of "login", "callback", or "token".
-	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"` // @gotags: `class:"public"`
+	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1160,7 +1160,7 @@ func (*AuthenticateRequest_LdapLoginAttributes) isAuthenticateRequest_Attrs() {}
 type AuthenticateResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the token returned. Either "cookie" or "token".
-	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*AuthenticateResponse_Attributes
@@ -1170,7 +1170,7 @@ type AuthenticateResponse struct {
 	//	*AuthenticateResponse_AuthTokenResponse
 	Attrs isAuthenticateResponse_Attrs `protobuf_oneof:"attrs"`
 	// The command that was performed.
-	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"` // @gotags: `class:"public"`
+	Command       string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -34,10 +34,10 @@ const (
 type Alias struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the alias referencing this target.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Ouput only. The value of the alias referencing this target.
-	Value         string                 `protobuf:"bytes,20,opt,name=value,proto3" json:"value,omitempty" class:"public" eventstream:"observation"`       // @gotags: `class:"public" eventstream:"observation"`
-	ScopeId       string                 `protobuf:"bytes,30,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`;
+	Value         string                 `protobuf:"bytes,20,opt,name=value,proto3" json:"value,omitempty"`       // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId       string                 `protobuf:"bytes,30,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`;
 	Attributes    *TargetAliasAttributes `protobuf:"bytes,40,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -103,7 +103,7 @@ func (x *Alias) GetAttributes() *TargetAliasAttributes {
 
 type TargetAliasAttributes struct {
 	state                     protoimpl.MessageState     `protogen:"open.v1"`
-	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty"` // @gotags: `class:"public"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -153,7 +153,7 @@ type AuthorizeSessionArguments struct {
 	// in this value through the -host-id flag. If the host-id flag is also
 	// specified when calling authorize-session an error will be returned unless
 	// the provided host-id matches this value.
-	HostId        string `protobuf:"bytes,1,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostId        string `protobuf:"bytes,1,opt,name=host_id,proto3" json:"host_id,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -198,9 +198,9 @@ func (x *AuthorizeSessionArguments) GetHostId() string {
 type HostSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Host Set.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Catalog to which this Host Source belongs.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -252,17 +252,17 @@ func (x *HostSource) GetHostCatalogId() string {
 type CredentialSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Credential. May be empty if the credential is dynamically generated from a library.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	// Output only. The name of the Credential source.
-	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Output only. The description of the Credential source.
-	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// Output only. The Credential Store to which this Credential source belongs.
-	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"` // @gotags: `class:"public"`
 	// Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
-	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public"`
 	// Output only. The type of the credential, empty if unspecified.
-	CredentialType string `protobuf:"bytes,70,opt,name=credential_type,json=credentialType,proto3" json:"credential_type,omitempty" class:"public"` // @gotags: `class:"public"`
+	CredentialType string `protobuf:"bytes,70,opt,name=credential_type,json=credentialType,proto3" json:"credential_type,omitempty"` // @gotags: `class:"public"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -344,7 +344,7 @@ type SessionSecret struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The base64-encoded value representing the raw bytes from the
 	// credential provider.
-	Raw string `protobuf:"bytes,10,opt,name=raw,proto3" json:"raw,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Raw string `protobuf:"bytes,10,opt,name=raw,proto3" json:"raw,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The decoded raw string, if a JSON object.
 	Decoded       *structpb.Struct `protobuf:"bytes,20,opt,name=decoded,proto3" json:"decoded,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -464,48 +464,48 @@ func (x *SessionCredential) GetCredential() *structpb.Struct {
 type Target struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the resource.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Required name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The type of the Target.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The IDs of the Host Sources associated with this Target.
-	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Sources associated with this Target.
 	HostSources []*HostSource `protobuf:"bytes,430,rep,name=host_sources,proto3" json:"host_sources,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
-	SessionMaxSeconds *wrapperspb.UInt32Value `protobuf:"bytes,120,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty" class:"public"` // @gotags: `class:"public"`
+	SessionMaxSeconds *wrapperspb.UInt32Value `protobuf:"bytes,120,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty"` // @gotags: `class:"public"`
 	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty" class:"public"` // @gotags: `class:"public"`
+	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"` // @gotags: `class:"public"`
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	// Deprecated; use egress or ingress worker filters instead.
 	//
 	// Deprecated: Marked as deprecated in controller/api/resources/targets/v1/target.proto.
-	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"` // @gotags: `class:"public"`
 	// Optional boolean expressions to filter the egress workers that are allowed to satisfy this request.
-	EgressWorkerFilter *wrapperspb.StringValue `protobuf:"bytes,160,opt,name=egress_worker_filter,proto3" json:"egress_worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	EgressWorkerFilter *wrapperspb.StringValue `protobuf:"bytes,160,opt,name=egress_worker_filter,proto3" json:"egress_worker_filter,omitempty"` // @gotags: `class:"public"`
 	// Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
 	// Unsupported on OSS.
-	IngressWorkerFilter *wrapperspb.StringValue `protobuf:"bytes,170,opt,name=ingress_worker_filter,proto3" json:"ingress_worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	IngressWorkerFilter *wrapperspb.StringValue `protobuf:"bytes,170,opt,name=ingress_worker_filter,proto3" json:"ingress_worker_filter,omitempty"` // @gotags: `class:"public"`
 	// Output only. The IDs of the brokered credential source ids associated with this Target.
-	BrokeredCredentialSourceIds []string `protobuf:"bytes,440,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	BrokeredCredentialSourceIds []string `protobuf:"bytes,440,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty"` // @gotags: `class:"public"`
 	// Output only. The brokered credential sources associated with this Target.
 	BrokeredCredentialSources []*CredentialSource `protobuf:"bytes,450,rep,name=brokered_credential_sources,proto3" json:"brokered_credential_sources,omitempty"`
 	// Output only. The IDs of the injected application credential source ids associated with this Target.
-	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,520,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,520,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty"` // @gotags: `class:"public"`
 	// Output only. The injected application credential sources associated with this Target.
 	InjectedApplicationCredentialSources []*CredentialSource `protobuf:"bytes,530,rep,name=injected_application_credential_sources,proto3" json:"injected_application_credential_sources,omitempty"`
 	// Types that are valid to be assigned to Attrs:
@@ -516,14 +516,14 @@ type Target struct {
 	//	*Target_RdpTargetAttributes
 	Attrs isTarget_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	// Optional string value that represents a network resource and is used when establishing a session.
-	Address *wrapperspb.StringValue `protobuf:"bytes,540,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
+	Address *wrapperspb.StringValue `protobuf:"bytes,540,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
 	// Output only. The aliases that point to this Target.
-	Aliases []*Alias `protobuf:"bytes,550,rep,name=aliases,proto3" json:"aliases,omitempty" class:"public"` // @gotags: `class:"public"`
+	Aliases []*Alias `protobuf:"bytes,550,rep,name=aliases,proto3" json:"aliases,omitempty"` // @gotags: `class:"public"`
 	// Input only. with_aliases specify the aliases that should be created when
 	// the target is created.  This field is only usable at target creation time.
-	WithAliases   []*Alias `protobuf:"bytes,560,rep,name=with_aliases,proto3" json:"with_aliases,omitempty" class:"public"` // @gotags: `class:"public"`
+	WithAliases   []*Alias `protobuf:"bytes,560,rep,name=with_aliases,proto3" json:"with_aliases,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -803,9 +803,9 @@ func (*Target_RdpTargetAttributes) isTarget_Attrs() {}
 type TcpTargetAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
-	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty"` // @gotags: `class:"public"`
 	// The default TCP port that will be listened on by the client's local proxy.
-	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -859,13 +859,13 @@ type SshTargetAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The default SSH port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
 	// If this is not specified the DefaultPort will be 22.
-	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty"` // @gotags: `class:"public"`
 	// The default TCP port that will be listened on by the client's local proxy.
-	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty"` // @gotags: `class:"public"`
 	// PublicId of the storage bucket associated with the target
-	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// A boolean indicating if session recording has been enabled
-	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -933,9 +933,9 @@ type RdpTargetAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The default RDP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
 	// If this is not specified the DefaultPort will be 3389.
-	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty"` // @gotags: `class:"public"`
 	// The default RDP port that will be listened on by the client's local proxy.
-	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -988,7 +988,7 @@ func (x *RdpTargetAttributes) GetDefaultClientPort() *wrapperspb.UInt32Value {
 type WorkerInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The address of the worker.
-	Address       string `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
+	Address       string `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1035,34 +1035,34 @@ func (x *WorkerInfo) GetAddress() string {
 type SessionAuthorizationData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Target authorizing this session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this the Target that authorized this session.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Type of the session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
 	ConnectionLimit int32 `protobuf:"varint,90,opt,name=connection_limit,proto3" json:"connection_limit,omitempty"`
 	// Output only. The endpoint port that will be connected to, either from a
 	// port directly on the target or from a service definition.
-	EndpointPort uint32 `protobuf:"varint,102,opt,name=endpoint_port,proto3" json:"endpoint_port,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	EndpointPort uint32 `protobuf:"varint,102,opt,name=endpoint_port,proto3" json:"endpoint_port,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The expiration time of the session.
-	Expiration *timestamppb.Timestamp `protobuf:"bytes,105,opt,name=expiration,proto3" json:"expiration,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Expiration *timestamppb.Timestamp `protobuf:"bytes,105,opt,name=expiration,proto3" json:"expiration,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The certificate to use when connecting. Raw DER bytes.
-	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty"` // @gotags: `class:"sensitive"`
 	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
-	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
-	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The endpoint, for some special command handling.
-	Endpoint string `protobuf:"bytes,141,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
+	Endpoint string `protobuf:"bytes,141,opt,name=endpoint,proto3" json:"endpoint,omitempty"` // @gotags: `class:"public"`
 	// Output only. Worker information. The first worker in the array should be prioritized.
 	WorkerInfo []*WorkerInfo `protobuf:"bytes,150,rep,name=worker_info,proto3" json:"worker_info,omitempty"`
 	// Output only. A default port to listen on for client connections.
-	DefaultClientPort uint32 `protobuf:"varint,160,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
+	DefaultClientPort uint32 `protobuf:"varint,160,opt,name=default_client_port,proto3" json:"default_client_port,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1199,36 +1199,36 @@ func (x *SessionAuthorizationData) GetDefaultClientPort() uint32 {
 type SessionAuthorization struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Target authorizing this Session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The User for which this Session was authorized.
-	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Set containing the Host being used for this Session.
-	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host whose address is being used as the endpoint for this Session.
-	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
-	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
 	ConnectionLimit int32 `protobuf:"varint,95,opt,name=connection_limit,proto3" json:"connection_limit,omitempty"`
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
-	Endpoint string `protobuf:"bytes,100,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
+	Endpoint string `protobuf:"bytes,100,opt,name=endpoint,proto3" json:"endpoint,omitempty"` // @gotags: `class:"public"`
 	// Output only. The endpoint port that will be connected to, either from a
 	// port directly on the target or from a service definition.
-	EndpointPort uint32 `protobuf:"varint,102,opt,name=endpoint_port,proto3" json:"endpoint_port,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	EndpointPort uint32 `protobuf:"varint,102,opt,name=endpoint_port,proto3" json:"endpoint_port,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The expiration time of the session.
-	Expiration *timestamppb.Timestamp `protobuf:"bytes,105,opt,name=expiration,proto3" json:"expiration,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Expiration *timestamppb.Timestamp `protobuf:"bytes,105,opt,name=expiration,proto3" json:"expiration,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The credentials for this session.
 	Credentials []*SessionCredential `protobuf:"bytes,110,rep,name=credentials,proto3" json:"credentials,omitempty"`
 	// Output only. The ID of the Session Recording.
-	SessionRecordingId string `protobuf:"bytes,115,opt,name=session_recording_id,proto3" json:"session_recording_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionRecordingId string `protobuf:"bytes,115,opt,name=session_recording_id,proto3" json:"session_recording_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1372,9 +1372,9 @@ func (x *SessionAuthorization) GetSessionRecordingId() string {
 type UsernamePasswordCredential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Username of the credential
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Password of the credential
-	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1427,11 +1427,11 @@ func (x *UsernamePasswordCredential) GetPassword() string {
 type UsernamePasswordDomainCredential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Username of the credential
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Password of the credential
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	// Domain of the credential
-	Domain        string `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty" class:"public"` // @gotags: `class:"public"`
+	Domain        string `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1491,11 +1491,11 @@ func (x *UsernamePasswordDomainCredential) GetDomain() string {
 type SshPrivateKeyCredential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Username of the credential
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Private key of the credential
-	PrivateKey string `protobuf:"bytes,2,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	PrivateKey string `protobuf:"bytes,2,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"` // @gotags: `class:"secret"`
 	// The optional passphrase of the private_key
-	PrivateKeyPassphrase string `protobuf:"bytes,3,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	PrivateKeyPassphrase string `protobuf:"bytes,3,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty"` // @gotags: `class:"secret"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }

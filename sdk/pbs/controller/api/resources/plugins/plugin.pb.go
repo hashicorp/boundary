@@ -27,11 +27,11 @@ const (
 type PluginInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Plugin.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The name of the plugin resource in boundary, if any.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Output only. The description of the plugin in boundary, if any.
-	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

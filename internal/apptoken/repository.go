@@ -64,11 +64,11 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-	// case strings.HasPrefix(token.GetScopeId(), globals.OrgPrefix):
-	// 	createdToken, err = r.createAppTokenOrg(ctx, token)
-	// 	if err != nil {
-	// 		return nil, errors.Wrap(ctx, err, op)
-	// 	}
+	case strings.HasPrefix(token.GetScopeId(), globals.OrgPrefix):
+		token, err = r.createAppTokenOrg(ctx, token, id)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	// case strings.HasPrefix(token.GetScopeId(), globals.ProjectPrefix):
 	// 	createdToken, err = r.createAppTokenProj(ctx, token)
 	// 	if err != nil {
@@ -206,7 +206,7 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken, 
 		}
 
 		for _, gs := range perm.GrantedScopes {
-			if gs == "this" || gs == "children" || gs == "descendants" {
+			if gs == "this" || gs == "children" || gs == "descendants" || globalPermGrantScope == "descendants" {
 				continue
 			}
 			switch {
@@ -333,8 +333,8 @@ func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken, pub
 			}
 
 			if strings.HasPrefix(gs, globals.ProjectPrefix) {
-				individualProjOrgPermToCreate := &appTokenPermissionOrgIndividualProjectGrantScope{
-					AppTokenPermissionOrgIndividualProjectGrantScope: &store.AppTokenPermissionOrgIndividualProjectGrantScope{
+				individualProjOrgPermToCreate := &appTokenPermissionOrgIndividualGrantScope{
+					AppTokenPermissionOrgIndividualGrantScope: &store.AppTokenPermissionOrgIndividualGrantScope{
 						PermissionId: permId,
 						GrantScope:   orgPermGrantScope,
 						ScopeId:      gs,

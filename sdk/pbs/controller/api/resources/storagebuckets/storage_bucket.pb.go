@@ -34,44 +34,44 @@ const (
 type StorageBucket struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the storage bucket.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Scope of which this storage bucket is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The ID of the plugin of which this storage bucket is created.
-	PluginId string `protobuf:"bytes,34,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	PluginId string `protobuf:"bytes,34,opt,name=plugin_id,proto3" json:"plugin_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Plugin information for this resource.
 	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// The name of the bucket within the external object store service.
-	BucketName string `protobuf:"bytes,60,opt,name=bucket_name,proto3" json:"bucket_name,omitempty" class:"public"` // @gotags: `class:"public"`
+	BucketName string `protobuf:"bytes,60,opt,name=bucket_name,proto3" json:"bucket_name,omitempty"` // @gotags: `class:"public"`
 	// The prefix used to organize the data held within the external object store.
-	BucketPrefix string `protobuf:"bytes,70,opt,name=bucket_prefix,proto3" json:"bucket_prefix,omitempty" class:"public"` // @gotags: `class:"public"`
+	BucketPrefix string `protobuf:"bytes,70,opt,name=bucket_prefix,proto3" json:"bucket_prefix,omitempty"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,80,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,80,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,90,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,90,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"secret"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,100,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,100,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The type of Storage Bucket (currently only plugin).
-	Type string `protobuf:"bytes,110,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,110,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	// Attributes specific to the catalog type.
-	Attributes *structpb.Struct `protobuf:"bytes,120,opt,name=attributes,proto3" json:"attributes,omitempty" class:"public"` // @gotags: `class:"public"`
+	Attributes *structpb.Struct `protobuf:"bytes,120,opt,name=attributes,proto3" json:"attributes,omitempty"` // @gotags: `class:"public"`
 	// Secrets specific to the storage bucket type. These are never output.
-	Secrets *structpb.Struct `protobuf:"bytes,130,opt,name=secrets,proto3" json:"secrets,omitempty" class:"public"` // @gotags: `class:"public"`
+	Secrets *structpb.Struct `protobuf:"bytes,130,opt,name=secrets,proto3" json:"secrets,omitempty"` // @gotags: `class:"public"`
 	// Output only. The HMAC of the last secrets supplied via the API, if any.
-	SecretsHmac string `protobuf:"bytes,140,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	SecretsHmac string `protobuf:"bytes,140,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty"` // @gotags: `class:"public"`
 	// Filters to the worker(s) that can handle requests for this storage bucket
-	WorkerFilter string `protobuf:"bytes,150,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	WorkerFilter string `protobuf:"bytes,150,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"` // @gotags: `class:"public"`
 	// Internal use only. The storage bucket credential id for this storage bucket.
-	StorageBucketCredentialId string `protobuf:"bytes,160,opt,name=storage_bucket_credential_id,json=storageBucketCredentialId,proto3" json:"storage_bucket_credential_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	StorageBucketCredentialId string `protobuf:"bytes,160,opt,name=storage_bucket_credential_id,json=storageBucketCredentialId,proto3" json:"storage_bucket_credential_id,omitempty"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }

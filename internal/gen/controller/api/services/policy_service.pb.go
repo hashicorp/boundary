@@ -31,7 +31,7 @@ const (
 
 type GetPolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,19 +119,19 @@ func (x *GetPolicyResponse) GetItem() *policies.Policy {
 
 type ListPoliciesRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	Recursive bool                   `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`           // @gotags: `class:"public" eventstream:"observation"`
-	Filter    string                 `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                  // @gotags: `class:"public"`
+	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool                   `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty"`           // @gotags: `class:"public" eventstream:"observation"`
+	Filter    string                 `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`                  // @gotags: `class:"public"`
 	// An opaque token that Boundary uses to continue an existing iteration or
 	// request updated items. If you do not specify a token, pagination
 	// starts from the beginning. To learn more about list pagination
 	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
-	ListToken string `protobuf:"bytes,4,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,4,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
 	// If the page_size is greater than the default page configured,
 	// the page size will be truncated to this number..
-	PageSize      uint32 `protobuf:"varint,5,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
+	PageSize      uint32 `protobuf:"varint,5,opt,name=page_size,proto3" json:"page_size,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -208,22 +208,22 @@ type ListPoliciesResponse struct {
 	// Delta signifies that this is part of a paginated result
 	// or an update to a previously completed pagination.
 	// Complete signifies that it is the last page.
-	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public"` // @gotags: `class:"public"`
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing pagination or
 	// request updated items. Use this token in the next list request
 	// to request the next page.
-	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
 	// The name of the field which the items are sorted by.
-	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public"` // @gotags: `class:"public"`
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty"` // @gotags: `class:"public"`
 	// The direction of the sort, either "asc" or "desc".
-	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
 	// as part of a pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty"` // @gotags: `class:"public"`
 	// An estimate at the total items available. This may change during pagination.
-	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -353,7 +353,7 @@ func (x *CreatePolicyRequest) GetItem() *policies.Policy {
 
 type CreatePolicyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *policies.Policy       `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -405,7 +405,7 @@ func (x *CreatePolicyResponse) GetItem() *policies.Policy {
 
 type UpdatePolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *policies.Policy       `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -509,7 +509,7 @@ func (x *UpdatePolicyResponse) GetItem() *policies.Policy {
 
 type DeletePolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

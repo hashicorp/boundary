@@ -30,9 +30,9 @@ const (
 type MonthlyActiveUsersRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An optional start time of the billing period to query, in the format of YYYY-MM.
-	StartTime string `protobuf:"bytes,1,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public"` // @gotags: class:"public"
+	StartTime string `protobuf:"bytes,1,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: class:"public"
 	// An optional end time of the billing period to query, in the format of YYYY-MM.
-	EndTime       string `protobuf:"bytes,2,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public"` // @gotags: class:"public"
+	EndTime       string `protobuf:"bytes,2,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

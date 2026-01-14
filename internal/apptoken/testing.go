@@ -178,12 +178,27 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 }
 
 // these will eventually expand to cover org and proj
-func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string, wantPerms []testPermission) error {
+func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
-	permQuery := `
-		select grant_scope, grant_this_scope from app_token_permission_global where app_token_id = $1
-	`
+	var permQuery string
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		permQuery = `
+			select grant_scope, grant_this_scope from app_token_permission_global where app_token_id = $1
+		`
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		permQuery = `
+			select grant_scope, grant_this_scope from app_token_permission_org where app_token_id = $1
+		`
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		permQuery = `
+			select grant_scope, grant_this_scope from app_token_permission_project where app_token_id = $1
+		`
+	default:
+		return fmt.Errorf("unknown scope id prefix: %s", scopeId)
+	}
+
 	rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
 	if err != nil {
 		return err
@@ -256,38 +271,56 @@ func testCheckAppTokenCipher(t *testing.T, repo *Repository, appTokenId string) 
 func testCheckAppTokenIndividualPermissionGrants(t *testing.T, repo *Repository, appTokenId string, wantScopes []string) error {
 	assert := assert.New(t)
 	var foundScopes []string
-	permIndivOrgGrantsQuery := `
+	permGlobalIndivOrgGrantsQuery := `
 			select scope_id from app_token_permission_global_individual_org_grant_scope where permission_id in (
 				select private_id from app_token_permission where app_token_id = $1
 			)
 		`
-	permIndivProjectGrantsQuery := `
+	permGlobalIndivProjectGrantsQuery := `
 			select scope_id from app_token_permission_global_individual_project_grant_scope where permission_id in (
 				select private_id from app_token_permission where app_token_id = $1
 			)
 		`
-	rows, err := repo.reader.Query(context.Background(), permIndivOrgGrantsQuery, []any{appTokenId})
+	permOrgIndivGrantsQuery := `
+			select scope_id from app_token_permission_org_individual_grant_scope where permission_id in (
+				select private_id from app_token_permission where app_token_id = $1
+			)
+		`
+	rowsGlobalIndOrg, err := repo.reader.Query(context.Background(), permGlobalIndivOrgGrantsQuery, []any{appTokenId})
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer rowsGlobalIndOrg.Close()
 
-	for rows.Next() {
+	for rowsGlobalIndOrg.Next() {
 		var scopeId string
-		if err := rows.Scan(&scopeId); err != nil {
+		if err := rowsGlobalIndOrg.Scan(&scopeId); err != nil {
 			return err
 		}
 		foundScopes = append(foundScopes, scopeId)
 	}
 
-	rows2, err := repo.reader.Query(context.Background(), permIndivProjectGrantsQuery, []any{appTokenId})
+	rowsGlobalIndProj, err := repo.reader.Query(context.Background(), permGlobalIndivProjectGrantsQuery, []any{appTokenId})
 	if err != nil {
 		return err
 	}
-	defer rows2.Close()
-	for rows2.Next() {
+	defer rowsGlobalIndProj.Close()
+	for rowsGlobalIndProj.Next() {
 		var scopeId string
-		if err := rows2.Scan(&scopeId); err != nil {
+		if err := rowsGlobalIndProj.Scan(&scopeId); err != nil {
+			return err
+		}
+		foundScopes = append(foundScopes, scopeId)
+	}
+
+	rowsOrgInd, err := repo.reader.Query(context.Background(), permOrgIndivGrantsQuery, []any{appTokenId})
+	if err != nil {
+		return err
+	}
+	defer rowsOrgInd.Close()
+	for rowsOrgInd.Next() {
+		var scopeId string
+		if err := rowsOrgInd.Scan(&scopeId); err != nil {
 			return err
 		}
 		foundScopes = append(foundScopes, scopeId)
