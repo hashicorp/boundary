@@ -72,6 +72,16 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				ExpirationTime:     token.ExpirationTime,
 			},
 		}
+	// case strings.HasPrefix(token.GetScopeId(), globals.OrgPrefix):
+	// 	createdToken, err = r.createAppTokenOrg(ctx, token)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(ctx, err, op)
+	// 	}
+	// case strings.HasPrefix(token.GetScopeId(), globals.ProjectPrefix):
+	// 	createdToken, err = r.createAppTokenProj(ctx, token)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(ctx, err, op)
+	// 	}
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
@@ -97,6 +107,36 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	}
 	dbInserts = append(dbInserts, atc)
 
+	return token, nil
+}
+
+func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken, publicId string) (*AppToken, error) {
+	const op = "apptoken.(Repository).createAppTokenGlobal"
+	tokenToCreate := &appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{
+			PublicId:           publicId,
+			ScopeId:            token.ScopeId,
+			Name:               token.Name,
+			Description:        token.Description,
+			Revoked:            token.Revoked,
+			CreatedByUserId:    token.CreatedByUserId,
+			TimeToStaleSeconds: token.TimeToStaleSeconds,
+		},
+	}
+
+	// insert into app_token_global table
+	err := r.writeToDb(ctx, tokenToCreate)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating app token"))
+	}
+	if err := r.reader.LookupByPublicId(ctx, tokenToCreate); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("app token lookup"))
+	}
+	token.PublicId = tokenToCreate.PublicId
+	token.ApproximateLastAccessTime = tokenToCreate.ApproximateLastAccessTime
+	token.CreateTime = tokenToCreate.CreateTime
+	token.ExpirationTime = tokenToCreate.ExpirationTime
+	token.Revoked = tokenToCreate.Revoked
 	// each permission uses the same permission ID for its grants and scopes
 	// they're a composite key in the app_token_permission_grant table
 	for _, perm := range token.Permissions {
@@ -137,7 +177,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		globalPermToCreate := &appTokenPermissionGlobal{
 			AppTokenPermissionGlobal: &store.AppTokenPermissionGlobal{
 				PrivateId:      permId,
-				AppTokenId:     id,
+				AppTokenId:     publicId,
 				GrantThisScope: grantThisScope,
 				GrantScope:     globalPermGrantScope,
 				Description:    perm.Label,
@@ -195,6 +235,8 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 			}
 		}
 	}
+	return token, nil
+}
 
 	// batch write all collected inserts
 	_, err = r.writer.DoTx(
