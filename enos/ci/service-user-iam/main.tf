@@ -65,7 +65,10 @@ data "aws_iam_policy_document" "enos_policy_document" {
   statement {
     effect = "Allow"
     actions = [
-      "acm:ImportCertificate"
+      "acm:ImportCertificate",
+      "acm:DeleteCertificate",
+      "acm:DescribeCertificate",
+      "acm:ListTagsForCertificate",
       "ec2:AssociateRouteTable",
       "ec2:AttachInternetGateway",
       "ec2:AuthorizeSecurityGroupEgress",

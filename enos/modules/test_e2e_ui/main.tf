@@ -196,8 +196,8 @@ variable "worker_tag_egress" {
 }
 variable "alb_cert" {
   description = "public cert for the alb"
-  type       = string
-  default    = ""
+  type        = string
+  default     = ""
 }
 
 locals {
