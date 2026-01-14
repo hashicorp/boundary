@@ -182,7 +182,7 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 }
 
 // these will eventually expand to cover org and proj
-func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string, wantPerms []testPermission) error {
+func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
 	permQuery := `

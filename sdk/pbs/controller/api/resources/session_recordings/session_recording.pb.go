@@ -35,25 +35,25 @@ const (
 type ChannelRecording struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Channel recording.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes uploaded from the client in the Channel.
-	BytesUp uint64 `protobuf:"varint,2,opt,name=bytes_up,proto3" json:"bytes_up,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesUp uint64 `protobuf:"varint,2,opt,name=bytes_up,proto3" json:"bytes_up,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes downloaded to the client in the Channel.
-	BytesDown uint64 `protobuf:"varint,3,opt,name=bytes_down,proto3" json:"bytes_down,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesDown uint64 `protobuf:"varint,3,opt,name=bytes_down,proto3" json:"bytes_down,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Channel was created in the controller.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time of the most recent update to the Channel.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Channel started.
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Channel ended.
-	EndTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	EndTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total duration of the Channel.
-	Duration *durationpb.Duration `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Duration *durationpb.Duration `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// MimeTypes define the mime types that can
 	// be used to consume the recording of this Channel.
 	// The only supported mime type is "application/x-asciicast".
-	MimeTypes     []string `protobuf:"bytes,9,rep,name=mime_types,proto3" json:"mime_types,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	MimeTypes     []string `protobuf:"bytes,9,rep,name=mime_types,proto3" json:"mime_types,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -155,27 +155,27 @@ func (x *ChannelRecording) GetMimeTypes() []string {
 type ConnectionRecording struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Connection recording.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes uploaded from the client in the Connection.
 	// This includes any protocol overhead.
-	BytesUp uint64 `protobuf:"varint,2,opt,name=bytes_up,proto3" json:"bytes_up,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesUp uint64 `protobuf:"varint,2,opt,name=bytes_up,proto3" json:"bytes_up,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes downloaded to the client in the Connection.
 	// This includes any protocol overhead.
-	BytesDown uint64 `protobuf:"varint,3,opt,name=bytes_down,proto3" json:"bytes_down,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesDown uint64 `protobuf:"varint,3,opt,name=bytes_down,proto3" json:"bytes_down,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Connection was created in the controller.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time of the most recent update to the Connection.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Connection started.
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Connection ended.
-	EndTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	EndTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total duration of the Connection.
-	Duration *durationpb.Duration `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Duration *durationpb.Duration `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// MimeTypes define the mime types that can
 	// be used to consume the recording of this Connection.
 	// No mime types are currently supported.
-	MimeTypes []string `protobuf:"bytes,9,rep,name=mime_types,proto3" json:"mime_types,omitempty" class:"public"` // @gotags: class:"public"
+	MimeTypes []string `protobuf:"bytes,9,rep,name=mime_types,proto3" json:"mime_types,omitempty"` // @gotags: class:"public"
 	// Optionally, the channels used in this Connection,
 	// if it is using a multiplexed protocol, such as SSH.
 	ChannelRecordings []*ChannelRecording `protobuf:"bytes,10,rep,name=channel_recordings,proto3" json:"channel_recordings,omitempty"`
@@ -287,11 +287,11 @@ func (x *ConnectionRecording) GetChannelRecordings() []*ChannelRecording {
 type User struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the User.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The name of the User that created the Session.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty" class:"sensitive"` // @gotags: class:"sensitive"
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"sensitive"
 	// The description of the User that created the Session.
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"sensitive"` // @gotags: class:"sensitive"
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"sensitive"
 	// The scope that the User is in.
 	Scope         *scopes.ScopeInfo `protobuf:"bytes,7,opt,name=scope,proto3" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -361,17 +361,17 @@ func (x *User) GetScope() *scopes.ScopeInfo {
 type HostCatalog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Host Catalog
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The scope that the Host Catalog is in
 	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The plugin id used by this Host Catalog, if any.
-	PluginId string `protobuf:"bytes,3,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	PluginId string `protobuf:"bytes,3,opt,name=plugin_id,proto3" json:"plugin_id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The name of the Host Catalog, if set
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// The description of the Host Catalog.
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The type of the Host Catalog.  This will be either "static" or "plugin"
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*HostCatalog_Attributes
@@ -474,7 +474,7 @@ type isHostCatalog_Attrs interface {
 
 type HostCatalog_Attributes struct {
 	// The attributes of the Host Catalog.
-	Attributes *structpb.Struct `protobuf:"bytes,7,opt,name=attributes,proto3,oneof" class:"public"` // @gotags: class:"public"
+	Attributes *structpb.Struct `protobuf:"bytes,7,opt,name=attributes,proto3,oneof"` // @gotags: class:"public"
 }
 
 func (*HostCatalog_Attributes) isHostCatalog_Attrs() {}
@@ -483,24 +483,24 @@ func (*HostCatalog_Attributes) isHostCatalog_Attrs() {}
 type Host struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Host
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The Host Catalog this Host is in
 	HostCatalog *HostCatalog `protobuf:"bytes,2,opt,name=host_catalog,proto3" json:"host_catalog,omitempty"`
 	// The name of the Host, if set.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// The description of the Host, if set.
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The type of the host. This will be either "static" or "plugin"
-	Type string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Host_Attributes
 	//	*Host_StaticHostAttributes
 	Attrs isHost_Attrs `protobuf_oneof:"attrs"`
 	// The external id of the Host, if any.
-	ExternalId string `protobuf:"bytes,7,opt,name=external_id,proto3" json:"external_id,omitempty" class:"public"` // @gotags: class:"public"
+	ExternalId string `protobuf:"bytes,7,opt,name=external_id,proto3" json:"external_id,omitempty"` // @gotags: class:"public"
 	// The external name of the Host, if any.
-	ExternalName  string `protobuf:"bytes,8,opt,name=external_name,proto3" json:"external_name,omitempty" class:"public"` // @gotags: class:"public"
+	ExternalName  string `protobuf:"bytes,8,opt,name=external_name,proto3" json:"external_name,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -629,7 +629,7 @@ func (*Host_StaticHostAttributes) isHost_Attrs() {}
 type StaticHostAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The address specified on a static host
-	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: class:"public"
+	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -675,25 +675,25 @@ func (x *StaticHostAttributes) GetAddress() string {
 type Target struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Target.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The name of the Target, if set.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// The description of the Target, if set.
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The scope that the Target is in.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
-	SessionMaxSeconds uint32 `protobuf:"varint,5,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	SessionMaxSeconds uint32 `protobuf:"varint,5,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-	SessionConnectionLimit int32 `protobuf:"varint,6,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	SessionConnectionLimit int32 `protobuf:"varint,6,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
-	WorkerFilter string `protobuf:"bytes,7,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: class:"public"
+	WorkerFilter string `protobuf:"bytes,7,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"` // @gotags: class:"public"
 	// Optional boolean expressions to filter the egress workers that are allowed to satisfy this request.
-	EgressWorkerFilter string `protobuf:"bytes,8,opt,name=egress_worker_filter,proto3" json:"egress_worker_filter,omitempty" class:"public"` // @gotags: class:"public"
+	EgressWorkerFilter string `protobuf:"bytes,8,opt,name=egress_worker_filter,proto3" json:"egress_worker_filter,omitempty"` // @gotags: class:"public"
 	// Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
-	IngressWorkerFilter string `protobuf:"bytes,9,opt,name=ingress_worker_filter,proto3" json:"ingress_worker_filter,omitempty" class:"public"` // @gotags: class:"public"
+	IngressWorkerFilter string `protobuf:"bytes,9,opt,name=ingress_worker_filter,proto3" json:"ingress_worker_filter,omitempty"` // @gotags: class:"public"
 	// The type of the Target.
-	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Target_Attributes
@@ -849,9 +849,9 @@ func (*Target_SshTargetAttributes) isTarget_Attrs() {}
 type SshTargetAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The default SSH port that is used when connecting to the endpoint.
-	DefaultPort uint32 `protobuf:"varint,1,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: class:"public"
+	DefaultPort uint32 `protobuf:"varint,1,opt,name=default_port,proto3" json:"default_port,omitempty"` // @gotags: class:"public"
 	// The default TCP port that will be listened on by the client's local proxy.
-	DefaultClientPort uint32 `protobuf:"varint,2,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: class:"public"
+	DefaultClientPort uint32 `protobuf:"varint,2,opt,name=default_client_port,proto3" json:"default_client_port,omitempty"` // @gotags: class:"public"
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -904,15 +904,15 @@ func (x *SshTargetAttributes) GetDefaultClientPort() uint32 {
 type CredentialStore struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Credential Store.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The ID of the Scope of which this Credential Store is a part.
-	ScopeId string `protobuf:"bytes,2,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	ScopeId string `protobuf:"bytes,2,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The name for identification purposes if set.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// The description for identification purposes if set.
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The Credential Store type.
-	Type string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*CredentialStore_Attributes
@@ -1033,15 +1033,15 @@ func (*CredentialStore_VaultCredentialStoreAttributes) isCredentialStore_Attrs()
 type VaultCredentialStoreAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The complete url address of vault.
-	Address string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: class:"public"
+	Address string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"` // @gotags: class:"public"
 	// The namespace of vault used by this store
-	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty" class:"public"` // @gotags: class:"public"
+	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"` // @gotags: class:"public"
 	// The value to use as the SNI host when connecting to vault via TLS.
-	TlsServerName string `protobuf:"bytes,3,opt,name=tls_server_name,proto3" json:"tls_server_name,omitempty" class:"public"` // @gotags: class:"public"
+	TlsServerName string `protobuf:"bytes,3,opt,name=tls_server_name,proto3" json:"tls_server_name,omitempty"` // @gotags: class:"public"
 	// Indicates if verification of the TLS certificate is disabled.
-	TlsSkipVerify bool `protobuf:"varint,4,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty" class:"public"` // @gotags: class:"public"
+	TlsSkipVerify bool `protobuf:"varint,4,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty"` // @gotags: class:"public"
 	// Filters to the worker(s) who can handle Vault requests for this cred store if set.
-	WorkerFilter  string `protobuf:"bytes,5,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: class:"public"
+	WorkerFilter  string `protobuf:"bytes,5,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1115,17 +1115,17 @@ func (x *VaultCredentialStoreAttributes) GetWorkerFilter() string {
 type Credential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Credential.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The Credential Store of which this Credential is a part.
 	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty"`
 	// The name of the credential.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// Optional user-set description.
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The purposes for which this Credential was attached to the sesssion.
-	Purposes []string `protobuf:"bytes,5,rep,name=purposes,proto3" json:"purposes,omitempty" class:"public"` // @gotags: class:"public"
+	Purposes []string `protobuf:"bytes,5,rep,name=purposes,proto3" json:"purposes,omitempty"` // @gotags: class:"public"
 	// The Credential type.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Credential_Attributes
@@ -1285,9 +1285,9 @@ func (*Credential_JsonAttributes) isCredential_Attrs() {}
 type UsernamePasswordCredentialAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: class:"sensitive"
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // @gotags: class:"sensitive"
 	// The hmac value of the password.
-	PasswordHmac  string `protobuf:"bytes,2,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: class:"public"
+	PasswordHmac  string `protobuf:"bytes,2,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1340,11 +1340,11 @@ func (x *UsernamePasswordCredentialAttributes) GetPasswordHmac() string {
 type SshPrivateKeyCredentialAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: class:"public"
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // @gotags: class:"public"
 	// The hmac value of the SSH private key.
-	PrivateKeyHmac string `protobuf:"bytes,2,opt,name=private_key_hmac,json=privateKeyHmac,proto3" json:"private_key_hmac,omitempty" class:"public"` // @gotags: class:"public"
+	PrivateKeyHmac string `protobuf:"bytes,2,opt,name=private_key_hmac,json=privateKeyHmac,proto3" json:"private_key_hmac,omitempty"` // @gotags: class:"public"
 	// The hmac value of the SSH private key passphrase.
-	PrivateKeyPassphraseHmac string `protobuf:"bytes,3,opt,name=private_key_passphrase_hmac,json=privateKeyPassphraseHmac,proto3" json:"private_key_passphrase_hmac,omitempty" class:"public"` // @gotags: class:"public"
+	PrivateKeyPassphraseHmac string `protobuf:"bytes,3,opt,name=private_key_passphrase_hmac,json=privateKeyPassphraseHmac,proto3" json:"private_key_passphrase_hmac,omitempty"` // @gotags: class:"public"
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -1404,7 +1404,7 @@ func (x *SshPrivateKeyCredentialAttributes) GetPrivateKeyPassphraseHmac() string
 type JsonCredentialAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The hmac value of the object.
-	ObjectHmac    string `protobuf:"bytes,1,opt,name=object_hmac,json=objectHmac,proto3" json:"object_hmac,omitempty" class:"public"` // @gotags: class:"public"
+	ObjectHmac    string `protobuf:"bytes,1,opt,name=object_hmac,json=objectHmac,proto3" json:"object_hmac,omitempty"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1450,17 +1450,17 @@ func (x *JsonCredentialAttributes) GetObjectHmac() string {
 type CredentialLibrary struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Credential Library.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The credential store of which this library is a part.
 	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty"`
 	// Optional name of this Credential Library.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: class:"public"
 	// Optional user-set description of this Credential Library.
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // @gotags: class:"public"
 	// The purposes for which this CredentialLibrary was attached to the sesssion.
-	Purposes []string `protobuf:"bytes,5,rep,name=purposes,proto3" json:"purposes,omitempty" class:"public"` // @gotags: class:"public"
+	Purposes []string `protobuf:"bytes,5,rep,name=purposes,proto3" json:"purposes,omitempty"` // @gotags: class:"public"
 	// The Credential Library type.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*CredentialLibrary_Attributes
@@ -1621,11 +1621,11 @@ func (*CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes) isCrede
 type VaultCredentialLibraryAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The path in Vault to request credentials from.
-	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty" class:"public"` // @gotags: class:"public"
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"` // @gotags: class:"public"
 	// The HTTP method the library uses to communicate with Vault.
-	HttpMethod string `protobuf:"bytes,2,opt,name=http_method,json=httpMethod,proto3" json:"http_method,omitempty" class:"public"` // @gotags: class:"public"
+	HttpMethod string `protobuf:"bytes,2,opt,name=http_method,json=httpMethod,proto3" json:"http_method,omitempty"` // @gotags: class:"public"
 	// The body of the HTTP request the library sends to vault.
-	HttpRequestBody string `protobuf:"bytes,3,opt,name=http_request_body,json=httpRequestBody,proto3" json:"http_request_body,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	HttpRequestBody string `protobuf:"bytes,3,opt,name=http_request_body,json=httpRequestBody,proto3" json:"http_request_body,omitempty"` // @gotags: `class:"secret"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1685,21 +1685,21 @@ func (x *VaultCredentialLibraryAttributes) GetHttpRequestBody() string {
 type VaultSSHCertificateCredentialLibraryAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The path in Vault to request credentials from.
-	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty" class:"public"` // @gotags: class:"public"
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"` // @gotags: class:"public"
 	// The username used when making an SSH connection.
-	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// The key type to use when generating an SSH private key.
-	KeyType string `protobuf:"bytes,3,opt,name=key_type,json=keyType,proto3" json:"key_type,omitempty" class:"public"` // @gotags: class:"public"
+	KeyType string `protobuf:"bytes,3,opt,name=key_type,json=keyType,proto3" json:"key_type,omitempty"` // @gotags: class:"public"
 	// The number of bits to use to generate an SSH private key.
-	KeyBits uint32 `protobuf:"varint,4,opt,name=key_bits,json=keyBits,proto3" json:"key_bits,omitempty" class:"public"` // @gotags: class:"public"
+	KeyBits uint32 `protobuf:"varint,4,opt,name=key_bits,json=keyBits,proto3" json:"key_bits,omitempty"` // @gotags: class:"public"
 	// The requested time to live for the certificate.
-	Ttl string `protobuf:"bytes,5,opt,name=ttl,proto3" json:"ttl,omitempty" class:"public"` // @gotags: class:"public"
+	Ttl string `protobuf:"bytes,5,opt,name=ttl,proto3" json:"ttl,omitempty"` // @gotags: class:"public"
 	// The critical options that the certificate should be signed for.
-	CriticalOptions map[string]string `protobuf:"bytes,6,rep,name=critical_options,json=criticalOptions,proto3" json:"critical_options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: class:"public"
+	CriticalOptions map[string]string `protobuf:"bytes,6,rep,name=critical_options,json=criticalOptions,proto3" json:"critical_options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: class:"public"
 	// The extensions that the certificate should be signed for.
-	Extensions map[string]string `protobuf:"bytes,7,rep,name=extensions,proto3" json:"extensions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: class:"public"
+	Extensions map[string]string `protobuf:"bytes,7,rep,name=extensions,proto3" json:"extensions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: class:"public"
 	// Principals to be signed as "valid_principles" in addition to username.
-	AdditionalValidPrincipals []string `protobuf:"bytes,8,rep,name=additional_valid_principals,json=additionalValidPrincipals,proto3" json:"additional_valid_principals,omitempty" class:"public"` // @gotags: class:"public"
+	AdditionalValidPrincipals []string `protobuf:"bytes,8,rep,name=additional_valid_principals,json=additionalValidPrincipals,proto3" json:"additional_valid_principals,omitempty"` // @gotags: class:"public"
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -1795,11 +1795,11 @@ func (x *VaultSSHCertificateCredentialLibraryAttributes) GetAdditionalValidPrinc
 type ValuesAtTime struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Information about the User that created the Session.
-	User *User `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty" class:"public"` // @gotags: class:"public"
+	User *User `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"` // @gotags: class:"public"
 	// Information about the Target the Session connected to.
-	Target *Target `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty" class:"public"` // @gotags: class:"public"
+	Target *Target `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"` // @gotags: class:"public"
 	// Information about the Host chosen for the session.
-	Host *Host `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty" class:"public"` // @gotags: class:"public"
+	Host *Host `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"` // @gotags: class:"public"
 	// Information about the Credentials used for this session.
 	Credentials []*Credential `protobuf:"bytes,4,rep,name=credentials,proto3" json:"credentials,omitempty"`
 	// Information about the Credential Libraries used for this session.
@@ -1877,59 +1877,59 @@ func (x *ValuesAtTime) GetCredentialLibraries() []*CredentialLibrary {
 type SessionRecording struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the Session recording.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: class:"public"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public"
 	// The scope that the Session Recording is in.
 	// This is inferred from the storage bucket associated
 	// with the target.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: class:"public"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"` // @gotags: class:"public"
 	// The ID of the Session which this Session Recording recorded.
-	SessionId string `protobuf:"bytes,3,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	SessionId string `protobuf:"bytes,3,opt,name=session_id,proto3" json:"session_id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The ID of the Storage Bucket for the Target of this Session Recording.
-	StorageBucketId string `protobuf:"bytes,4,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	StorageBucketId string `protobuf:"bytes,4,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes uploaded from the client in the Session.
 	// This includes all bytes uploaded over all Connections, including
 	// any protocol overhead.
-	BytesUp uint64 `protobuf:"varint,5,opt,name=bytes_up,proto3" json:"bytes_up,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesUp uint64 `protobuf:"varint,5,opt,name=bytes_up,proto3" json:"bytes_up,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes downloaded to the client in the Session.
 	// This includes all bytes downloaded over all Connections, including
 	// any protocol overhead.
-	BytesDown uint64 `protobuf:"varint,6,opt,name=bytes_down,proto3" json:"bytes_down,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	BytesDown uint64 `protobuf:"varint,6,opt,name=bytes_down,proto3" json:"bytes_down,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Session Recording was created in the controller.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time of the most recent update to the Session Recording.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Session started.
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time the Session ended.
-	EndTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	EndTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The total duration of the Session.
-	Duration *durationpb.Duration `protobuf:"bytes,11,opt,name=duration,proto3" json:"duration,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Duration *durationpb.Duration `protobuf:"bytes,11,opt,name=duration,proto3" json:"duration,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Type of the Session that was recorded (e.g. ssh).
-	Type string `protobuf:"bytes,12,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Type string `protobuf:"bytes,12,opt,name=type,proto3" json:"type,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The current state of the session recording. One of
 	// "started", "available" and "unknown".
-	State string `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	State string `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// Any error seen during the closing of the session recording.
 	// Currently only set if state is "unknown".
-	ErrorDetails string `protobuf:"bytes,14,opt,name=error_details,json=errorDetails,proto3" json:"error_details,omitempty" class:"public"` // @gotags: class:"public"
+	ErrorDetails string `protobuf:"bytes,14,opt,name=error_details,json=errorDetails,proto3" json:"error_details,omitempty"` // @gotags: class:"public"
 	// MimeTypes define the mime types that can
 	// be used to consume the recording of this Session.
 	// No mime types are currently supported.
-	MimeTypes []string `protobuf:"bytes,15,rep,name=mime_types,proto3" json:"mime_types,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	MimeTypes []string `protobuf:"bytes,15,rep,name=mime_types,proto3" json:"mime_types,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The endpoint of the Session; that is, the address to which the egress worker connected.
-	Endpoint string `protobuf:"bytes,16,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: class:"public"
+	Endpoint string `protobuf:"bytes,16,opt,name=endpoint,proto3" json:"endpoint,omitempty"` // @gotags: class:"public"
 	// The recordings of the connections that were created in the Session.
 	// This field may be unset when listing Session recordings.
 	ConnectionRecordings []*ConnectionRecording `protobuf:"bytes,17,rep,name=connection_recordings,proto3" json:"connection_recordings,omitempty"`
 	// create_time_values contains the values of related fields at the time
 	// this Session Recording was created. This may be unset when listing.
-	CreateTimeValues *ValuesAtTime `protobuf:"bytes,18,opt,name=create_time_values,proto3" json:"create_time_values,omitempty" class:"public"` // @gotags: class:"public"
+	CreateTimeValues *ValuesAtTime `protobuf:"bytes,18,opt,name=create_time_values,proto3" json:"create_time_values,omitempty"` // @gotags: class:"public"
 	// The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,19,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: class:"public"
+	AuthorizedActions []string `protobuf:"bytes,19,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: class:"public"
 	// The time until a session recording is required to be stored.
-	RetainUntil *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=retain_until,proto3" json:"retain_until,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	RetainUntil *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=retain_until,proto3" json:"retain_until,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	// The time a session recording is scheduled to be automatically deleted.
-	DeleteAfter   *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=delete_after,proto3" json:"delete_after,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	DeleteAfter   *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=delete_after,proto3" json:"delete_after,omitempty"` // @gotags: class:"public" eventstream:"observation"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

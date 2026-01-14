@@ -34,24 +34,24 @@ const (
 type Credential struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Credential.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
 	// The ID of the Credential Store of which this Credential is a part.
-	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"` // @gotags: `class:"public"`
 	// Output only. Scope information for this Credential.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The Credential type.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Credential_Attributes
@@ -61,7 +61,7 @@ type Credential struct {
 	//	*Credential_UsernamePasswordDomainAttributes
 	Attrs isCredential_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -257,11 +257,11 @@ func (*Credential_UsernamePasswordDomainAttributes) isCredential_Attrs() {}
 type UsernamePasswordAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Input only. The password associated with the credential.
-	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the password.
-	PasswordHmac  string `protobuf:"bytes,30,opt,name=password_hmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	PasswordHmac  string `protobuf:"bytes,30,opt,name=password_hmac,proto3" json:"password_hmac,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -320,12 +320,12 @@ func (x *UsernamePasswordAttributes) GetPasswordHmac() string {
 type UsernamePasswordDomainAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Input only. The password associated with the credential.
-	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the password.
-	PasswordHmac  string                  `protobuf:"bytes,30,opt,name=password_hmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
-	Domain        *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=domain,proto3" json:"domain,omitempty" class:"public"`               // @gotags: `class:"public"`
+	PasswordHmac  string                  `protobuf:"bytes,30,opt,name=password_hmac,proto3" json:"password_hmac,omitempty"` // @gotags: `class:"public"`
+	Domain        *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=domain,proto3" json:"domain,omitempty"`               // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -392,15 +392,15 @@ func (x *UsernamePasswordDomainAttributes) GetDomain() *wrapperspb.StringValue {
 type SshPrivateKeyAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// Input only. The SSH private key associated with the credential.
-	PrivateKey *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	PrivateKey *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=private_key,proto3" json:"private_key,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the SSH private key.
-	PrivateKeyHmac string `protobuf:"bytes,30,opt,name=private_key_hmac,proto3" json:"private_key_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrivateKeyHmac string `protobuf:"bytes,30,opt,name=private_key_hmac,proto3" json:"private_key_hmac,omitempty"` // @gotags: `class:"public"`
 	// Input only. The passphrase for the SSH private key associated with the credential.
-	PrivateKeyPassphrase *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=private_key_passphrase,proto3" json:"private_key_passphrase,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	PrivateKeyPassphrase *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=private_key_passphrase,proto3" json:"private_key_passphrase,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the SSH private key passphrase.
-	PrivateKeyPassphraseHmac string `protobuf:"bytes,50,opt,name=private_key_passphrase_hmac,proto3" json:"private_key_passphrase_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrivateKeyPassphraseHmac string `protobuf:"bytes,50,opt,name=private_key_passphrase_hmac,proto3" json:"private_key_passphrase_hmac,omitempty"` // @gotags: `class:"public"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -474,9 +474,9 @@ func (x *SshPrivateKeyAttributes) GetPrivateKeyPassphraseHmac() string {
 type JsonAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Input only. The secret associated with the credential.
-	Object *structpb.Struct `protobuf:"bytes,10,opt,name=object,proto3" json:"object,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Object *structpb.Struct `protobuf:"bytes,10,opt,name=object,proto3" json:"object,omitempty"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the object.
-	ObjectHmac    string `protobuf:"bytes,20,opt,name=object_hmac,proto3" json:"object_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	ObjectHmac    string `protobuf:"bytes,20,opt,name=object_hmac,proto3" json:"object_hmac,omitempty"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
