@@ -259,6 +259,8 @@ func writeUnsupportedError(w http.ResponseWriter) {
 	http.Error(w, string(b), http.StatusBadRequest)
 }
 
+// Parses a raw sort direction string into a cache.SortDirection
+// Returns the sort direction and whether the provided direction was valid or not
 func parseSortDirection(sd string) (cache.SortDirection, bool) {
 	sd = strings.ToLower(sd)
 	switch sd {
@@ -273,6 +275,8 @@ func parseSortDirection(sd string) (cache.SortDirection, bool) {
 	}
 }
 
+// Parses a raw column name to sort by into a cache.SortBy
+// Returns the column to sort by and whether the provided column was valid or not
 func parseSortBy(sb string, sr cache.SearchableResource) (cache.SortBy, bool) {
 	sb = strings.ToLower(sb)
 	by := cache.SortBy(sb)
