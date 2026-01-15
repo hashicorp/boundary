@@ -28,11 +28,11 @@ const (
 type ActiveUsers struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The number of active users between the start time and end time.
-	Count uint32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"` // @gotags: `class:"public"`
+	Count uint32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The start time of the active users count, inclusive.
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: class:"public"
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public"` // @gotags: class:"public"
 	// Output only. The end time of the active users count, exclusive.
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: class:"public"
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public"` // @gotags: class:"public"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

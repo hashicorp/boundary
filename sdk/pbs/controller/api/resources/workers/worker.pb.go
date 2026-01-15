@@ -33,56 +33,56 @@ const (
 type Worker struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the User.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Scope this resource is in.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes. Can only be set through the API
 	// for `pki`-type workers; read-only for `kms`-type workers.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"sensitive"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Optional user-set description for identification purposes. Can only be set
 	// through the API for `pki`-type workers; read-only for `kms`-type workers.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"sensitive"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The address that this worker is reachable at, as sourced from
 	// the worker's configuration file.
-	Address string `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
+	Address string `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The deduplicated union of the tags reported by the worker from
 	// its configuration and any tags added through other means.  This is used
 	// when applying worker filters.
-	CanonicalTags map[string]*structpb.ListValue `protobuf:"bytes,120,rep,name=canonical_tags,proto3" json:"canonical_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
+	CanonicalTags map[string]*structpb.ListValue `protobuf:"bytes,120,rep,name=canonical_tags,proto3" json:"canonical_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
 	// Output only. The tags set in the worker's configuration file.
-	ConfigTags map[string]*structpb.ListValue `protobuf:"bytes,130,rep,name=config_tags,proto3" json:"config_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
+	ConfigTags map[string]*structpb.ListValue `protobuf:"bytes,130,rep,name=config_tags,proto3" json:"config_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this worker daemon last reported its status.
-	LastStatusTime *timestamppb.Timestamp `protobuf:"bytes,140,opt,name=last_status_time,proto3" json:"last_status_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	LastStatusTime *timestamppb.Timestamp `protobuf:"bytes,140,opt,name=last_status_time,proto3" json:"last_status_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// worker_generated_auth_token is input only. Supports the worker led node
 	// enrollment flow where this credentials token is produced by a worker. This
 	// token is a base58 encoded types.FetchNodeCredentialsRequest from
 	// https://github.com/hashicorp/nodeenrollment
-	WorkerGeneratedAuthToken *wrapperspb.StringValue `protobuf:"bytes,150,opt,name=worker_generated_auth_token,proto3" json:"worker_generated_auth_token,omitempty"` // @gotags: `class:"public"`
+	WorkerGeneratedAuthToken *wrapperspb.StringValue `protobuf:"bytes,150,opt,name=worker_generated_auth_token,proto3" json:"worker_generated_auth_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. An activation token that can be given to a worker to correlate
 	// it to the created resource.
-	ControllerGeneratedActivationToken *wrapperspb.StringValue `protobuf:"bytes,151,opt,name=controller_generated_activation_token,proto3" json:"controller_generated_activation_token,omitempty"` // @gotags: `class:"secret"`
+	ControllerGeneratedActivationToken *wrapperspb.StringValue `protobuf:"bytes,151,opt,name=controller_generated_activation_token,proto3" json:"controller_generated_activation_token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The number of connections that this worker is currently handling.
-	ActiveConnectionCount *wrapperspb.UInt32Value `protobuf:"bytes,160,opt,name=active_connection_count,proto3" json:"active_connection_count,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ActiveConnectionCount *wrapperspb.UInt32Value `protobuf:"bytes,160,opt,name=active_connection_count,proto3" json:"active_connection_count,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The type of the worker, denoted by how it authenticates: `pki`
 	// or `kms`.
 	Type string `protobuf:"bytes,170,opt,name=type,proto3" json:"type,omitempty"`
 	// Output only. The api tags set for the worker.
-	ApiTags map[string]*structpb.ListValue `protobuf:"bytes,180,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
+	ApiTags map[string]*structpb.ListValue `protobuf:"bytes,180,rep,name=api_tags,proto3" json:"api_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
 	// Output only. The version of the Boundary binary the worker is running.
-	ReleaseVersion string `protobuf:"bytes,190,opt,name=release_version,proto3" json:"release_version,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ReleaseVersion string `protobuf:"bytes,190,opt,name=release_version,proto3" json:"release_version,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ids of the workers directly connected to this worker.
-	DirectlyConnectedDownstreamWorkers []string `protobuf:"bytes,200,rep,name=directly_connected_downstream_workers,proto3" json:"directly_connected_downstream_workers,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	DirectlyConnectedDownstreamWorkers []string `protobuf:"bytes,200,rep,name=directly_connected_downstream_workers,proto3" json:"directly_connected_downstream_workers,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The available actions on this resource for the requester.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The local_storage_state indicates the state of the local disk space of the worker.
 	// Possible values are:
 	// - available: The worker local storage state is at an acceptable state
@@ -91,11 +91,11 @@ type Worker struct {
 	// - out of storage: The worker is out of local disk space
 	// - not configured: The worker does not have a local storage path configured
 	// - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
-	LocalStorageState string `protobuf:"bytes,310,opt,name=local_storage_state,proto3" json:"local_storage_state,omitempty"` // @gotags: `class:"public"`
+	LocalStorageState string `protobuf:"bytes,310,opt,name=local_storage_state,proto3" json:"local_storage_state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The remote_storage_state indicats the permission state of the storage buckets that the Worker
 	// is actively using. The possible permission state types include: write, read, and delete. The possible
 	// permission state values include: unknown, error, and ok.
-	RemoteStorageState map[string]*RemoteStorageState `protobuf:"bytes,320,rep,name=remote_storage_state,proto3" json:"remote_storage_state,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public"`
+	RemoteStorageState map[string]*RemoteStorageState `protobuf:"bytes,320,rep,name=remote_storage_state,proto3" json:"remote_storage_state,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public"` // @gotags: `class:"public"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -289,9 +289,9 @@ type RemoteStorageState struct {
 	// Output only. The overall health status of the storage bucket. The possible values include: error and available.
 	// The status exists in an available state if each remote storage permission state does not have an error. An unknown remote
 	// storage permission state does not affect the overall health status.
-	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"` // @gotags: `class:"public"`
+	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The remote storage permissions contains the permission state for each individual permission type.
-	Permissions   *RemoteStoragePermissions `protobuf:"bytes,20,opt,name=permissions,proto3" json:"permissions,omitempty"` // @gotags: `class:"public"`
+	Permissions   *RemoteStoragePermissions `protobuf:"bytes,20,opt,name=permissions,proto3" json:"permissions,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -344,13 +344,13 @@ type RemoteStoragePermissions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The status of the write permission state for the given storage bucket.
 	// Possible values are: unknown, error, and ok.
-	Write string `protobuf:"bytes,10,opt,name=write,proto3" json:"write,omitempty"` // @gotags: `class:"public"`
+	Write string `protobuf:"bytes,10,opt,name=write,proto3" json:"write,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The status of the read permission state for the given storage bucket.
 	// Possible values are: unknown, error, and ok.
-	Read string `protobuf:"bytes,20,opt,name=read,proto3" json:"read,omitempty"` // @gotags: `class:"public"`
+	Read string `protobuf:"bytes,20,opt,name=read,proto3" json:"read,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The status of the delete permission state for the given storage bucket.
 	// Possible values are: unknown, error, and ok.
-	Delete        string `protobuf:"bytes,30,opt,name=delete,proto3" json:"delete,omitempty"` // @gotags: `class:"public"`
+	Delete        string `protobuf:"bytes,30,opt,name=delete,proto3" json:"delete,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,13 +409,13 @@ func (x *RemoteStoragePermissions) GetDelete() string {
 type Certificate struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the certificate
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The public key of the cert authority
-	PublicKeySha256 string `protobuf:"bytes,20,opt,name=public_key_sha256,json=publicKeySha256,proto3" json:"public_key_sha256,omitempty"` // @gotags: `class:"public"`
+	PublicKeySha256 string `protobuf:"bytes,20,opt,name=public_key_sha256,json=publicKeySha256,proto3" json:"public_key_sha256,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time before which this CA is invalid
-	NotBeforeTime *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=not_before_time,json=notBeforeTime,proto3" json:"not_before_time,omitempty"` // @gotags: `class:"public"`
+	NotBeforeTime *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=not_before_time,json=notBeforeTime,proto3" json:"not_before_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time after which this CA is invalid
-	NotAfterTime  *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=not_after_time,json=notAfterTime,proto3" json:"not_after_time,omitempty"` // @gotags: `class:"public"`
+	NotAfterTime  *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=not_after_time,json=notAfterTime,proto3" json:"not_after_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -480,7 +480,7 @@ func (x *Certificate) GetNotAfterTime() *timestamppb.Timestamp {
 
 type CertificateAuthority struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Certs         []*Certificate         `protobuf:"bytes,10,rep,name=certs,proto3" json:"certs,omitempty"` // @gotags: `class:"public"`
+	Certs         []*Certificate         `protobuf:"bytes,10,rep,name=certs,proto3" json:"certs,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
