@@ -157,27 +157,67 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithSort-column-not-in-sortable-list", func(t *testing.T) {
 		_, err := getOpts(WithSort(SortByName, Ascending, []SortBy{SortByCreatedAt}))
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "not allowed for this resource type")
+		assert.ErrorContains(t, err, errInvalidSortColumn.Error())
 	})
 	t.Run("WithSort-empty-sortable-columns", func(t *testing.T) {
 		_, err := getOpts(WithSort(SortByName, Ascending, []SortBy{}))
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "not allowed for this resource type")
+		assert.ErrorContains(t, err, errInvalidSortColumn.Error())
 	})
 	t.Run("WithSort-nil-sortable-columns", func(t *testing.T) {
 		_, err := getOpts(WithSort(SortByName, Ascending, nil))
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "not allowed for this resource type")
+		assert.ErrorContains(t, err, errInvalidSortColumn.Error())
 	})
 	t.Run("WithSort-unsafe-chars-semicolon", func(t *testing.T) {
 		_, err := getOpts(WithSort(SortBy("name; DROP TABLE"), Ascending, []SortBy{SortBy("name; DROP TABLE")}))
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "contains unsafe characters")
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
 	})
 	t.Run("WithSort-unsafe-chars-quote", func(t *testing.T) {
 		_, err := getOpts(WithSort(SortBy("name'--"), Ascending, []SortBy{SortBy("name'--")}))
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "contains unsafe characters")
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-double-quote", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name\"--"), Ascending, []SortBy{SortBy("name\"--")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-backslash", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name\\x00"), Ascending, []SortBy{SortBy("name\\x00")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-comma", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name,other"), Ascending, []SortBy{SortBy("name,other")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-parenthesis", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name("), Ascending, []SortBy{SortBy("name(")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-space", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name "), Ascending, []SortBy{SortBy("name ")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-tab", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name\t"), Ascending, []SortBy{SortBy("name\t")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-newline", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name\n"), Ascending, []SortBy{SortBy("name\n")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
+	})
+	t.Run("WithSort-unsafe-chars-dash", func(t *testing.T) {
+		_, err := getOpts(WithSort(SortBy("name-col"), Ascending, []SortBy{SortBy("name-col")}))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errUnsafeSortColumn.Error())
 	})
 	t.Run("WithSort-default-direction", func(t *testing.T) {
 		opts, err := getOpts(WithSort(SortByName, SortDirectionDefault, []SortBy{SortByName}))
