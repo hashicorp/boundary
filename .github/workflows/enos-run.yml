@@ -77,6 +77,7 @@ jobs:
           - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
+          - filter: 'e2e_docker_base_with_worker_version builder:crt'
           - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
           - filter: 'e2e_docker_worker_registration_worker_led builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
@@ -232,6 +233,13 @@ jobs:
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario check --chdir ./enos ${{ matrix.filter }} && \
           enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
+      - name: Determine boundary version to test against previous worker version
+        # Get the Boundary version number and decrement the minor version by 1
+        if: contains(matrix.filter, 'e2e_docker_base_with_worker_version')
+        run: |
+          version_num=$(./enos/support/boundary/boundary version | awk -F'[. ]' '/Version Number/ {print $(NF-1)}')
+          export ENOS_VAR_worker_version="$((version_num - 1))"
+          echo "ENOS_VAR_worker_version=0.$ENOS_VAR_worker_version" >> "$GITHUB_ENV"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
