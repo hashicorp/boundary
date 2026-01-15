@@ -158,6 +158,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				AppTokenId:     id,
 				GrantThisScope: grantThisScope,
 				GrantScope:     globalPermGrantScope,
+				Description:    perm.Label,
 			},
 		}
 
