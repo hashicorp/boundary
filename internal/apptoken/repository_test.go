@@ -363,7 +363,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=session;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "children"},
+				{GrantThis: true, GrantScope: "children", Description: "test"},
 			},
 			wantErr: false,
 		},
@@ -392,8 +392,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=target;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantScope: "children", GrantThis: true},
-				{GrantScope: "children", GrantThis: false},
+				{GrantScope: "children", GrantThis: true, Description: "test"},
+				{GrantScope: "children", GrantThis: false, Description: "test-2"},
 			},
 		},
 		{
@@ -411,7 +411,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -433,7 +433,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: true, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -473,9 +473,9 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				proj.GetPublicId(),
 			},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "children"},
-				{GrantThis: true, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "children"},
+				{GrantThis: false, GrantScope: "children", Description: "test"},
+				{GrantThis: true, GrantScope: "individual", Description: "test2"},
+				{GrantThis: true, GrantScope: "children", Description: "test3"},
 			},
 			wantErr: false,
 		},
