@@ -14,9 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -55,6 +53,7 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	return repo
 }
 
+<<<<<<< HEAD
 func testPublicId(t testing.TB, prefix string) string {
 	t.Helper()
 	publicId, err := db.NewPublicId(t.Context(), prefix)
@@ -181,6 +180,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 	}
 }
 
+=======
+>>>>>>> f6f87a19c (update to include description)
 // these will eventually expand to cover org and proj
 func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
