@@ -33,26 +33,26 @@ const (
 type Policy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The id of the storage policy.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The scope id of this policy. This must be defined for policy creation, but
 	// is otherwise output only.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The policy's type.
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure
 	// this resource has not changed. The mutation will fail if the version does
 	// not match the latest known good version.
-	Version uint32 `protobuf:"varint,90,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,90,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The attributes that are applicable to each policy type.
 	//
 	// Types that are valid to be assigned to Attrs:
@@ -61,7 +61,7 @@ type Policy struct {
 	//	*Policy_StoragePolicyAttributes
 	Attrs isPolicy_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -263,10 +263,10 @@ type StoragePolicyRetainFor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// days is the number of days for which a session recording will be
 	// retained. Must be provided.
-	Days int32 `protobuf:"varint,10,opt,name=days,proto3" json:"days,omitempty"` // @gotags: `class:"public"`
+	Days int32 `protobuf:"varint,10,opt,name=days,proto3" json:"days,omitempty" class:"public"` // @gotags: `class:"public"`
 	// overridable signals whether this storage policy's retention duration can be
 	// overridden.
-	Overridable   *wrapperspb.BoolValue `protobuf:"bytes,20,opt,name=overridable,proto3" json:"overridable,omitempty"` // @gotags: `class:"public"`
+	Overridable   *wrapperspb.BoolValue `protobuf:"bytes,20,opt,name=overridable,proto3" json:"overridable,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -319,10 +319,10 @@ type StoragePolicyDeleteAfter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// days is the number of days after which a session recording will be
 	// automatically deleted.
-	Days int32 `protobuf:"varint,10,opt,name=days,proto3" json:"days,omitempty"` // @gotags: `class:"public"`
+	Days int32 `protobuf:"varint,10,opt,name=days,proto3" json:"days,omitempty" class:"public"` // @gotags: `class:"public"`
 	// overridable signals whether this storage policy's deletion policy can be
 	// overridden.
-	Overridable   *wrapperspb.BoolValue `protobuf:"bytes,20,opt,name=overridable,proto3" json:"overridable,omitempty"` // @gotags: `class:"public"`
+	Overridable   *wrapperspb.BoolValue `protobuf:"bytes,20,opt,name=overridable,proto3" json:"overridable,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

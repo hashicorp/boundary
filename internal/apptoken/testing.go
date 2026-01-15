@@ -192,8 +192,9 @@ func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scop
 			select grant_scope, grant_this_scope from app_token_permission_org where app_token_id = $1
 		`
 	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		// project permissions do not have grant_scope column and this just keeps the function reusable
 		permQuery = `
-			select grant_scope, grant_this_scope from app_token_permission_project where app_token_id = $1
+			select '', grant_this_scope from app_token_permission_project where app_token_id = $1
 		`
 	default:
 		return fmt.Errorf("unknown scope id prefix: %s", scopeId)

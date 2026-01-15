@@ -34,48 +34,48 @@ const (
 type HostSet struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Host Set.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Host Catalog of which this Host Set is a part.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"` // @gotags: `class:"public"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. Plugin information for this resource.
 	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of the Host Set.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. A list of Hosts in this Host Set.
-	HostIds []string `protobuf:"bytes,100,rep,name=host_ids,proto3" json:"host_ids,omitempty"` // @gotags: `class:"public"`
+	HostIds []string `protobuf:"bytes,100,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// multiple possible endpoints for a host. Preferences are specified by
 	// "cidr:<valid IPv4/6 CIDR>" or "dns:<globbed name>", specifying which IP
 	// address or DNS name out of a host's available possibilities should be
 	// preferred. If no preferences are specified, a value will be chosen from
 	// among all avialable values using a built-in priority order. May not be
 	// valid for all plugin types.
-	PreferredEndpoints []string `protobuf:"bytes,101,rep,name=preferred_endpoints,proto3" json:"preferred_endpoints,omitempty"` // @gotags: `class:"public"`
+	PreferredEndpoints []string `protobuf:"bytes,101,rep,name=preferred_endpoints,proto3" json:"preferred_endpoints,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An interger number of seconds indicating the amount of time that should
 	// elapse between syncs of the host set. The interval will be applied to the
 	// end of the previous sync operation, not the start. Setting to -1 will
 	// disable syncing for that host set; setting to zero will cause the set to
 	// use Boundary's default. The default may change between releases. May not
 	// be valid for all plugin types.
-	SyncIntervalSeconds *wrapperspb.Int32Value `protobuf:"bytes,102,opt,name=sync_interval_seconds,proto3" json:"sync_interval_seconds,omitempty"` // @gotags: `class:"public"`
+	SyncIntervalSeconds *wrapperspb.Int32Value `protobuf:"bytes,102,opt,name=sync_interval_seconds,proto3" json:"sync_interval_seconds,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*HostSet_Attributes
 	Attrs isHostSet_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }

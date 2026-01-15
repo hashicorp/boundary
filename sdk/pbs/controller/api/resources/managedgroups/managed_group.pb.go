@@ -34,24 +34,24 @@ const (
 type ManagedGroup struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the ManagedGroup.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for the ManagedGroup.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of this ManagedGroup.
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Auth Method that is associated with this ManagedGroup.
-	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*ManagedGroup_Attributes
@@ -59,9 +59,9 @@ type ManagedGroup struct {
 	//	*ManagedGroup_LdapManagedGroupAttributes
 	Attrs isManagedGroup_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The IDs of the current set of members (accounts) that are associated with this ManagedGroup.
-	MemberIds []string `protobuf:"bytes,110,rep,name=member_ids,proto3" json:"member_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	MemberIds []string `protobuf:"bytes,110,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -234,7 +234,7 @@ func (*ManagedGroup_LdapManagedGroupAttributes) isManagedGroup_Attrs() {}
 type OidcManagedGroupAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The boolean expression filter to use to determine membership.
-	Filter        string `protobuf:"bytes,10,opt,name=filter,proto3" json:"filter,omitempty"` // @gotags: `class:"public"`
+	Filter        string `protobuf:"bytes,10,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -280,7 +280,7 @@ func (x *OidcManagedGroupAttributes) GetFilter() string {
 type LdapManagedGroupAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The list of groups that make up the ManagedGroup
-	GroupNames    []string `protobuf:"bytes,100,rep,name=group_names,proto3" json:"group_names,omitempty"` // @gotags: `class:"public"`
+	GroupNames    []string `protobuf:"bytes,100,rep,name=group_names,proto3" json:"group_names,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

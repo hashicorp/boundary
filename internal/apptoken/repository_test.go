@@ -341,6 +341,66 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		// project
+		{
+			name: "valid-project-basic-no-perms",
+			at: &AppToken{
+				ScopeId:         proj.GetPublicId(),
+				CreatedByUserId: u.PublicId,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-project-one-perm",
+			at: &AppToken{
+				ScopeId:         proj.GetPublicId(),
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+				},
+			},
+			wantGrants: []string{
+				"type=host-catalog;actions=list",
+				"type=session;actions=list",
+			},
+			wantPerms: []testPermission{
+				{GrantThis: true},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-project-two-perm",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+					{
+						Label:         "test-2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+				},
+			},
+			wantErr: false,
+			wantGrants: []string{
+				"type=host-catalog;actions=list",
+				"type=session;actions=list",
+				"type=target;actions=list",
+			},
+			wantPerms: []testPermission{
+				{GrantThis: true},
+				{GrantThis: false},
+			},
+		},
 		// invalid
 		{
 			name: "invalid-global-bad-grant",
@@ -395,6 +455,28 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			name: "invalid-org-not-child",
 			at: &AppToken{
 				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+					{
+						Label:         "test2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"this", proj2.GetPublicId()},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+			wantErrMsg:  "is not a child of org",
+		},
+		{
+			name: "invalid-proj-not-related",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
 				CreatedByUserId: u.PublicId,
 				Permissions: []AppTokenPermission{
 					{
