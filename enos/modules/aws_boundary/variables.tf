@@ -403,7 +403,7 @@ variable "vault_transit_token" {
 }
 
 variable "protocol" {
-  description = "http protocal (http/https)"
+  description = "http protocol (http/https)"
   type        = string
   default     = "http"
 }
