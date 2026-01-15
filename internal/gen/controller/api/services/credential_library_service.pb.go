@@ -31,7 +31,7 @@ const (
 
 type GetCredentialLibraryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,20 +119,20 @@ func (x *GetCredentialLibraryResponse) GetItem() *credentiallibraries.Credential
 
 type ListCredentialLibrariesRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	CredentialStoreId string                 `protobuf:"bytes,1,opt,name=credential_store_id,json=scope_id,proto3" json:"credential_store_id,omitempty"` // @gotags: `class:"public"`
+	CredentialStoreId string                 `protobuf:"bytes,1,opt,name=credential_store_id,json=scope_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// You can specify that the filter should only return items that match.
 	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
-	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"` // @gotags: `class:"public"`
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token that Boundary uses to continue an existing iteration or
 	// request updated items. If you do not specify a token, pagination
 	// starts from the beginning. To learn more about list pagination
 	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
-	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If you do not set a page size, Boundary uses the configured default page size.
 	// If the page_size is greater than the default page size configured,
 	// Boundary truncates the page size to this number.
-	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty"` // @gotags: `class:"public"`
+	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -203,22 +203,22 @@ type ListCredentialLibrariesResponse struct {
 	// Delta signifies that this is part of a paginated result
 	// or an update to a previously completed pagination.
 	// Complete signifies that it is the last page.
-	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty"` // @gotags: `class:"public"`
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing pagination or
 	// request updated items. Use this token in the next list request
 	// to request the next page.
-	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The name of the field which the items are sorted by.
-	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty"` // @gotags: `class:"public"`
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The direction of the sort, either "asc" or "desc".
-	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty"` // @gotags: `class:"public"`
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
 	// as part of a pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An estimate at the total items available. This may change during pagination.
-	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty"` // @gotags: `class:"public"`
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -348,7 +348,7 @@ func (x *CreateCredentialLibraryRequest) GetItem() *credentiallibraries.Credenti
 
 type CreateCredentialLibraryResponse struct {
 	state         protoimpl.MessageState                 `protogen:"open.v1"`
-	Uri           string                                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public"`
+	Uri           string                                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item          *credentiallibraries.CredentialLibrary `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -400,7 +400,7 @@ func (x *CreateCredentialLibraryResponse) GetItem() *credentiallibraries.Credent
 
 type UpdateCredentialLibraryRequest struct {
 	state         protoimpl.MessageState                 `protogen:"open.v1"`
-	Id            string                                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id            string                                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item          *credentiallibraries.CredentialLibrary `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask                 `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -504,7 +504,7 @@ func (x *UpdateCredentialLibraryResponse) GetItem() *credentiallibraries.Credent
 
 type DeleteCredentialLibraryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

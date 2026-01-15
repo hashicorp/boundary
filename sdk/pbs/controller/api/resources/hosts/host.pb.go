@@ -35,43 +35,43 @@ const (
 type Host struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Host.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The Host Catalog of which this Host is a part.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. Plugin information for this resource.
 	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of the resource.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. A list of Host Sets containing this Host.
-	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*Host_Attributes
 	//	*Host_StaticHostAttributes
 	Attrs isHost_Attrs `protobuf_oneof:"attrs"`
 	// Output only.  The list of ip addresses associated with this host.
-	IpAddresses []string `protobuf:"bytes,120,rep,name=ip_addresses,json=ipAddresses,proto3" json:"ip_addresses,omitempty"` // @gotags: `class:"public"`
+	IpAddresses []string `protobuf:"bytes,120,rep,name=ip_addresses,json=ipAddresses,proto3" json:"ip_addresses,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only.  The list of dns addresses associated with this host.
-	DnsNames []string `protobuf:"bytes,130,rep,name=dns_names,json=dnsNames,proto3" json:"dns_names,omitempty"` // @gotags: `class:"public"`
+	DnsNames []string `protobuf:"bytes,130,rep,name=dns_names,json=dnsNames,proto3" json:"dns_names,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The external ID of the host, if any.
-	ExternalId string `protobuf:"bytes,140,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"` // @gotags: `class:"public"`
+	ExternalId string `protobuf:"bytes,140,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Refers to the name for a given host provided by the plugin enabled backing service.
-	ExternalName string `protobuf:"bytes,150,opt,name=external_name,json=externalName,proto3" json:"external_name,omitempty"` // @gotags: `class:"public"`
+	ExternalName string `protobuf:"bytes,150,opt,name=external_name,json=externalName,proto3" json:"external_name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -263,7 +263,7 @@ func (*Host_StaticHostAttributes) isHost_Attrs() {}
 type StaticHostAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The address (DNS or IP name) used to reach the Host.
-	Address       *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
+	Address       *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

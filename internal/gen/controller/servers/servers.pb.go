@@ -28,8 +28,8 @@ const (
 // TagPair matches a key to a value.
 type TagPair struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`     // @gotags: `class:"public"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"` // @gotags: `class:"public"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty" class:"public"`     // @gotags: `class:"public"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -82,21 +82,21 @@ func (x *TagPair) GetValue() string {
 type ServerWorkerStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Id of the worker, used after the first request.
-	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Name of the worker, used to identify workers in the KMS registration flow.
-	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Description of the worker (optional). Only used by KMS workers.
-	Description string `protobuf:"bytes,25,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description string `protobuf:"bytes,25,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Address for the worker.
-	Address string `protobuf:"bytes,30,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
+	Address string `protobuf:"bytes,30,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Tags for workers
 	Tags []*TagPair `protobuf:"bytes,40,rep,name=tags,proto3" json:"tags,omitempty"`
 	// The key id of the worker, used to identify workers in the PKI registration flow.
-	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"` // @gotags: `class:"public"`
+	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The version of Boundary the worker binary is running
-	ReleaseVersion string `protobuf:"bytes,60,opt,name=release_version,proto3" json:"release_version,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ReleaseVersion string `protobuf:"bytes,60,opt,name=release_version,proto3" json:"release_version,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The state of the worker, to indicate if the worker is active or in shutdown.
-	OperationalState string `protobuf:"bytes,70,opt,name=operational_state,proto3" json:"operational_state,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	OperationalState string `protobuf:"bytes,70,opt,name=operational_state,proto3" json:"operational_state,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The local_storage_state indicates the state of the local disk space of the worker.
 	// Possible values are:
 	// - available: The worker local storage state is at an acceptable state
@@ -105,10 +105,10 @@ type ServerWorkerStatus struct {
 	// - out of storage: The worker is out of local disk space
 	// - not configured: The worker does not have a local storage path configured
 	// - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
-	LocalStorageState string `protobuf:"bytes,80,opt,name=local_storage_state,proto3" json:"local_storage_state,omitempty"` // @gotags: `class:"public" eventstream:"observation"
+	LocalStorageState string `protobuf:"bytes,80,opt,name=local_storage_state,proto3" json:"local_storage_state,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"
 	// StorageBucketCredentialStates is a map where the key is a storage bucket id
 	// and the value contains the current state of the storage bucket.
-	StorageBucketCredentialStates map[string]*plugin.StorageBucketCredentialState `protobuf:"bytes,90,rep,name=storage_bucket_credential_states,json=storageBucketCredentialStates,proto3" json:"storage_bucket_credential_states,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // @gotags: `class:"public" eventstream:"observation"`
+	StorageBucketCredentialStates map[string]*plugin.StorageBucketCredentialState `protobuf:"bytes,90,rep,name=storage_bucket_credential_states,json=storageBucketCredentialStates,proto3" json:"storage_bucket_credential_states,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }

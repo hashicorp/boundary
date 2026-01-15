@@ -29,11 +29,11 @@ const (
 type SessionState struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The status of the Session, e.g. "pending", "active", "canceling", "terminated".
-	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time the Session entered this state.
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=start_time,proto3" json:"start_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=start_time,proto3" json:"start_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time the Session stopped being in this state.
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=end_time,proto3" json:"end_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -93,19 +93,19 @@ func (x *SessionState) GetEndTime() *timestamppb.Timestamp {
 type Connection struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// client_tcp_address of the connection
-	ClientTcpAddress string `protobuf:"bytes,3,opt,name=client_tcp_address,json=clientTcpAddress,proto3" json:"client_tcp_address,omitempty"` // @gotags: `class:"public"`
+	ClientTcpAddress string `protobuf:"bytes,3,opt,name=client_tcp_address,json=clientTcpAddress,proto3" json:"client_tcp_address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// client_tcp_port of the connection
-	ClientTcpPort uint32 `protobuf:"varint,4,opt,name=client_tcp_port,json=clientTcpPort,proto3" json:"client_tcp_port,omitempty"` // @gotags: `class:"public"`
+	ClientTcpPort uint32 `protobuf:"varint,4,opt,name=client_tcp_port,json=clientTcpPort,proto3" json:"client_tcp_port,omitempty" class:"public"` // @gotags: `class:"public"`
 	// endpoint_tcp_address of the connection
-	EndpointTcpAddress string `protobuf:"bytes,5,opt,name=endpoint_tcp_address,json=endpointTcpAddress,proto3" json:"endpoint_tcp_address,omitempty"` // @gotags: `class:"public"`
+	EndpointTcpAddress string `protobuf:"bytes,5,opt,name=endpoint_tcp_address,json=endpointTcpAddress,proto3" json:"endpoint_tcp_address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// endpoint_tcp_port of the connection
-	EndpointTcpPort uint32 `protobuf:"varint,6,opt,name=endpoint_tcp_port,json=endpointTcpPort,proto3" json:"endpoint_tcp_port,omitempty"` // @gotags: `class:"public"`
+	EndpointTcpPort uint32 `protobuf:"varint,6,opt,name=endpoint_tcp_port,json=endpointTcpPort,proto3" json:"endpoint_tcp_port,omitempty" class:"public"` // @gotags: `class:"public"`
 	// bytes_up of the connection
-	BytesUp int64 `protobuf:"varint,7,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty"` // @gotags: `class:"public"`
+	BytesUp int64 `protobuf:"varint,7,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty" class:"public"` // @gotags: `class:"public"`
 	// bytes_down of the connection
-	BytesDown int64 `protobuf:"varint,8,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty"` // @gotags: `class:"public"`
+	BytesDown int64 `protobuf:"varint,8,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty" class:"public"` // @gotags: `class:"public"`
 	// closed_reason of the connection
-	ClosedReason  string `protobuf:"bytes,9,opt,name=closed_reason,json=closedReason,proto3" json:"closed_reason,omitempty"` // @gotags: `class:"public"`
+	ClosedReason  string `protobuf:"bytes,9,opt,name=closed_reason,json=closedReason,proto3" json:"closed_reason,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -193,43 +193,43 @@ func (x *Connection) GetClosedReason() string {
 type Session struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The ID of the Session.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Target that created this Session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used when canceling this Session to ensure that the operation is acting on a known session state.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Type of the Session (e.g. tcp).
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. After this time the connection will be expired, e.g. forcefully terminated.
-	ExpirationTime *timestamppb.Timestamp `protobuf:"bytes,100,opt,name=expiration_time,proto3" json:"expiration_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ExpirationTime *timestamppb.Timestamp `protobuf:"bytes,100,opt,name=expiration_time,proto3" json:"expiration_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Auth Token used to authenticate.
-	AuthTokenId string `protobuf:"bytes,110,opt,name=auth_token_id,proto3" json:"auth_token_id,omitempty"` // @gotags: `class:"public"`
+	AuthTokenId string `protobuf:"bytes,110,opt,name=auth_token_id,proto3" json:"auth_token_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the User that requested the Session.
-	UserId string `protobuf:"bytes,120,opt,name=user_id,proto3" json:"user_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UserId string `protobuf:"bytes,120,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Set sourcing the Host for this Session.
-	HostSetId string `protobuf:"bytes,130,opt,name=host_set_id,proto3" json:"host_set_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	HostSetId string `protobuf:"bytes,130,opt,name=host_set_id,proto3" json:"host_set_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host used by the Session.
-	HostId string `protobuf:"bytes,140,opt,name=host_id,proto3" json:"host_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	HostId string `protobuf:"bytes,140,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Scope of the Session.
-	ScopeId string `protobuf:"bytes,150,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,150,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The endpoint of the Session; that is, the address to which the worker is proxying data.
-	Endpoint string `protobuf:"bytes,160,opt,name=endpoint,proto3" json:"endpoint,omitempty"` // @gotags: `class:"public"`
+	Endpoint string `protobuf:"bytes,160,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The states of this Session in descending order from the current state to the first.
 	States []*SessionState `protobuf:"bytes,170,rep,name=states,proto3" json:"states,omitempty"`
 	// Output only. The current status of this Session.
-	Status string `protobuf:"bytes,180,opt,name=status,proto3" json:"status,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Status string `protobuf:"bytes,180,opt,name=status,proto3" json:"status,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The certificate generated for the session. Raw DER bytes.
-	Certificate []byte `protobuf:"bytes,200,opt,name=certificate,proto3" json:"certificate,omitempty"` // @gotags: `class:"public"`
+	Certificate []byte `protobuf:"bytes,200,opt,name=certificate,proto3" json:"certificate,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. If the session is terminated, this provides a short description as to why.
-	TerminationReason string `protobuf:"bytes,210,opt,name=termination_reason,proto3" json:"termination_reason,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	TerminationReason string `protobuf:"bytes,210,opt,name=termination_reason,proto3" json:"termination_reason,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The associated connections with this session.
 	Connections   []*Connection `protobuf:"bytes,310,rep,name=connections,proto3" json:"connections,omitempty"`
 	unknownFields protoimpl.UnknownFields

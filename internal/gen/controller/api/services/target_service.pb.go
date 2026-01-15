@@ -31,7 +31,7 @@ const (
 
 type GetTargetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,21 +119,21 @@ func (x *GetTargetResponse) GetItem() *targets.Target {
 
 type ListTargetsRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
-	Recursive bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"`          // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
 	// You can specify that the filter should only return items that match.
 	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
-	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"` // @gotags: `class:"public"`
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token that Boundary uses to continue an existing iteration or
 	// request updated items. If you do not specify a token, pagination
 	// starts from the beginning. To learn more about list pagination
 	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
-	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
 	// If the page_size is greater than the default page configured,
 	// the page size will be truncated to this number..
-	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty"` // @gotags: `class:"public"`
+	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,22 +210,22 @@ type ListTargetsResponse struct {
 	// Delta signifies that this is part of a paginated result
 	// or an update to a previously completed pagination.
 	// Complete signifies that it is the last page.
-	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty"` // @gotags: `class:"public"`
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing pagination or
 	// request updated items. Use this token in the next list request
 	// to request the next page.
-	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The name of the field which the items are sorted by.
-	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty"` // @gotags: `class:"public"`
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The direction of the sort, either "asc" or "desc".
-	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty"` // @gotags: `class:"public"`
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
 	// as part of a pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An estimate at the total items available. This may change during pagination.
-	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty"` // @gotags: `class:"public"`
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -355,7 +355,7 @@ func (x *CreateTargetRequest) GetItem() *targets.Target {
 
 type CreateTargetResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *targets.Target        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -407,7 +407,7 @@ func (x *CreateTargetResponse) GetItem() *targets.Target {
 
 type UpdateTargetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *targets.Target        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -511,7 +511,7 @@ func (x *UpdateTargetResponse) GetItem() *targets.Target {
 
 type DeleteTargetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -591,11 +591,11 @@ func (*DeleteTargetResponse) Descriptor() ([]byte, []int) {
 
 type AddTargetHostSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -697,11 +697,11 @@ func (x *AddTargetHostSourcesResponse) GetItem() *targets.Target {
 
 type SetTargetHostSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -803,11 +803,11 @@ func (x *SetTargetHostSourcesResponse) GetItem() *targets.Target {
 
 type RemoveTargetHostSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -909,16 +909,16 @@ func (x *RemoveTargetHostSourcesResponse) GetItem() *targets.Target {
 
 type AddTargetCredentialSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Brokered credentials are returned to the user during session authorization.
-	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Injected application credentials are used by a Boundary worker to secure the
 	// connection between the worker and the endpoint. Injected application credentials are
 	// never returned to the user.
-	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields                          protoimpl.UnknownFields
 	sizeCache                              protoimpl.SizeCache
 }
@@ -1029,16 +1029,16 @@ func (x *AddTargetCredentialSourcesResponse) GetItem() *targets.Target {
 // is not set in the request will result in those fields being cleared.
 type SetTargetCredentialSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Brokered credentials are returned to the user during session authorization.
-	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Injected application credentials are used by a Boundary worker to secure the
 	// connection between the worker and the endpoint. Injected application credentials are
 	// never returned to the user.
-	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields                          protoimpl.UnknownFields
 	sizeCache                              protoimpl.SizeCache
 }
@@ -1147,16 +1147,16 @@ func (x *SetTargetCredentialSourcesResponse) GetItem() *targets.Target {
 
 type RemoveTargetCredentialSourcesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Brokered credentials are returned to the user during session authorization.
-	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	BrokeredCredentialSourceIds []string `protobuf:"bytes,10,rep,name=brokered_credential_source_ids,proto3" json:"brokered_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Injected application credentials are used by a Boundary worker to secure the
 	// connection between the worker and the endpoint. Injected application credentials are
 	// never returned to the user.
-	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty"` // @gotags: `class:"public"`
+	InjectedApplicationCredentialSourceIds []string `protobuf:"bytes,20,rep,name=injected_application_credential_source_ids,proto3" json:"injected_application_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields                          protoimpl.UnknownFields
 	sizeCache                              protoimpl.SizeCache
 }
@@ -1266,15 +1266,15 @@ func (x *RemoveTargetCredentialSourcesResponse) GetItem() *targets.Target {
 type AuthorizeSessionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The name of the target. When using this, scope_id or scope_name must be set.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The scope ID containing the target, if specifying the target by name.
-	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The scope name containing the target, if specifying the target by name.
-	ScopeName string `protobuf:"bytes,5,opt,name=scope_name,json=scopeName,proto3" json:"scope_name,omitempty"` // @gotags: `class:"public"`
+	ScopeName string `protobuf:"bytes,5,opt,name=scope_name,json=scopeName,proto3" json:"scope_name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
-	HostId        string `protobuf:"bytes,2,opt,name=host_id,proto3" json:"host_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	HostId        string `protobuf:"bytes,2,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -30,12 +30,12 @@ type AppTokenPermissionOrgIndividualGrantScope struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// individual id for the app token's permission
 	// @inject_tag: gorm:"primary_key"
-	PermissionId string `protobuf:"bytes,1,opt,name=permission_id,json=permissionId,proto3" json:"permission_id,omitempty"`
+	PermissionId string `protobuf:"bytes,1,opt,name=permission_id,json=permissionId,proto3" json:"permission_id,omitempty" gorm:"primary_key"`
 	// scope_id of the grant
 	ScopeId string `protobuf:"bytes,2,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
 	// grant scopes for the app token permission
 	// @inject_tag: `gorm:"default:null"`
-	GrantScope    string `protobuf:"bytes,3,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty"`
+	GrantScope    string `protobuf:"bytes,3,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty" gorm:"default:null"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -30,7 +30,7 @@ const (
 
 type GetScopeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,20 +118,20 @@ func (x *GetScopeResponse) GetItem() *scopes.Scope {
 
 type ListScopesRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
-	Recursive bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"`          // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId   string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool                   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
 	// You can specify that the filter should only return items that match.
 	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
-	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"` // @gotags: `class:"public"`
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing iteration or
 	// request updated items. If paginating, use this token in the
 	// next list request.
-	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If you do not set a page size, Boundary uses the configured default page size.
 	// If the page_size is greater than the default page size configured,
 	// Boundary truncates the page size to this number.
-	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty"` // @gotags: `class:"public"`
+	PageSize      uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,22 +209,22 @@ type ListScopesResponse struct {
 	// Delta signifies that this is part of a paginated result
 	// or an update to a previously completed pagination.
 	// Complete signifies that it is the last page.
-	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty"` // @gotags: `class:"public"`
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing pagination or
 	// request updated items. Use this token in the next list request
 	// to request the next page.
-	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty"` // @gotags: `class:"public"`
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The name of the field which the items are sorted by.
-	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty"` // @gotags: `class:"public"`
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The direction of the sort, either "asc" or "desc".
-	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty"` // @gotags: `class:"public"`
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
 	// as part of an pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An estimate at the total items available. This may change during pagination.
-	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty"` // @gotags: `class:"public"`
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -310,8 +310,8 @@ func (x *ListScopesResponse) GetEstItemCount() uint32 {
 
 type CreateScopeRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
-	SkipAdminRoleCreation   bool                   `protobuf:"varint,1,opt,name=skip_admin_role_creation,json=skipAdminRoleCreation,proto3" json:"skip_admin_role_creation,omitempty"`       // @gotags: `class:"public"`
-	SkipDefaultRoleCreation bool                   `protobuf:"varint,2,opt,name=skip_default_role_creation,json=skipDefaultRoleCreation,proto3" json:"skip_default_role_creation,omitempty"` // @gotags: `class:"public"`
+	SkipAdminRoleCreation   bool                   `protobuf:"varint,1,opt,name=skip_admin_role_creation,json=skipAdminRoleCreation,proto3" json:"skip_admin_role_creation,omitempty" class:"public"`       // @gotags: `class:"public"`
+	SkipDefaultRoleCreation bool                   `protobuf:"varint,2,opt,name=skip_default_role_creation,json=skipDefaultRoleCreation,proto3" json:"skip_default_role_creation,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item                    *scopes.Scope          `protobuf:"bytes,3,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -370,7 +370,7 @@ func (x *CreateScopeRequest) GetItem() *scopes.Scope {
 
 type CreateScopeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *scopes.Scope          `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -422,7 +422,7 @@ func (x *CreateScopeResponse) GetItem() *scopes.Scope {
 
 type UpdateScopeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item          *scopes.Scope          `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -526,7 +526,7 @@ func (x *UpdateScopeResponse) GetItem() *scopes.Scope {
 
 type DeleteScopeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -606,7 +606,7 @@ func (*DeleteScopeResponse) Descriptor() ([]byte, []int) {
 
 type ListKeysRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -694,8 +694,8 @@ func (x *ListKeysResponse) GetItems() []*scopes.Key {
 
 type RotateKeysRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public"`
-	Rewrap        bool                   `protobuf:"varint,2,opt,name=rewrap,proto3" json:"rewrap,omitempty"`                 // @gotags: `class:"public"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Rewrap        bool                   `protobuf:"varint,2,opt,name=rewrap,proto3" json:"rewrap,omitempty" class:"public"`                 // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -782,7 +782,7 @@ func (*RotateKeysResponse) Descriptor() ([]byte, []int) {
 
 type ListKeyVersionDestructionJobsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -870,8 +870,8 @@ func (x *ListKeyVersionDestructionJobsResponse) GetItems() []*scopes.KeyVersionD
 
 type DestroyKeyVersionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`                  // @gotags: `class:"public"`
-	KeyVersionId  string                 `protobuf:"bytes,2,opt,name=key_version_id,json=keyVersionId,proto3" json:"key_version_id,omitempty"` // @gotags: `class:"public"`
+	ScopeId       string                 `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"`                  // @gotags: `class:"public"`
+	KeyVersionId  string                 `protobuf:"bytes,2,opt,name=key_version_id,json=keyVersionId,proto3" json:"key_version_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -925,7 +925,7 @@ type DestroyKeyVersionResponse struct {
 	// Destruction state. One of "pending" or "completed".
 	// Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
 	// to monitor pending destruction jobs.
-	State         string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"` // @gotags: `class:"public"`
+	State         string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -969,11 +969,11 @@ func (x *DestroyKeyVersionResponse) GetState() string {
 
 type AttachStoragePolicyRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                    // @gotags: `class:"public" eventstream:"observation"`
-	StoragePolicyId string                 `protobuf:"bytes,2,opt,name=storage_policy_id,json=storagePolicyId,proto3" json:"storage_policy_id,omitempty"` // @gotags: `class:"public"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"`                                                    // @gotags: `class:"public" eventstream:"observation"`
+	StoragePolicyId string                 `protobuf:"bytes,2,opt,name=storage_policy_id,json=storagePolicyId,proto3" json:"storage_policy_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version       uint32 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1075,10 +1075,10 @@ func (x *AttachStoragePolicyResponse) GetItem() *scopes.Scope {
 
 type DetachStoragePolicyRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version       uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version       uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
