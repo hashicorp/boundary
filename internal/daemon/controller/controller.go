@@ -355,6 +355,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
+	txManager := db.NewTransactionManager(c.conf.Database)
 	c.kms, err = kms.New(ctx, dbase, dbase)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
@@ -479,7 +480,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return billing.NewRepository(ctx, dbase)
 	}
 	c.AliasRepoFn = func() (*alias.Repository, error) {
-		return alias.NewRepository(ctx, dbase, dbase, c.kms)
+		return alias.NewRepository(ctx, txManager, c.kms)
 	}
 	c.TargetAliasRepoFn = func() (*talias.Repository, error) {
 		return talias.NewRepository(ctx, dbase, dbase, c.kms)
