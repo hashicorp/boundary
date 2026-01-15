@@ -239,7 +239,7 @@ jobs:
         run: |
           version_num=$(./enos/support/boundary/boundary version | awk -F'[. ]' '/Version Number/ {print $(NF-1)}')
           export ENOS_VAR_worker_version="$((version_num - 1))"
-          echo "ENOS_VAR_worker_version=0.$ENOS_VAR_worker_version" >> $GITHUB_ENV
+          echo "ENOS_VAR_worker_version=0.$ENOS_VAR_worker_version" >> "$GITHUB_ENV"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
