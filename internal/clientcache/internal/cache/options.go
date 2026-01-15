@@ -6,13 +6,19 @@ package cache
 import (
 	stderrors "errors"
 	"fmt"
-	"strings"
+	"regexp"
+	"slices"
 
 	"github.com/hashicorp/go-dbw"
 )
 
-// unsafeSortChars contains characters that could break SQL ORDER BY clauses
-const unsafeSortChars = " \t\n\r,;()'\"\\-"
+// safeSortColumnRegex contains characters that could break SQL ORDER BY clauses
+var safeSortColumnRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+var (
+	errInvalidSortColumn = stderrors.New("not allowed for this resource type")
+	errUnsafeSortColumn  = stderrors.New("contains unsafe characters")
+)
 
 type testRefreshWaitChs struct {
 	firstSempahore  chan struct{}
@@ -152,29 +158,20 @@ func WithUseNonPagedListing(b bool) Option {
 // Validates column against sortableColumns and rejects SQL-unsafe characters.
 func WithSort(sortBy SortBy, direction SortDirection, sortableColumns []SortBy) Option {
 	return func(o *options) error {
+		// ignore empty sortBy
 		if sortBy == SortByDefault {
 			return nil
 		}
 
 		switch {
-		case !sliceContains(sortableColumns, sortBy):
-			return fmt.Errorf("invalid sort column %q: not allowed for this resource type", sortBy)
-		case strings.ContainsAny(string(sortBy), unsafeSortChars):
-			return fmt.Errorf("invalid sort column %q: contains unsafe characters", sortBy)
+		case !slices.Contains(sortableColumns, sortBy):
+			return fmt.Errorf("invalid sort column %q: %w", sortBy, errInvalidSortColumn)
+		case !safeSortColumnRegex.MatchString(string(sortBy)):
+			return fmt.Errorf("invalid sort column %q: %w", sortBy, errUnsafeSortColumn)
 		}
 
 		o.withSortBy = sortBy
 		o.withSortDirection = direction
 		return nil
 	}
-}
-
-// sliceContains checks if a value exists in a slice.
-func sliceContains[T comparable](slice []T, val T) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
 }
