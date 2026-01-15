@@ -500,7 +500,6 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					Scopes:      []string{},
 				},
 			},
-			wantErr: false,
 		},
 		// invalid
 		{
@@ -573,6 +572,60 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.Exception,
 			wantErrMsg:  "is not a child of org",
+		},
+		{
+<<<<<<< HEAD
+			name: "invalid-org-project-and-children",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+=======
+			name: "invalid-proj-not-related",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+>>>>>>> 5f6267b34 (wip)
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+<<<<<<< HEAD
+						GrantedScopes: []string{proj.GetPublicId(), "children"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "children grant scope cannot be combined with individual project grant scopes",
+		},
+		{
+			name: "invalid-org-descendants",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+=======
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+					{
+						Label:         "test2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"this", proj2.GetPublicId()},
+>>>>>>> 5f6267b34 (wip)
+					},
+				},
+			},
+			wantErr:     true,
+<<<<<<< HEAD
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "org cannot have descendants grant scope",
+=======
+			wantIsError: errors.Exception,
+			wantErrMsg:  "is not a child of org",
+>>>>>>> 5f6267b34 (wip)
 		},
 		{
 			name: "invalid-org-project-and-children",

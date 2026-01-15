@@ -36,25 +36,25 @@ const (
 type AuthMethod struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the auth method.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Scope of which this auth method is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Scope information for this Auth method.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"public"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"public"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	// Version is not required when you create an auth method.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The auth method type.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are valid to be assigned to Attrs:
 	//
 	//	*AuthMethod_Attributes
@@ -64,9 +64,9 @@ type AuthMethod struct {
 	Attrs isAuthMethod_Attrs `protobuf_oneof:"attrs"`
 	// Whether this auth method is the primary auth method for it's scope.
 	// To change this value update the primary_auth_method_id field on the scope.
-	IsPrimary bool `protobuf:"varint,110,opt,name=is_primary,proto3" json:"is_primary,omitempty"` // @gotags: `class:"public" eventstream:"observation"`
+	IsPrimary bool `protobuf:"varint,110,opt,name=is_primary,proto3" json:"is_primary,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The authorized actions for the scope's collections.
 	AuthorizedCollectionActions map[string]*structpb.ListValue `protobuf:"bytes,310,rep,name=authorized_collection_actions,proto3" json:"authorized_collection_actions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // classified as public via taggable implementation
 	unknownFields               protoimpl.UnknownFields
@@ -263,9 +263,9 @@ func (*AuthMethod_LdapAuthMethodsAttributes) isAuthMethod_Attrs() {}
 type PasswordAuthMethodAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The minimum length allowed for user names for accounts in this auth method.
-	MinLoginNameLength uint32 `protobuf:"varint,10,opt,name=min_login_name_length,proto3" json:"min_login_name_length,omitempty"` // @gotags: `class:"public"`
+	MinLoginNameLength uint32 `protobuf:"varint,10,opt,name=min_login_name_length,proto3" json:"min_login_name_length,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The minimum length allowed for passwords for accounts in this auth method.
-	MinPasswordLength uint32 `protobuf:"varint,20,opt,name=min_password_length,proto3" json:"min_password_length,omitempty"` // @gotags: `class:"public"`
+	MinPasswordLength uint32 `protobuf:"varint,20,opt,name=min_password_length,proto3" json:"min_password_length,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -319,46 +319,46 @@ type OidcAuthMethodAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The state of the auth method. Will be "inactive",
 	// "active-private", or "active-public".
-	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty"` // @gotags: `class:"public"`
+	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The issuer URL. Boundary expects only the schema, host, and port and will
 	// strip off ".well-known/openid-configuration" if present. This will be
 	// used for configuration discovery as well as for validation of the "iss"
 	// claim.
-	Issuer *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=issuer,proto3" json:"issuer,omitempty"` // @gotags: `class:"public"`
+	Issuer *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=issuer,proto3" json:"issuer,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An OAuth 2.0 Client Identifier valid at the Authorization Server.
-	ClientId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=client_id,proto3" json:"client_id,omitempty"` // @gotags: `class:"public"`
+	ClientId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=client_id,proto3" json:"client_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The client's secret.
-	ClientSecret *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=client_secret,proto3" json:"client_secret,omitempty"` // @gotags: `class:"secret"`
+	ClientSecret *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=client_secret,proto3" json:"client_secret,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// The HMAC'd value of the clients secret to indicate whether
 	// the client secret has changed.
-	ClientSecretHmac string `protobuf:"bytes,50,opt,name=client_secret_hmac,proto3" json:"client_secret_hmac,omitempty"` // @gotags: `class:"public"`
+	ClientSecretHmac string `protobuf:"bytes,50,opt,name=client_secret_hmac,proto3" json:"client_secret_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The OIDC "max_age" parameter sent to the Authorization Server indicating
 	// a maximum acceptable time in seconds since the user's last authentication
 	// before requiring the user to reauthenticate. 0 indicates an immediate
 	// need to reauthenticate.
-	MaxAge *wrapperspb.UInt32Value `protobuf:"bytes,60,opt,name=max_age,proto3" json:"max_age,omitempty"` // @gotags: `class:"public"`
+	MaxAge *wrapperspb.UInt32Value `protobuf:"bytes,60,opt,name=max_age,proto3" json:"max_age,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The signing algorithms allowed for the auth method.
-	SigningAlgorithms []string `protobuf:"bytes,70,rep,name=signing_algorithms,proto3" json:"signing_algorithms,omitempty"` // @gotags: `class:"public"`
+	SigningAlgorithms []string `protobuf:"bytes,70,rep,name=signing_algorithms,proto3" json:"signing_algorithms,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The prefix that should be used for any URLs needed during the
 	// authentication flow. This includes the callback URL, the token retrieval
 	// URL, and the redirection URL used by the OIDC Authorization Server.
-	ApiUrlPrefix *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=api_url_prefix,proto3" json:"api_url_prefix,omitempty"` // @gotags: `class:"public"`
+	ApiUrlPrefix *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=api_url_prefix,proto3" json:"api_url_prefix,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The callback URL that should be configured on the
 	// Authorization Server to use during the authentication flow.
-	CallbackUrl string `protobuf:"bytes,90,opt,name=callback_url,proto3" json:"callback_url,omitempty"` // @gotags: `class:"public"`
+	CallbackUrl string `protobuf:"bytes,90,opt,name=callback_url,proto3" json:"callback_url,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional PEM-encoded X.509 CA certificates that can be used as trust anchors
 	// when connecting to an OIDC provider.
-	IdpCaCerts []string `protobuf:"bytes,100,rep,name=idp_ca_certs,proto3" json:"idp_ca_certs,omitempty"` // @gotags: `class:"public"`
+	IdpCaCerts []string `protobuf:"bytes,100,rep,name=idp_ca_certs,proto3" json:"idp_ca_certs,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Allowed audience claims for this auth method.
-	AllowedAudiences []string `protobuf:"bytes,110,rep,name=allowed_audiences,proto3" json:"allowed_audiences,omitempty"` // @gotags: `class:"public"`
+	AllowedAudiences []string `protobuf:"bytes,110,rep,name=allowed_audiences,proto3" json:"allowed_audiences,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional claims scopes that will be requested during authentication.
 	// see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
-	ClaimsScopes []string `protobuf:"bytes,112,rep,name=claims_scopes,proto3" json:"claims_scopes,omitempty"` // @gotags: `class:"public"`
+	ClaimsScopes []string `protobuf:"bytes,112,rep,name=claims_scopes,proto3" json:"claims_scopes,omitempty" class:"public"` // @gotags: `class:"public"`
 	// account_claim_maps are optional claim maps from custom claims to the
 	// standard claims of sub, name and email.  These maps are represented as
 	// key=value where the key equals the from_claim and the value equals the
 	// to_claim.  For example "oid=sub".
-	AccountClaimMaps []string `protobuf:"bytes,113,rep,name=account_claim_maps,proto3" json:"account_claim_maps,omitempty"` // @gotags: `class:"public"`
+	AccountClaimMaps []string `protobuf:"bytes,113,rep,name=account_claim_maps,proto3" json:"account_claim_maps,omitempty" class:"public"` // @gotags: `class:"public"`
 	// If the Authorization Server's discovered configuration contains values
 	// that do not match the configuration set on this auth method, this can be
 	// set to force the local configuration to override the discovered values.
@@ -367,16 +367,16 @@ type OidcAuthMethodAttributes struct {
 	// will be treated the same as "false"; that is, every time the method is
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
-	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"` // @gotags: `class:"public"`
+	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty" class:"public"` // @gotags: `class:"public"`
 	// dry_run, when set on an update request, indicates that the changes should
 	// not be persisted.  Boundary will still perform the normal checks to confirm
 	// the auth method is complete and validated against the discovered config.
 	// This value will also be set on the returned resource when set in the request
 	// along with the updated fields applied to the resource (but not persisted) as
 	// a result of the update request.
-	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty"` // @gotags: `class:"public"`
+	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The prompts allowed for the auth method.
-	Prompts       []string `protobuf:"bytes,140,rep,name=prompts,proto3" json:"prompts,omitempty"` // @gotags: `class:"public"`
+	Prompts       []string `protobuf:"bytes,140,rep,name=prompts,proto3" json:"prompts,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -527,9 +527,9 @@ func (x *OidcAuthMethodAttributes) GetPrompts() []string {
 type OidcAuthMethodAuthenticateStartResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The returned authentication URL
-	AuthUrl string `protobuf:"bytes,10,opt,name=auth_url,proto3" json:"auth_url,omitempty"` // @gotags: `class:"public"`
+	AuthUrl string `protobuf:"bytes,10,opt,name=auth_url,proto3" json:"auth_url,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The returned token ID
-	TokenId       string `protobuf:"bytes,30,opt,name=token_id,proto3" json:"token_id,omitempty"` // @gotags: `class:"public"`
+	TokenId       string `protobuf:"bytes,30,opt,name=token_id,proto3" json:"token_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -582,13 +582,13 @@ func (x *OidcAuthMethodAuthenticateStartResponse) GetTokenId() string {
 type OidcAuthMethodAuthenticateCallbackRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The returned code
-	Code string `protobuf:"bytes,10,opt,name=code,proto3" json:"code,omitempty"` // @gotags: `class:"secret"`
+	Code string `protobuf:"bytes,10,opt,name=code,proto3" json:"code,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// The returned state
-	State string `protobuf:"bytes,20,opt,name=state,proto3" json:"state,omitempty"` // @gotags: `class:"public"`
+	State string `protobuf:"bytes,20,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Error parameters, if they are returned
-	Error            string `protobuf:"bytes,30,opt,name=error,proto3" json:"error,omitempty"`                         // @gotags: `class:"public"`
-	ErrorDescription string `protobuf:"bytes,40,opt,name=error_description,proto3" json:"error_description,omitempty"` // @gotags: `class:"public"`
-	ErrorUri         string `protobuf:"bytes,50,opt,name=error_uri,proto3" json:"error_uri,omitempty"`                 // @gotags: `class:"public"`
+	Error            string `protobuf:"bytes,30,opt,name=error,proto3" json:"error,omitempty" class:"public"`                         // @gotags: `class:"public"`
+	ErrorDescription string `protobuf:"bytes,40,opt,name=error_description,proto3" json:"error_description,omitempty" class:"public"` // @gotags: `class:"public"`
+	ErrorUri         string `protobuf:"bytes,50,opt,name=error_uri,proto3" json:"error_uri,omitempty" class:"public"`                 // @gotags: `class:"public"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -662,7 +662,7 @@ func (x *OidcAuthMethodAuthenticateCallbackRequest) GetErrorUri() string {
 type OidcAuthMethodAuthenticateCallbackResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The final redirection URL
-	FinalRedirectUrl string `protobuf:"bytes,10,opt,name=final_redirect_url,proto3" json:"final_redirect_url,omitempty"` // @gotags: `class:"public"`
+	FinalRedirectUrl string `protobuf:"bytes,10,opt,name=final_redirect_url,proto3" json:"final_redirect_url,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -708,7 +708,7 @@ func (x *OidcAuthMethodAuthenticateCallbackResponse) GetFinalRedirectUrl() strin
 type OidcAuthMethodAuthenticateTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the pending token
-	TokenId       string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty"` // @gotags: `class:"secret"`
+	TokenId       string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -756,7 +756,7 @@ type OidcAuthMethodAuthenticateTokenResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The status. This will always be "unknown". It will never be forwarded to
 	// the consumer.
-	Status        string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"` // @gotags: `class:"public"`
+	Status        string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -803,105 +803,105 @@ type LdapAuthMethodAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The state of the auth method. Will be "inactive",
 	// "active-private", or "active-public".
-	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty"` // @gotags: `class:"public"`
+	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// start_tls if true, issues a StartTLS command after establishing an
 	// unencrypted connection. Defaults to false.
-	StartTls bool `protobuf:"varint,20,opt,name=start_tls,proto3" json:"start_tls,omitempty"` // @gotags: `class:"public"`
+	StartTls bool `protobuf:"varint,20,opt,name=start_tls,proto3" json:"start_tls,omitempty" class:"public"` // @gotags: `class:"public"`
 	// insecure_tls if true, skips LDAP server SSL certificate validation -
 	// insecure and use with caution. Defaults to false.
-	InsecureTls bool `protobuf:"varint,30,opt,name=insecure_tls,proto3" json:"insecure_tls,omitempty"` // @gotags: `class:"public"`
+	InsecureTls bool `protobuf:"varint,30,opt,name=insecure_tls,proto3" json:"insecure_tls,omitempty" class:"public"` // @gotags: `class:"public"`
 	// discover_dn if true, use anon bind to discover the bind DN of a user.
 	// Defaults to false.
-	DiscoverDn bool `protobuf:"varint,40,opt,name=discover_dn,proto3" json:"discover_dn,omitempty"` // @gotags: `class:"public"`
+	DiscoverDn bool `protobuf:"varint,40,opt,name=discover_dn,proto3" json:"discover_dn,omitempty" class:"public"` // @gotags: `class:"public"`
 	// anon_group_search if true, use anon bind when performing LDAP group
 	// searches. Defaults to false.
-	AnonGroupSearch bool `protobuf:"varint,50,opt,name=anon_group_search,proto3" json:"anon_group_search,omitempty"` // @gotags: `class:"public"`
+	AnonGroupSearch bool `protobuf:"varint,50,opt,name=anon_group_search,proto3" json:"anon_group_search,omitempty" class:"public"` // @gotags: `class:"public"`
 	// upn_domain is the userPrincipalDomain used to construct the UPN string for
 	// the authenticating user. The constructed UPN will appear as
 	// [username]@UPNDomain  Example: example.com, which will cause Boundary to
 	// bind as username@example.com when authenticating the user.
-	UpnDomain *wrapperspb.StringValue `protobuf:"bytes,60,opt,name=upn_domain,proto3" json:"upn_domain,omitempty"` // @gotags: `class:"public"`
+	UpnDomain *wrapperspb.StringValue `protobuf:"bytes,60,opt,name=upn_domain,proto3" json:"upn_domain,omitempty" class:"public"` // @gotags: `class:"public"`
 	// urls are the LDAP URLS that specify LDAP servers to connection to.  There
 	// must be at lease on URL for each LDAP auth method. When attempting to
 	// connect, the URLs are tried in the order specified. These are Value Objects
 	// that will be stored as Url messages, and are operated on as a complete set
 	// (not individually).
-	Urls []string `protobuf:"bytes,70,rep,name=urls,proto3" json:"urls,omitempty"` // @gotags: `class:"public"`
+	Urls []string `protobuf:"bytes,70,rep,name=urls,proto3" json:"urls,omitempty" class:"public"` // @gotags: `class:"public"`
 	// user_dn (optional) is the base DN under which to perform user search.
 	// Example: ou=Users,dc=example,dc=com
-	UserDn *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=user_dn,proto3" json:"user_dn,omitempty"` // @gotags: `class:"public"`
+	UserDn *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=user_dn,proto3" json:"user_dn,omitempty" class:"public"` // @gotags: `class:"public"`
 	// user_attr (optional) is the attribute on user attribute entry matching the
 	// username passed when authenticating.  Examples: cn, uid
-	UserAttr *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=user_attr,proto3" json:"user_attr,omitempty"` // @gotags: `class:"public"`
+	UserAttr *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=user_attr,proto3" json:"user_attr,omitempty" class:"public"` // @gotags: `class:"public"`
 	// user_filter (optional) is a go template used to construct a LDAP user
 	// search filter. The template can access the following context variables:
 	// [UserAttr, Username]. The default userfilter is
 	// ({{.UserAttr}}={{.Username}}) or
 	// (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
 	// set.
-	UserFilter *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=user_filter,proto3" json:"user_filter,omitempty"` // @gotags: `class:"public"`
+	UserFilter *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=user_filter,proto3" json:"user_filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// enable_groups if true, an authenticated user's groups will be found during
 	// authentication. Defaults to false.
-	EnableGroups bool `protobuf:"varint,110,opt,name=enable_groups,proto3" json:"enable_groups,omitempty"` // @gotags: `class:"public"`
+	EnableGroups bool `protobuf:"varint,110,opt,name=enable_groups,proto3" json:"enable_groups,omitempty" class:"public"` // @gotags: `class:"public"`
 	// group_dn (optional) is the base DN under which to perform user search.
 	// Example: ou=Groups,dc=example,dc=com
 	//
 	// Note: there is no default, so no base dn will be used for group searches if
 	// it's not specified.
-	GroupDn *wrapperspb.StringValue `protobuf:"bytes,120,opt,name=group_dn,proto3" json:"group_dn,omitempty"` // @gotags: `class:"public"`
+	GroupDn *wrapperspb.StringValue `protobuf:"bytes,120,opt,name=group_dn,proto3" json:"group_dn,omitempty" class:"public"` // @gotags: `class:"public"`
 	// group_attr (optional) is the LDAP attribute to follow on objects returned
 	// by GroupFilter in order to enumerate user group membership. Examples: for
 	// GroupFilter queries returning group objects, use: cn. For queries returning
 	// user objects, use: memberOf. The default is cn.
-	GroupAttr *wrapperspb.StringValue `protobuf:"bytes,130,opt,name=group_attr,proto3" json:"group_attr,omitempty"` // @gotags: `class:"public"`
+	GroupAttr *wrapperspb.StringValue `protobuf:"bytes,130,opt,name=group_attr,proto3" json:"group_attr,omitempty" class:"public"` // @gotags: `class:"public"`
 	// group_filter (optional) is a Go template used when constructing the group
 	// membership query. The template can access the following context variables:
 	// [UserDN, Username]. The default is
 	// (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
 	// which is compatible with several common directory schemas.
-	GroupFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=group_filter,proto3" json:"group_filter,omitempty"` // @gotags: `class:"public"`
+	GroupFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=group_filter,proto3" json:"group_filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// certificates are optional PEM encoded x509 certificates in ASN.1 DER form
 	// that can be used as trust anchors when connecting to an LDAP provider.
 	// These are Value Objects that will be stored as Certificate messages, and
 	// are operatated on as a complete set (not individually).
-	Certificates []string `protobuf:"bytes,150,rep,name=certificates,proto3" json:"certificates,omitempty"` // @gotags: `class:"public"`
+	Certificates []string `protobuf:"bytes,150,rep,name=certificates,proto3" json:"certificates,omitempty" class:"public"` // @gotags: `class:"public"`
 	// client_certificate is the optional certificate encoded as PEM. It must be
 	// set if an optional client_certificate_key specified
-	ClientCertificate *wrapperspb.StringValue `protobuf:"bytes,160,opt,name=client_certificate,proto3" json:"client_certificate,omitempty"` // @gotags: `class:"public"`
+	ClientCertificate *wrapperspb.StringValue `protobuf:"bytes,160,opt,name=client_certificate,proto3" json:"client_certificate,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The client_certificate_key (optional) is the plain-text of the
 	// certificate key data encoded as PEM.
-	ClientCertificateKey *wrapperspb.StringValue `protobuf:"bytes,170,opt,name=client_certificate_key,proto3" json:"client_certificate_key,omitempty"` // @gotags: `class:"secret"`
+	ClientCertificateKey *wrapperspb.StringValue `protobuf:"bytes,170,opt,name=client_certificate_key,proto3" json:"client_certificate_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// The HMAC'd value of the client certificate key to indicate
 	// whether the certificate key has changed.
-	ClientCertificateKeyHmac string `protobuf:"bytes,180,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty"` // @gotags: `class:"public"`
+	ClientCertificateKeyHmac string `protobuf:"bytes,180,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 	// bind_dn (optional) is the distinguished name of entry to bind when
 	// performing user and group search. Example:
 	// cn=vault,ou=Users,dc=example,dc=com
-	BindDn *wrapperspb.StringValue `protobuf:"bytes,190,opt,name=bind_dn,proto3" json:"bind_dn,omitempty"` // @gotags: `class:"public"`
+	BindDn *wrapperspb.StringValue `protobuf:"bytes,190,opt,name=bind_dn,proto3" json:"bind_dn,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The bind_password (optional) is the password to use along with
 	// binddn when performing user search.
-	BindPassword *wrapperspb.StringValue `protobuf:"bytes,200,opt,name=bind_password,proto3" json:"bind_password,omitempty"` // @gotags: `class:"secret"`
+	BindPassword *wrapperspb.StringValue `protobuf:"bytes,200,opt,name=bind_password,proto3" json:"bind_password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// The HMAC'd value of the bind password to indicate
 	// whether the password has changed.
-	BindPasswordHmac string `protobuf:"bytes,210,opt,name=bind_password_hmac,proto3" json:"bind_password_hmac,omitempty"` // @gotags: `class:"public"`
-	UseTokenGroups   bool   `protobuf:"varint,220,opt,name=use_token_groups,proto3" json:"use_token_groups,omitempty"`    // @gotags: `class:"public"`
+	BindPasswordHmac string `protobuf:"bytes,210,opt,name=bind_password_hmac,proto3" json:"bind_password_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	UseTokenGroups   bool   `protobuf:"varint,220,opt,name=use_token_groups,proto3" json:"use_token_groups,omitempty" class:"public"`    // @gotags: `class:"public"`
 	// account_attribute_maps are optional attribute maps from custom attributes
 	// to the standard attributes of fullname and email.  These maps are
 	// represented as key=value where the key equals the from_attribute and the
 	// value equals the to_attribute.  For example "preferredName=fullName".  All
 	// attribute names are case insensitive.
-	AccountAttributeMaps []string `protobuf:"bytes,230,rep,name=account_attribute_maps,proto3" json:"account_attribute_maps,omitempty"` // @gotags: `class:"public"`
+	AccountAttributeMaps []string `protobuf:"bytes,230,rep,name=account_attribute_maps,proto3" json:"account_attribute_maps,omitempty" class:"public"` // @gotags: `class:"public"`
 	// maximum_page_size (optional) specifies a maximum ldap search result size to
 	// use when retrieving the authenticated user's group memberships. This can
 	// be used to avoid reaching the LDAP server's max result size.
-	MaximumPageSize uint32 `protobuf:"varint,240,opt,name=maximum_page_size,proto3" json:"maximum_page_size,omitempty"` // @gotags: `class:"public"`
+	MaximumPageSize uint32 `protobuf:"varint,240,opt,name=maximum_page_size,proto3" json:"maximum_page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 	// dereference_aliases (optional) will control how aliases are dereferenced when
 	// performing the search. Possible values are: never, finding, searching,
 	// and always. If unset, a default of "never" is used. When set to
 	// "finding", it will only dereference aliases during name resolution of the
 	// base. When set to "searching", it will dereference aliases after name
 	// resolution.
-	DereferenceAliases *wrapperspb.StringValue `protobuf:"bytes,250,opt,name=dereference_aliases,proto3" json:"dereference_aliases,omitempty"` // @gotags: `class:"public"`
+	DereferenceAliases *wrapperspb.StringValue `protobuf:"bytes,250,opt,name=dereference_aliases,proto3" json:"dereference_aliases,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }

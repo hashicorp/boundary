@@ -29,6 +29,9 @@ const (
 	appTokenPermissionOrgTableName                     = "app_token_permission_org"
 	appTokenPermissionOrgIndividualGrantScopeTableName = "app_token_permission_org_individual_grant_scope"
 
+	appTokenProjectTableName           = "app_token_project"
+	appTokenPermissionProjectTableName = "app_token_permission_project"
+
 	// The version prefix is used to differentiate token versions just for future proofing.
 	tokenValueVersionPrefix = "0"
 	tokenLength             = 24
@@ -145,6 +148,25 @@ func (ato *appTokenOrg) SetTableName(n string) {
 	ato.tableName = n
 }
 
+// for app_token_project (triggers an insert to app_token)
+type appTokenProject struct {
+	*store.AppTokenProject
+	tableName string
+}
+
+// TableName returns the table name.
+func (atp *appTokenProject) TableName() string {
+	if atp.tableName != "" {
+		return atp.tableName
+	}
+	return appTokenProjectTableName
+}
+
+// SetTableName sets the table name.
+func (atp *appTokenProject) SetTableName(n string) {
+	atp.tableName = n
+}
+
 // for app_token_cipher
 type appTokenCipher struct {
 	*store.AppTokenCipher
@@ -254,6 +276,25 @@ func (atop *appTokenPermissionOrgIndividualGrantScope) TableName() string {
 // SetTableName sets the table name.
 func (atop *appTokenPermissionOrgIndividualGrantScope) SetTableName(n string) {
 	atop.tableName = n
+}
+
+// for app_token_permission_project (triggers an insert to app_token_permission)
+type appTokenPermissionProject struct {
+	*store.AppTokenPermissionProject
+	tableName string
+}
+
+// TableName returns the table name.
+func (atpp *appTokenPermissionProject) TableName() string {
+	if atpp.tableName != "" {
+		return atpp.tableName
+	}
+	return appTokenPermissionProjectTableName
+}
+
+// SetTableName sets the table name.
+func (atpp *appTokenPermissionProject) SetTableName(n string) {
+	atpp.tableName = n
 }
 
 // for app_token_permission_grant (triggers an insert to iam_grant and iam_grant_resource_enm)
