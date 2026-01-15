@@ -114,11 +114,13 @@ func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.
 				jsTok := http.Cookie{
 					Name:  JsVisibleCookieName,
 					Value: tok[:half],
+					Path:  "/",
 				}
 				httpTok := http.Cookie{
 					Name:     HttpOnlyCookieName,
 					Value:    tok[half:],
 					HttpOnly: true,
+					Path:     "/",
 				}
 				http.SetCookie(w, &jsTok)
 				http.SetCookie(w, &httpTok)
