@@ -6,9 +6,11 @@ package apptoken
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -47,8 +49,13 @@ func TestRepository_CreateAppToken(t *testing.T) {
 		{
 			name: "valid-global-one-perm",
 			at: &AppToken{
-				ScopeId:         globals.GlobalPrefix,
-				CreatedByUserId: u.PublicId,
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				Name:               "test-token-perms",
+				Description:        "a test token",
+				Revoked:            false,
+				TimeToStaleSeconds: 36000,
+				ExpirationTime:     timestamp.New(timestamp.Now().AsTime().Add(1000 * time.Hour)),
 				Permissions: []AppTokenPermission{
 					{
 						Label:         "test",
@@ -62,7 +69,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=session;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "descendants"},
+				{GrantThis: true, GrantScope: "descendants", Description: "test"},
 			},
 			wantErr: false,
 		},
@@ -91,8 +98,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=target;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantScope: "descendants", GrantThis: true},
-				{GrantScope: "children", GrantThis: false},
+				{GrantScope: "descendants", GrantThis: true, Description: "test"},
+				{GrantScope: "children", GrantThis: false, Description: "test-2"},
 			},
 		},
 		{
@@ -110,7 +117,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				org.GetPublicId(),
@@ -132,7 +139,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: true, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -190,11 +197,11 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				org2.GetPublicId(),
 			},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "children"},
-				{GrantThis: false, GrantScope: "descendants"},
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", Description: "test"},
+				{GrantThis: true, GrantScope: "individual", Description: "test2"},
+				{GrantThis: true, GrantScope: "children", Description: "test3"},
+				{GrantThis: false, GrantScope: "descendants", Description: "test4"},
+				{GrantThis: true, GrantScope: "individual", Description: "test5"},
 			},
 			wantErr: false,
 		},
@@ -225,7 +232,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=session;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "children"},
+				{GrantThis: true, GrantScope: "children", Description: "test"},
 			},
 			wantErr: false,
 		},
@@ -254,8 +261,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=target;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantScope: "children", GrantThis: true},
-				{GrantScope: "children", GrantThis: false},
+				{GrantScope: "children", GrantThis: true, Description: "test"},
+				{GrantScope: "children", GrantThis: false, Description: "test-2"},
 			},
 		},
 		{
@@ -273,7 +280,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -295,7 +302,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: true, GrantScope: "individual", Description: "test"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -335,9 +342,9 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				proj.GetPublicId(),
 			},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "children"},
-				{GrantThis: true, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "children"},
+				{GrantThis: false, GrantScope: "children", Description: "test"},
+				{GrantThis: true, GrantScope: "individual", Description: "test2"},
+				{GrantThis: true, GrantScope: "children", Description: "test3"},
 			},
 			wantErr: false,
 		},
