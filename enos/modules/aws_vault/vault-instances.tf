@@ -7,7 +7,7 @@ resource "aws_instance" "vault_instance" {
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.enos_vault_sg[0].id]
   subnet_id              = tolist(data.aws_subnets.infra.ids)[each.key % length(data.aws_subnets.infra.ids)]
-  key_name               = var.ssh_aws_keypair
+  key_name               = var.aws_ssh_keypair_name
   iam_instance_profile   = aws_iam_instance_profile.vault_profile[0].name
   ipv6_address_count     = local.network_stack[var.ip_version].ipv6_address_count
   tags = merge(
@@ -37,7 +37,8 @@ resource "enos_remote_exec" "install_dependencies" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -53,7 +54,8 @@ resource "enos_bundle_install" "consul" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
+      host        = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -68,7 +70,8 @@ resource "enos_bundle_install" "vault" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
+      host        = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -94,7 +97,8 @@ resource "enos_consul_start" "consul" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -136,7 +140,8 @@ resource "enos_vault_start" "leader" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -177,7 +182,8 @@ resource "enos_vault_start" "followers" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -200,7 +206,8 @@ resource "enos_vault_init" "leader" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -218,7 +225,8 @@ resource "enos_vault_unseal" "leader" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -243,7 +251,8 @@ resource "enos_remote_exec" "create_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -272,7 +281,8 @@ resource "enos_remote_exec" "init_audit_device" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -295,7 +305,8 @@ resource "enos_vault_unseal" "followers" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -321,7 +332,8 @@ resource "enos_vault_unseal" "when_vault_unseal_when_no_init_is_set" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -341,7 +353,8 @@ resource "enos_remote_exec" "vault_write_license" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
@@ -360,7 +373,8 @@ resource "enos_remote_exec" "vault_kms_policy" {
 
   transport = {
     ssh = {
-      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      host        = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+      private_key = var.aws_ssh_private_key
     }
   }
 }
