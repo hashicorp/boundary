@@ -175,6 +175,7 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken, 
 				AppTokenId:     publicId,
 				GrantThisScope: grantThisScope,
 				GrantScope:     globalPermGrantScope,
+				Description:    perm.Label,
 			},
 		}
 
@@ -297,6 +298,7 @@ func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken, pub
 				AppTokenId:     publicId,
 				GrantThisScope: grantThisScope,
 				GrantScope:     orgPermGrantScope,
+				Description:    perm.Label,
 			},
 		}
 
@@ -398,6 +400,7 @@ func (r *Repository) createAppTokenProject(ctx context.Context, token *AppToken,
 				PrivateId:      permId,
 				AppTokenId:     publicId,
 				GrantThisScope: grantThisScope,
+				Description:    perm.Label,
 			},
 		}
 
