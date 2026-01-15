@@ -91,7 +91,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=session;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "descendants"},
+				{GrantThis: true, GrantScope: "descendants", CanonicalGrant: "type=host-catalog;actions=list"},
+				{GrantThis: true, GrantScope: "descendants", CanonicalGrant: "type=session;actions=list"},
 			},
 			wantErr: false,
 		},
@@ -120,8 +121,9 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				"type=target;actions=list",
 			},
 			wantPerms: []testPermission{
-				{GrantScope: "descendants", GrantThis: true},
-				{GrantScope: "children", GrantThis: false},
+				{GrantScope: "descendants", GrantThis: true, CanonicalGrant: "type=host-catalog;actions=list"},
+				{GrantScope: "descendants", GrantThis: true, CanonicalGrant: "type=session;actions=list"},
+				{GrantScope: "children", GrantThis: false, CanonicalGrant: "type=target;actions=list"},
 			},
 		},
 		{
@@ -139,7 +141,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", CanonicalGrant: "type=host-catalog;actions=list"},
+				{GrantThis: false, GrantScope: "individual", CanonicalGrant: "type=session;actions=list"},
 			},
 			wantScopes: []string{
 				org.GetPublicId(),
@@ -161,7 +164,8 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: true, GrantScope: "individual", CanonicalGrant: "type=host-catalog;actions=list"},
+				{GrantThis: true, GrantScope: "individual", CanonicalGrant: "type=session;actions=list"},
 			},
 			wantScopes: []string{
 				proj.GetPublicId(),
@@ -219,11 +223,13 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				org2.GetPublicId(),
 			},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "individual"},
-				{GrantThis: true, GrantScope: "children"},
-				{GrantThis: false, GrantScope: "descendants"},
-				{GrantThis: true, GrantScope: "individual"},
+				{GrantThis: false, GrantScope: "individual", CanonicalGrant: "type=host-catalog;actions=list"},
+				{GrantThis: true, GrantScope: "individual", CanonicalGrant: "type=target;actions=list"},
+				{GrantThis: true, GrantScope: "children", CanonicalGrant: "type=session;actions=list"},
+				{GrantThis: false, GrantScope: "descendants", CanonicalGrant: "type=role;actions=list"},
+				{GrantThis: false, GrantScope: "descendants", CanonicalGrant: "type=user;actions=list"},
+				{GrantThis: true, GrantScope: "individual", CanonicalGrant: "type=group;actions=list"},
+				{GrantThis: true, GrantScope: "individual", CanonicalGrant: "type=scope;actions=list"},
 			},
 			wantErr: false,
 		},

@@ -17,8 +17,9 @@ import (
 )
 
 type testPermission struct {
-	GrantScope string
-	GrantThis  bool
+	GrantScope     string
+	GrantThis      bool
+	CanonicalGrant string
 }
 
 // TestRepo creates a repository for AppToken testing.
@@ -50,8 +51,15 @@ func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string
 	assert := assert.New(t)
 
 	permQuery := `
-		select grant_scope, grant_this_scope from app_token_permission_global where app_token_id = $1
+		select ag.grant_scope,
+		       ag.grant_this_scope,
+			   ap.canonical_grant
+		  from app_token_permission_global ag
+		  join app_token_permission_grant ap
+		    on ag.private_id = ap.permission_id
+		 where ag.app_token_id = $1
 	`
+
 	rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
 	if err != nil {
 		return err
@@ -62,15 +70,17 @@ func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string
 	for rows.Next() {
 		var grantScope string
 		var grantThisScope bool
-		if err := rows.Scan(&grantScope, &grantThisScope); err != nil {
+		var canonicalGrant string
+		if err := rows.Scan(&grantScope, &grantThisScope, &canonicalGrant); err != nil {
 			return err
 		}
 		grantedPerms = append(grantedPerms, testPermission{
-			GrantScope: grantScope,
-			GrantThis:  grantThisScope,
+			CanonicalGrant: canonicalGrant,
+			GrantScope:     grantScope,
+			GrantThis:      grantThisScope,
 		})
 	}
-	assert.Equal(grantedPerms, wantPerms)
+	assert.Equal(wantPerms, grantedPerms)
 	return nil
 }
 
