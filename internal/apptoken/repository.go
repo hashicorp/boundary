@@ -22,9 +22,6 @@ type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-
-	// defaultLimit provides a default for limiting the number of results returned from the repo
-	defaultLimit int
 }
 
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
