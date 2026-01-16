@@ -17,6 +17,7 @@ import (
 
 	// Imported to register all actions for all resources
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/apptokens"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"

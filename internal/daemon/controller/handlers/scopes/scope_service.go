@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/aliases"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/apptokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
@@ -81,6 +82,7 @@ var (
 			resource.AuthMethod:       authmethods.CollectionActions,
 			resource.StorageBucket:    storage_buckets.CollectionActions,
 			resource.AuthToken:        authtokens.CollectionActions,
+			resource.AppToken:         apptokens.CollectionActions,
 			resource.Group:            groups.CollectionActions,
 			resource.Role:             roles.CollectionActions,
 			resource.Scope:            CollectionActions,
@@ -94,6 +96,7 @@ var (
 			resource.AuthMethod:       authmethods.CollectionActions,
 			resource.StorageBucket:    storage_buckets.CollectionActions,
 			resource.AuthToken:        authtokens.CollectionActions,
+			resource.AppToken:         apptokens.CollectionActions,
 			resource.Group:            groups.CollectionActions,
 			resource.Role:             roles.CollectionActions,
 			resource.Scope:            CollectionActions,
@@ -121,6 +124,7 @@ var (
 		resource.Alias,
 		resource.AuthMethod,
 		resource.AuthToken,
+		resource.AppToken,
 		resource.StorageBucket,
 		resource.Group,
 		resource.Role,
