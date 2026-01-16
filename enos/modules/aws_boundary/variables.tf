@@ -401,3 +401,9 @@ variable "vault_transit_token" {
   type        = string
   default     = ""
 }
+
+variable "protocol" {
+  description = "http protocol (http/https)"
+  type        = string
+  default     = "http"
+}

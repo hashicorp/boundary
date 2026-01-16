@@ -38,7 +38,7 @@ output "rds_db_name" {
 
 output "alb_boundary_api_addr" {
   description = "The address of the boundary API"
-  value       = "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
+  value       = var.protocol == "https" ? "https://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}" : "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
 }
 
 // Boundary init outputs
@@ -251,4 +251,9 @@ output "worker_cidr" {
 output "worker_ipv6_cidr" {
   description = "List of ipv6 subnets of all workers"
   value       = distinct([for ip in flatten(aws_instance.worker.*.ipv6_addresses) : cidrsubnet("${ip}/64", 0, 0)])
+}
+
+output "alb_cert" {
+  description = "Public cert for the alb"
+  value       = try(tls_self_signed_cert.certificate[0].cert_pem, null)
 }

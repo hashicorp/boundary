@@ -185,3 +185,29 @@ Once the workspace has been created, changes to the bootstrap module will automa
 the GitHub PR workflow. Each time a PR is created for changes to files within that module the module
 will be planned via the workflow described above. If the plan is ok and the PR is merged, the module
 will automatically be applied via the same workflow.
+
+### Trust certificate for HTTPS testing
+
+The scenario e2e_ui_aws has the options for setting up using HTTPS. When you do this, additional steps
+need to be taken in order to trust the certificate locally and fully enable HTTPS. The certificate is
+in the enos scenario output as `E2E_ALB_CERT`.
+
+#### Trusting on Mac
+
+1. **Save the certificate** - Save the output of the certificate in a file e.g. `mycert.crt`
+2. **Trust the certificate** - Double click the certificate to open keychain access. Right click the
+certificate in the list. Click `get info`. Under `Trust` select `Always Trust` under the
+`When using this certificate:` option.
+3. **Restart your computer** - Restart computer to complete the trusting process
+4. **Firefox trusting** - For firefox you additionally need to trust the cert in the browser.
+This can be done under `Firefox Settings > Privacy & Security > View Certificates > Authorities > Import`
+
+#### Trusting on linux
+
+1. **Save the certificate** - Save the output of the certificate in a file e.g. `mycert.crt`
+2. **Trust the certificate** - Run the following commands
+
+```shell
+> sudo cp mycert.crt /usr/local/share/ca-certificates/
+> sudo update-ca-certificates
+```
