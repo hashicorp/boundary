@@ -159,11 +159,6 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 
-	AppTokenPrefix: {
-		Type:    resource.AppToken,
-		Subtype: UnknownSubtype,
-	},
-
 	PasswordAuthMethodPrefix: {
 		Type:    resource.AuthMethod,
 		Subtype: UnknownSubtype,
