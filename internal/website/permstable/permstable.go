@@ -66,7 +66,7 @@ func main() {
 
 	for _, res := range orderedResources {
 		switch res {
-		case resource.Unknown, resource.All, resource.Controller, resource.AppToken: // TODO: remove AppToken when we fully implement it
+		case resource.Unknown, resource.All, resource.Controller:
 			continue
 		}
 		info := resources[res]
