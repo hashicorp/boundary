@@ -5,6 +5,7 @@ package apptoken
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -193,15 +194,29 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				}
 				dbInserts = append(dbInserts, individualProjGlobalPermToCreate)
 			default:
-				return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid grant scope")
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid grant scope %s", gs))
 			}
 		}
 	}
 
 	// batch write all collected inserts
-	if err = r.batchWriteToDb(ctx, dbInserts...); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("while creating app token"))
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for _, appTokenObject := range dbInserts {
+				if err := w.Create(ctx, appTokenObject); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating app token in database"))
 	}
+
 	if err := r.reader.LookupByPublicId(ctx, globalAppToken); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("app token lookup"))
 	}
@@ -221,23 +236,4 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		Token:                     cipherToken,
 	}
 	return newAppToken, nil
-}
-
-// batchWriteToDb performs a batch write of the provided app token related objects
-// to the database within a single transaction.
-func (r *Repository) batchWriteToDb(ctx context.Context, appTokenInserts ...interface{}) error {
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			for _, appTokenObject := range appTokenInserts {
-				if err := w.Create(ctx, appTokenObject); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-	)
-	return err
 }

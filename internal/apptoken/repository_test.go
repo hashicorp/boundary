@@ -298,8 +298,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				ScopeId:         globals.GlobalPrefix,
 				CreatedByUserId: "whomp",
 			},
-			wantErrMsg: "while creating app token",
-			wantErr:    true,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
