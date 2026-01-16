@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/aliases"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/apptokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
