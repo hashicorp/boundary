@@ -20,9 +20,19 @@ import (
 type SortBy string
 
 const (
-	SortByDefault SortBy = ""
-	SortByName    SortBy = "name"
+	SortByDefault   SortBy = ""
+	SortByName      SortBy = "name"
+	SortByCreatedAt SortBy = "created_at"
 )
+
+// Valid returns true if the SortBy value is a known good value
+func (s SortBy) Valid() bool {
+	switch s {
+	case SortByDefault, SortByName, SortByCreatedAt:
+		return true
+	}
+	return false
+}
 
 type SortDirection string
 
@@ -31,6 +41,15 @@ const (
 	Ascending            SortDirection = "asc"
 	Descending           SortDirection = "desc"
 )
+
+// Valid returns true if the SortDirection value is a known good value
+func (d SortDirection) Valid() bool {
+	switch d {
+	case SortDirectionDefault, Ascending, Descending:
+		return true
+	}
+	return false
+}
 
 type SearchableResource string
 
@@ -76,6 +95,10 @@ type SearchParams struct {
 	Filter string
 	// Max result set size is an override to the default max result set size
 	MaxResultSetSize int
+	// SortBy specifies the field to sort by (restricted to known good values)
+	SortBy SortBy
+	// SortDirection specifies the direction to sort (asc or desc)
+	SortDirection SortDirection
 }
 
 // SearchResult returns the results from searching the cache.
@@ -131,6 +154,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Targets = finalResults
 				},
+				sortableColumns: []SortBy{SortByName, SortByCreatedAt},
 			},
 			Sessions: &resourceSearchFns[*sessions.Session]{
 				list:  repo.ListSessions,
@@ -144,6 +168,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Sessions = finalResults
 				},
+				sortableColumns: []SortBy{SortByCreatedAt},
 			},
 			ImplicitScopes: &resourceSearchFns[*scopes.Scope]{
 				list:  repo.ListImplicitScopes,
@@ -199,6 +224,10 @@ func (s *SearchService) Search(ctx context.Context, params SearchParams) (*Searc
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid resource")
 	case params.AuthTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
+	case !params.SortBy.Valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sort by value")
+	case !params.SortDirection.Valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sort direction value")
 	}
 	rSearcher, ok := s.searchableResources[params.Resource]
 	if !ok {
@@ -226,6 +255,8 @@ type resourceSearchFns[T any] struct {
 	// filter takes results and a ready-to-use evaluator and filters the items
 	// in the result
 	filter func(*SearchResult, *bexpr.Evaluator)
+	// sortableColumns is a list of columns that can be used for sorting
+	sortableColumns []SortBy
 }
 
 // resourceSearcher is an interface that only resourceSearchFns[T] is expected
@@ -244,13 +275,18 @@ type resourceSearcher interface {
 func (l *resourceSearchFns[T]) search(ctx context.Context, p SearchParams) (*SearchResult, error) {
 	const op = "cache.(resourceSearchFns).search"
 
+	opts := []Option{WithMaxResultSetSize(p.MaxResultSetSize)}
+	if p.SortBy != SortByDefault {
+		opts = append(opts, WithSort(p.SortBy, p.SortDirection, l.sortableColumns))
+	}
+
 	var found *SearchResult
 	var err error
 	switch p.Query {
 	case "":
-		found, err = l.list(ctx, p.AuthTokenId, WithMaxResultSetSize(p.MaxResultSetSize))
+		found, err = l.list(ctx, p.AuthTokenId, opts...)
 	default:
-		found, err = l.query(ctx, p.AuthTokenId, p.Query, WithMaxResultSetSize(p.MaxResultSetSize))
+		found, err = l.query(ctx, p.AuthTokenId, p.Query, opts...)
 	}
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

@@ -5,8 +5,19 @@ package cache
 
 import (
 	stderrors "errors"
+	"fmt"
+	"regexp"
+	"slices"
 
 	"github.com/hashicorp/go-dbw"
+)
+
+// safeSortColumnRegex contains characters that could break SQL ORDER BY clauses
+var safeSortColumnRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+var (
+	errInvalidSortColumn = stderrors.New("not allowed for this resource type")
+	errUnsafeSortColumn  = stderrors.New("contains unsafe characters")
 )
 
 type testRefreshWaitChs struct {
@@ -26,6 +37,8 @@ type options struct {
 	withMaxResultSetSize             int
 	withTestRefreshWaitChs           *testRefreshWaitChs
 	withUseNonPagedListing           bool
+	withSortBy                       SortBy        // validated DB column name
+	withSortDirection                SortDirection // "asc" or "desc"
 }
 
 // Option - how options are passed as args
@@ -136,6 +149,29 @@ func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
 func WithUseNonPagedListing(b bool) Option {
 	return func(o *options) error {
 		o.withUseNonPagedListing = b
+		return nil
+	}
+}
+
+// WithSort configures sorting for query results.
+// Empty sortBy is silently ignored. Empty direction defaults to ascending in the repository layer.
+// Validates column against sortableColumns and rejects SQL-unsafe characters.
+func WithSort(sortBy SortBy, direction SortDirection, sortableColumns []SortBy) Option {
+	return func(o *options) error {
+		// ignore empty sortBy
+		if sortBy == SortByDefault {
+			return nil
+		}
+
+		switch {
+		case !slices.Contains(sortableColumns, sortBy):
+			return fmt.Errorf("invalid sort column %q: %w", sortBy, errInvalidSortColumn)
+		case !safeSortColumnRegex.MatchString(string(sortBy)):
+			return fmt.Errorf("invalid sort column %q: %w", sortBy, errUnsafeSortColumn)
+		}
+
+		o.withSortBy = sortBy
+		o.withSortDirection = direction
 		return nil
 	}
 }
