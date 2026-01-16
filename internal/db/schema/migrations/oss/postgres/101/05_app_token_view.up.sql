@@ -12,7 +12,11 @@ create or replace view app_token_view as
         description,
         approximate_last_access_time,
         create_time,
-        update_time
+        update_time,
+        revoked,
+        expiration_time,
+        time_to_stale_seconds,
+        created_by_user_id
    from app_token_global
   union all
     select
@@ -22,7 +26,11 @@ create or replace view app_token_view as
         description,
         approximate_last_access_time,
         create_time,
-        update_time
+        update_time,
+        revoked,
+        expiration_time,
+        time_to_stale_seconds,
+        created_by_user_id
    from app_token_org
   union all
     select
@@ -32,7 +40,11 @@ create or replace view app_token_view as
         description,
         approximate_last_access_time,
         create_time,
-        update_time
+        update_time,
+        revoked,
+        expiration_time,
+        time_to_stale_seconds,
+        created_by_user_id
    from app_token_project;
     
 comment on view app_token_view is

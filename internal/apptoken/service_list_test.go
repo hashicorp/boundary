@@ -148,6 +148,76 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("filter out tokens", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		filterOutOrg2Func := func(_ context.Context, appt *AppToken) (bool, error) {
+			// Filter out tokens associated with org2
+			if appt.ScopeId == org2.PublicId {
+				return false, nil
+			}
+			return true, nil
+		}
+
+		resp, err := List(
+			ctx,
+			[]byte("test_grants_hash"),
+			10,
+			filterOutOrg2Func,
+			repo,
+			[]string{org1.PublicId, org2.PublicId},
+		)
+		require.NoError(err)
+		require.NotNil(resp)
+		assert.Equal(1, len(resp.Items)) // Only respond with org1Token
+		assert.Equal(org1Token.PublicId, resp.Items[0].PublicId)
+	})
+
+	t.Run("filter out inactive tokens", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+
+		filterOutInactiveFunc := func(_ context.Context, appt *AppToken) (bool, error) {
+			// Filter out inactive tokens
+			if !appt.IsActive() {
+				return false, nil
+			}
+			return true, nil
+		}
+
+		// Create a new global token
+		globalTokenToBeInactive := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
+
+		resp, err := List(
+			ctx,
+			[]byte("test_grants_hash"),
+			10,
+			filterOutInactiveFunc,
+			repo,
+			[]string{globals.GlobalPrefix},
+		)
+		require.NoError(err)
+		require.NotNil(resp)
+		assert.Equal(3, len(resp.Items)) // globalToken1, globalToken2, globalTokenToBeInactive
+
+		// Revoke
+		tempTestRevokeGlobalAppToken(t, repo, globalTokenToBeInactive.PublicId)
+
+		// List again and only find the original two active tokens
+		resp, err = List(
+			ctx,
+			[]byte("test_grants_hash"),
+			10,
+			filterOutInactiveFunc,
+			repo,
+			[]string{globals.GlobalPrefix},
+		)
+		require.NoError(err)
+		require.NotNil(resp)
+		assert.Equal(2, len(resp.Items)) // globalToken1, globalToken2
+	})
+
 	t.Run("missing filter func", func(t *testing.T) {
 		t.Parallel()
 		_, err := List(
