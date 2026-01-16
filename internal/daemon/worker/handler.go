@@ -281,7 +281,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			event.WriteError(ctx, op, err)
 		}
 
-		handlerOpts := []proxyHandlers.Option{proxyHandlers.WithLogger(w.logger), proxyHandlers.WithRandomReader(w.conf.SecureRandomReader)}
+		handlerOpts := []proxyHandlers.Option{proxyHandlers.WithLogger(w.logger)}
 		if cb := w.SshKnownHostsCallback.Load(); cb != nil {
 			handlerOpts = append(handlerOpts, proxyHandlers.WithSshHostKeyCallback(*cb))
 		}

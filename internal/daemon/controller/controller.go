@@ -445,7 +445,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return host.NewCatalogRepository(ctx, dbase, dbase)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
-		return server.NewRepository(ctx, dbase, dbase, c.kms, server.WithRandomReader(c.conf.SecureRandomReader))
+		return server.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -649,7 +649,7 @@ func (c *Controller) registerJobs() error {
 	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
-	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw, c.conf.SecureRandomReader); err != nil {
+	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
 		return err
 	}
 	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {

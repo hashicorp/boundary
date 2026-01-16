@@ -5,10 +5,8 @@ package server
 
 import (
 	"context"
-	"io"
 	"reflect"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -268,15 +266,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, reader, opts.WithReader)
 		assert.Equal(t, writer, opts.WithWriter)
-		assert.Equal(t, opts, testOpts)
-	})
-	t.Run("WithRandomReader", func(t *testing.T) {
-		reader := io.Reader(&strings.Reader{})
-		opts := GetOpts(WithRandomReader(reader))
-		testOpts := getDefaultOptions()
-		testOpts.withRandomReader = reader
-		opts.withNewIdFunc = nil
-		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
 	})
 }
