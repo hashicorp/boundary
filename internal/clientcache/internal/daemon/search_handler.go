@@ -135,8 +135,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 
 		sortDirection, valid := parseSortDirection(sd)
 		if !valid {
-			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_direction parameter %q not valid", sb)))
-			writeError(w, fmt.Sprintf("sort_direction parameter %q not valid ", sb), http.StatusBadRequest)
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_direction parameter %q not valid", sd)))
+			writeError(w, fmt.Sprintf("sort_direction parameter %q not valid ", sd), http.StatusBadRequest)
 			return
 		}
 
