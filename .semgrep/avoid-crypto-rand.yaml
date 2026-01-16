@@ -16,4 +16,4 @@ rules:
       - pattern-inside: |
           import "crypto/rand"
           ...
-    fix: Use SecureRandomReader instead of crypto/rand directly.
+    fix: Use SecureRandomReader instead of crypto/rand.Reader directly.
