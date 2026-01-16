@@ -1,0 +1,65 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.apptoken.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/apptoken/store;store";
+
+// AppTokenGlobal represents app tokens created in global scope
+message AppTokenGlobal {
+  // public_id is used to access the App Token via an API
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // scope id for the app token
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 2;
+
+  // name is the optional friendly name used to
+  // access the App Token via an API
+  // @inject_tag: `gorm:"default:null"`
+  string name = 3 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
+
+  // description of the app token
+  // @inject_tag: `gorm:"default:null"`
+  string description = 4 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
+
+  // control if this app token has been revoked
+  // @inject_tag: `gorm:"default:false"`
+  bool revoked = 5;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 6;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 7;
+
+  // created_by_user_id is the ID of the user that created this App Token
+  // @inject_tag: `gorm:"default:not_null"`
+  string created_by_user_id = 8;
+
+  // approximate_last_access_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp approximate_last_access_time = 9;
+
+  // time_to_stale_seconds is the number of seconds of inactivity after which
+  // the token is considered stale
+  uint32 time_to_stale_seconds = 10;
+
+  // expiration_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp + interval '3 years'"`
+  timestamp.v1.Timestamp expiration_time = 11;
+}

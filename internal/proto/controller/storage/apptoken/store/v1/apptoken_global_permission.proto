@@ -1,0 +1,38 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.apptoken.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/apptoken/store;store";
+
+// AppTokenPermissionGlobal represents app token permissions created in global scope
+message AppTokenPermissionGlobal {
+  // individual id for the app token's permission
+  // @inject_tag: gorm:"primary_key"
+  string private_id = 1;
+
+  // associated app token id
+  string app_token_id = 2;
+
+  // description of the app token permission
+  // @inject_tag: `gorm:"default:null"`
+  string description = 3 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
+
+  // control if this app token permission has been granted "this" scope
+  // @inject_tag: `gorm:"default:false"`
+  bool grant_this_scope = 5;
+
+  // grant scopes for the app token permission
+  // @inject_tag: `gorm:"default:null"`
+  string grant_scope = 6 [(custom_options.v1.mask_mapping) = {
+    this: "grant_scope"
+    that: "grant_scope"
+  }];
+}

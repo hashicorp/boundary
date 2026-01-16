@@ -1,0 +1,29 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.apptoken.store.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/apptoken/store;store";
+
+message AppTokenCipher {
+  // @inject_tag: gorm:"primary_key"
+  string app_token_id = 1;
+
+  // ciphertext token value stored in the database
+  // @inject_tag: gorm:"column:token;not_null" wrapping:"ct,apptoken_token"
+  bytes ct_token = 2;
+
+  // plain text version of the decrypted authtoken value
+  // we are NOT storing this plain-text entry data in the db
+  // token is the field stored and used by the client
+  // @inject_tag: gorm:"-" wrapping:"pt,apptoken_token"
+  string token = 3;
+
+  // key_id is the key ID that was used for the encryption operation. It can be
+  // used to identify a specific version of the key needed to decrypt the value,
+  // which is useful for caching purposes.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 4;
+}
