@@ -6,10 +6,15 @@ package apptoken
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +49,132 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	repo, err := NewRepository(ctx, rw, rw, kmsCache, opt...)
 	require.NoError(err)
 	return repo
+}
+
+func testPublicId(t testing.TB, prefix string) string {
+	t.Helper()
+	publicId, err := db.NewPublicId(t.Context(), prefix)
+	require.NoError(t, err)
+	return publicId
+}
+
+// TestAppToken creates an app token for testing with the specified grants.
+// TODO: Implement TestAppToken once AppToken functionality is added
+func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []string, user *iam.User, grantThisScope bool, grantScope string) *AppToken {
+	t.Helper()
+
+	publicId := testPublicId(t, "appt_")
+	tempTestAddGrants(t, repo, publicId, scopeId, grants, user, grantThisScope, grantScope)
+	return &AppToken{
+		PublicId:    publicId,
+		ScopeId:     scopeId,
+		Description: "test app token",
+	}
+}
+
+// tempTestAddGrants is a temporary test function to add grants to the database for testing
+// TODO: Replace with proper AppToken creation function once AppToken functionality is added
+func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, grants []string, user *iam.User, grantThisScope bool, grantScope string) {
+	t.Helper()
+	ctx := t.Context()
+	require := require.New(t)
+
+	// Determine which table to insert into based on scope prefix
+	var insertTokenSQL, insertPermissionSQL, insertGrantSQL string
+
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		insertTokenSQL = `
+			insert into app_token_global (public_id, scope_id, name, description, created_by_user_id, create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
+		`
+		insertPermissionSQL = `
+			insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope)
+			values ($1, $2, $3, $4, $5)
+		`
+		insertGrantSQL = `
+			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
+			values ($1, $2, $3)
+		`
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		insertTokenSQL = `
+			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
+		`
+		insertPermissionSQL = `
+			insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope)
+			values ($1, $2, $3, $4, $5)
+		`
+		insertGrantSQL = `
+			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
+			values ($1, $2, $3)
+		`
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		insertTokenSQL = `
+			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id, create_time, update_time)
+			values ($1, $2, $3, $4, $5, now(), now())
+		`
+		insertPermissionSQL = `
+			insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope)
+			values ($1, $2, $3, $4)
+		`
+		insertGrantSQL = `
+			insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
+			values ($1, $2, $3)
+		`
+	default:
+		t.Fatalf("invalid scope id: %s", scopeId)
+	}
+
+	// Insert the app token
+	name := fmt.Sprintf("Test App Token %s", tokenId)
+	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{tokenId, scopeId, name, "test app token", user.PublicId})
+	require.NoError(err)
+
+	// Create a permission for this token
+	permissionId := testPublicId(t, "aptp_")
+
+	// Default to 'descendants' if not specified for global/org scopes
+	if grantScope == "" && (strings.HasPrefix(scopeId, globals.GlobalPrefix) || strings.HasPrefix(scopeId, globals.OrgPrefix)) {
+		grantScope = globals.GrantScopeDescendants
+	}
+
+	var permArgs []any
+	if strings.HasPrefix(scopeId, globals.ProjectPrefix) {
+		// Project permissions don't have grant_scope column
+		permArgs = []any{permissionId, tokenId, "test permission", grantThisScope}
+	} else {
+		permArgs = []any{permissionId, tokenId, "test permission", grantThisScope, grantScope}
+	}
+
+	_, err = repo.writer.Exec(ctx, insertPermissionSQL, permArgs)
+	require.NoError(err)
+
+	// Parse and insert each grant
+	for _, grant := range grants {
+		// Parse the grant to get canonical form
+		perm, err := perms.Parse(ctx, perms.GrantTuple{
+			RoleScopeId:  scopeId,
+			GrantScopeId: scopeId,
+			Grant:        grant,
+		}, perms.WithSkipFinalValidation(true))
+		require.NoError(err)
+
+		canonicalGrant := perm.CanonicalString()
+
+		// Insert into iam_grant lookup table (required for query JOINs)
+		// The database trigger will automatically extract and set the resource type
+		_, err = repo.writer.Exec(ctx, `
+			insert into iam_grant (canonical_grant)
+			values ($1)
+			on conflict (canonical_grant) do nothing
+		`, []any{canonicalGrant})
+		require.NoError(err)
+
+		// Insert the grant with both raw_grant and canonical_grant
+		_, err = repo.writer.Exec(ctx, insertGrantSQL, []any{permissionId, grant, canonicalGrant})
+		require.NoError(err)
+	}
 }
 
 // these will eventually expand to cover org and proj
@@ -154,126 +285,6 @@ func testCheckAppTokenIndividualPermissionGrants(t *testing.T, repo *Repository,
 				select private_id
 				  from app_token_permission
 				 where app_token_id = $1
-			)
-		`
-	rows, err := repo.reader.Query(context.Background(), permIndivOrgGrantsQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var scopeId string
-		if err := rows.Scan(&scopeId); err != nil {
-			return err
-		}
-		foundScopes = append(foundScopes, scopeId)
-	}
-
-	rows2, err := repo.reader.Query(context.Background(), permIndivProjectGrantsQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows2.Close()
-	for rows2.Next() {
-		var scopeId string
-		if err := rows2.Scan(&scopeId); err != nil {
-			return err
-		}
-		foundScopes = append(foundScopes, scopeId)
-	}
-
-	assert.ElementsMatch(wantScopes, foundScopes)
-	return nil
-}
-
-// these will eventually expand to cover org and proj
-func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string, wantPerms []testPermission) error {
-	assert := assert.New(t)
-
-	permQuery := `
-		select grant_scope, grant_this_scope from app_token_permission_global where app_token_id = $1
-	`
-	rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var grantedPerms []testPermission
-	for rows.Next() {
-		var grantScope string
-		var grantThisScope bool
-		if err := rows.Scan(&grantScope, &grantThisScope); err != nil {
-			return err
-		}
-		grantedPerms = append(grantedPerms, testPermission{
-			GrantScope: grantScope,
-			GrantThis:  grantThisScope,
-		})
-	}
-	assert.Equal(grantedPerms, wantPerms)
-	return nil
-}
-
-func testCheckPermissionGrants(t *testing.T, repo *Repository, appTokenId string, wantGrants []string) error {
-	assert := assert.New(t)
-	permGrantsQuery := `
-		select permission_id, canonical_grant, raw_grant from app_token_permission_grant where permission_id in (
-			select private_id from app_token_permission where app_token_id = $1
-		)
-	`
-	rows, err := repo.reader.Query(context.Background(), permGrantsQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var foundGrants []string
-	for rows.Next() {
-		var permissionId, canonicalGrant, rawGrant string
-		if err := rows.Scan(&permissionId, &canonicalGrant, &rawGrant); err != nil {
-			return err
-		}
-		foundGrants = append(foundGrants, canonicalGrant)
-	}
-	assert.ElementsMatch(wantGrants, foundGrants)
-	return nil
-}
-
-func testCheckAppTokenCipher(t *testing.T, repo *Repository, appTokenId string) error {
-	assert := assert.New(t)
-	cipherQuery := `
-		select token, key_id from app_token_cipher where app_token_id = $1
-	`
-	rows, err := repo.reader.Query(context.Background(), cipherQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var token, keyId string
-	for rows.Next() {
-		if err := rows.Scan(&token, &keyId); err != nil {
-			return err
-		}
-	}
-	assert.NotEmpty(token)
-	assert.NotEmpty(keyId)
-	return nil
-}
-
-func testCheckAppTokenIndividualPermissionGrants(t *testing.T, repo *Repository, appTokenId string, wantScopes []string) error {
-	assert := assert.New(t)
-	var foundScopes []string
-	permIndivOrgGrantsQuery := `
-			select scope_id from app_token_permission_global_individual_org_grant_scope where permission_id in (
-				select private_id from app_token_permission where app_token_id = $1
-			)
-		`
-	permIndivProjectGrantsQuery := `
-			select scope_id from app_token_permission_global_individual_project_grant_scope where permission_id in (
-				select private_id from app_token_permission where app_token_id = $1
 			)
 		`
 	rows, err := repo.reader.Query(context.Background(), permIndivOrgGrantsQuery, []any{appTokenId})
