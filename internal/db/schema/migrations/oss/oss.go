@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package oss is used to embed the sql statements for the oss edition and

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package vault provides methods for commonly used vault actions that are used in end-to-end tests.

@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- This migration removes support for the job_jobs_to_run view as it is not used

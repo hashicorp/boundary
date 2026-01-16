@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 data "aws_iam_policy_document" "boundary_instance_role" {

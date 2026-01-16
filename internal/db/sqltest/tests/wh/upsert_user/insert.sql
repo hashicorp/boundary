@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- insert tests that the wh_upsert_user function will do an insert when
