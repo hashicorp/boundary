@@ -190,10 +190,9 @@ func TestRepository_CreateAppToken(t *testing.T) {
 						GrantedScopes: []string{"this", proj2.GetPublicId(), "children"},
 					},
 					{
-						Label:  "test4",
-						Grants: []string{"type=role;actions=list", "type=user;actions=list"},
-						// this is valid only under the assumption that org is not under the descendant umbrella
-						GrantedScopes: []string{org.GetPublicId(), "descendants"},
+						Label:         "test4",
+						Grants:        []string{"type=role;actions=list", "type=user;actions=list"},
+						GrantedScopes: []string{"descendants"},
 					},
 					{
 						Label:         "test5",

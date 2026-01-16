@@ -51,7 +51,11 @@ func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string
 	assert := assert.New(t)
 
 	permQuery := `
-		select grant_scope, grant_this_scope, description from app_token_permission_global where app_token_id = $1
+		select grant_scope,
+		       grant_this_scope,
+			   description
+		  from app_token_permission_global
+		 where app_token_id = $1
 	`
 	rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
 	if err != nil {
@@ -80,8 +84,14 @@ func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string
 func testCheckPermissionGrants(t *testing.T, repo *Repository, appTokenId string, wantGrants []string) error {
 	assert := assert.New(t)
 	permGrantsQuery := `
-		select permission_id, canonical_grant, raw_grant from app_token_permission_grant where permission_id in (
-			select private_id from app_token_permission where app_token_id = $1
+		select permission_id,
+		   	   canonical_grant,
+			   raw_grant
+		  from app_token_permission_grant
+		 where permission_id in (
+			select private_id
+			  from app_token_permission
+			 where app_token_id = $1
 		)
 	`
 	rows, err := repo.reader.Query(context.Background(), permGrantsQuery, []any{appTokenId})
@@ -105,7 +115,10 @@ func testCheckPermissionGrants(t *testing.T, repo *Repository, appTokenId string
 func testCheckAppTokenCipher(t *testing.T, repo *Repository, appTokenId string) error {
 	assert := assert.New(t)
 	cipherQuery := `
-		select token, key_id from app_token_cipher where app_token_id = $1
+		select token,
+			   key_id
+		  from app_token_cipher
+		 where app_token_id = $1
 	`
 	rows, err := repo.reader.Query(context.Background(), cipherQuery, []any{appTokenId})
 	if err != nil {
@@ -128,13 +141,19 @@ func testCheckAppTokenIndividualPermissionGrants(t *testing.T, repo *Repository,
 	assert := assert.New(t)
 	var foundScopes []string
 	permIndivOrgGrantsQuery := `
-			select scope_id from app_token_permission_global_individual_org_grant_scope where permission_id in (
-				select private_id from app_token_permission where app_token_id = $1
+			select scope_id
+			  from app_token_permission_global_individual_org_grant_scope where permission_id in (
+				select private_id
+				  from app_token_permission
+				 where app_token_id = $1
 			)
 		`
 	permIndivProjectGrantsQuery := `
-			select scope_id from app_token_permission_global_individual_project_grant_scope where permission_id in (
-				select private_id from app_token_permission where app_token_id = $1
+			select scope_id
+			  from app_token_permission_global_individual_project_grant_scope where permission_id in (
+				select private_id
+				  from app_token_permission
+				 where app_token_id = $1
 			)
 		`
 	rows, err := repo.reader.Query(context.Background(), permIndivOrgGrantsQuery, []any{appTokenId})

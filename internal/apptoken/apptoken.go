@@ -91,9 +91,9 @@ type DeletedScope struct {
 	TimeStamp *timestamp.Timestamp
 }
 
-// newAppTokenCipher generates a new in-memory token.
-func newAppTokenCipher(ctx context.Context) (string, error) {
-	const op = "authtoken.newAppTokenCipher"
+// newToken generates a new in-memory token for the app token.
+func newToken(ctx context.Context) (string, error) {
+	const op = "apptoken.newToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
