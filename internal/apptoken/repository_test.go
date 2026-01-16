@@ -872,16 +872,19 @@ func TestRepository_listAppTokens(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
 
+		orgExceedLimit, _ := iam.TestScopes(t, iamRepo, iam.WithName("orgExceedLimit"), iam.WithDescription("Test Org Exceed Limit"))
+		orgExceedLimitUser := iam.TestUser(t, iamRepo, orgExceedLimit.PublicId)
+
 		// Create enough tokens to exceed the limit
 		for range make([]int, 5) {
-			TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
+			TestAppToken(t, repo, orgExceedLimit.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgExceedLimitUser, true, "individual")
 		}
 
-		tokens, _, err := repo.listAppTokens(ctx, []string{globals.GlobalPrefix}, []Option{WithLimit(10)}...)
+		tokens, _, err := repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(10)}...)
 		require.NoError(err)
-		assert.Equal(len(tokens), 6) // original + 5 new
+		assert.Equal(len(tokens), 5) // all 5 tokens returned
 
-		tokens, _, err = repo.listAppTokens(ctx, []string{globals.GlobalPrefix}, []Option{WithLimit(4)}...)
+		tokens, _, err = repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(4)}...)
 		require.NoError(err)
 		assert.Equal(len(tokens), 4) // limited to 4
 	})
