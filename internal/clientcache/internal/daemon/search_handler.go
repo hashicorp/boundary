@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,13 @@ const (
 	maxResultSetSizeKey = "max_result_set_size"
 	sortByKey           = "sort_by"
 	sortDirectionKey    = "sort_direction"
+)
+
+var (
+	sortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
+		cache.Targets:  []cache.SortBy{cache.SortByName},
+		cache.Sessions: []cache.SortBy{cache.SortByCreatedAt},
+	}
 )
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
@@ -285,18 +293,9 @@ func parseSortBy(sb string, sr cache.SearchableResource) (cache.SortBy, bool) {
 		return cache.SortByDefault, true
 	}
 
-	switch sr {
-	case cache.Targets:
-		if by != cache.SortByName {
-			return cache.SortByDefault, false
-		}
-		return by, true
-	case cache.Sessions:
-		if by != cache.SortByCreatedAt {
-			return cache.SortByDefault, false
-		}
-		return by, true
-	default:
+	sortableBys, ok := sortableColumnsForResource[sr]
+	if !ok || !slices.Contains(sortableBys, by) {
 		return cache.SortByDefault, false
 	}
+	return by, true
 }
