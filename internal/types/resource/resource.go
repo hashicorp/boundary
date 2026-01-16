@@ -37,6 +37,7 @@ const (
 	Policy
 	Billing
 	Alias
+	AppToken
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -140,6 +141,7 @@ var Map = map[string]Type{
 	Policy.String():            Policy,
 	Billing.String():           Billing,
 	Alias.String():             Alias,
+	AppToken.String():          AppToken,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it
@@ -184,6 +186,7 @@ func (r Type) TopLevelType() bool {
 		StorageBucket,
 		Policy,
 		Alias,
+		AppToken,
 		Worker:
 		return true
 	}

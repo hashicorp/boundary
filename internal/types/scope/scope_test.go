@@ -89,6 +89,11 @@ func Test_AllowedIn(t *testing.T) {
 			wantScopes: []Type{Global, Org},
 		},
 		{
+			testName:   "AppToken",
+			resource:   resource.AppToken,
+			wantScopes: []Type{Global, Org},
+		},
+		{
 			testName:   "Billing",
 			resource:   resource.Billing,
 			wantScopes: []Type{Global},
