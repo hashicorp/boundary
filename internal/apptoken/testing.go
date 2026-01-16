@@ -376,11 +376,10 @@ func tempTestRevokeGlobalAppToken(t *testing.T, repo *Repository, tokenId string
 	ctx := t.Context()
 	require := require.New(t)
 
-	rows, err := repo.writer.Exec(ctx, `
+	_, err := repo.writer.Exec(ctx, `
 		update app_token_global
 		set revoked = true, update_time = now()
 		where public_id = $1
 	`, []any{tokenId})
 	require.NoError(err)
-	fmt.Println("Rows affected when revoking token:", rows)
 }
