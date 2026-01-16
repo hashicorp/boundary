@@ -114,7 +114,6 @@ func TestList(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			assert, require := assert.New(t), require.New(t)
 
 			resp, err := List(
@@ -150,7 +149,6 @@ func TestList(t *testing.T) {
 	}
 
 	t.Run("filter out tokens", func(t *testing.T) {
-		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
 		filterOutOrg2Func := func(_ context.Context, appt *AppToken) (bool, error) {
 			// Filter out tokens associated with org2
@@ -175,7 +173,6 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("filter out inactive tokens", func(t *testing.T) {
-		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
 
 		filterOutInactiveFunc := func(_ context.Context, appt *AppToken) (bool, error) {
@@ -219,7 +216,6 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("missing filter func", func(t *testing.T) {
-		t.Parallel()
 		_, err := List(
 			ctx,
 			[]byte("test_grants_hash"),
@@ -233,7 +229,6 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("missing repo", func(t *testing.T) {
-		t.Parallel()
 		_, err := List(
 			ctx,
 			[]byte("test_grants_hash"),
@@ -247,7 +242,6 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("missing grants hash", func(t *testing.T) {
-		t.Parallel()
 		_, err := List(
 			ctx,
 			[]byte(""),
@@ -261,7 +255,6 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("invalid page size", func(t *testing.T) {
-		t.Parallel()
 		_, err := List(
 			ctx,
 			[]byte("test_grants_hash"),
