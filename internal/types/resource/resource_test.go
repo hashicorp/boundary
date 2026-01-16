@@ -58,11 +58,6 @@ func Test_Resource(t *testing.T) {
 			topLevelType: true,
 		},
 		{
-			typeString:   "app-token",
-			want:         AppToken,
-			topLevelType: true,
-		},
-		{
 			typeString: "*",
 			want:       All,
 		},

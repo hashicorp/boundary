@@ -96,6 +96,7 @@ func TestNewRepository(t *testing.T) {
 		})
 	}
 }
+
 func TestRepository_queryAppTokens(t *testing.T) {
 	ctx := t.Context()
 	conn, _ := db.TestSetup(t, "postgres")
