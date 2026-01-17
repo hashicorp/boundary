@@ -5,7 +5,6 @@ package census
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -26,10 +25,9 @@ type censusJob struct {
 	sessionsAgent    any
 	activeUsersAgent any
 	eventCtx         context.Context
-	randReader       io.Reader
 }
 
-func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer, randomReader io.Reader) (*censusJob, error) {
+func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer) (*censusJob, error) {
 	const op = "censusJob.newCensusJob"
 	switch {
 	case r == nil:
@@ -46,7 +44,6 @@ func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer
 		sessionsAgent:    nil,
 		activeUsersAgent: nil,
 		eventCtx:         ctx,
-		randReader:       randomReader,
 	}, nil
 }
 
