@@ -185,13 +185,6 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
-	// permQuery := `
-	// 	select grant_scope,
-	// 	       grant_this_scope,
-	// 		   description
-	// 	  from app_token_permission_global
-	// 	 where app_token_id = $1
-	// `
 	permQuery := `
     select atp.private_id as permission_id,
            atpg.canonical_grant,
