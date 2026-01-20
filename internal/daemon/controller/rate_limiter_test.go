@@ -63,7 +63,7 @@ func Test_newRateLimiterConfig(t *testing.T) {
 			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 			&rateLimiterConfig{
-				maxSize:  338169,
+				maxSize:  340170,
 				configs:  nil,
 				disabled: false,
 				limits:   defaultLimits,
