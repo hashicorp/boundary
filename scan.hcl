@@ -14,7 +14,7 @@ repository {
   
   plugin "semgrep" {
     use_git_ignore = true
-    exclude = ["*_test.go", "website/*", "testing/*", "options.go", "testing.go", "controller.go", "servers.go", "worker.go", "repository_scope.go", "keys.go"]
+    exclude = ["*_test.go", "website/*", "testing/*"]
     config = ["p/gosec", ".semgrep/"]
   }
   
