@@ -113,9 +113,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 		at   *AppToken
 		name string
 
-		wantGrants []string
-		wantPerms  []testPermission
-		wantScopes []string
+		wantPerms []testPermission
 
 		wantErr     bool
 		wantErrMsg  string
@@ -170,12 +168,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					},
 				},
 			},
-			wantGrants: []string{
-				"type=host-catalog;actions=list",
-				"type=session;actions=list",
-			},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "descendants", Description: "test"},
+				{
+					GrantThis:   true,
+					GrantScope:  "descendants",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
 			},
 			wantErr: false,
 		},
@@ -198,14 +198,21 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantGrants: []string{
-				"type=host-catalog;actions=list",
-				"type=session;actions=list",
-				"type=target;actions=list",
-			},
 			wantPerms: []testPermission{
-				{GrantScope: "descendants", GrantThis: true, Description: "test"},
-				{GrantScope: "children", GrantThis: false, Description: "test-2"},
+				{
+					GrantScope:  "descendants",
+					GrantThis:   true,
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					GrantScope:  "children",
+					GrantThis:   false,
+					Description: "test-2",
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{},
+				},
 			},
 		},
 		{
@@ -221,12 +228,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					},
 				},
 			},
-			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual", Description: "test"},
-			},
-			wantScopes: []string{
-				org.GetPublicId(),
+				{
+					GrantThis:   false,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{org.GetPublicId()},
+				},
 			},
 			wantErr: false,
 		},
@@ -243,12 +252,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					},
 				},
 			},
-			wantGrants: []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 			wantPerms: []testPermission{
-				{GrantThis: true, GrantScope: "individual", Description: "test"},
-			},
-			wantScopes: []string{
-				proj.GetPublicId(),
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
 			},
 			wantErr: false,
 		},
@@ -266,7 +277,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{"this", proj.GetPublicId(), proj2.GetPublicId()},
 					},
 					{
 						Label:         "test3",
@@ -285,28 +296,42 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					},
 				},
 			},
-			wantGrants: []string{
-				"type=host-catalog;actions=list",
-				"type=session;actions=list",
-				"type=target;actions=list",
-				"type=role;actions=list",
-				"type=user;actions=list",
-				"type=group;actions=list",
-				"type=scope;actions=list",
-			},
-			wantScopes: []string{
-				// there are 2 instances of individually granted permissions for the same proj
-				proj.GetPublicId(),
-				proj.GetPublicId(),
-				proj2.GetPublicId(),
-				org2.GetPublicId(),
-			},
 			wantPerms: []testPermission{
-				{GrantThis: false, GrantScope: "individual", Description: "test"},
-				{GrantThis: true, GrantScope: "individual", Description: "test2"},
-				{GrantThis: true, GrantScope: "children", Description: "test3"},
-				{GrantThis: false, GrantScope: "descendants", Description: "test4"},
-				{GrantThis: true, GrantScope: "individual", Description: "test5"},
+				{
+					Description: "test",
+					GrantScope:  "individual",
+					GrantThis:   false,
+					Grants:      []string{"type=host-catalog;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+				{
+					Description: "test2",
+					GrantScope:  "individual",
+					GrantThis:   true,
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{proj.GetPublicId(), proj2.GetPublicId()},
+				},
+				{
+					Description: "test3",
+					GrantScope:  "children",
+					GrantThis:   true,
+					Grants:      []string{"type=session;actions=list"},
+					Scopes:      []string{proj2.GetPublicId()},
+				},
+				{
+					Description: "test4",
+					GrantScope:  "descendants",
+					GrantThis:   false,
+					Grants:      []string{"type=role;actions=list", "type=user;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					Description: "test5",
+					GrantScope:  "individual",
+					GrantThis:   true,
+					Grants:      []string{"type=group;actions=list", "type=scope;actions=list"},
+					Scopes:      []string{org2.GetPublicId()},
+				},
 			},
 			wantErr: false,
 		},
@@ -407,16 +432,6 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			// validate app token permission global using db queries
 			if tt.at.Permissions != nil {
 				err = testCheckPermissionGlobal(t, repo, at.PublicId, tt.wantPerms)
-				assert.NoError(err)
-			}
-			// validate app token permission grants using db queries
-			if tt.at.Permissions != nil {
-				err = testCheckPermissionGrants(t, repo, at.PublicId, tt.wantGrants)
-				assert.NoError(err)
-			}
-			// validate app token permission global individual grants using db queries
-			if tt.at.Permissions != nil {
-				err = testCheckAppTokenIndividualPermissionGrants(t, repo, at.PublicId, tt.wantScopes)
 				assert.NoError(err)
 			}
 

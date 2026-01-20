@@ -127,7 +127,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		// if perm.GrantedScopes contains "descendants", set globalPermGrantScope to "descendants"
 		// if perm.GrantedScopes contains neither but does have at least one individual org or project,
 		// set globalPermGrantScope to "individual" and create individual grant scope entries below
-		globalPermGrantScope := "individual"
+		globalPermGrantScope := globals.GrantScopeIndividual
 		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
 			globalPermGrantScope = globals.GrantScopeChildren
 		} else if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) {
