@@ -681,9 +681,9 @@ func TestRepository_queryAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
-	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, "individual")
-	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, "individual")
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
 
 	testCases := []struct {
 		name            string
@@ -781,9 +781,9 @@ func TestRepository_listAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
-	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, "individual")
-	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, "individual")
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
 
 	testCases := []struct {
 		name           string
