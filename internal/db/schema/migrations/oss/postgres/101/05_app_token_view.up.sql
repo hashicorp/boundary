@@ -4,7 +4,7 @@
 begin;
 
 -- Create the app_token_view to unify app tokens from different scopes
-create or replace view app_token_view as
+create view app_token_view as
     select
         public_id,
         scope_id,
