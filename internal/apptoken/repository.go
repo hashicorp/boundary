@@ -476,8 +476,21 @@ func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, arg
 	return appTokens, transactionTimestamp, nil
 }
 
-// TODO: Implement proper estimated count logic
+// estimatedCount returns an estimate of the total number of items in the global, org, and project app token tables.
 func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 	const op = "apptoken.(Repository).estimatedCount"
-	return 0, nil
+	rows, err := r.reader.Query(ctx, estimateCountAppTokens, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	return count, nil
 }

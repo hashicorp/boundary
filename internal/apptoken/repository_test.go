@@ -889,3 +889,65 @@ func TestRepository_listAppTokens(t *testing.T) {
 		assert.Equal(len(tokens), 4) // limited to 4
 	})
 }
+
+func TestRepository_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Add some app tokens
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	org, proj := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
+	orgUser := iam.TestUser(t, iamRepo, org.PublicId)
+
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	oToken := TestAppToken(t, repo, org.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	pToken := TestAppToken(t, repo, proj.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(3, numItems)
+
+	// Delete the global app token, expect 2 remaining
+	tempTestDeleteAppToken(t, repo, gToken.PublicId, globals.GlobalPrefix)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete the org and project app tokens, expect 0 remaining
+	tempTestDeleteAppToken(t, repo, oToken.PublicId, org.PublicId)
+	tempTestDeleteAppToken(t, repo, pToken.PublicId, proj.PublicId)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+}
