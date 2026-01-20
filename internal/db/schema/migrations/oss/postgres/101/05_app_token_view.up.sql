@@ -5,7 +5,7 @@ begin;
 
 -- Create the app_token_view to unify app tokens from different scopes
 create view app_token_view as
-    select
+ select
         public_id,
         scope_id,
         name,
@@ -19,7 +19,7 @@ create view app_token_view as
         created_by_user_id
    from app_token_global
   union all
-    select
+ select
         public_id,
         scope_id,
         name,
@@ -33,7 +33,7 @@ create view app_token_view as
         created_by_user_id
    from app_token_org
   union all
-    select
+ select
         public_id,
         scope_id,
         name,
