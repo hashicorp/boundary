@@ -383,3 +383,26 @@ func tempTestRevokeGlobalAppToken(t *testing.T, repo *Repository, tokenId string
 	`, []any{tokenId})
 	require.NoError(err)
 }
+
+// tempTestDeleteAppToken is a temporary test function to delete an app token from the database
+// TODO: Replace with proper AppToken deletion function once added
+func tempTestDeleteAppToken(t *testing.T, repo *Repository, tokenId string, scopeId string) {
+	t.Helper()
+	ctx := t.Context()
+	require := require.New(t)
+
+	var deleteSQL string
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		deleteSQL = `delete from app_token_global where public_id = $1;`
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		deleteSQL = `delete from app_token_org where public_id = $1;`
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		deleteSQL = `delete from app_token_project where public_id = $1;`
+	default:
+		t.Fatalf("invalid scope id: %s", scopeId)
+	}
+
+	_, err := repo.writer.Exec(ctx, deleteSQL, []any{tokenId})
+	require.NoError(err)
+}

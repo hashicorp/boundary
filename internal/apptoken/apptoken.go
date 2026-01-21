@@ -41,24 +41,84 @@ type AppToken struct {
 	ScopeId                   string
 	Name                      string
 	Description               string
-	CreateTime                *timestamp.Timestamp
-	ApproximateLastAccessTime *timestamp.Timestamp
-	ExpirationTime            *timestamp.Timestamp
-	TimeToStaleSeconds        uint32
-	Token                     string // Token is a plaintext value of the token
-	CreatedByUserId           string
-	KeyId                     string
 	Revoked                   bool
+	CreateTime                *timestamp.Timestamp
+	UpdateTime                *timestamp.Timestamp
+	CreatedByUserId           string
+	ApproximateLastAccessTime *timestamp.Timestamp
+	TimeToStaleSeconds        uint32
+	ExpirationTime            *timestamp.Timestamp
+	Token                     string // Token is a plaintext value of the token
+	KeyId                     string
 	Permissions               []AppTokenPermission
 }
 
-func (a *AppToken) GetScopeId() string {
-	if a == nil {
+func (at *AppToken) GetScopeId() string {
+	if at == nil {
 		return ""
 	}
-	return a.ScopeId
+	return at.ScopeId
 }
 
+// IsActive returns true if the app token is active (not revoked and not expired)
+// An AppToken is considered inactive if:
+//   - Token is revoked
+//   - time.Now() is after expiration time
+//   - time.Now() is after lastAccess + timeToStaleSeconds
+func (at *AppToken) IsActive() bool {
+	now := time.Now()
+
+	switch {
+	case at.Revoked:
+		return false
+	case at.ExpirationTime != nil && now.After(at.ExpirationTime.AsTime()):
+		return false
+	case at.TimeToStaleSeconds > 0 && at.ApproximateLastAccessTime != nil &&
+		now.After(at.ApproximateLastAccessTime.AsTime().Add(time.Duration(at.TimeToStaleSeconds)*time.Second)):
+		return false
+	default:
+		return true
+	}
+}
+
+// GetPublicId returns the public id of the AppToken
+func (at *AppToken) GetPublicId() string {
+	return at.PublicId
+}
+
+// GetResourceType returns the resource type of the AppToken
+func (at AppToken) GetResourceType() resource.Type {
+	return resource.AppToken
+}
+
+// GetUpdateTime returns the AppToken update time
+func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
+	return at.UpdateTime
+}
+
+// GetCreateTime returns the AppToken create time
+func (at AppToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns the AppToken description
+func (at AppToken) GetDescription() string {
+	return at.Description
+}
+
+// GetName returns the AppToken name
+func (at AppToken) GetName() string {
+	return at.Name
+}
+
+// GetVersion returns 0 so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetVersion() uint32 {
+	return 0
+}
+
+// appTokenView is used to query the app_token_view database view
+// which unions the app_token_global, app_token_org, and app_token_project tables.
 type appTokenView struct {
 	*store.AppToken
 	tableName string `gorm:"-"`
@@ -70,33 +130,12 @@ func (atv *appTokenView) toAppToken() *AppToken {
 		ScopeId:                   atv.ScopeId,
 		Name:                      atv.Name,
 		Description:               atv.Description,
+		Revoked:                   atv.Revoked,
 		CreateTime:                atv.CreateTime,
 		ApproximateLastAccessTime: atv.ApproximateLastAccessTime,
 		ExpirationTime:            atv.ExpirationTime,
 		TimeToStaleSeconds:        atv.TimeToStaleSeconds,
 		CreatedByUserId:           atv.CreatedByUserId,
-		Revoked:                   atv.Revoked,
-	}
-}
-
-// IsActive returns true if the app token is active (not revoked and not expired)
-// An AppToken is considered inactive if:
-//   - Token is revoked
-//   - time.Now() is after expiration time
-//   - time.Now() is after lastAccess + timeToStaleSeconds
-func (a *AppToken) IsActive() bool {
-	now := time.Now()
-
-	switch {
-	case a.Revoked:
-		return false
-	case a.ExpirationTime != nil && now.After(a.ExpirationTime.AsTime()):
-		return false
-	case a.TimeToStaleSeconds > 0 && a.ApproximateLastAccessTime != nil &&
-		now.After(a.ApproximateLastAccessTime.AsTime().Add(time.Duration(a.TimeToStaleSeconds)*time.Second)):
-		return false
-	default:
-		return true
 	}
 }
 
@@ -319,42 +358,4 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
-}
-
-// GetPublicId returns the public id of the AppToken
-func (a *AppToken) GetPublicId() string {
-	return a.PublicId
-}
-
-// GetResourceType returns the resource type of the AppToken
-func (at AppToken) GetResourceType() resource.Type {
-	return resource.AppToken
-}
-
-// GetUpdateTime returns nil because AppToken does not have an update time
-func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
-	return nil
-}
-
-// GetCreateTime returns the AppToken create time
-func (at AppToken) GetCreateTime() *timestamp.Timestamp {
-	return at.CreateTime
-}
-
-// GetDescription returns an empty string so that
-// AppToken will satisfy resource requirements
-func (at AppToken) GetDescription() string {
-	return ""
-}
-
-// GetName returns an empty string so that
-// AppToken will satisfy resource requirements
-func (at AppToken) GetName() string {
-	return ""
-}
-
-// GetVersion returns 0 so that
-// AppToken will satisfy resource requirements
-func (at AppToken) GetVersion() uint32 {
-	return 0
 }

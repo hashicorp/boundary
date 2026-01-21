@@ -42,13 +42,14 @@ func WithRecursive(isRecursive bool) Option {
 	}
 }
 
-// WithLimit provides an option to provide a limit.  Intentionally allowing
-// negative integers.   If WithLimit < 0, then unlimited results are returned.
-// If WithLimit == 0, then default limits are used for results.
+// WithLimit provides an option to provide a limit.
+// If WithLimit <= 0, then default limits are used for results.
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		if limit > 0 {
 			o.withLimit = limit
+		} else {
+			o.withLimit = db.DefaultLimit
 		}
 	}
 }
