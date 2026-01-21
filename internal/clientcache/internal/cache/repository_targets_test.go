@@ -368,7 +368,7 @@ func TestRepository_ListTargets(t *testing.T) {
 	})
 
 	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
-		_, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByCreatedAt, Descending, []SortBy{SortByName}))
+		_, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
 		assert.Error(t, err)
 	})
 
@@ -555,7 +555,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 	})
 
 	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
-		_, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByCreatedAt, Descending, []SortBy{SortByName}))
+		_, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
 		assert.Error(t, err)
 	})
 
