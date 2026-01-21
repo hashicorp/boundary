@@ -19,8 +19,8 @@ func TestParseSortBy(t *testing.T) {
 	}{
 		{"name", cache.Targets, true, cache.SortByName},
 		{"name", cache.Sessions, false, cache.SortByDefault},
-		{"created_at", cache.Targets, false, cache.SortByDefault},
-		{"created_at", cache.Sessions, true, cache.SortByCreatedAt},
+		{"created_time", cache.Targets, false, cache.SortByDefault},
+		{"created_time", cache.Sessions, true, cache.SortByCreatedTime},
 		{"", cache.Targets, true, cache.SortByDefault},
 		{"", cache.Sessions, true, cache.SortByDefault},
 		{"ljkdhnsfg", cache.Targets, false, cache.SortByDefault},

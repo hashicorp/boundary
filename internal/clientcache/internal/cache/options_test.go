@@ -139,23 +139,23 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithSort-valid-name-ascending", func(t *testing.T) {
-		opts, err := getOpts(WithSort(SortByName, Ascending, []SortBy{SortByName, SortByCreatedAt}))
+		opts, err := getOpts(WithSort(SortByName, Ascending, []SortBy{SortByName, SortByCreatedTime}))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withSortBy = SortByName
 		testOpts.withSortDirection = Ascending
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("WithSort-valid-created_at-descending", func(t *testing.T) {
-		opts, err := getOpts(WithSort(SortByCreatedAt, Descending, []SortBy{SortByCreatedAt}))
+	t.Run("WithSort-valid-created_time-descending", func(t *testing.T) {
+		opts, err := getOpts(WithSort(SortByCreatedTime, Descending, []SortBy{SortByCreatedTime}))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withSortBy = SortByCreatedAt
+		testOpts.withSortBy = SortByCreatedTime
 		testOpts.withSortDirection = Descending
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithSort-column-not-in-sortable-list", func(t *testing.T) {
-		_, err := getOpts(WithSort(SortByName, Ascending, []SortBy{SortByCreatedAt}))
+		_, err := getOpts(WithSort(SortByName, Ascending, []SortBy{SortByCreatedTime}))
 		require.Error(t, err)
 		assert.ErrorContains(t, err, errInvalidSortColumn.Error())
 	})
