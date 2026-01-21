@@ -752,8 +752,9 @@ func TestGrants_List_AuthorizedAction(t *testing.T) {
 		switch item.GetType() {
 		case "global":
 			require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"})
-			require.Len(t, item.AuthorizedCollectionActions, 11)
+			require.Len(t, item.AuthorizedCollectionActions, 12)
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Alias.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AppToken.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthMethod.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.StorageBucket.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthToken.PluralString()].AsSlice(), []string{"list"})
@@ -766,7 +767,8 @@ func TestGrants_List_AuthorizedAction(t *testing.T) {
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Policy.PluralString()].AsSlice(), []string{"create", "list"})
 		case "org":
 			require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"})
-			require.Len(t, item.AuthorizedCollectionActions, 9)
+			require.Len(t, item.AuthorizedCollectionActions, 10)
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AppToken.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthMethod.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.StorageBucket.PluralString()].AsSlice(), []string{"create", "list"})
 			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthToken.PluralString()].AsSlice(), []string{"list"})
