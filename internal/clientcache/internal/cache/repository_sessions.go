@@ -19,6 +19,13 @@ import (
 	"github.com/hashicorp/mql"
 )
 
+// sessionSortFieldMap maps SortBy values to their corresponding JSON field paths.
+// Sessions store data in a JSON blob, requiring json_extract for sorting.
+var sessionSortFieldMap = map[SortBy]string{
+	SortByCreatedTime: "created_time",
+	// Add future sortable fields here
+}
+
 // SessionRetrievalFunc is a function that retrieves sessions
 // from the provided boundary addr using the provided token.
 type SessionRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *sessions.SessionListResult, opt ...Option) (ret *sessions.SessionListResult, refreshToken RefreshTokenValue, err error)
@@ -373,8 +380,31 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 		searchArgs = append(searchArgs, opts.withUserId)
 	}
 
+	dbOpts := []db.Option{db.WithLimit(opts.withMaxResultSetSize + 1)}
+
+	if opts.withSortBy != SortByDefault {
+		var direction string
+		switch opts.withSortDirection {
+		case Descending:
+			direction = "desc"
+		case Ascending, SortDirectionDefault:
+			direction = "asc"
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported sort direction: %v", opts.withSortDirection))
+		}
+
+		jsonField, ok := sessionSortFieldMap[opts.withSortBy]
+		if !ok {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported sort field for sessions: %v", opts.withSortBy))
+		}
+
+		// Sessions store data in a JSON blob (i.e. created_time), so we need to use json_extract for sorting
+		orderClause := fmt.Sprintf("json_extract(item, '$.%s') %s", jsonField, direction)
+		dbOpts = append(dbOpts, db.WithOrder(orderClause))
+	}
+
 	var cachedSessions []*Session
-	if err := r.rw.SearchWhere(ctx, &cachedSessions, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedSessions, condition, searchArgs, dbOpts...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 

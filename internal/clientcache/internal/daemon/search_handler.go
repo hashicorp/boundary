@@ -65,7 +65,7 @@ const (
 
 var sortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
 	cache.Targets:  {cache.SortByName},
-	cache.Sessions: {cache.SortByCreatedAt},
+	cache.Sessions: {cache.SortByCreatedTime},
 }
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
