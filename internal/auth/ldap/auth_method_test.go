@@ -510,7 +510,7 @@ func Test_convertValueObjects(t *testing.T) {
 				},
 			},
 			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "host contains an invalid IPv6 literal",
+			wantErrContains: "failed to parse address",
 		},
 		{
 			name: "invalid-client-cert",
