@@ -122,6 +122,7 @@ var (
 	}
 	additionalResourceGrants = []resource.Type{
 		resource.Alias,
+		resource.AppToken,
 		resource.AuthMethod,
 		resource.AuthToken,
 		resource.AppToken,
