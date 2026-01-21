@@ -41,15 +41,15 @@ type AppToken struct {
 	ScopeId                   string
 	Name                      string
 	Description               string
-	Revoked                   bool
 	CreateTime                *timestamp.Timestamp
 	UpdateTime                *timestamp.Timestamp
-	CreatedByUserId           string
 	ApproximateLastAccessTime *timestamp.Timestamp
-	TimeToStaleSeconds        uint32
 	ExpirationTime            *timestamp.Timestamp
+	TimeToStaleSeconds        uint32
 	Token                     string // Token is a plaintext value of the token
+	CreatedByUserId           string
 	KeyId                     string
+	Revoked                   bool
 	Permissions               []AppTokenPermission
 }
 

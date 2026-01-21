@@ -8,6 +8,16 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
+// Option - how Options are passed as arguments
+type Option func(*options)
+
+// options = how options are represented
+type options struct {
+	withRecursive          bool
+	withLimit              int
+	withStartPageAfterItem pagination.Item
+}
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -17,16 +27,6 @@ func getOpts(opt ...Option) options {
 		}
 	}
 	return opts
-}
-
-// Option - how Options are passed as arguments
-type Option func(*options)
-
-// options = how options are represented
-type options struct {
-	withRecursive          bool
-	withLimit              int
-	withStartPageAfterItem pagination.Item
 }
 
 func getDefaultOptions() options {

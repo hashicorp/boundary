@@ -31,7 +31,8 @@ func (p *fakeItem) GetCreateTime() *timestamp.Timestamp {
 	return timestamp.New(p.createTime)
 }
 
-func TestWithRecursive(t *testing.T) {
+// Test_GetOpts provides unit tests for GetOpts and all the options
+func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("withRecursive", func(t *testing.T) {
