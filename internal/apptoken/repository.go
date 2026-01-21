@@ -214,10 +214,6 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating app token in database"))
 	}
 
-	if err := r.reader.LookupByPublicId(ctx, globalAppToken); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("app token lookup"))
-	}
-
 	newAppToken := &AppToken{
 		PublicId:                  globalAppToken.PublicId,
 		ScopeId:                   globalAppToken.ScopeId,
