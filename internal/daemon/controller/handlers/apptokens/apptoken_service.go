@@ -13,11 +13,17 @@ var (
 	// individual resources
 	IdActions = action.NewActionSet(
 		action.NoOp,
+		action.Read,
+		action.Revoke,
+		action.Delete,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.NewActionSet()
+	CollectionActions = action.NewActionSet(
+		action.Create,
+		action.List,
+	)
 )
 
 func init() {

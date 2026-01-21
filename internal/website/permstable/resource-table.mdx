@@ -73,6 +73,8 @@ The **Alias** resource type supports the following scopes: **Global**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
+| <code>/app-tokens</code> | <ul><li>Type</li><ul><li><code>app-token</code></li></ul></ul> | <ul><li><code>create</code>: Create an app token</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List app tokens</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/app-tokens/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>app-token</code></li></ul></ul> | <ul><li><code>read</code>: Read an app token</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>delete</code>: Delete an app token</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>revoke</code>: </li><ul><li>`ids=<id>;actions=revoke`</li></ul></ul> |
 
 ## Auth method
 
