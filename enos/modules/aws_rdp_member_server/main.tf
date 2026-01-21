@@ -245,7 +245,6 @@ ${var.domain_admin_password}
 }
 
 locals {
-  password    = rsadecrypt(aws_instance.member_server.password_data, file(var.domain_controller_private_key))
   private_key = abspath(var.domain_controller_private_key)
 }
 
