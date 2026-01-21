@@ -384,7 +384,7 @@ func TestSearch(t *testing.T) {
 		assert.Less(t, r.Sessions[1].CreatedTime, r.Sessions[0].CreatedTime)
 	})
 
-	t.Run("sorted sessions ascending by default", func(t *testing.T) {
+	t.Run("sorted sessions descending by default", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "sessions",
@@ -394,7 +394,7 @@ func TestSearch(t *testing.T) {
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.Less(t, r.Sessions[0].CreatedTime, r.Sessions[1].CreatedTime)
+		assert.Less(t, r.Sessions[1].CreatedTime, r.Sessions[0].CreatedTime)
 	})
 
 	t.Run("sorted and filtered", func(t *testing.T) {

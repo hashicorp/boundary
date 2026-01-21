@@ -451,7 +451,7 @@ func TestSortByValid(t *testing.T) {
 		{SortByDefault, true},
 		{SortBy(""), true},
 		{SortByName, true},
-		{SortByCreatedAt, true},
+		{SortByCreatedTime, true},
 		{SortBy("unknown"), false},
 		{SortBy("id"), false},
 		{SortBy("invalid_column"), false},
@@ -594,11 +594,11 @@ func TestSearch_Sorting(t *testing.T) {
 		assert.Nil(t, got)
 	})
 
-	t.Run("sessions accept created_at sort", func(t *testing.T) {
+	t.Run("sessions accept created time sort", func(t *testing.T) {
 		got, err := ss.Search(ctx, SearchParams{
 			Resource:      Sessions,
 			AuthTokenId:   at.Id,
-			SortBy:        SortByCreatedAt,
+			SortBy:        SortByCreatedTime,
 			SortDirection: Descending,
 		})
 		require.NoError(t, err)
