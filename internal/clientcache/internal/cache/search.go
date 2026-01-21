@@ -20,15 +20,15 @@ import (
 type SortBy string
 
 const (
-	SortByDefault   SortBy = ""
-	SortByName      SortBy = "name"
-	SortByCreatedAt SortBy = "created_at"
+	SortByDefault     SortBy = ""
+	SortByName        SortBy = "name"
+	SortByCreatedTime SortBy = "created_time"
 )
 
 // Valid returns true if the SortBy value is a known good value
 func (s SortBy) Valid() bool {
 	switch s {
-	case SortByDefault, SortByName, SortByCreatedAt:
+	case SortByDefault, SortByName, SortByCreatedTime:
 		return true
 	}
 	return false
@@ -154,7 +154,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Targets = finalResults
 				},
-				sortableColumns: []SortBy{SortByName, SortByCreatedAt},
+				sortableColumns: []SortBy{SortByName},
 			},
 			Sessions: &resourceSearchFns[*sessions.Session]{
 				list:  repo.ListSessions,
@@ -168,7 +168,7 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 					}
 					in.Sessions = finalResults
 				},
-				sortableColumns: []SortBy{SortByCreatedAt},
+				sortableColumns: []SortBy{SortByCreatedTime},
 			},
 			ImplicitScopes: &resourceSearchFns[*scopes.Scope]{
 				list:  repo.ListImplicitScopes,
