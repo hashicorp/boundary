@@ -196,7 +196,7 @@ func TestList(t *testing.T) {
 		})
 
 		t.Run("filter out inactive tokens", func(t *testing.T) {
-			t.Parallel()
+			// This test is intentionally not run in parallel because it modifies shared state
 			assert, require := assert.New(t), require.New(t)
 
 			// Create a new global token
