@@ -4,9 +4,15 @@
 package apptoken
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,6 +96,349 @@ func TestNewRepository(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_CreateAppToken(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	org, proj := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+
+	tests := []struct {
+		at   *AppToken
+		name string
+
+		wantPerms []testPermission
+
+		wantErr     bool
+		wantErrMsg  string
+		wantIsError errors.Code
+	}{
+		{
+			name: "valid-global-basic-no-perms",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-global-extensive-no-perms",
+			at: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				Name:               "test-token",
+				Description:        "a test token",
+				Revoked:            false,
+				TimeToStaleSeconds: 36000,
+				ExpirationTime:     timestamp.New(timestamp.Now().AsTime().Add(1000 * time.Hour)),
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid-global-same-name",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Name:            "test-token",
+			},
+			wantErr:    true,
+			wantErrMsg: "duplicate key value violates unique constraint \"app_token_global_name_scope_id_uq\"",
+		},
+		{
+			name: "valid-global-one-perm",
+			at: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				Name:               "test-token-perms",
+				Description:        "a test token",
+				Revoked:            false,
+				TimeToStaleSeconds: 36000,
+				ExpirationTime:     timestamp.New(timestamp.Now().AsTime().Add(1000 * time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", "descendants"},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "descendants",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-global-two-perm",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", "descendants"},
+					},
+					{
+						Label:         "test-2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"children"},
+					},
+				},
+			},
+			wantErr: false,
+			wantPerms: []testPermission{
+				{
+					GrantScope:  "descendants",
+					GrantThis:   true,
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					GrantScope:  "children",
+					GrantThis:   false,
+					Description: "test-2",
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{},
+				},
+			},
+		},
+		{
+			name: "valid-global-one-perm-specific-grantedscope",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{org.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   false,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{org.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-global-one-perm-this-and-specific-grantedscope",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-global-multiple-mixed-perms",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+					{
+						Label:         "test2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId(), proj2.GetPublicId()},
+					},
+					{
+						Label:         "test3",
+						Grants:        []string{"type=session;actions=list"},
+						GrantedScopes: []string{"this", proj2.GetPublicId(), "children"},
+					},
+					{
+						Label:         "test4",
+						Grants:        []string{"type=role;actions=list", "type=user;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+					{
+						Label:         "test5",
+						Grants:        []string{"type=group;actions=list", "type=scope;actions=list"},
+						GrantedScopes: []string{"this", org2.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					Description: "test",
+					GrantScope:  "individual",
+					GrantThis:   false,
+					Grants:      []string{"type=host-catalog;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+				{
+					Description: "test2",
+					GrantScope:  "individual",
+					GrantThis:   true,
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{proj.GetPublicId(), proj2.GetPublicId()},
+				},
+				{
+					Description: "test3",
+					GrantScope:  "children",
+					GrantThis:   true,
+					Grants:      []string{"type=session;actions=list"},
+					Scopes:      []string{proj2.GetPublicId()},
+				},
+				{
+					Description: "test4",
+					GrantScope:  "descendants",
+					GrantThis:   false,
+					Grants:      []string{"type=role;actions=list", "type=user;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					Description: "test5",
+					GrantScope:  "individual",
+					GrantThis:   true,
+					Grants:      []string{"type=group;actions=list", "type=scope;actions=list"},
+					Scopes:      []string{org2.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid-global-bad-grant",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"oops_broken", "type=session;actions=list"},
+						GrantedScopes: []string{"this", "descendants"},
+					},
+				},
+			},
+			wantErr:    true,
+			wantErrMsg: "parsing grant string",
+		},
+		{
+			name: "invalid-global-bad-grantedscope",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=session;actions=list"},
+						GrantedScopes: []string{"whoopsie"},
+					},
+				},
+			},
+			wantErr:    true,
+			wantErrMsg: "invalid grant scope",
+		},
+		{
+			name: "invalid-global-bad-grantedscope-mixing",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=session;actions=list"},
+						GrantedScopes: []string{"children", "descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: 100,
+			wantErrMsg:  "only one of descendants or children grant scope can be specified",
+		},
+		{
+			name:        "nil-token",
+			at:          nil,
+			wantErr:     true,
+			wantErrMsg:  "apptoken.(Repository).CreateToken: missing app token: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "bad-scope-id",
+			at: &AppToken{
+				ScopeId:         "bad-id",
+				CreatedByUserId: u.PublicId,
+			},
+			wantErrMsg:  "apptoken.(Repository).CreateToken: invalid scope type: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
+			wantErr:     true,
+		},
+		{
+			name: "bad-user-id",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: "whomp",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			// validate app token
+			at, err := repo.CreateAppToken(context.Background(), tt.at)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(at)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
+				return
+			}
+			assert.NoError(err)
+			assert.NotNil(at.CreateTime)
+			assert.NotNil(at.ApproximateLastAccessTime)
+			assert.NotNil(at.Token)
+			assert.Equal(at.CreateTime, at.ApproximateLastAccessTime)
+			assert.GreaterOrEqual(at.ExpirationTime.AsTime().Unix(), at.CreateTime.AsTime().Unix())
+
+			// validate app token permission global using db queries
+			if tt.at.Permissions != nil {
+				err = testCheckPermissionGlobal(t, repo, at.PublicId, tt.wantPerms)
+				assert.NoError(err)
+			}
+
+			// validate app token cipher using db queries
+			err = testCheckAppTokenCipher(t, repo, at.PublicId)
+			assert.NoError(err)
 		})
 	}
 }
