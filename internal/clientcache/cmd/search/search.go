@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,12 +20,12 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachecmd "github.com/hashicorp/boundary/internal/clientcache/cmd/cache"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
-	"golang.org/x/exp/slices"
 )
 
 var (
@@ -39,6 +40,7 @@ var (
 	}
 
 	errCacheNotRunning = stderrors.New("The cache process is not running.")
+	sortDirections     = []string{"asc", "desc"}
 )
 
 type SearchCommand struct {
@@ -47,6 +49,8 @@ type SearchCommand struct {
 	flagResource         string
 	flagForceRefresh     bool
 	flagMaxResultSetSize int64
+	flagSortBy           string
+	flagSortDirection    string
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -128,6 +132,18 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 		Usage:  `Forces a refresh to be attempted prior to performing the search`,
 		Hidden: true,
 	})
+	f.StringVar(&base.StringVar{
+		Name:       "sort-by",
+		Target:     &c.flagSortBy,
+		Usage:      `Specifies which column to sort resources by. Targets may be sorted by 'name'. Sessions may be sorted by 'created_time'. Use sort-direction to control which direction to sort results by.`,
+		Completion: complete.PredictSet(getSortableResources()...),
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "sort-direction",
+		Target:     &c.flagSortDirection,
+		Usage:      `Specifies which direction, 'asc' or 'desc', to sort results by. Requires sort-by and defaults to 'asc'.`,
+		Completion: complete.PredictSet(sortDirections...),
+	})
 
 	return set
 }
@@ -163,8 +179,31 @@ func (c *SearchCommand) Run(args []string) int {
 		c.PrintCliError(stderrors.New("Max result set size must be greater than or equal to -1"))
 		return base.CommandUserError
 	case c.flagMaxResultSetSize > math.MaxInt:
-		c.PrintCliError(stderrors.New(fmt.Sprintf("Max result set size must be less than or equal to the %v", math.MaxInt)))
+		c.PrintCliError(fmt.Errorf("Max result set size must be less than or equal to the %v", math.MaxInt))
 		return base.CommandUserError
+	}
+
+	if c.flagSortDirection != "" {
+		if c.flagSortBy == "" {
+			c.PrintCliError(stderrors.New("sort-direction requires sort-by"))
+			return base.CommandUserError
+		}
+		if c.flagSortDirection != "asc" && c.flagSortDirection != "desc" {
+			c.PrintCliError(stderrors.New("sort-direction must be one of 'asc' or 'desc'"))
+			return base.CommandUserError
+		}
+	}
+
+	if c.flagSortBy != "" {
+		sortableBy, ok := daemon.SortableColumnsForResource[cache.ToSearchableResource(c.flagResource)]
+		if !ok {
+			c.PrintCliError(fmt.Errorf("resource %q is not sortable", c.flagResource))
+			return base.CommandUserError
+		}
+		if !slices.Contains(sortableBy, cache.SortBy(c.flagSortBy)) {
+			c.PrintCliError(fmt.Errorf("resource %q is not sortable by %q. %q is sortable by %v", c.flagResource, c.flagSortBy, c.flagResource, sortableBy))
+			return base.CommandUserError
+		}
 	}
 
 	resp, result, apiErr, err := c.Search(ctx)
@@ -238,10 +277,10 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return search(ctx, dotPath, tf, opts...)
+	return search(ctx, dotPath, tf, c.flagSortBy, c.flagSortDirection, opts...)
 }
 
-func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.Option) (*api.Response, *daemon.SearchResult, *api.Error, error) {
+func search(ctx context.Context, daemonPath string, fb filterBy, sortBy string, sortDirection string, opt ...client.Option) (*api.Response, *daemon.SearchResult, *api.Error, error) {
 	addr := daemon.SocketAddress(daemonPath)
 	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
@@ -263,6 +302,14 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	if fb.maxResultSetSize != 0 {
 		q.Add("max_result_set_size", fmt.Sprintf("%d", fb.maxResultSetSize))
 	}
+
+	if sortBy != "" {
+		q.Add(daemon.SortByKey, sortBy)
+		if sortDirection != "" {
+			q.Add(daemon.SortDirectionKey, sortDirection)
+		}
+	}
+
 	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when sending request to the cache: %w.", err)
@@ -490,4 +537,12 @@ type filterBy struct {
 	resource         string
 	forceRefresh     bool
 	maxResultSetSize int
+}
+
+func getSortableResources() []string {
+	ret := []string{}
+	for sr := range daemon.SortableColumnsForResource {
+		ret = append(ret, string(sr))
+	}
+	return ret
 }
