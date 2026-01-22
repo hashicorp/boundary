@@ -2196,7 +2196,7 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.ListResolvableAliases; j++ {
+				for j := action.Type(1); j <= action.RevokeSelf; j++ {
 					id := "foobar"
 					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
 					if len(prefixes) > 0 {

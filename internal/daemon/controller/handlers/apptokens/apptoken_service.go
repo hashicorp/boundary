@@ -14,8 +14,11 @@ var (
 	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
+		action.ReadSelf,
 		action.Revoke,
+		action.RevokeSelf,
 		action.Delete,
+		action.DeleteSelf,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on
