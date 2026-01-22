@@ -69,14 +69,14 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 
 	opts := getOpts(opt...)
 
-	// get AppToken to get scope
-	appToken, err := r.getAppTokenById(ctx, tokenId)
+	scope, err := getAppTokenScope(ctx, r.reader, tokenId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	scopeId := scope.GetPublicId()
 
 	// find the correct query to use
-	query, err := r.resolveAppTokenQuery(ctx, appToken.ScopeId, res, reqScopeId, opts.withRecursive)
+	query, err := r.resolveAppTokenQuery(ctx, scopeId, res, reqScopeId, opts.withRecursive)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -135,7 +135,7 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 	for _, grant := range grants {
 		resp = append(resp, tempGrantTuple{
 			AppTokenId:            grant.AppTokenId,
-			AppTokenScopeId:       appToken.ScopeId,
+			AppTokenScopeId:       scopeId,
 			AppTokenParentScopeId: grant.AppTokenParentScopeId,
 			GrantScopeId:          grant.GrantScope,
 			Grant:                 strings.Join(grant.CanonicalGrants, ","),
