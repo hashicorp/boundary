@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -64,91 +65,87 @@ func testPublicId(t testing.TB, prefix string) string {
 
 // TestAppToken creates an app token for testing with the specified grants.
 // TODO: Implement TestAppToken once AppToken functionality is added
-func TestAppToken(t *testing.T, repo *Repository, scopeId string, grants []string, user *iam.User, grantThisScope bool, grantScope string) *AppToken {
+func TestAppToken(t *testing.T, repo *Repository, scopeId string, user *iam.User, timeToStaleSeconds uint32, expirationTime *timestamp.Timestamp, grants []string, grantThisScope bool, grantScope string) *AppToken {
 	t.Helper()
 
-	publicId := testPublicId(t, "appt_")
-	tempTestAddGrants(t, repo, publicId, scopeId, grants, user, grantThisScope, grantScope)
-	return &AppToken{
-		PublicId:    publicId,
-		ScopeId:     scopeId,
-		Description: "test app token",
+	testToken := &AppToken{
+		PublicId:           testPublicId(t, "apt_"),
+		ScopeId:            scopeId,
+		Description:        "test app token",
+		CreatedByUserId:    user.PublicId,
+		TimeToStaleSeconds: timeToStaleSeconds,
+		ExpirationTime:     expirationTime,
 	}
+	tempTestAddGrants(t, repo, testToken, grants, grantThisScope, grantScope)
+	return testToken
 }
 
 // tempTestAddGrants is a temporary test function to add grants to the database for testing
 // TODO: Replace with proper AppToken creation function once AppToken functionality is added
-func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, grants []string, user *iam.User, grantThisScope bool, grantScope string) {
+func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants []string, grantThisScope bool, grantScope string) {
 	t.Helper()
 	ctx := t.Context()
 	require := require.New(t)
 
 	// Determine which table to insert into based on scope prefix
-	var insertTokenSQL, insertPermissionSQL, insertGrantSQL string
+	var insertTokenSQL, insertPermissionSQL string
+	insertGrantSQL := `
+            insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
+            values ($1, $2, $3)
+        `
 
 	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+	case strings.HasPrefix(token.ScopeId, globals.GlobalPrefix):
 		insertTokenSQL = `
-			insert into app_token_global (public_id, scope_id, name, description, created_by_user_id, expiration_time, create_time, update_time)
-			values ($1, $2, $3, $4, $5, now() + interval '1 day', now(), now())
+			insert into app_token_global (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
+			values ($1, $2, $3, $4, $5, $6, $7)
 		`
 		insertPermissionSQL = `
             insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope)
             values ($1, $2, $3, $4, $5)
         `
-		insertGrantSQL = `
-            insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
-            values ($1, $2, $3)
-        `
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+
+	case strings.HasPrefix(token.ScopeId, globals.OrgPrefix):
 		insertTokenSQL = `
-			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, expiration_time, create_time, update_time)
-			values ($1, $2, $3, $4, $5, now() + interval '1 day', now(), now())
+			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
+			values ($1, $2, $3, $4, $5, $6, $7)
 		`
 		insertPermissionSQL = `
             insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope)
             values ($1, $2, $3, $4, $5)
         `
-		insertGrantSQL = `
-            insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
-            values ($1, $2, $3)
-        `
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+	case strings.HasPrefix(token.ScopeId, globals.ProjectPrefix):
 		insertTokenSQL = `
-			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id, expiration_time, create_time, update_time)
-			values ($1, $2, $3, $4, $5, now() + interval '1 day', now(), now())
+			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
+			values ($1, $2, $3, $4, $5, $6, $7)
 		`
 		insertPermissionSQL = `
             insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope)
             values ($1, $2, $3, $4)
         `
-		insertGrantSQL = `
-            insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
-            values ($1, $2, $3)
-        `
 	default:
-		t.Fatalf("invalid scope id: %s", scopeId)
+		t.Fatalf("invalid scope id: %s", token.ScopeId)
 	}
 
 	// Insert the app token
-	name := fmt.Sprintf("Test App Token %s", tokenId)
-	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{tokenId, scopeId, name, "test app token", user.PublicId})
+	name := fmt.Sprintf("Test App Token %s", token.PublicId)
+	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{token.PublicId, token.ScopeId, name, "test app token", token.CreatedByUserId, token.TimeToStaleSeconds, token.ExpirationTime})
 	require.NoError(err)
 
 	// Create a permission for this token
 	permissionId := testPublicId(t, "aptp_")
 
 	// Default to 'descendants' if not specified for global/org scopes
-	if grantScope == "" && (strings.HasPrefix(scopeId, globals.GlobalPrefix) || strings.HasPrefix(scopeId, globals.OrgPrefix)) {
+	if grantScope == "" && (strings.HasPrefix(token.ScopeId, globals.GlobalPrefix) || strings.HasPrefix(token.ScopeId, globals.OrgPrefix)) {
 		grantScope = globals.GrantScopeDescendants
 	}
 
 	var permArgs []any
-	if strings.HasPrefix(scopeId, globals.ProjectPrefix) {
+	if strings.HasPrefix(token.ScopeId, globals.ProjectPrefix) {
 		// Project permissions don't have grant_scope column
-		permArgs = []any{permissionId, tokenId, "test permission", grantThisScope}
+		permArgs = []any{permissionId, token.PublicId, "test permission", grantThisScope}
 	} else {
-		permArgs = []any{permissionId, tokenId, "test permission", grantThisScope, grantScope}
+		permArgs = []any{permissionId, token.PublicId, "test permission", grantThisScope, grantScope}
 	}
 
 	_, err = repo.writer.Exec(ctx, insertPermissionSQL, permArgs)
@@ -158,8 +155,8 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 	for _, grant := range grants {
 		// Parse the grant to get canonical form
 		perm, err := perms.Parse(ctx, perms.GrantTuple{
-			RoleScopeId:  scopeId,
-			GrantScopeId: scopeId,
+			RoleScopeId:  token.ScopeId,
+			GrantScopeId: token.ScopeId,
 			Grant:        grant,
 		}, perms.WithSkipFinalValidation(true))
 		require.NoError(err)
@@ -404,5 +401,46 @@ func tempTestDeleteAppToken(t *testing.T, repo *Repository, tokenId string, scop
 	}
 
 	_, err := repo.writer.Exec(ctx, deleteSQL, []any{tokenId})
+	require.NoError(err)
+}
+
+// testUpdateAppToken is a test helper to update fields on an app token directly in the database
+func testUpdateAppToken(t *testing.T, repo *Repository, tokenId string, scopeId string, fields map[string]any) {
+	t.Helper()
+	ctx := t.Context()
+	require := require.New(t)
+
+	var updateSQL strings.Builder
+	updateSQL.WriteString("update ")
+
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		updateSQL.WriteString("app_token_global ")
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		updateSQL.WriteString("app_token_org ")
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		updateSQL.WriteString("app_token_project ")
+	default:
+		t.Fatalf("invalid scope id: %s", scopeId)
+	}
+
+	updateSQL.WriteString("set ")
+
+	args := []any{}
+	i := 1
+	for field, value := range fields {
+		if i > 1 {
+			updateSQL.WriteString(", ")
+		}
+		updateSQL.WriteString(fmt.Sprintf("%s = $%d", field, i))
+		args = append(args, value)
+		i++
+	}
+
+	// Where clause
+	updateSQL.WriteString(fmt.Sprintf("where public_id = $%d", i))
+	args = append(args, tokenId)
+
+	_, err := repo.writer.Exec(ctx, updateSQL.String(), args)
 	require.NoError(err)
 }

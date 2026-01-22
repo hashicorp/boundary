@@ -453,6 +453,53 @@ func (r *Repository) listAppTokens(ctx context.Context, withScopeIds []string, o
 	return r.queryAppTokens(ctx, whereClause, args, dbOpts...)
 }
 
+// listAppTokenRefresh lists tokens across all three token subtypes (global, org, proj) that have been
+// updated after the provided time. Cipher information and permissions are not included when listing a token.
+// App Tokens are considered updated when
+//   - update_time is after updatedAfter
+//   - expiration_time is after updatedAfter but before now
+//   - last_approximate_access_time + time_to_stale_seconds is (before now and before expiration_time) and after updatedAfter
+func (r *Repository) listAppTokensRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).listAppTokenRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updatedAfter time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		limit = opts.withLimit
+	}
+
+	args := []any{
+		sql.Named("scope_ids", withScopeIds),
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	}
+	whereClause := "scope_id in @scope_ids and " +
+		"(update_time > @updated_after_time or " +
+		"(expiration_time > @updated_after_time and expiration_time <= CURRENT_TIMESTAMP) or " +
+		"( (approximate_last_access_time is not null and time_to_stale_seconds is not null) and " +
+		"( (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) <= CURRENT_TIMESTAMP) and " +
+		"( (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) > @updated_after_time) and " +
+		"(expiration_time is null or (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) < expiration_time) ))"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryAppTokens(ctx, whereClause, args, dbOpts...)
+}
+
 func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*AppToken, time.Time, error) {
 	const op = "apptoken.(Repository).queryAppTokens"
 

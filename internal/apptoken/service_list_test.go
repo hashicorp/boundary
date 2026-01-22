@@ -32,11 +32,11 @@ func TestList(t *testing.T) {
 
 	var globalAppTokens, org1AppTokens, proj1AppTokens, org2AppTokens, proj2AppTokens, allAppTokens []*AppToken
 	for range 5 {
-		globalAppToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
-		org1AppToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, org1User, true, "individual")
-		proj1AppToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=target;actions=list,read"}, org1User, true, "individual")
-		org2AppToken := TestAppToken(t, repo, org2.PublicId, []string{"ids=*;type=scope;actions=list,read"}, org2User, true, "individual")
-		proj2AppToken := TestAppToken(t, repo, proj2.PublicId, []string{"ids=*;type=target;actions=list,read"}, org2User, true, "individual")
+		globalAppToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+		org1AppToken := TestAppToken(t, repo, org1.PublicId, org1User, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+		proj1AppToken := TestAppToken(t, repo, proj1.PublicId, org1User, 0, nil, []string{"ids=*;type=target;actions=list,read"}, true, "individual")
+		org2AppToken := TestAppToken(t, repo, org2.PublicId, org2User, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+		proj2AppToken := TestAppToken(t, repo, proj2.PublicId, org2User, 0, nil, []string{"ids=*;type=target;actions=list,read"}, true, "individual")
 
 		globalAppTokens = append(globalAppTokens, globalAppToken)
 		org1AppTokens = append(org1AppTokens, org1AppToken)
@@ -202,7 +202,7 @@ func TestList(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// Create a new global token
-			globalTokenToBeInactive := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, "individual")
+			globalTokenToBeInactive := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
 
 			resp, err := List(
 				ctx,
