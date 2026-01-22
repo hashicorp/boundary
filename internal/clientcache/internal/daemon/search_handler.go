@@ -59,11 +59,11 @@ const (
 	forceRefreshKey     = "force_refresh"
 	authTokenIdKey      = "auth_token_id"
 	maxResultSetSizeKey = "max_result_set_size"
-	sortByKey           = "sort_by"
-	sortDirectionKey    = "sort_direction"
+	SortByKey           = "sort_by"
+	SortDirectionKey    = "sort_direction"
 )
 
-var sortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
+var SortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
 	cache.Targets:  {cache.SortByName},
 	cache.Sessions: {cache.SortByCreatedTime},
 }
@@ -93,8 +93,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		maxResultSetSizeInt, maxResultSetSizeIntErr := strconv.Atoi(maxResultSetSizeStr)
 		query := q.Get(queryKey)
 		filter := q.Get(filterKey)
-		sb := q.Get(sortByKey)
-		sd := q.Get(sortDirectionKey)
+		sb := q.Get(SortByKey)
+		sd := q.Get(SortDirectionKey)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
@@ -291,7 +291,7 @@ func parseSortBy(sb string, sr cache.SearchableResource) (cache.SortBy, bool) {
 		return cache.SortByDefault, true
 	}
 
-	sortableBys, ok := sortableColumnsForResource[sr]
+	sortableBys, ok := SortableColumnsForResource[sr]
 	if !ok || !slices.Contains(sortableBys, by) {
 		return cache.SortByDefault, false
 	}
