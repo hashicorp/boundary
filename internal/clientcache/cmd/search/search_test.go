@@ -347,7 +347,7 @@ func TestSearch(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "targets",
-		}, "name", "descending")
+		}, "name", "desc")
 		require.NoError(t, err)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -375,7 +375,7 @@ func TestSearch(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "sessions",
-		}, "created_time", "descending")
+		}, "created_time", "desc")
 		require.NoError(t, err)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -402,7 +402,7 @@ func TestSearch(t *testing.T) {
 			authTokenId: at.Id,
 			flagFilter:  `"/item/id" matches "ttcp"`,
 			resource:    "targets",
-		}, "name", "descending")
+		}, "name", "desc")
 		require.NoError(t, err)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)

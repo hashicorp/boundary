@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachecmd "github.com/hashicorp/boundary/internal/clientcache/cmd/cache"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -134,13 +135,13 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "sort-by",
 		Target:     &c.flagSortBy,
-		Usage:      `Specifies which column to sort resources by. Use sort-direction to control which direction to sort results by.`,
+		Usage:      `Specifies which column to sort resources by. Targets may be sorted by 'name'. Sessions may be sorted by 'created_time'. Use sort-direction to control which direction to sort results by.`,
 		Completion: complete.PredictSet(getSortableResources()...),
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "sort-direction",
 		Target:     &c.flagSortDirection,
-		Usage:      `Specifies which direction to sort results by. Requires sort-by and defaults to asc.`,
+		Usage:      `Specifies which direction, 'asc' or 'desc', to sort results by. Requires sort-by and defaults to 'asc'.`,
 		Completion: complete.PredictSet(sortDirections...),
 	})
 
@@ -182,9 +183,27 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if c.flagSortDirection != "" && c.flagSortBy == "" {
-		c.PrintCliError(stderrors.New("sort-direction requires sort-by"))
-		return base.CommandUserError
+	if c.flagSortDirection != "" {
+		if c.flagSortBy == "" {
+			c.PrintCliError(stderrors.New("sort-direction requires sort-by"))
+			return base.CommandUserError
+		}
+		if c.flagSortDirection != "asc" && c.flagSortDirection != "desc" {
+			c.PrintCliError(stderrors.New("sort-direction must be one of 'asc' or 'desc'"))
+			return base.CommandUserError
+		}
+	}
+
+	if c.flagSortBy != "" {
+		sortableBy, ok := daemon.SortableColumnsForResource[cache.ToSearchableResource(c.flagResource)]
+		if !ok {
+			c.PrintCliError(stderrors.New(fmt.Sprintf("resource %q is not sortable", c.flagResource)))
+			return base.CommandUserError
+		}
+		if !slices.Contains(sortableBy, cache.SortBy(c.flagSortBy)) {
+			c.PrintCliError(stderrors.New(fmt.Sprintf("resource %q is not sortable by %q. %q is sortable by %v", c.flagResource, c.flagSortBy, c.flagResource, sortableBy)))
+			return base.CommandUserError
+		}
 	}
 
 	resp, result, apiErr, err := c.Search(ctx)
