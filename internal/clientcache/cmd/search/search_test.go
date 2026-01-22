@@ -411,5 +411,4 @@ func TestSearch(t *testing.T) {
 		assert.Equal(t, expectedTargets[1].Name, r.Targets[0].Name)
 		assert.Equal(t, expectedTargets[0].Name, r.Targets[1].Name)
 	})
-
 }

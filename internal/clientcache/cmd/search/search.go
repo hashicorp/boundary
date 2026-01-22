@@ -522,7 +522,7 @@ type filterBy struct {
 
 func getSortableResources() []string {
 	ret := []string{}
-	for sr, _ := range daemon.SortableColumnsForResource {
+	for sr := range daemon.SortableColumnsForResource {
 		ret = append(ret, string(sr))
 	}
 	return ret
