@@ -59,10 +59,13 @@ const (
 	forceRefreshKey     = "force_refresh"
 	authTokenIdKey      = "auth_token_id"
 	maxResultSetSizeKey = "max_result_set_size"
-	SortByKey           = "sort_by"
-	SortDirectionKey    = "sort_direction"
+	// The key used as the query parameter for which column to sort resources by
+	SortByKey = "sort_by"
+	// The key used as the query parameter for which direction, asc or desc, to sort resources by.
+	SortDirectionKey = "sort_direction"
 )
 
+// Defines which columns a given resource can be sorted by
 var SortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
 	cache.Targets:  {cache.SortByName},
 	cache.Sessions: {cache.SortByCreatedTime},
