@@ -294,14 +294,17 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, pr
 		require.NoError(t, err)
 	}
 
+	// Escape '@' in the password. Vault CLI interprets '@' as a file
+	escapedPassword := strings.ReplaceAll(password, "@", "\\@")
+
 	// Create secret
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
 			"-mount", secretPath,
 			secretName,
-			"username="+user,
-			"password="+password,
+			fmt.Sprintf("username=%s", user),
+			fmt.Sprintf("password=%s", escapedPassword),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -338,15 +341,18 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 		require.NoError(t, err)
 	}
 
+	// Escape '@' in the password. Vault CLI interprets '@' as a file
+	escapedPassword := strings.ReplaceAll(password, "@", "\\@")
+
 	// Create secret
 	output := e2e.RunCommand(context.Background(), "vault",
 		e2e.WithArgs(
 			"kv", "put",
 			"-mount", secretPath,
 			secretName,
-			"username="+user,
-			"password="+password,
-			"domain="+domain,
+			fmt.Sprintf("username=%s", user),
+			fmt.Sprintf("password=%s", escapedPassword),
+			fmt.Sprintf("domain=%s", domain),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
