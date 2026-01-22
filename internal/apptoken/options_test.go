@@ -64,6 +64,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts = getDefaultOptions()
 		testOpts.withLimit = 10
 		assert.Equal(opts, testOpts)
+
+		// Test with negative limit (should reset to default)
+		opts = getOpts(WithLimit(-5))
+		testOpts = getDefaultOptions()
+		testOpts.withLimit = db.DefaultLimit
+		assert.Equal(opts, testOpts)
 	})
 
 	t.Run("withStartPageAfterItem", func(t *testing.T) {

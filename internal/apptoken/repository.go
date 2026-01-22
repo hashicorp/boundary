@@ -22,10 +22,10 @@ import (
 
 // Repository is the apptoken database repository
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
-	limit  int
+	reader       db.Reader
+	writer       db.Writer
+	kms          *kms.Kms
+	defaultLimit int
 }
 
 // NewRepository creates a new apptoken Repository
@@ -433,7 +433,7 @@ func (r *Repository) listAppTokens(ctx context.Context, withScopeIds []string, o
 	}
 	opts := getOpts(opt...)
 
-	limit := r.limit
+	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		limit = opts.withLimit
 	}
@@ -479,5 +479,5 @@ func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, arg
 // TODO: Implement proper estimated count logic
 func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 	const op = "apptoken.(Repository).estimatedCount"
-	return 10, nil
+	return 0, nil
 }

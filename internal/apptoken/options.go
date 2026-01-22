@@ -46,7 +46,7 @@ func WithRecursive(isRecursive bool) Option {
 // If WithLimit <= 0, then default limits are used for results.
 func WithLimit(limit int) Option {
 	return func(o *options) {
-		if limit > 0 {
+		if limit >= 0 {
 			o.withLimit = limit
 		} else {
 			o.withLimit = db.DefaultLimit
