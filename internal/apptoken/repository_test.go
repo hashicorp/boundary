@@ -101,6 +101,7 @@ func TestNewRepository(t *testing.T) {
 }
 
 func TestRepository_CreateAppToken(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
@@ -574,6 +575,23 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErrMsg:  "is not a child of org",
 		},
 		{
+			name: "invalid-org-project-and-children",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId(), "children"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "children grant scope cannot be combined with individual project grant scopes",
+		},
+		{
 			name:        "nil-token",
 			at:          nil,
 			wantErr:     true,
@@ -604,7 +622,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			assert := assert.New(t)
 
 			// validate app token
-			at, err := repo.CreateAppToken(context.Background(), tt.at)
+			at, err := repo.CreateAppToken(ctx, tt.at)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(at)
