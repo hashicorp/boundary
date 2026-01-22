@@ -380,6 +380,11 @@ left join iam_scope_project
              app_token_org.public_id;
     `
 
+	scopeIdFromAppTokenIdQuery = `
+    select scope_id
+      from app_token
+     where public_id = @public_id;`
+
 	// TODO: This will be properly implemented with the Create method
 	// getAppTokenByIdQuery retrieves an AppToken by its public ID
 	getAppTokenByIdQuery = `
