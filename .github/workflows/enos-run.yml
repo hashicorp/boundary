@@ -109,6 +109,7 @@ jobs:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
+        id: go-mod-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
@@ -119,6 +120,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go
           fail-on-cache-miss: false
+      - name: Downloads Go modules if cache miss
+        if: steps.go-mod-cache.outputs.cache-hit != 'true'
+        run: |
+          go mod download
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
