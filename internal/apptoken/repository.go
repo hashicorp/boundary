@@ -192,17 +192,7 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) 
 		}
 
 		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
-		// if perm.GrantedScopes contains "children", set globalPermGrantScope to "children"
-		// if perm.GrantedScopes contains "descendants", set globalPermGrantScope to "descendants"
-		// if perm.GrantedScopes contains neither but does have at least one individual org or project,
-		// set globalPermGrantScope to "individual" and create individual grant scope entries below
-		globalPermGrantScope := globals.GrantScopeIndividual
-		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
-			globalPermGrantScope = globals.GrantScopeChildren
-		} else if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) {
-			globalPermGrantScope = globals.GrantScopeDescendants
-		}
-
+		globalPermGrantScope := determineGrantScope(perm.GrantedScopes)
 		globalPermToCreate := &appTokenPermissionGlobal{
 			AppTokenPermissionGlobal: &store.AppTokenPermissionGlobal{
 				PrivateId:      permId,
@@ -214,24 +204,11 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) 
 		}
 		globalInserts = append(globalInserts, globalPermToCreate)
 
-		for _, grant := range perm.Grants {
-			// Validate that the grant parses successfully. Note that we fake the scope
-			// here to avoid a lookup as the scope is only relevant at actual ACL
-			// checking time and we just care that it parses correctly.
-			parsedGrant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant})
-			if err != nil {
-				return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
-			}
-			// insert each grant in the permission to app_token_permission_grant
-			permissionGrantToCreate := &appTokenPermissionGrant{
-				AppTokenPermissionGrant: &store.AppTokenPermissionGrant{
-					PermissionId:   permId,
-					CanonicalGrant: parsedGrant.CanonicalString(),
-					RawGrant:       grant,
-				},
-			}
-			globalInserts = append(globalInserts, permissionGrantToCreate)
+		grantInserts, err := r.processPermissionGrants(ctx, permId, perm.Grants)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
+		globalInserts = append(globalInserts, grantInserts...)
 
 		for _, gs := range perm.GrantedScopes {
 			if gs == globals.GrantScopeThis ||
@@ -306,14 +283,7 @@ func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken) (*A
 		}
 
 		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
-		// if perm.GrantedScopes contains "children", set orgPermGrantScope to "children"
-		// if perm.GrantedScopes contains neither but does have at least one individual project,
-		// set orgPermGrantScope to "individual" and create individual grant scope entries below
-		orgPermGrantScope := globals.GrantScopeIndividual
-		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
-			orgPermGrantScope = globals.GrantScopeChildren
-		}
-
+		orgPermGrantScope := determineGrantScope(perm.GrantedScopes)
 		orgPermToCreate := &appTokenPermissionOrg{
 			AppTokenPermissionOrg: &store.AppTokenPermissionOrg{
 				PrivateId:      permId,
@@ -326,24 +296,11 @@ func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken) (*A
 
 		orgInserts = append(orgInserts, orgPermToCreate)
 
-		for _, grant := range perm.Grants {
-			// Validate that the grant parses successfully. Note that we fake the scope
-			// here to avoid a lookup as the scope is only relevant at actual ACL
-			// checking time and we just care that it parses correctly.
-			parsedGrant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant})
-			if err != nil {
-				return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
-			}
-			// insert each grant in the permission to app_token_permission_grant
-			permissionGrantToCreate := &appTokenPermissionGrant{
-				AppTokenPermissionGrant: &store.AppTokenPermissionGrant{
-					PermissionId:   permId,
-					CanonicalGrant: parsedGrant.CanonicalString(),
-					RawGrant:       grant,
-				},
-			}
-			orgInserts = append(orgInserts, permissionGrantToCreate)
+		grantInserts, err := r.processPermissionGrants(ctx, permId, perm.Grants)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
+		orgInserts = append(orgInserts, grantInserts...)
 
 		for _, gs := range perm.GrantedScopes {
 			if gs == globals.GrantScopeThis || gs == globals.GrantScopeChildren {
@@ -394,4 +351,38 @@ func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken,
 		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
 	}
 	return &at, nil
+}
+
+// processPermissionGrants validates grants and creates grant objects for insertion
+func (r *Repository) processPermissionGrants(ctx context.Context, permId string, grants []string) ([]interface{}, error) {
+	const op = "apptoken.(Repository).processPermissionGrants"
+	var grantInserts []interface{}
+	for _, grant := range grants {
+		// Validate that the grant parses successfully. Note that we fake the scope
+		// here to avoid a lookup as the scope is only relevant at actual ACL
+		// checking time and we just care that it parses correctly.
+		parsedGrant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
+		}
+		permissionGrantToCreate := &appTokenPermissionGrant{
+			AppTokenPermissionGrant: &store.AppTokenPermissionGrant{
+				PermissionId:   permId,
+				CanonicalGrant: parsedGrant.CanonicalString(),
+				RawGrant:       grant,
+			},
+		}
+		grantInserts = append(grantInserts, permissionGrantToCreate)
+	}
+	return grantInserts, nil
+}
+
+// determineGrantScope determines the appropriate grant scope value based on granted scopes
+func determineGrantScope(grantedScopes []string) string {
+	if slices.Contains(grantedScopes, globals.GrantScopeChildren) {
+		return globals.GrantScopeChildren
+	} else if slices.Contains(grantedScopes, globals.GrantScopeDescendants) {
+		return globals.GrantScopeDescendants
+	}
+	return globals.GrantScopeIndividual
 }
