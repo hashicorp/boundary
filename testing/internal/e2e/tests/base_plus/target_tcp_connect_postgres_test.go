@@ -41,8 +41,8 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 		t,
 		ctx,
 		projectId,
-		c.TargetPort,
-		[]target.Option{target.WithAddress(c.TargetAddress)},
+		c.PostgresPort,
+		[]target.Option{target.WithAddress(c.PostgresAddress)},
 	)
 	require.NoError(t, err)
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
