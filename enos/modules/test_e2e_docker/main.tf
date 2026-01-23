@@ -189,6 +189,16 @@ variable "postgres_database_name" {
   type        = string
   default     = ""
 }
+variable "postgres_address" {
+  description = "Address of the postgres database"
+  type        = string
+  default     = ""
+}
+variable "postgres_port" {
+  description = "Port of the postgres database"
+  type        = string
+  default     = ""
+}
 variable "ldap_address" {
   description = "URL to LDAP server"
   type        = string
@@ -336,6 +346,8 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_POSTGRES_USER             = var.postgres_user
     E2E_POSTGRES_PASSWORD         = var.postgres_password
     E2E_POSTGRES_DB_NAME          = var.postgres_database_name
+    E2E_POSTGRES_ADDRESS          = var.postgres_address
+    E2E_POSTGRES_PORT             = var.postgres_port
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
     E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
