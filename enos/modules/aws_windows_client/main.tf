@@ -267,11 +267,21 @@ resource "aws_instance" "client" {
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
 
   tags = {
     Name = "${var.prefix}-windows-client-${local.username}"
   }
+}
+
+resource "time_sleep" "wait_for_client_init" {
+  depends_on = [aws_instance.client]
+  create_duration = "3m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on  = [time_sleep.wait_for_client_init]
+  instance_id = aws_instance.client.id
+  get_password_data = true
 }
 
 locals {

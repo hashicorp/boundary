@@ -237,11 +237,21 @@ ${var.domain_admin_password}
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
 
   tags = {
     Name = "${var.prefix}-rdp-member-server-${local.username}"
   }
+}
+
+resource "time_sleep" "wait_for_member_server_init" {
+  depends_on = [aws_instance.member_server]
+  create_duration = "3m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on  = [time_sleep.wait_for_member_server_init]
+  instance_id = aws_instance.member_server.id
+  get_password_data = true
 }
 
 locals {

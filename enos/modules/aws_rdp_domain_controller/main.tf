@@ -432,11 +432,20 @@ resource "aws_instance" "domain_controller" {
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
-
   tags = {
     Name = "${var.prefix}-domain-controller-${local.username}"
   }
+}
+
+resource "time_sleep" "wait_for_domain_controller_init" {
+  depends_on = [aws_instance.domain_controller]
+  create_duration = "3m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on  = [time_sleep.wait_for_domain_controller_init]
+  instance_id = aws_instance.domain_controller.id
+  get_password_data = true
 }
 
 resource "local_sensitive_file" "private_key" {
