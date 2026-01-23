@@ -179,7 +179,7 @@ func (c *SearchCommand) Run(args []string) int {
 		c.PrintCliError(stderrors.New("Max result set size must be greater than or equal to -1"))
 		return base.CommandUserError
 	case c.flagMaxResultSetSize > math.MaxInt:
-		c.PrintCliError(stderrors.New(fmt.Sprintf("Max result set size must be less than or equal to the %v", math.MaxInt)))
+		c.PrintCliError(fmt.Errorf("Max result set size must be less than or equal to the %v", math.MaxInt))
 		return base.CommandUserError
 	}
 
@@ -197,11 +197,11 @@ func (c *SearchCommand) Run(args []string) int {
 	if c.flagSortBy != "" {
 		sortableBy, ok := daemon.SortableColumnsForResource[cache.ToSearchableResource(c.flagResource)]
 		if !ok {
-			c.PrintCliError(stderrors.New(fmt.Sprintf("resource %q is not sortable", c.flagResource)))
+			c.PrintCliError(fmt.Errorf("resource %q is not sortable", c.flagResource))
 			return base.CommandUserError
 		}
 		if !slices.Contains(sortableBy, cache.SortBy(c.flagSortBy)) {
-			c.PrintCliError(stderrors.New(fmt.Sprintf("resource %q is not sortable by %q. %q is sortable by %v", c.flagResource, c.flagSortBy, c.flagResource, sortableBy)))
+			c.PrintCliError(fmt.Errorf("resource %q is not sortable by %q. %q is sortable by %v", c.flagResource, c.flagSortBy, c.flagResource, sortableBy))
 			return base.CommandUserError
 		}
 	}
