@@ -308,10 +308,12 @@ scenario "e2e_aws_rdp_base" {
       aws_region                               = var.aws_region
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
+      worker_address                           = step.create_windows_worker.public_ip
       target_rdp_domain_controller_addr        = step.create_rdp_domain_controller.private_ip
       target_rdp_domain_controller_addr_ipv6   = local.ip_version == "4" ? "" : step.create_rdp_domain_controller.ipv6[0]
       target_rdp_domain_controller_user        = step.create_rdp_domain_controller.admin_username
       target_rdp_domain_controller_password    = step.create_rdp_domain_controller.password
+      target_rdp_domain_controller_ssh_key     = step.create_rdp_domain_controller.ssh_private_key
       target_rdp_member_server_addr            = step.create_rdp_member_server.private_ip
       target_rdp_member_server_domain_hostname = step.create_rdp_member_server.domain_hostname
       target_rdp_member_server_user            = step.create_rdp_member_server.admin_username

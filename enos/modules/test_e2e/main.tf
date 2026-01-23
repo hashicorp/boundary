@@ -176,6 +176,11 @@ variable "target_rdp_domain_controller_password" {
   type        = string
   default     = ""
 }
+variable "target_rdp_domain_controller_ssh_key" {
+  description = "Path to the ssh key for the windows domain controller and worker"
+  type        = string
+  default     = ""
+}
 variable "target_rdp_member_server_addr" {
   description = "Address of RDP member server"
   type        = string
@@ -295,6 +300,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR_IPV6   = var.target_rdp_domain_controller_addr_ipv6
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_USER        = var.target_rdp_domain_controller_user
     E2E_TARGET_RDP_DOMAIN_CONTROLLER_PASSWORD    = var.target_rdp_domain_controller_password
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_SSH_KEY     = var.target_rdp_domain_controller_ssh_key
     E2E_TARGET_RDP_MEMBER_SERVER_ADDR            = var.target_rdp_member_server_addr
     E2E_TARGET_RDP_MEMBER_SERVER_DOMAIN_HOSTNAME = var.target_rdp_member_server_domain_hostname
     E2E_TARGET_RDP_MEMBER_SERVER_USER            = var.target_rdp_member_server_user
