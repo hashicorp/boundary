@@ -592,6 +592,23 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErrMsg:  "children grant scope cannot be combined with individual project grant scopes",
 		},
 		{
+			name: "invalid-org-descendants",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "org cannot have descendants grant scope",
+		},
+		{
 			name:        "nil-token",
 			at:          nil,
 			wantErr:     true,

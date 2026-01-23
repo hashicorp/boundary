@@ -128,6 +128,8 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		createTime = ct.CreateTime
 		approximateLastAccessTime = ct.ApproximateLastAccessTime
 		expirationTime = ct.ExpirationTime
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to read created token reference")
 	}
 	newAppToken := &AppToken{
 		PublicId:                  token.PublicId,
