@@ -73,6 +73,7 @@ jobs:
           - filter: 'e2e_aws builder:crt ip_version:4'
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
+          - filter: 'e2e_docker_base_connect builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
           - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
