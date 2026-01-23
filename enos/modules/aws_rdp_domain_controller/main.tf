@@ -328,6 +328,25 @@ resource "aws_instance" "domain_controller" {
                   # Note: Windows Server 2016 does not support OpenSSH
                   %{if var.server_version != "2016"~}
                   $sshSetupScript = @'
+  # Wait for network to be available
+  $networkTimeout = 120
+  $networkElapsed = 0
+  do {
+    $network = Test-NetConnection -ComputerName "169.254.169.254" -Port 80 -WarningAction SilentlyContinue
+    if ($network.TcpTestSucceeded) {
+      Write-Host "Network is available"
+      break
+    }
+    Write-Host "Waiting for network..."
+    Start-Sleep -Seconds 10
+    $networkElapsed += 10
+  } while ($networkElapsed -lt $networkTimeout)
+
+  if ($networkElapsed -ge $networkTimeout) {
+    Write-Host "Network not available after timeout. Exiting."
+    exit 1
+  }
+
   # set variables for retry loops
   $timeout = 300
   $interval = 30
@@ -401,6 +420,7 @@ resource "aws_instance" "domain_controller" {
                   # Register a scheduled task to run the SSH setup script at next boot
                   $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\ssh-setup.ps1"
                   $Trigger = New-ScheduledTaskTrigger -AtStartup
+                  $Trigger.Delay = 'PT2M'  # Wait 2 minutes after startup to allow networking services to load
                   $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
                   Register-ScheduledTask -TaskName "SetupOpenSSH" -Action $Action -Trigger $Trigger -Principal $Principal;
                   %{endif~}
@@ -447,16 +467,16 @@ resource "local_sensitive_file" "private_key" {
   file_permission = "0400"
 }
 
-resource "time_sleep" "wait_10_minutes" {
+resource "time_sleep" "wait_for_reboot" {
   depends_on      = [aws_instance.domain_controller]
-  create_duration = "10m"
+  create_duration = "20m"
 }
 
 # wait for the SSH service to be available on the instance. We specifically use
 # BatchMode=Yes to prevent SSH from prompting for a password to ensure that we
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
-  depends_on = [time_sleep.wait_10_minutes]
+  depends_on = [time_sleep.wait_for_reboot]
   count      = var.server_version != "2016" ? 1 : 0
   inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.domain_controller.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
