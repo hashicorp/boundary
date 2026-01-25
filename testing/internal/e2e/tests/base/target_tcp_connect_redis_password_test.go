@@ -62,6 +62,7 @@ func TestCliTcpTargetConnectRedisPassword(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate redis connect
+	//
 	cmd := exec.CommandContext(ctx,
 		"boundary",
 		"connect", "redis",
