@@ -174,10 +174,10 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 		Networks:     []*dockertest.Network{network},
 		ExposedPorts: []string{"9200/tcp", "9201/tcp", "9202/tcp", "9203/tcp"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
-			"9200/tcp": {{HostIP: "localhost", HostPort: "9200/tcp"}},
-			"9201/tcp": {{HostIP: "localhost", HostPort: "9201/tcp"}},
-			"9202/tcp": {{HostIP: "localhost", HostPort: "9202/tcp"}},
-			"9203/tcp": {{HostIP: "localhost", HostPort: "9203/tcp"}},
+			"9200/tcp": {{HostIP: "127.0.0.1", HostPort: "9200"}},
+			"9201/tcp": {{HostIP: "127.0.0.1", HostPort: "9201"}},
+			"9202/tcp": {{HostIP: "127.0.0.1", HostPort: "9202"}},
+			"9203/tcp": {{HostIP: "127.0.0.1", HostPort: "9203"}},
 		},
 		CapAdd: []string{"IPC_LOCK"},
 	})
@@ -185,7 +185,7 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 
 	return &Container{
 		Resource:     resource,
-		UriLocalhost: "http://localhost:9200",
+		UriLocalhost: "http://127.0.0.1:9200",
 		UriNetwork:   "http://boundary:9200",
 	}
 }
@@ -214,13 +214,13 @@ func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 		Networks:     []*dockertest.Network{network},
 		ExposedPorts: []string{"8200/tcp"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
-			"8200/tcp": {{HostIP: "localhost", HostPort: "8210/tcp"}},
+			"8200/tcp": {{HostIP: "127.0.0.1", HostPort: "8210"}},
 		},
 		CapAdd: []string{"IPC_LOCK"},
 	})
 	require.NoError(t, err)
 
-	uriLocalhost := "http://localhost:8210"
+	uriLocalhost := "http://127.0.0.1:8210"
 
 	return &Container{
 			Resource:     resource,
