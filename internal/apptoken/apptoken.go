@@ -350,6 +350,9 @@ type appTokenSubtype interface {
 }
 
 func (atg *appTokenGlobal) toAppToken() *AppToken {
+	if atg == nil {
+		return nil
+	}
 	return &AppToken{
 		PublicId:                  atg.PublicId,
 		ScopeId:                   atg.ScopeId,
@@ -365,6 +368,9 @@ func (atg *appTokenGlobal) toAppToken() *AppToken {
 }
 
 func (ato *appTokenOrg) toAppToken() *AppToken {
+	if ato == nil {
+		return nil
+	}
 	return &AppToken{
 		PublicId:                  ato.PublicId,
 		ScopeId:                   ato.ScopeId,
@@ -380,6 +386,9 @@ func (ato *appTokenOrg) toAppToken() *AppToken {
 }
 
 func (atp *appTokenProject) toAppToken() *AppToken {
+	if atp == nil {
+		return nil
+	}
 	return &AppToken{
 		PublicId:                  atp.PublicId,
 		ScopeId:                   atp.ScopeId,

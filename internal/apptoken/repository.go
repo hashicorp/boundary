@@ -117,6 +117,9 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	}
 
 	newAppToken := createdToken.toAppToken()
+	if newAppToken == nil {
+		return nil, errors.New(ctx, errors.Internal, op, "failed to convert created app token to domain object")
+	}
 	newAppToken.Token = cipherToken
 
 	return newAppToken, nil
