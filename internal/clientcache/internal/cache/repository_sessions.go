@@ -385,9 +385,10 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 	if opts.withSortBy != SortByDefault {
 		var direction string
 		switch opts.withSortDirection {
-		case Descending:
+		// default to descending
+		case Descending, SortDirectionDefault:
 			direction = "desc"
-		case Ascending, SortDirectionDefault:
+		case Ascending:
 			direction = "asc"
 		default:
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported sort direction: %v", opts.withSortDirection))

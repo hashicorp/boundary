@@ -741,7 +741,7 @@ func TestRepository_SearchSessionsSorting(t *testing.T) {
 		assert.Equal(t, "ttcp_1", result.Sessions[2].Id)
 	})
 
-	t.Run("sort by created_time with default direction defaults to ascending", func(t *testing.T) {
+	t.Run("sort by created_time with default direction defaults to desc", func(t *testing.T) {
 		params := SearchParams{
 			Resource:      Sessions,
 			AuthTokenId:   kt.AuthTokenId,
@@ -751,9 +751,9 @@ func TestRepository_SearchSessionsSorting(t *testing.T) {
 		result, err := searchService.Search(ctx, params)
 		require.NoError(t, err)
 		require.Len(t, result.Sessions, 3)
-		assert.Equal(t, "ttcp_1", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_3", result.Sessions[0].Id)
 		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
-		assert.Equal(t, "ttcp_3", result.Sessions[2].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[2].Id)
 	})
 
 	t.Run("no sort specified returns results", func(t *testing.T) {
@@ -1361,7 +1361,7 @@ func TestRepository_searchSessions_sortingEdgeCases(t *testing.T) {
 		assert.Contains(t, err.Error(), "unsupported sort direction")
 	})
 
-	t.Run("valid sort with SortDirectionDefault - should default to ascending", func(t *testing.T) {
+	t.Run("valid sort with SortDirectionDefault - should default to descending", func(t *testing.T) {
 		// SortDirectionDefault should be treated as ascending
 		result, err := r.searchSessions(ctx, "true", nil,
 			withAuthTokenId(at.Id),
@@ -1370,9 +1370,9 @@ func TestRepository_searchSessions_sortingEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Len(t, result.Sessions, 2)
-		// Should be in ascending order (oldest first)
-		assert.Equal(t, "ttcp_1", result.Sessions[0].Id)
-		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+		// Should be in descending order (newest first)
+		assert.Equal(t, "ttcp_2", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[1].Id)
 	})
 
 	t.Run("sort with limit 1 - verify incomplete flag", func(t *testing.T) {
