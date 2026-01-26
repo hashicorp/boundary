@@ -101,6 +101,7 @@ func TestNewRepository(t *testing.T) {
 }
 
 func TestRepository_CreateAppToken(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
@@ -119,6 +120,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 		wantErrMsg  string
 		wantIsError errors.Code
 	}{
+		// global
 		{
 			name: "valid-global-basic-no-perms",
 			at: &AppToken{
@@ -335,6 +337,172 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		// org
+		{
+			name: "valid-org-basic-no-perms",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-org-one-perm",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", "children"},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "children",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-org-two-perm",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", "children"},
+					},
+					{
+						Label:         "test-2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"children"},
+					},
+				},
+			},
+			wantErr: false,
+			wantPerms: []testPermission{
+				{
+					GrantScope:  "children",
+					GrantThis:   true,
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					GrantScope:  "children",
+					GrantThis:   false,
+					Description: "test-2",
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{},
+				},
+			},
+		},
+		{
+			name: "valid-org-one-perm-specific-grantedscope",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   false,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-org-one-perm-this-and-specific-grantedscope",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-org-multiple-mixed-perms",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"children"},
+					},
+					{
+						Label:         "test2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+					{
+						Label:         "test3",
+						Grants:        []string{"type=session;actions=list", "type=role;actions=list"},
+						GrantedScopes: []string{"this", "children"},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   false,
+					GrantScope:  "children",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list"},
+					Scopes:      []string{},
+				},
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test2",
+					Grants:      []string{"type=target;actions=list"},
+					Scopes:      []string{proj.GetPublicId()},
+				},
+				{
+					GrantThis:   true,
+					GrantScope:  "children",
+					Description: "test3",
+					Grants:      []string{"type=session;actions=list", "type=role;actions=list"},
+					Scopes:      []string{},
+				},
+			},
+			wantErr: false,
+		},
+		// invalid
 		{
 			name: "invalid-global-bad-grant",
 			at: &AppToken{
@@ -385,6 +553,62 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErrMsg:  "only one of descendants or children grant scope can be specified",
 		},
 		{
+			name: "invalid-org-not-child",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+					{
+						Label:         "test2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{"this", proj2.GetPublicId()},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+			wantErrMsg:  "is not a child of org",
+		},
+		{
+			name: "invalid-org-project-and-children",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId(), "children"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "children grant scope cannot be combined with individual project grant scopes",
+		},
+		{
+			name: "invalid-org-descendants",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "org cannot have descendants grant scope",
+		},
+		{
 			name:        "nil-token",
 			at:          nil,
 			wantErr:     true,
@@ -415,7 +639,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			assert := assert.New(t)
 
 			// validate app token
-			at, err := repo.CreateAppToken(context.Background(), tt.at)
+			at, err := repo.CreateAppToken(ctx, tt.at)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(at)
@@ -432,7 +656,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 
 			// validate app token permission global using db queries
 			if tt.at.Permissions != nil {
-				err = testCheckPermissionGlobal(t, repo, at.PublicId, tt.wantPerms)
+				err = testCheckPermission(t, repo, at.PublicId, tt.at.ScopeId, tt.wantPerms)
 				assert.NoError(err)
 			}
 

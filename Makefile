@@ -214,8 +214,11 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_cipher.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission.pb.go
+	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org.pb.go
+	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org_permission.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission_individual_org_grant_scope.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission_individual_project_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org_permission_individual_grant_scope.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go

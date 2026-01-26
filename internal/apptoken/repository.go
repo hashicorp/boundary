@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -55,28 +56,29 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	token.PublicId = id
 
-	var globalAppToken *appTokenGlobal
-	dbInserts := make([]interface{}, 0)
+	var dbInserts []interface{}
+	var createdToken interface{} // store reference to the token for reading db generated values
 	switch {
 	case strings.HasPrefix(token.GetScopeId(), globals.GlobalPrefix):
-		globalAppToken = &appTokenGlobal{
-			AppTokenGlobal: &store.AppTokenGlobal{
-				PublicId:           id,
-				ScopeId:            token.ScopeId,
-				Name:               token.Name,
-				Description:        token.Description,
-				Revoked:            token.Revoked,
-				CreatedByUserId:    token.CreatedByUserId,
-				TimeToStaleSeconds: token.TimeToStaleSeconds,
-				ExpirationTime:     token.ExpirationTime,
-			},
+		token, dbInserts, createdToken, err = r.createAppTokenGlobal(ctx, token)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
+	case strings.HasPrefix(token.GetScopeId(), globals.OrgPrefix):
+		token, dbInserts, createdToken, err = r.createAppTokenOrg(ctx, token)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	// case strings.HasPrefix(token.GetScopeId(), globals.ProjectPrefix):
+	// 	token, dbInserts, err = r.createAppTokenProj(ctx, token, id)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(ctx, err, op)
+	// 	}
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
-	// collect for batch insert
-	dbInserts = append(dbInserts, globalAppToken)
 
 	cipherToken, err := newToken(ctx)
 	if err != nil {
@@ -95,74 +97,126 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	if err := atc.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	dbInserts = append(dbInserts, atc)
+	dbInserts = append(dbInserts, []*appTokenCipher{atc})
+
+	// batch write all collected inserts
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for _, appTokenItems := range dbInserts {
+				if err := w.CreateItems(ctx, appTokenItems); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating app token in database"))
+	}
+
+	var createTime, expirationTime, approximateLastAccessTime *timestamp.Timestamp
+	// extract db generated fields from the created token reference
+	switch ct := createdToken.(type) {
+	case *appTokenGlobal:
+		createTime = ct.CreateTime
+		approximateLastAccessTime = ct.ApproximateLastAccessTime
+		expirationTime = ct.ExpirationTime
+	case *appTokenOrg:
+		createTime = ct.CreateTime
+		approximateLastAccessTime = ct.ApproximateLastAccessTime
+		expirationTime = ct.ExpirationTime
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to read created token reference")
+	}
+	newAppToken := &AppToken{
+		PublicId:                  token.PublicId,
+		Name:                      token.Name,
+		Description:               token.Description,
+		CreatedByUserId:           token.CreatedByUserId,
+		ScopeId:                   token.ScopeId,
+		ApproximateLastAccessTime: approximateLastAccessTime,
+		CreateTime:                createTime,
+		ExpirationTime:            expirationTime,
+		Revoked:                   token.Revoked,
+		TimeToStaleSeconds:        token.TimeToStaleSeconds,
+		Permissions:               token.Permissions,
+		Token:                     cipherToken,
+	}
+	return newAppToken, nil
+}
+
+func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) (*AppToken, []interface{}, *appTokenGlobal, error) {
+	const op = "apptoken.(Repository).createAppTokenGlobal"
+	var globalInserts []interface{}
+	// we collect inserts in their own slices so that we can use w.CreateItems above
+	// to batch insert by type (say 10,000 permissions at once)
+	var permissionInserts []*appTokenPermissionGlobal
+	var permissionGrantInserts []*appTokenPermissionGrant
+	var individualOrgInserts []*appTokenPermissionGlobalIndividualOrgGrantScope
+	var individualProjInserts []*appTokenPermissionGlobalIndividualProjectGrantScope
+	tokenToCreate := &appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{
+			PublicId:           token.PublicId,
+			ScopeId:            token.ScopeId,
+			Name:               token.Name,
+			Description:        token.Description,
+			Revoked:            token.Revoked,
+			CreatedByUserId:    token.CreatedByUserId,
+			TimeToStaleSeconds: token.TimeToStaleSeconds,
+			ExpirationTime:     token.ExpirationTime,
+		},
+	}
+
+	globalInserts = append(globalInserts, []*appTokenGlobal{tokenToCreate})
 
 	// each permission uses the same permission ID for its grants and scopes
 	// they're a composite key in the app_token_permission_grant table
 	for _, perm := range token.Permissions {
 		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) && slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "only one of descendants or children grant scope can be specified")
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "only one of descendants or children grant scope can be specified")
 		}
 		// perm.GrantedScopes cannot contain globals.GrantScopeDescendants and also contain an individual project or org scope
 		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) && slices.ContainsFunc(perm.GrantedScopes, func(s string) bool {
 			return strings.HasPrefix(s, globals.ProjectPrefix) || strings.HasPrefix(s, globals.OrgPrefix)
 		}) {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "descendants grant scope cannot be combined with individual project grant scopes")
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "descendants grant scope cannot be combined with individual project grant scopes")
 		}
 		// perm.GrantedScopes cannot contain globals.GrantScopeChildren and also contain an individual org scope
 		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) && slices.ContainsFunc(perm.GrantedScopes, func(s string) bool {
 			return strings.HasPrefix(s, globals.OrgPrefix)
 		}) {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "children grant scope cannot be combined with individual org grant scopes")
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "children grant scope cannot be combined with individual org grant scopes")
 		}
 
 		// generate new permission ID
 		permId, err := newAppTokenPermissionId(ctx)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
 
 		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
-		// if perm.GrantedScopes contains "children", set globalPermGrantScope to "children"
-		// if perm.GrantedScopes contains "descendants", set globalPermGrantScope to "descendants"
-		// if perm.GrantedScopes contains neither but does have at least one individual org or project,
-		// set globalPermGrantScope to "individual" and create individual grant scope entries below
-		globalPermGrantScope := globals.GrantScopeIndividual
-		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
-			globalPermGrantScope = globals.GrantScopeChildren
-		} else if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) {
-			globalPermGrantScope = globals.GrantScopeDescendants
-		}
-
+		globalPermGrantScope := determineGrantScope(perm.GrantedScopes)
 		globalPermToCreate := &appTokenPermissionGlobal{
 			AppTokenPermissionGlobal: &store.AppTokenPermissionGlobal{
 				PrivateId:      permId,
-				AppTokenId:     id,
+				AppTokenId:     token.PublicId,
 				GrantThisScope: grantThisScope,
 				GrantScope:     globalPermGrantScope,
 				Description:    perm.Label,
 			},
 		}
-		dbInserts = append(dbInserts, globalPermToCreate)
+		permissionInserts = append(permissionInserts, globalPermToCreate)
+		// globalInserts = append(globalInserts, globalPermToCreate)
 
-		for _, grant := range perm.Grants {
-			// Validate that the grant parses successfully. Note that we fake the scope
-			// here to avoid a lookup as the scope is only relevant at actual ACL
-			// checking time and we just care that it parses correctly.
-			parsedGrant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant})
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
-			}
-			// insert each grant in the permission to app_token_permission_grant
-			permissionGrantToCreate := &appTokenPermissionGrant{
-				AppTokenPermissionGrant: &store.AppTokenPermissionGrant{
-					PermissionId:   permId,
-					CanonicalGrant: parsedGrant.CanonicalString(),
-					RawGrant:       grant,
-				},
-			}
-			dbInserts = append(dbInserts, permissionGrantToCreate)
+		grantInserts, err := processPermissionGrants(ctx, permId, perm.Grants)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
+		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
+		// globalInserts = append(globalInserts, grantInserts...)
 
 		for _, gs := range perm.GrantedScopes {
 			if gs == globals.GrantScopeThis ||
@@ -175,12 +229,11 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 				individualOrgGlobalPermToCreate := &appTokenPermissionGlobalIndividualOrgGrantScope{
 					AppTokenPermissionGlobalIndividualOrgGrantScope: &store.AppTokenPermissionGlobalIndividualOrgGrantScope{
 						PermissionId: permId,
-						// this can only ever be individual for individual orgs in global grant scopes
-						GrantScope: globalPermGrantScope,
-						ScopeId:    gs,
+						GrantScope:   globalPermGrantScope,
+						ScopeId:      gs,
 					},
 				}
-				dbInserts = append(dbInserts, individualOrgGlobalPermToCreate)
+				individualOrgInserts = append(individualOrgInserts, individualOrgGlobalPermToCreate)
 			case strings.HasPrefix(gs, globals.ProjectPrefix):
 				individualProjGlobalPermToCreate := &appTokenPermissionGlobalIndividualProjectGrantScope{
 					AppTokenPermissionGlobalIndividualProjectGrantScope: &store.AppTokenPermissionGlobalIndividualProjectGrantScope{
@@ -189,46 +242,120 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 						ScopeId:      gs,
 					},
 				}
-				dbInserts = append(dbInserts, individualProjGlobalPermToCreate)
+				individualProjInserts = append(individualProjInserts, individualProjGlobalPermToCreate)
 			default:
-				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid grant scope %s", gs))
+				return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid grant scope %s", gs))
+			}
+		}
+	}
+	// avoid appending empty slices
+	if len(permissionInserts) > 0 {
+		globalInserts = append(globalInserts, permissionInserts)
+	}
+	if len(permissionGrantInserts) > 0 {
+		globalInserts = append(globalInserts, permissionGrantInserts)
+	}
+	if len(individualOrgInserts) > 0 {
+		globalInserts = append(globalInserts, individualOrgInserts)
+	}
+	if len(individualProjInserts) > 0 {
+		globalInserts = append(globalInserts, individualProjInserts)
+	}
+
+	return token, globalInserts, tokenToCreate, nil
+}
+
+func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken) (*AppToken, []interface{}, *appTokenOrg, error) {
+	const op = "apptoken.(Repository).createAppTokenOrg"
+	var orgInserts []interface{}
+	// we collect inserts in their own slices so that we can use w.CreateItems above
+	// to batch insert by type (say 10,000 permissions at once)
+	var permissionInserts []*appTokenPermissionOrg
+	var permissionGrantInserts []*appTokenPermissionGrant
+	var individualProjInserts []*appTokenPermissionOrgIndividualGrantScope
+
+	tokenToCreate := &appTokenOrg{
+		AppTokenOrg: &store.AppTokenOrg{
+			PublicId:           token.PublicId,
+			ScopeId:            token.ScopeId,
+			Name:               token.Name,
+			Description:        token.Description,
+			Revoked:            token.Revoked,
+			CreatedByUserId:    token.CreatedByUserId,
+			TimeToStaleSeconds: token.TimeToStaleSeconds,
+			ExpirationTime:     token.ExpirationTime,
+		},
+	}
+
+	orgInserts = append(orgInserts, []*appTokenOrg{tokenToCreate})
+
+	for _, perm := range token.Permissions {
+		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) {
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "org cannot have descendants grant scope")
+		}
+		if slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) && slices.ContainsFunc(perm.GrantedScopes, func(s string) bool {
+			return strings.HasPrefix(s, globals.ProjectPrefix)
+		}) {
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "children grant scope cannot be combined with individual project grant scopes")
+		}
+
+		permId, err := newAppTokenPermissionId(ctx)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+
+		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
+		orgPermGrantScope := determineGrantScope(perm.GrantedScopes)
+
+		orgPermToCreate := &appTokenPermissionOrg{
+			AppTokenPermissionOrg: &store.AppTokenPermissionOrg{
+				PrivateId:      permId,
+				AppTokenId:     token.PublicId,
+				GrantThisScope: grantThisScope,
+				GrantScope:     orgPermGrantScope,
+				Description:    perm.Label,
+			},
+		}
+
+		permissionInserts = append(permissionInserts, orgPermToCreate)
+
+		grantInserts, err := processPermissionGrants(ctx, permId, perm.Grants)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
+
+		for _, gs := range perm.GrantedScopes {
+			if gs == globals.GrantScopeThis || gs == globals.GrantScopeChildren {
+				continue
+			}
+
+			if strings.HasPrefix(gs, globals.ProjectPrefix) {
+				individualProjOrgPermToCreate := &appTokenPermissionOrgIndividualGrantScope{
+					AppTokenPermissionOrgIndividualGrantScope: &store.AppTokenPermissionOrgIndividualGrantScope{
+						PermissionId: permId,
+						GrantScope:   orgPermGrantScope,
+						ScopeId:      gs,
+					},
+				}
+				individualProjInserts = append(individualProjInserts, individualProjOrgPermToCreate)
+			} else {
+				return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid grant scope %s", gs))
 			}
 		}
 	}
 
-	// batch write all collected inserts
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			for _, appTokenObject := range dbInserts {
-				if err := w.Create(ctx, appTokenObject); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating app token in database"))
+	if len(permissionInserts) > 0 {
+		orgInserts = append(orgInserts, permissionInserts)
+	}
+	if len(permissionGrantInserts) > 0 {
+		orgInserts = append(orgInserts, permissionGrantInserts)
+	}
+	if len(individualProjInserts) > 0 {
+		orgInserts = append(orgInserts, individualProjInserts)
 	}
 
-	newAppToken := &AppToken{
-		PublicId:                  globalAppToken.PublicId,
-		ScopeId:                   globalAppToken.ScopeId,
-		ApproximateLastAccessTime: globalAppToken.ApproximateLastAccessTime,
-		CreateTime:                globalAppToken.CreateTime,
-		ExpirationTime:            globalAppToken.ExpirationTime,
-		Revoked:                   globalAppToken.Revoked,
-		Name:                      globalAppToken.Name,
-		Description:               globalAppToken.Description,
-		CreatedByUserId:           globalAppToken.CreatedByUserId,
-		TimeToStaleSeconds:        globalAppToken.TimeToStaleSeconds,
-		Permissions:               token.Permissions,
-		Token:                     cipherToken,
-	}
-	return newAppToken, nil
+	return token, orgInserts, tokenToCreate, nil
 }
 
 // TODO: Implement additional fields in AppToken and complete this method
@@ -258,4 +385,38 @@ func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken,
 		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
 	}
 	return &at, nil
+}
+
+// processPermissionGrants validates grants and creates grant objects for insertion
+func processPermissionGrants(ctx context.Context, permId string, grants []string) ([]*appTokenPermissionGrant, error) {
+	const op = "apptoken.processPermissionGrants"
+	var grantInserts []*appTokenPermissionGrant
+	for _, grant := range grants {
+		// Validate that the grant parses successfully. Note that we fake the scope
+		// here to avoid a lookup as the scope is only relevant at actual ACL
+		// checking time and we just care that it parses correctly.
+		parsedGrant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
+		}
+		permissionGrantToCreate := &appTokenPermissionGrant{
+			AppTokenPermissionGrant: &store.AppTokenPermissionGrant{
+				PermissionId:   permId,
+				CanonicalGrant: parsedGrant.CanonicalString(),
+				RawGrant:       grant,
+			},
+		}
+		grantInserts = append(grantInserts, permissionGrantToCreate)
+	}
+	return grantInserts, nil
+}
+
+// determineGrantScope determines the appropriate grant scope value based on granted scopes
+func determineGrantScope(grantedScopes []string) string {
+	if slices.Contains(grantedScopes, globals.GrantScopeChildren) {
+		return globals.GrantScopeChildren
+	} else if slices.Contains(grantedScopes, globals.GrantScopeDescendants) {
+		return globals.GrantScopeDescendants
+	}
+	return globals.GrantScopeIndividual
 }

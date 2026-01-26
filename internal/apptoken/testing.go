@@ -182,72 +182,146 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 }
 
 // these will eventually expand to cover org and proj
-func testCheckPermissionGlobal(t *testing.T, repo *Repository, appTokenId string, wantPerms []testPermission) error {
+func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
-	permQuery := `
-    select atp.private_id as permission_id,
-           atpg.canonical_grant,
-           atpglobal.description,
-           atpglobal.grant_this_scope,
-           atpglobal.grant_scope as grant_scope,
-           atpgios.scope_id as individual_org_scope_id,
-           atpgips.scope_id as individual_project_scope_id
-      from app_token_permission atp
- left join app_token_permission_grant atpg on atp.private_id = atpg.permission_id
- left join app_token_permission_global atpglobal on atp.private_id = atpglobal.private_id
- left join app_token_permission_global_individual_org_grant_scope atpgios on atp.private_id = atpgios.permission_id
- left join app_token_permission_global_individual_project_grant_scope atpgips on atp.private_id = atpgips.permission_id
-     where atp.app_token_id = $1
-  order by atp.private_id, atpg.canonical_grant, atpgios.scope_id, atpgips.scope_id
-    `
-	rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
+	var permQuery string
 	// Map to aggregate results by permission_id
 	permMap := make(map[string]*testPermission)
 
-	for rows.Next() {
-		var permissionId, canonicalGrant, permissionGrantScope string
-		// *string for columns that can be null from left joins
-		var description, individualOrgScopeId, individualProjectScopeId *string
-		var grantThisScope bool
-
-		if err := rows.Scan(&permissionId, &canonicalGrant, &description, &grantThisScope,
-			&permissionGrantScope, &individualOrgScopeId, &individualProjectScopeId); err != nil {
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		permQuery = `
+            select atp.private_id as permission_id,
+                   atpg.canonical_grant,
+                   atpglobal.description,
+                   atpglobal.grant_this_scope,
+                   atpglobal.grant_scope as grant_scope,
+                   atpgios.scope_id as individual_org_scope_id,
+                   atpgips.scope_id as individual_project_scope_id
+              from app_token_permission atp
+         left join app_token_permission_grant atpg on atp.private_id = atpg.permission_id
+         left join app_token_permission_global atpglobal on atp.private_id = atpglobal.private_id
+         left join app_token_permission_global_individual_org_grant_scope atpgios on atp.private_id = atpgios.permission_id
+         left join app_token_permission_global_individual_project_grant_scope atpgips on atp.private_id = atpgips.permission_id
+             where atp.app_token_id = $1
+          order by atp.private_id, atpg.canonical_grant, atpgios.scope_id, atpgips.scope_id
+        `
+		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		if err != nil {
 			return err
 		}
+		defer rows.Close()
 
-		// Get or create the testPermission for this permission_id
-		perm, exists := permMap[permissionId]
-		if !exists {
-			perm = &testPermission{
-				Description: *description,
-				GrantThis:   grantThisScope,
-				GrantScope:  permissionGrantScope,
-				Grants:      []string{},
-				Scopes:      []string{},
+		for rows.Next() {
+			var permissionId, canonicalGrant, permissionGrantScope string
+			// *string for columns that can be null from left joins
+			var description, individualOrgScopeId, individualProjectScopeId *string
+			var grantThisScope bool
+
+			if err := rows.Scan(
+				&permissionId,
+				&canonicalGrant,
+				&description,
+				&grantThisScope,
+				&permissionGrantScope,
+				&individualOrgScopeId,
+				&individualProjectScopeId,
+			); err != nil {
+				return err
 			}
-			permMap[permissionId] = perm
-		}
 
-		// Add grant if present and not already added
-		if !slices.Contains(perm.Grants, canonicalGrant) {
-			perm.Grants = append(perm.Grants, canonicalGrant)
-		}
+			// Get or create the testPermission for this permission_id
+			perm, exists := permMap[permissionId]
+			if !exists {
+				perm = &testPermission{
+					Description: *description,
+					GrantThis:   grantThisScope,
+					GrantScope:  permissionGrantScope,
+					Grants:      []string{},
+					Scopes:      []string{},
+				}
+				permMap[permissionId] = perm
+			}
 
-		// Add org scope if present and not already added
-		if individualOrgScopeId != nil && !slices.Contains(perm.Scopes, *individualOrgScopeId) {
-			perm.Scopes = append(perm.Scopes, *individualOrgScopeId)
-		}
+			// Add grant if present and not already added
+			if !slices.Contains(perm.Grants, canonicalGrant) {
+				perm.Grants = append(perm.Grants, canonicalGrant)
+			}
 
-		// Add project scope if present and not already added
-		if individualProjectScopeId != nil && !slices.Contains(perm.Scopes, *individualProjectScopeId) {
-			perm.Scopes = append(perm.Scopes, *individualProjectScopeId)
+			// Add org scope if present and not already added
+			if individualOrgScopeId != nil && !slices.Contains(perm.Scopes, *individualOrgScopeId) {
+				perm.Scopes = append(perm.Scopes, *individualOrgScopeId)
+			}
+
+			// Add project scope if present and not already added
+			if individualProjectScopeId != nil && !slices.Contains(perm.Scopes, *individualProjectScopeId) {
+				perm.Scopes = append(perm.Scopes, *individualProjectScopeId)
+			}
 		}
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		permQuery = `
+            select atp.private_id as permission_id,
+                   atpg.canonical_grant,
+                   atpo.description,
+                   atpo.grant_this_scope,
+                   atpo.grant_scope as grant_scope,
+                   atpis.scope_id as individual_scope_id
+              from app_token_permission atp
+         left join app_token_permission_grant atpg on atp.private_id = atpg.permission_id
+         left join app_token_permission_org atpo on atp.private_id = atpo.private_id
+         left join app_token_permission_org_individual_grant_scope atpis on atp.private_id = atpis.permission_id
+             where atp.app_token_id = $1
+          order by atp.private_id, atpg.canonical_grant, atpis.scope_id
+        `
+		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var permissionId, canonicalGrant, permissionGrantScope string
+			// *string for columns that can be null from left joins
+			var description, individualScopeId *string
+			var grantThisScope bool
+
+			if err := rows.Scan(
+				&permissionId,
+				&canonicalGrant,
+				&description,
+				&grantThisScope,
+				&permissionGrantScope,
+				&individualScopeId,
+			); err != nil {
+				return err
+			}
+
+			// Get or create the testPermission for this permission_id
+			perm, exists := permMap[permissionId]
+			if !exists {
+				perm = &testPermission{
+					Description: *description,
+					GrantThis:   grantThisScope,
+					GrantScope:  permissionGrantScope,
+					Grants:      []string{},
+					Scopes:      []string{},
+				}
+				permMap[permissionId] = perm
+			}
+
+			// Add grant if present and not already added
+			if !slices.Contains(perm.Grants, canonicalGrant) {
+				perm.Grants = append(perm.Grants, canonicalGrant)
+			}
+
+			// Add org scope if present and not already added
+			if individualScopeId != nil && !slices.Contains(perm.Scopes, *individualScopeId) {
+				perm.Scopes = append(perm.Scopes, *individualScopeId)
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported scope id prefix for permission check: %s", scopeId)
 	}
 
 	// Convert map to slice
