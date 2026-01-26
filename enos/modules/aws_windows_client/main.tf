@@ -273,17 +273,6 @@ resource "aws_instance" "client" {
   }
 }
 
-resource "time_sleep" "wait_3_minutes" {
-  depends_on      = [aws_instance.client]
-  create_duration = "3m"
-}
-
-data "aws_instance" "instance_password" {
-  depends_on        = [time_sleep.wait_3_minutes]
-  instance_id       = aws_instance.client.id
-  get_password_data = true
-}
-
 locals {
   boundary_cli_zip_path = var.boundary_cli_zip_path != "" ? abspath(var.boundary_cli_zip_path) : ""
   test_dir              = "C:/Test/" # needs to end in a / to ensure it creates the directory
@@ -395,4 +384,10 @@ resource "local_file" "powershell_script_output" {
   count      = var.boundary_cli_zip_path != "" ? 1 : 0
   content    = enos_local_exec.run_powershell_script[0].stdout
   filename   = "${path.root}/.terraform/tmp/setup_windows_client.out"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on        = [enos_local_exec.wait_for_ssh]
+  instance_id       = aws_instance.client.id
+  get_password_data = true
 }
