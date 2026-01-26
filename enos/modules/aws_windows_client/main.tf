@@ -387,7 +387,7 @@ resource "local_file" "powershell_script_output" {
 }
 
 data "aws_instance" "instance_password" {
-  depends_on        = [enos_local_exec.wait_for_ssh]
+  depends_on        = [enos_local_exec.run_powershell_script]
   instance_id       = aws_instance.client.id
   get_password_data = true
 }
