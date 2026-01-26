@@ -273,13 +273,13 @@ resource "aws_instance" "client" {
   }
 }
 
-resource "time_sleep" "wait_for_client_init" {
+resource "time_sleep" "wait_3_minutes" {
   depends_on      = [aws_instance.client]
   create_duration = "3m"
 }
 
 data "aws_instance" "instance_password" {
-  depends_on        = [time_sleep.wait_for_client_init]
+  depends_on        = [time_sleep.wait_3_minutes]
   instance_id       = aws_instance.client.id
   get_password_data = true
 }

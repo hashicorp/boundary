@@ -260,17 +260,6 @@ ${var.domain_admin_password}
   }
 }
 
-resource "time_sleep" "wait_for_worker_init" {
-  depends_on      = [aws_instance.worker]
-  create_duration = "3m"
-}
-
-data "aws_instance" "instance_password" {
-  depends_on        = [time_sleep.wait_for_worker_init]
-  instance_id       = aws_instance.worker.id
-  get_password_data = true
-}
-
 locals {
   private_key           = abspath(var.domain_controller_private_key)
   boundary_cli_zip_path = var.boundary_cli_zip_path != "" ? abspath(var.boundary_cli_zip_path) : ""
@@ -367,6 +356,12 @@ resource "enos_local_exec" "run_powershell_script" {
 resource "time_sleep" "wait_2_minutes" {
   depends_on      = [enos_local_exec.run_powershell_script]
   create_duration = "2m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on        = [time_sleep.wait_2_minutes]
+  instance_id       = aws_instance.worker.id
+  get_password_data = true
 }
 
 # used for debug
