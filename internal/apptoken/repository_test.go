@@ -337,6 +337,30 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid-global-one-perm-multi-individuals",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", org.GetPublicId(), proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{org.GetPublicId(), proj.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
 		// org
 		{
 			name: "valid-org-basic-no-perms",
@@ -738,6 +762,23 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 			wantErrMsg:  "project can only contain individual grant scopes",
+		},
+		{
+			name: "invalid-duplicate-grants",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.NotUnique,
+			wantErrMsg:  "unique constraint violation",
 		},
 		{
 			name:        "nil-token",
