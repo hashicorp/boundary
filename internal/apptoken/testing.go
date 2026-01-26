@@ -14,7 +14,9 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +55,6 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	return repo
 }
 
-<<<<<<< HEAD
 func testPublicId(t testing.TB, prefix string) string {
 	t.Helper()
 	publicId, err := db.NewPublicId(t.Context(), prefix)
@@ -180,8 +181,6 @@ func tempTestAddGrants(t *testing.T, repo *Repository, tokenId, scopeId string, 
 	}
 }
 
-=======
->>>>>>> f6f87a19c (update to include description)
 // these will eventually expand to cover org and proj
 func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
@@ -321,6 +320,56 @@ func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scop
 				perm.Scopes = append(perm.Scopes, *individualScopeId)
 			}
 		}
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		permQuery = `
+            select atp.private_id as permission_id,
+                   atpg.canonical_grant,
+                   atpp.description,
+                   atpp.grant_this_scope
+              from app_token_permission atp
+         left join app_token_permission_grant atpg on atp.private_id = atpg.permission_id
+         left join app_token_permission_project atpp on atp.private_id = atpp.private_id
+             where atp.app_token_id = $1
+          order by atp.private_id, atpg.canonical_grant
+        `
+		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var permissionId, canonicalGrant string
+			// *string for columns that can be null from left joins
+			var description *string
+			var grantThisScope bool
+
+			if err := rows.Scan(
+				&permissionId,
+				&canonicalGrant,
+				&description,
+				&grantThisScope,
+			); err != nil {
+				return err
+			}
+
+			// Get or create the testPermission for this permission_id
+			perm, exists := permMap[permissionId]
+			if !exists {
+				perm = &testPermission{
+					Description: *description,
+					GrantThis:   grantThisScope,
+					Grants:      []string{},
+				}
+				permMap[permissionId] = perm
+			}
+
+			// Add grant if present and not already added
+			if !slices.Contains(perm.Grants, canonicalGrant) {
+				perm.Grants = append(perm.Grants, canonicalGrant)
+			}
+		}
+
 	default:
 		return fmt.Errorf("unsupported scope id prefix for permission check: %s", scopeId)
 	}

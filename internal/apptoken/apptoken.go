@@ -340,3 +340,56 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 	}
 	return nil
 }
+
+// the appTokenSubtype interface allows us to implement the
+// toAppToken method for each app token type, which allows us to
+// access the db created fields (CreateTime, etc.) when converting
+// to the common AppToken type.
+type appTokenSubtype interface {
+	toAppToken() *AppToken
+}
+
+func (atg *appTokenGlobal) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  atg.PublicId,
+		ScopeId:                   atg.ScopeId,
+		Name:                      atg.Name,
+		Description:               atg.Description,
+		CreateTime:                atg.CreateTime,
+		ApproximateLastAccessTime: atg.ApproximateLastAccessTime,
+		ExpirationTime:            atg.ExpirationTime,
+		TimeToStaleSeconds:        atg.TimeToStaleSeconds,
+		CreatedByUserId:           atg.CreatedByUserId,
+		Revoked:                   atg.Revoked,
+	}
+}
+
+func (ato *appTokenOrg) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  ato.PublicId,
+		ScopeId:                   ato.ScopeId,
+		Name:                      ato.Name,
+		Description:               ato.Description,
+		CreateTime:                ato.CreateTime,
+		ApproximateLastAccessTime: ato.ApproximateLastAccessTime,
+		ExpirationTime:            ato.ExpirationTime,
+		TimeToStaleSeconds:        ato.TimeToStaleSeconds,
+		CreatedByUserId:           ato.CreatedByUserId,
+		Revoked:                   ato.Revoked,
+	}
+}
+
+func (atp *appTokenProject) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  atp.PublicId,
+		ScopeId:                   atp.ScopeId,
+		Name:                      atp.Name,
+		Description:               atp.Description,
+		CreateTime:                atp.CreateTime,
+		ApproximateLastAccessTime: atp.ApproximateLastAccessTime,
+		ExpirationTime:            atp.ExpirationTime,
+		TimeToStaleSeconds:        atp.TimeToStaleSeconds,
+		CreatedByUserId:           atp.CreatedByUserId,
+		Revoked:                   atp.Revoked,
+	}
+}
