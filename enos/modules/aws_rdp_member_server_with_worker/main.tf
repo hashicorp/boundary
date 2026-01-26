@@ -261,13 +261,13 @@ ${var.domain_admin_password}
 }
 
 resource "time_sleep" "wait_for_worker_init" {
-  depends_on = [aws_instance.worker]
+  depends_on      = [aws_instance.worker]
   create_duration = "3m"
 }
 
 data "aws_instance" "instance_password" {
-  depends_on  = [time_sleep.wait_for_worker_init]
-  instance_id = aws_instance.worker.id
+  depends_on        = [time_sleep.wait_for_worker_init]
+  instance_id       = aws_instance.worker.id
   get_password_data = true
 }
 
