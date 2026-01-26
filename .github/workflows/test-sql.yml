@@ -18,7 +18,7 @@ jobs:
         postgres-version: [ latest, 12-alpine, 13-alpine, 14-alpine, 15-alpine ]
     name: SQL Tests ${{ matrix.postgres-version }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Run SQL PgTap Tests
         run: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=${{ matrix.postgres-version }}

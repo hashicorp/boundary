@@ -14,15 +14,41 @@ apt update
 # pass is used to store the auth token from `boundary authenticate``
 # lsb-release is used for adding the hashicorp apt source
 # postgresql-client is used for postgres tests
-apt install unzip pass lsb-release postgresql-client -y
+# default-mysql-client is used for mysql tests
+# wget is used for downloading external dependencies and repository keys
+# apt-transport-https enables HTTPS transport for APT repositories
+apt install unzip pass lsb-release postgresql-client default-mysql-client wget apt-transport-https  -y
+
+# Function to install Cassandra
+install_cassandra() {
+  # Add Cassandra repository key
+  wget -O cassandra.keys https://www.apache.org/dist/cassandra/KEYS
+
+  # Convert key to gpg format
+  gpg --no-default-keyring --keyring ./temp-keyring.gpg --import cassandra.keys
+  gpg --no-default-keyring --keyring ./temp-keyring.gpg --export --output cassandra.gpg
+  rm ./temp-keyring.gpg cassandra.keys
+  mv cassandra.gpg /etc/apt/keyrings/cassandra.gpg
+
+  # Add Cassandra repository
+  echo "deb [signed-by=/etc/apt/keyrings/cassandra.gpg] https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
+
+  # Update package list and install Cassandra
+  apt update
+  apt install cassandra -y
+}
+
+# Install Cassandra
+install_cassandra
+
 
 # Create a GPG key
 export KEY_PW=boundary
 gpg --generate-key --batch <<eoGpgConf
     %echo Started!
-    Key-Type: default
+    Key-Type: RSA
     Key-Length: default
-    Subkey-Type: default
+    Subkey-Type: RSA
     Name-Real: boundary
     Name-Comment: default
     Name-Email: default
