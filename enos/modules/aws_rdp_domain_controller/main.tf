@@ -471,7 +471,7 @@ resource "time_sleep" "wait_for_reboot" {
 }
 
 data "aws_instance" "instance_password" {
-  depends_on        = [time_sleep.wait_10_minutes]
+  depends_on        = [time_sleep.wait_for_reboot]
   instance_id       = aws_instance.domain_controller.id
   get_password_data = true
 }
