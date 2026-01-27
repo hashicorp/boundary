@@ -57,21 +57,24 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 	}
 	token.PublicId = id
 
+	// dbInserts is a slice of slices
+	// each inner slice contains items of the same type (appTokenPermissionGlobal, for example)
+	// to be batch inserted using CreateItems
 	var dbInserts []interface{}
 	var createdToken appTokenSubtype
 	switch {
 	case strings.HasPrefix(token.GetScopeId(), globals.GlobalPrefix):
-		createdToken, dbInserts, err = r.createAppTokenGlobal(ctx, token)
+		createdToken, dbInserts, err = createAppTokenGlobal(ctx, token)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	case strings.HasPrefix(token.GetScopeId(), globals.OrgPrefix):
-		createdToken, dbInserts, err = r.createAppTokenOrg(ctx, token)
+		createdToken, dbInserts, err = createAppTokenOrg(ctx, token)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	case strings.HasPrefix(token.GetScopeId(), globals.ProjectPrefix):
-		createdToken, dbInserts, err = r.createAppTokenProject(ctx, token)
+		createdToken, dbInserts, err = createAppTokenProject(ctx, token)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -121,11 +124,12 @@ func (r *Repository) CreateAppToken(ctx context.Context, token *AppToken) (*AppT
 		return nil, errors.New(ctx, errors.Internal, op, "failed to convert created app token to domain object")
 	}
 	newAppToken.Token = cipherToken
+	newAppToken.Permissions = token.Permissions
 
 	return newAppToken, nil
 }
 
-func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal, []interface{}, error) {
+func createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal, []interface{}, error) {
 	const op = "apptoken.(Repository).createAppTokenGlobal"
 	var globalInserts []interface{}
 	// we collect inserts in their own slices so that we can use w.CreateItems above
@@ -242,7 +246,7 @@ func (r *Repository) createAppTokenGlobal(ctx context.Context, token *AppToken) 
 	return tokenToCreate, globalInserts, nil
 }
 
-func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []interface{}, error) {
+func createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []interface{}, error) {
 	const op = "apptoken.(Repository).createAppTokenOrg"
 	var orgInserts []interface{}
 	// we collect inserts in their own slices so that we can use w.CreateItems above
@@ -335,7 +339,7 @@ func (r *Repository) createAppTokenOrg(ctx context.Context, token *AppToken) (*a
 	return tokenToCreate, orgInserts, nil
 }
 
-func (r *Repository) createAppTokenProject(ctx context.Context, token *AppToken) (*appTokenProject, []interface{}, error) {
+func createAppTokenProject(ctx context.Context, token *AppToken) (*appTokenProject, []interface{}, error) {
 	const op = "apptoken.(Repository).createAppTokenProject"
 	var projectInserts []interface{}
 	// we collect inserts in their own slices so that we can use w.CreateItems above

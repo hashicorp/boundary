@@ -820,14 +820,16 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
+			assert.NotNil(at.PublicId)
 			assert.NotNil(at.CreateTime)
 			assert.NotNil(at.ApproximateLastAccessTime)
 			assert.NotNil(at.Token)
 			assert.Equal(at.CreateTime, at.ApproximateLastAccessTime)
 			assert.GreaterOrEqual(at.ExpirationTime.AsTime().Unix(), at.CreateTime.AsTime().Unix())
 
-			// validate app token permission global using db queries
-			if tt.at.Permissions != nil {
+			// validate app token permissions using db queries
+			if tt.wantPerms != nil {
+				assert.NotNil(at.Permissions)
 				err = testCheckPermission(t, repo, at.PublicId, tt.at.ScopeId, tt.wantPerms)
 				assert.NoError(err)
 			}
