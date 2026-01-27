@@ -5,36 +5,84 @@ package apptoken
 
 import (
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWithRecursive(t *testing.T) {
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	createTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return nil
+}
+
+func (p *fakeItem) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(p.createTime)
+}
+
+// Test_GetOpts provides unit tests for GetOpts and all the options
+func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		input    bool
-		expected bool
-	}{
-		{
-			name:     "withRecursive true",
-			input:    true,
-			expected: true,
-		},
-		{
-			name:     "withRecursive false",
-			input:    false,
-			expected: false,
-		},
-	}
+	t.Run("withRecursive", func(t *testing.T) {
+		assert := assert.New(t)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		// Test with default (false)
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
 
-			opts := getOpts(WithRecursive(tt.input))
-			assert.Equal(t, tt.expected, opts.withRecursive)
-		})
-	}
+		// Test with true
+		opts = getOpts(WithRecursive(true))
+		testOpts = getDefaultOptions()
+		testOpts.withRecursive = true
+		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("withLimit", func(t *testing.T) {
+		assert := assert.New(t)
+
+		// Test with default limit
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+		assert.Equal(db.DefaultLimit, opts.withLimit)
+
+		// Test with custom limit
+		opts = getOpts(WithLimit(10))
+		testOpts = getDefaultOptions()
+		testOpts.withLimit = 10
+		assert.Equal(opts, testOpts)
+
+		// Test with negative limit (should reset to default)
+		opts = getOpts(WithLimit(-5))
+		testOpts = getDefaultOptions()
+		testOpts.withLimit = db.DefaultLimit
+		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("withStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+
+		// Test with default (nil)
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		createTime := time.Now()
+		opts = getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", createTime}))
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetCreateTime(), timestamp.New(createTime))
+	})
 }

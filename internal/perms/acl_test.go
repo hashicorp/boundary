@@ -2192,11 +2192,11 @@ func Test_AnonRestrictions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			for i := resource.Type(1); i <= resource.Alias; i++ {
+			for i := resource.Type(1); i <= resource.AppToken; i++ {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.ListResolvableAliases; j++ {
+				for j := action.Type(1); j <= action.RevokeSelf; j++ {
 					id := "foobar"
 					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
 					if len(prefixes) > 0 {

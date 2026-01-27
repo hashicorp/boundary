@@ -87,6 +87,12 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"app-tokens": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"auth-methods": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -155,6 +161,12 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"app-tokens": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"auth-methods": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),

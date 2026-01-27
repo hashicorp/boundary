@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -41,6 +42,7 @@ type AppToken struct {
 	Name                      string
 	Description               string
 	CreateTime                *timestamp.Timestamp
+	UpdateTime                *timestamp.Timestamp
 	ApproximateLastAccessTime *timestamp.Timestamp
 	ExpirationTime            *timestamp.Timestamp
 	TimeToStaleSeconds        uint32
@@ -51,11 +53,11 @@ type AppToken struct {
 	Permissions               []AppTokenPermission
 }
 
-func (a *AppToken) GetScopeId() string {
-	if a == nil {
+func (at *AppToken) GetScopeId() string {
+	if at == nil {
 		return ""
 	}
-	return a.ScopeId
+	return at.ScopeId
 }
 
 // IsActive returns true if the app token is active (not revoked and not expired)
@@ -63,19 +65,78 @@ func (a *AppToken) GetScopeId() string {
 //   - Token is revoked
 //   - time.Now() is after expiration time
 //   - time.Now() is after lastAccess + timeToStaleSeconds
-func (a *AppToken) IsActive() bool {
+func (at *AppToken) IsActive() bool {
 	now := time.Now()
 
 	switch {
-	case a.Revoked:
+	case at.Revoked:
 		return false
-	case a.ExpirationTime != nil && now.After(a.ExpirationTime.AsTime()):
+	case at.ExpirationTime != nil && now.After(at.ExpirationTime.AsTime()):
 		return false
-	case a.TimeToStaleSeconds > 0 && a.ApproximateLastAccessTime != nil &&
-		now.After(a.ApproximateLastAccessTime.AsTime().Add(time.Duration(a.TimeToStaleSeconds)*time.Second)):
+	case at.TimeToStaleSeconds > 0 && at.ApproximateLastAccessTime != nil &&
+		now.After(at.ApproximateLastAccessTime.AsTime().Add(time.Duration(at.TimeToStaleSeconds)*time.Second)):
 		return false
 	default:
 		return true
+	}
+}
+
+// GetPublicId returns the public id of the AppToken
+func (at *AppToken) GetPublicId() string {
+	return at.PublicId
+}
+
+// GetResourceType returns the resource type of the AppToken
+func (at AppToken) GetResourceType() resource.Type {
+	return resource.AppToken
+}
+
+// GetUpdateTime returns the AppToken update time
+func (at AppToken) GetUpdateTime() *timestamp.Timestamp {
+	return at.UpdateTime
+}
+
+// GetCreateTime returns the AppToken create time
+func (at AppToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns the AppToken description
+func (at AppToken) GetDescription() string {
+	return at.Description
+}
+
+// GetName returns the AppToken name
+func (at AppToken) GetName() string {
+	return at.Name
+}
+
+// GetVersion returns 0 so that
+// AppToken will satisfy resource requirements
+func (at AppToken) GetVersion() uint32 {
+	return 0
+}
+
+// appTokenView is used to query the app_token_view database view
+// which unions the app_token_global, app_token_org, and app_token_project tables.
+type appTokenView struct {
+	*store.AppToken
+	tableName string `gorm:"-"`
+}
+
+func (atv *appTokenView) toAppToken() *AppToken {
+	return &AppToken{
+		PublicId:                  atv.PublicId,
+		ScopeId:                   atv.ScopeId,
+		Name:                      atv.Name,
+		Description:               atv.Description,
+		Revoked:                   atv.Revoked,
+		CreateTime:                atv.CreateTime,
+		UpdateTime:                atv.UpdateTime,
+		ApproximateLastAccessTime: atv.ApproximateLastAccessTime,
+		ExpirationTime:            atv.ExpirationTime,
+		TimeToStaleSeconds:        atv.TimeToStaleSeconds,
+		CreatedByUserId:           atv.CreatedByUserId,
 	}
 }
 

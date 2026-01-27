@@ -5,9 +5,11 @@ package apptoken
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/apptoken/store"
@@ -20,9 +22,10 @@ import (
 
 // Repository is the apptoken database repository
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	reader       db.Reader
+	writer       db.Writer
+	kms          *kms.Kms
+	defaultLimit int
 }
 
 // NewRepository creates a new apptoken Repository
@@ -419,4 +422,75 @@ func determineGrantScope(grantedScopes []string) string {
 		return globals.GrantScopeDescendants
 	}
 	return globals.GrantScopeIndividual
+}
+
+// listAppTokens lists tokens across all three token subtypes (global, org, proj).
+// Cipher information and permissions are not included when listing a token.
+func (r *Repository) listAppTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).listAppTokens"
+	if len(withScopeIds) == 0 {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		limit = opts.withLimit
+	}
+
+	args := []any{sql.Named("scope_ids", withScopeIds)}
+	whereClause := "scope_id in @scope_ids"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+
+	return r.queryAppTokens(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).queryAppTokens"
+
+	var transactionTimestamp time.Time
+	var appTokens []*AppToken
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var atvs []*appTokenView
+		err := rd.SearchWhere(ctx, &atvs, whereClause, args, opt...)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		appTokens = make([]*AppToken, 0, len(atvs))
+		for _, atv := range atvs {
+			appTokens = append(appTokens, atv.toAppToken())
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return appTokens, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items in the global, org, and project app token tables.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "apptoken.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountAppTokens, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	return count, nil
 }

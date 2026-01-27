@@ -5,6 +5,7 @@ package apptoken
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -665,4 +666,288 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+}
+
+func TestRepository_queryAppTokens(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	// Create test data
+	org1, proj1 := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
+	globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
+
+	// Create app tokens
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+
+	testCases := []struct {
+		name            string
+		whereClause     string
+		args            []any
+		opts            []db.Option
+		wantTokens      []*AppToken
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:        "valid query with global scope",
+			whereClause: "scope_id = @scope_id",
+			args:        []any{sql.Named("scope_id", gToken.ScopeId)},
+			opts:        []db.Option{db.WithLimit(10)},
+			wantTokens:  []*AppToken{gToken},
+			wantErr:     false,
+		},
+		{
+			name:        "valid query with order",
+			whereClause: "scope_id = @scope_id",
+			args:        []any{sql.Named("scope_id", gToken.ScopeId)},
+			opts:        []db.Option{db.WithLimit(5), db.WithOrder("create_time desc")},
+			wantTokens:  []*AppToken{gToken},
+			wantErr:     false,
+		},
+		{
+			name:        "valid query with multiple scopes",
+			whereClause: "scope_id in @scope_ids",
+			args:        []any{sql.Named("scope_ids", []string{gToken.ScopeId, orgToken.ScopeId})},
+			opts:        []db.Option{db.WithLimit(10)},
+			wantTokens:  []*AppToken{gToken, orgToken},
+			wantErr:     false,
+		},
+		{
+			name:        "valid query with all scopes",
+			whereClause: "scope_id in @scope_ids",
+			args:        []any{sql.Named("scope_ids", []string{gToken.ScopeId, orgToken.ScopeId, projToken.ScopeId})},
+			opts:        []db.Option{db.WithLimit(10)},
+			wantTokens:  []*AppToken{gToken, orgToken, projToken},
+			wantErr:     false,
+		},
+		{
+			name:        "empty results",
+			whereClause: "scope_id = @scope_id",
+			args:        []any{sql.Named("scope_id", "nonexistent_scope")},
+			opts:        []db.Option{db.WithLimit(10)},
+			wantTokens:  []*AppToken{},
+			wantErr:     false,
+		},
+		{
+			name:            "invalid where clause",
+			whereClause:     "invalid_column = @value",
+			args:            []any{sql.Named("scope_ids", []string{gToken.ScopeId, orgToken.ScopeId})},
+			opts:            []db.Option{db.WithLimit(10)},
+			wantTokens:      nil,
+			wantErr:         true,
+			wantErrContains: "column \"invalid_column\" does not exist",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert, require := assert.New(t), require.New(t)
+
+			tokens, _, err := repo.queryAppTokens(ctx, tc.whereClause, tc.args, tc.opts...)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains)
+				return
+			}
+
+			require.NoError(err)
+			assert.Equal(len(tc.wantTokens), len(tokens))
+			for i, wantToken := range tc.wantTokens {
+				gotToken := tokens[i]
+				assert.Equal(wantToken.PublicId, gotToken.PublicId)
+				assert.Equal(wantToken.ScopeId, gotToken.ScopeId)
+			}
+		})
+	}
+}
+
+func TestRepository_listAppTokens(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	// Create test data
+	org1, proj1 := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
+	globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
+
+	// Create app tokens
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+
+	testCases := []struct {
+		name           string
+		withScopeIds   []string
+		opts           []Option
+		wantTokens     []*AppToken
+		wantErr        bool
+		wantErrMessage string
+	}{
+		{
+			name:         "list with global scope",
+			withScopeIds: []string{gToken.ScopeId},
+			opts:         []Option{WithLimit(10)},
+			wantTokens:   []*AppToken{gToken},
+			wantErr:      false,
+		},
+		{
+			name:         "list with org scope",
+			withScopeIds: []string{orgToken.ScopeId},
+			opts:         []Option{WithLimit(10)},
+			wantTokens:   []*AppToken{orgToken},
+			wantErr:      false,
+		},
+		{
+			name:         "list with project scope",
+			withScopeIds: []string{projToken.ScopeId},
+			opts:         []Option{WithLimit(10)},
+			wantTokens:   []*AppToken{projToken},
+			wantErr:      false,
+		},
+		{
+			name:         "list with all scopes",
+			withScopeIds: []string{gToken.ScopeId, orgToken.ScopeId, projToken.ScopeId},
+			opts:         []Option{WithLimit(10)},
+			wantTokens:   []*AppToken{gToken, orgToken, projToken},
+			wantErr:      false,
+		},
+		{
+			name:         "list with no matching scopes",
+			withScopeIds: []string{"nonexistent_scope"},
+			opts:         []Option{WithLimit(10)},
+			wantTokens:   []*AppToken{},
+			wantErr:      false,
+		},
+		{
+			name:           "list with empty scope ids",
+			withScopeIds:   []string{},
+			opts:           []Option{WithLimit(10)},
+			wantTokens:     nil,
+			wantErr:        true,
+			wantErrMessage: "apptoken.(Repository).listAppTokens: missing scope id: parameter violation: error #100",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert, require := assert.New(t), require.New(t)
+
+			tokens, _, err := repo.listAppTokens(ctx, tc.withScopeIds, tc.opts...)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Equal(tc.wantErrMessage, err.Error())
+				return
+			}
+
+			require.NoError(err)
+			assert.Equal(len(tc.wantTokens), len(tokens))
+
+			// Verify that all expected tokens are present in the result
+			// The order is not guaranteed, so we check presence rather than position
+			for _, wantToken := range tc.wantTokens {
+				found := false
+				for _, gotToken := range tokens {
+					if wantToken.PublicId == gotToken.PublicId && wantToken.ScopeId == gotToken.ScopeId {
+						found = true
+						break
+					}
+				}
+				assert.True(found)
+			}
+		})
+	}
+
+	t.Run("list that exceeds limit", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+
+		orgExceedLimit, _ := iam.TestScopes(t, iamRepo, iam.WithName("orgExceedLimit"), iam.WithDescription("Test Org Exceed Limit"))
+		orgExceedLimitUser := iam.TestUser(t, iamRepo, orgExceedLimit.PublicId)
+
+		// Create enough tokens to exceed the limit
+		for range make([]int, 5) {
+			TestAppToken(t, repo, orgExceedLimit.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgExceedLimitUser, true, "individual")
+		}
+
+		tokens, _, err := repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.Equal(len(tokens), 5) // all 5 tokens returned
+
+		tokens, _, err = repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(4)}...)
+		require.NoError(err)
+		assert.Equal(len(tokens), 4) // limited to 4
+	})
+}
+
+func TestRepository_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Add some app tokens
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	org, proj := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
+	orgUser := iam.TestUser(t, iamRepo, org.PublicId)
+
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
+	oToken := TestAppToken(t, repo, org.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	pToken := TestAppToken(t, repo, proj.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(3, numItems)
+
+	// Delete the global app token, expect 2 remaining
+	tempTestDeleteAppToken(t, repo, gToken.PublicId, globals.GlobalPrefix)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete the org and project app tokens, expect 0 remaining
+	tempTestDeleteAppToken(t, repo, oToken.PublicId, org.PublicId)
+	tempTestDeleteAppToken(t, repo, pToken.PublicId, proj.PublicId)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
 }
