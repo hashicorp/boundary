@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -291,6 +293,208 @@ func TestList(t *testing.T) {
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "apptoken.List: page size must be at least 1: parameter violation")
+		})
+	})
+
+	t.Run("ListPage validation", func(t *testing.T) {
+		t.Run("missing grants hash", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte(""),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: missing grants hash: parameter violation")
+		})
+
+		t.Run("invalid page size", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				0,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: page size must be at least 1: parameter violation")
+		})
+
+		t.Run("missing filter func", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				nil,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: missing filter item callback: parameter violation")
+		})
+
+		t.Run("missing token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				nil,
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: missing token: parameter violation")
+		})
+
+		t.Run("missing repo", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				nil,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: missing repo: parameter violation")
+		})
+
+		t.Run("missing scope ids", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				nil,
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: missing scope ids: parameter violation")
+		})
+
+		t.Run("invalid resource type in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AuthToken},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: token did not have an app token resource type: parameter violation")
+		})
+
+		t.Run("invalid subtype in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AppToken, Subtype: nil},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListPage: token did not have a pagination token component: parameter violation")
+		})
+
+		t.Run("valid pagination", func(t *testing.T) {
+			t.Parallel()
+			assert, require := assert.New(t), require.New(t)
+
+			// There are 25 total tokens created in the test setup above.
+			// We'll page through them 10 at a time, for a total of 3 pages (10, 10, 5).
+			pageSize := 10
+
+			firstPageResp, err := List(
+				ctx,
+				[]byte("test_grants_hash"),
+				pageSize,
+				filterNothingFilterFunc,
+				repo,
+				[]string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId, org2.PublicId, proj2.PublicId},
+			)
+			require.NoError(err)
+			require.NotNil(firstPageResp)
+			assert.Equal(pageSize, len(firstPageResp.Items))
+			assert.NotNil(firstPageResp.ListToken)
+			pt, ok := firstPageResp.ListToken.Subtype.(*listtoken.PaginationToken)
+			assert.True(ok)
+			assert.NotNil(pt)
+
+			secondPageResp, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				pageSize,
+				filterNothingFilterFunc,
+				firstPageResp.ListToken,
+				repo,
+				[]string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId, org2.PublicId, proj2.PublicId},
+			)
+			require.NoError(err)
+			require.NotNil(secondPageResp)
+			assert.Equal(pageSize, len(secondPageResp.Items))
+			pt, ok = secondPageResp.ListToken.Subtype.(*listtoken.PaginationToken)
+			assert.True(ok)
+			assert.NotNil(pt)
+
+			thirdPageResp, err := ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				pageSize,
+				filterNothingFilterFunc,
+				secondPageResp.ListToken,
+				repo,
+				[]string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId, org2.PublicId, proj2.PublicId},
+			)
+			require.NoError(err)
+			require.NotNil(thirdPageResp)
+			assert.Equal(5, len(thirdPageResp.Items)) // Only 5 items should be left
+			assert.NotNil(thirdPageResp.ListToken)
+			rt, ok := thirdPageResp.ListToken.Subtype.(*listtoken.StartRefreshToken) // Now a start refresh token
+			assert.True(ok)
+			assert.NotNil(rt)
+
+			// Next page should return an error since the returned token is a start refresh token
+			// and not a pagination token
+			_, err = ListPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				pageSize,
+				filterNothingFilterFunc,
+				thirdPageResp.ListToken,
+				repo,
+				[]string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId, org2.PublicId, proj2.PublicId},
+			)
+			require.NotNil(err)
+			assert.Contains(err.Error(), "token did not have a pagination token component")
 		})
 	})
 }
