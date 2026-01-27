@@ -273,7 +273,6 @@ ${var.domain_admin_password}
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
 
   tags = {
     Name = "${var.prefix}-windows-worker-${local.username}"
@@ -376,6 +375,12 @@ resource "enos_local_exec" "run_powershell_script" {
 resource "time_sleep" "wait_2_minutes" {
   depends_on      = [enos_local_exec.run_powershell_script]
   create_duration = "2m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on        = [time_sleep.wait_2_minutes]
+  instance_id       = aws_instance.worker.id
+  get_password_data = true
 }
 
 # used for debug

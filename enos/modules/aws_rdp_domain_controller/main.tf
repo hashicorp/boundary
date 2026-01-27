@@ -452,8 +452,6 @@ resource "aws_instance" "domain_controller" {
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
-
   tags = {
     Name = "${var.prefix}-domain-controller-${local.username}"
   }
@@ -470,6 +468,12 @@ resource "local_sensitive_file" "private_key" {
 resource "time_sleep" "wait_for_reboot" {
   depends_on      = [aws_instance.domain_controller]
   create_duration = "20m"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on        = [time_sleep.wait_10_minutes]
+  instance_id       = aws_instance.domain_controller.id
+  get_password_data = true
 }
 
 # wait for the SSH service to be available on the instance. We specifically use

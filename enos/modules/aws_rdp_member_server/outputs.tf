@@ -25,8 +25,7 @@ output "admin_username" {
 
 output "password" {
   description = "This is the decrypted administrator password for the EC2 instance"
-  value       = nonsensitive(rsadecrypt(aws_instance.member_server.password_data, file(var.domain_controller_private_key)))
-
+  value       = nonsensitive(rsadecrypt(data.aws_instance.instance_password.password_data, file(var.domain_controller_private_key)))
 }
 
 output "domain_hostname" {

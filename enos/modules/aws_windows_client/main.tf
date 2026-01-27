@@ -286,7 +286,6 @@ resource "aws_instance" "client" {
     http_tokens            = "required"
     instance_metadata_tags = "enabled"
   }
-  get_password_data = true
 
   tags = {
     Name = "${var.prefix}-windows-client-${local.username}"
@@ -404,4 +403,10 @@ resource "local_file" "powershell_script_output" {
   count      = var.boundary_cli_zip_path != "" ? 1 : 0
   content    = enos_local_exec.run_powershell_script[0].stdout
   filename   = "${path.root}/.terraform/tmp/setup_windows_client.out"
+}
+
+data "aws_instance" "instance_password" {
+  depends_on        = [enos_local_exec.run_powershell_script]
+  instance_id       = aws_instance.client.id
+  get_password_data = true
 }

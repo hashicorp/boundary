@@ -24,8 +24,7 @@ output "admin_username" {
 
 output "password" {
   description = "This is the decrypted administrator password for the EC2 instance"
-  value       = nonsensitive(rsadecrypt(aws_instance.domain_controller.password_data, tls_private_key.rsa_4096_key.private_key_pem))
-
+  value       = nonsensitive(rsadecrypt(data.aws_instance.instance_password.password_data, tls_private_key.rsa_4096_key.private_key_pem))
 }
 
 output "ssh_private_key" {
