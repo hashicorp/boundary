@@ -2,6 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.22.0 (2026/xx/xx)
+
+### New and Improved
+
+* cli: Added optional flags `-sort-by` and `-sort-direction` to `boundary search`. These flags can be used to control sorting when searching the client cache and the resource is `sessions` or `targets`. ([PR](https://github.com/hashicorp/boundary/pull/6383))
+* The client cache search API now supports the `sort_by` and `sort_direction` query parameters when searching `sessions` or `targets`. ([PR](https://github.com/hashicorp/boundary/pull/6383))
+
+### Bug fixes
+
 ## 0.21.0 (2025/12/11)
 
 ### New and Improved
