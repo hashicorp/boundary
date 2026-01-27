@@ -132,6 +132,7 @@ func (atv *appTokenView) toAppToken() *AppToken {
 		Description:               atv.Description,
 		Revoked:                   atv.Revoked,
 		CreateTime:                atv.CreateTime,
+		UpdateTime:                atv.UpdateTime,
 		ApproximateLastAccessTime: atv.ApproximateLastAccessTime,
 		ExpirationTime:            atv.ExpirationTime,
 		TimeToStaleSeconds:        atv.TimeToStaleSeconds,
