@@ -859,7 +859,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			assert.NotNil(at.PublicId)
 			assert.NotNil(at.CreateTime)
 			assert.NotNil(at.ApproximateLastAccessTime)
-			assert.NotNil(at.Token)
+			assert.NotEmpty(at.Token)
 			assert.Equal(at.CreateTime, at.ApproximateLastAccessTime)
 			assert.GreaterOrEqual(at.ExpirationTime.AsTime().Unix(), at.CreateTime.AsTime().Unix())
 
