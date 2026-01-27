@@ -6,9 +6,11 @@ package apptoken
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -55,185 +57,34 @@ func TestList(t *testing.T) {
 	}
 
 	t.Run("List validation", func(t *testing.T) {
-		testCases := []struct {
-			name           string
-			withScopeIds   []string
-			pageSize       int
-			wantTokens     []*AppToken
-			wantErr        bool
-			wantErrMessage string
-		}{
-			{
-				name:         "list global tokens",
-				withScopeIds: []string{globals.GlobalPrefix},
-				pageSize:     10,
-				wantTokens:   globalAppTokens[0:5],
-				wantErr:      false,
-			},
-			{
-				name:         "list org1 tokens",
-				withScopeIds: []string{org1.PublicId},
-				pageSize:     10,
-				wantTokens:   org1AppTokens[0:5],
-				wantErr:      false,
-			},
-			{
-				name:         "list proj1 tokens",
-				withScopeIds: []string{proj1.PublicId},
-				pageSize:     10,
-				wantTokens:   proj1AppTokens[0:5],
-				wantErr:      false,
-			},
-			{
-				name:         "list all org tokens",
-				withScopeIds: []string{org1.PublicId, org2.PublicId},
-				pageSize:     10,
-				wantTokens:   append(org1AppTokens[0:5], org2AppTokens[0:5]...),
-				wantErr:      false,
-			},
-			{
-				name:         "list all proj tokens",
-				withScopeIds: []string{proj1.PublicId, proj2.PublicId},
-				pageSize:     10,
-				wantTokens:   append(proj1AppTokens[0:5], proj2AppTokens[0:5]...),
-				wantErr:      false,
-			},
-			{
-				name: "list all tokens",
-				withScopeIds: []string{
-					globals.GlobalPrefix,
-					org1.PublicId,
-					proj1.PublicId,
-					org2.PublicId,
-					proj2.PublicId,
-				},
-				pageSize:   30,
-				wantTokens: allAppTokens,
-				wantErr:    false,
-			},
-			{
-				name:         "list with no matching scopes",
-				withScopeIds: []string{"nonexistent_scope"},
-				pageSize:     10,
-				wantTokens:   []*AppToken{},
-				wantErr:      false,
-			},
-			{
-				name:           "invalid missing scope ids",
-				withScopeIds:   nil,
-				pageSize:       10,
-				wantTokens:     nil,
-				wantErr:        true,
-				wantErrMessage: "apptoken.List: missing scope ids: parameter violation",
-			},
-			{
-				name:           "invalid empty scope ids",
-				withScopeIds:   []string{},
-				pageSize:       10,
-				wantTokens:     nil,
-				wantErr:        true,
-				wantErrMessage: "apptoken.List: missing scope ids: parameter violation",
-			},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-				assert, require := assert.New(t), require.New(t)
-
-				resp, err := List(
-					ctx,
-					[]byte("test_grants_hash"),
-					tc.pageSize,
-					filterNothingFilterFunc,
-					repo,
-					tc.withScopeIds,
-				)
-				if tc.wantErr {
-					require.Error(err)
-					assert.Contains(err.Error(), tc.wantErrMessage)
-					return
-				}
-				require.NoError(err)
-				require.NotNil(resp)
-				assert.Equal(len(tc.wantTokens), len(resp.Items))
-
-				// Verify that all expected tokens are present in the result
-				// The order is not guaranteed, so we check presence rather than position
-				for _, wantToken := range tc.wantTokens {
-					found := false
-					for _, gotToken := range resp.Items {
-						if wantToken.PublicId == gotToken.PublicId && wantToken.ScopeId == gotToken.ScopeId {
-							found = true
-							break
-						}
-					}
-					assert.True(found)
-				}
-			})
-		}
-
-		t.Run("filter out tokens", func(t *testing.T) {
+		t.Run("missing grants hash", func(t *testing.T) {
 			t.Parallel()
-			assert, require := assert.New(t), require.New(t)
-			filterOutOrg2Func := func(_ context.Context, appt *AppToken) (bool, error) {
-				// Filter out tokens associated with org2
-				if appt.ScopeId == org2.PublicId {
-					return false, nil
-				}
-				return true, nil
-			}
 
-			resp, err := List(
+			_, err := List(
 				ctx,
-				[]byte("test_grants_hash"),
+				[]byte(""),
 				10,
-				filterOutOrg2Func,
+				filterNothingFilterFunc,
 				repo,
-				[]string{org1.PublicId, org2.PublicId},
+				[]string{globals.GlobalPrefix},
 			)
-			require.NoError(err)
-			require.NotNil(resp)
-			assert.Equal(5, len(resp.Items)) // Only respond with org1 tokens
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.List: missing grants hash: parameter violation")
 		})
 
-		t.Run("filter out inactive tokens", func(t *testing.T) {
-			// This test is intentionally not run in parallel because it modifies shared state
-			assert, require := assert.New(t), require.New(t)
+		t.Run("invalid page size", func(t *testing.T) {
+			t.Parallel()
 
-			// Create a new global token
-			globalTokenToBeInactive := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
-
-			resp, err := List(
+			_, err := List(
 				ctx,
 				[]byte("test_grants_hash"),
-				10,
-				filterOutInactiveFunc,
+				0,
+				filterNothingFilterFunc,
 				repo,
 				[]string{globals.GlobalPrefix},
 			)
-			require.NoError(err)
-			require.NotNil(resp)
-			assert.Equal(6, len(resp.Items)) // globalAppTokens (5) + globalTokenToBeInactive (1)
-
-			// Revoke
-			tempTestRevokeGlobalAppToken(t, repo, globalTokenToBeInactive.PublicId)
-
-			// List again and only find the original two active tokens
-			resp, err = List(
-				ctx,
-				[]byte("test_grants_hash"),
-				10,
-				filterOutInactiveFunc,
-				repo,
-				[]string{globals.GlobalPrefix},
-			)
-			require.NoError(err)
-			require.NotNil(resp)
-			assert.Equal(5, len(resp.Items)) // globalAppTokens (5)
-
-			// Delete the revoked token to clean up
-			tempTestDeleteAppToken(t, repo, globalTokenToBeInactive.PublicId, globals.GlobalPrefix)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.List: page size must be at least 1: parameter violation")
 		})
 
 		t.Run("missing filter func", func(t *testing.T) {
@@ -265,34 +116,19 @@ func TestList(t *testing.T) {
 			assert.Contains(t, err.Error(), "apptoken.List: missing repo: parameter violation")
 		})
 
-		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-
-			_, err := List(
-				ctx,
-				[]byte(""),
-				10,
-				filterNothingFilterFunc,
-				repo,
-				[]string{globals.GlobalPrefix},
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "apptoken.List: missing grants hash: parameter violation")
-		})
-
-		t.Run("invalid page size", func(t *testing.T) {
+		t.Run("missing scope ids", func(t *testing.T) {
 			t.Parallel()
 
 			_, err := List(
 				ctx,
 				[]byte("test_grants_hash"),
-				0,
+				10,
 				filterNothingFilterFunc,
 				repo,
-				[]string{globals.GlobalPrefix},
+				nil,
 			)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "apptoken.List: page size must be at least 1: parameter violation")
+			assert.Contains(t, err.Error(), "apptoken.List: missing scope ids: parameter violation")
 		})
 	})
 
@@ -496,5 +332,382 @@ func TestList(t *testing.T) {
 			require.NotNil(err)
 			assert.Contains(err.Error(), "token did not have a pagination token component")
 		})
+	})
+
+	t.Run("ListRefresh validation", func(t *testing.T) {
+		t.Run("missing grants hash", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte(""),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: missing grants hash: parameter violation")
+		})
+
+		t.Run("invalid page size", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				0,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: page size must be at least 1: parameter violation")
+		})
+
+		t.Run("missing filter func", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				nil,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: missing filter item callback: parameter violation")
+		})
+
+		t.Run("missing token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				nil,
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: missing token: parameter violation")
+		})
+
+		t.Run("missing repo", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				nil,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: missing repo: parameter violation")
+		})
+
+		t.Run("missing scope ids", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				nil,
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: missing scope ids: parameter violation")
+		})
+
+		t.Run("invalid resource type in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AuthToken},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: token did not have an app token resource type: parameter violation")
+		})
+
+		t.Run("invalid subtype in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefresh(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AppToken, Subtype: nil},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefresh: token did not have a start-refresh token component: parameter violation")
+		})
+	})
+
+	t.Run("simple listing with pagination", func(t *testing.T) {
+		testCases := []struct {
+			name           string
+			withScopeIds   []string
+			pageSize       int
+			wantTokens     []*AppToken
+			wantErr        bool
+			wantErrMessage string
+		}{
+			{
+				name:         "list global tokens",
+				withScopeIds: []string{globals.GlobalPrefix},
+				pageSize:     10,
+				wantTokens:   globalAppTokens[0:5],
+				wantErr:      false,
+			},
+			{
+				name:         "list org1 tokens",
+				withScopeIds: []string{org1.PublicId},
+				pageSize:     10,
+				wantTokens:   org1AppTokens[0:5],
+				wantErr:      false,
+			},
+			{
+				name:         "list proj1 tokens",
+				withScopeIds: []string{proj1.PublicId},
+				pageSize:     10,
+				wantTokens:   proj1AppTokens[0:5],
+				wantErr:      false,
+			},
+			{
+				name:         "list all org tokens",
+				withScopeIds: []string{org1.PublicId, org2.PublicId},
+				pageSize:     5,
+				wantTokens:   append(org1AppTokens[0:5], org2AppTokens[0:5]...),
+				wantErr:      false,
+			},
+			{
+				name:         "list all proj tokens",
+				withScopeIds: []string{proj1.PublicId, proj2.PublicId},
+				pageSize:     5,
+				wantTokens:   append(proj1AppTokens[0:5], proj2AppTokens[0:5]...),
+				wantErr:      false,
+			},
+			{
+				name: "list all tokens",
+				withScopeIds: []string{
+					globals.GlobalPrefix,
+					org1.PublicId,
+					proj1.PublicId,
+					org2.PublicId,
+					proj2.PublicId,
+				},
+				pageSize:   10,
+				wantTokens: allAppTokens,
+				wantErr:    false,
+			},
+			{
+				name:         "list with no matching scopes",
+				withScopeIds: []string{"nonexistent_scope"},
+				pageSize:     10,
+				wantTokens:   []*AppToken{},
+				wantErr:      false,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				assert, require := assert.New(t), require.New(t)
+
+				resp, err := List(
+					ctx,
+					[]byte("test_grants_hash"),
+					tc.pageSize,
+					filterNothingFilterFunc,
+					repo,
+					tc.withScopeIds,
+				)
+				if tc.wantErr {
+					require.Error(err)
+					assert.Contains(err.Error(), tc.wantErrMessage)
+					return
+				}
+				require.NoError(err)
+				require.NotNil(resp)
+
+				// Page through the rest of the tokens
+				retrievedTokens := resp.Items
+				nextToken := resp.ListToken
+				for nextToken != nil {
+					if _, ok := nextToken.Subtype.(*listtoken.PaginationToken); !ok {
+						break
+					}
+					resp, err = ListPage(
+						ctx,
+						[]byte("test_grants_hash"),
+						tc.pageSize,
+						filterNothingFilterFunc,
+						nextToken,
+						repo,
+						tc.withScopeIds,
+					)
+					require.NoError(err)
+					require.NotNil(resp)
+					retrievedTokens = append(retrievedTokens, resp.Items...)
+					nextToken = resp.ListToken
+				}
+
+				// Verify we got the expected number of tokens after optional paging
+				assert.Equal(len(tc.wantTokens), len(retrievedTokens))
+
+				// Verify that all expected tokens are present
+				// The order is not guaranteed, so we check presence rather than position
+				for _, wantToken := range tc.wantTokens {
+					found := false
+					for _, gotToken := range retrievedTokens {
+						if wantToken.PublicId == gotToken.PublicId && wantToken.ScopeId == gotToken.ScopeId {
+							found = true
+							break
+						}
+					}
+					assert.True(found)
+				}
+			})
+		}
+	})
+
+	t.Run("listing with aggressive filtering and deletions", func(t *testing.T) {
+		t.Run("filter out tokens", func(t *testing.T) {
+			t.Parallel()
+			assert, require := assert.New(t), require.New(t)
+			filterOutOrg2Func := func(_ context.Context, appt *AppToken) (bool, error) {
+				// Filter out tokens associated with org2
+				if appt.ScopeId == org2.PublicId {
+					return false, nil
+				}
+				return true, nil
+			}
+
+			resp, err := List(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterOutOrg2Func,
+				repo,
+				[]string{org1.PublicId, org2.PublicId},
+			)
+			require.NoError(err)
+			require.NotNil(resp)
+			assert.Equal(5, len(resp.Items)) // Only respond with org1 tokens
+		})
+
+		t.Run("filter out inactive tokens", func(t *testing.T) {
+			// This test is intentionally not run in parallel because it modifies shared state
+			assert, require := assert.New(t), require.New(t)
+
+			// Create a new global token
+			globalTokenToBeInactive := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+
+			resp, err := List(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterOutInactiveFunc,
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.NoError(err)
+			require.NotNil(resp)
+			assert.Equal(6, len(resp.Items)) // globalAppTokens (5) + globalTokenToBeInactive (1)
+
+			// Revoke
+			tempTestRevokeGlobalAppToken(t, repo, globalTokenToBeInactive.PublicId)
+
+			// List again and only find the original 5 active tokens
+			resp, err = List(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterOutInactiveFunc,
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.NoError(err)
+			require.NotNil(resp)
+			assert.Equal(5, len(resp.Items)) // globalAppTokens (5)
+
+			// Delete the revoked token to clean up
+			tempTestDeleteAppToken(t, repo, globalTokenToBeInactive.PublicId, globals.GlobalPrefix)
+		})
+	})
+
+	t.Run("listing with refresh", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+
+		// Add a couple tokens to ensure there is data to refresh
+		token1ToBeRefreshed := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+		token2ToBeRefreshed := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+
+		// Initial list to get a start refresh token
+		firstResp, err := List(
+			ctx,
+			[]byte("test_grants_hash"),
+			10,
+			filterNothingFilterFunc,
+			repo,
+			[]string{globals.GlobalPrefix},
+		)
+		require.NoError(err)
+		require.NotNil(firstResp)
+		require.NotNil(firstResp.ListToken)
+		startRefreshToken, ok := firstResp.ListToken.Subtype.(*listtoken.StartRefreshToken)
+		require.True(ok)
+		require.NotNil(startRefreshToken)
+
+		// Manipulate the token to move it forward in time. This will ensure that
+		// when we do the refresh, we are outside the lookback window and thus
+		// will not pick up the tokens that were just created above.
+		firstResp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound = time.Now().Add(globals.RefreshReadLookbackDuration + 1*time.Second)
+		time.Sleep(2 * time.Second)
+
+		// Update tokens
+		testUpdateAppToken(t, repo, token1ToBeRefreshed.PublicId, globals.GlobalPrefix, map[string]any{"name": "updated-token1-name", "update_time": timestamp.New(timestamp.Now().AsTime())})
+		testUpdateAppToken(t, repo, token2ToBeRefreshed.PublicId, globals.GlobalPrefix, map[string]any{"approximate_last_access_time": timestamp.New(timestamp.Now().Timestamp.AsTime()), "update_time": timestamp.New(timestamp.Now().AsTime())})
+
+		// Now do a refresh list
+		refreshResp, err := ListRefresh(
+			ctx,
+			[]byte("test_grants_hash"),
+			10,
+			filterNothingFilterFunc,
+			firstResp.ListToken,
+			repo,
+			[]string{globals.GlobalPrefix},
+		)
+		require.NoError(err)
+		require.NotNil(refreshResp)
+		// Expect to find the two updated tokens
+		assert.Equal(2, len(refreshResp.Items))
+
+		// Clean up
+		tempTestDeleteAppToken(t, repo, token1ToBeRefreshed.PublicId, globals.GlobalPrefix)
+		tempTestDeleteAppToken(t, repo, token2ToBeRefreshed.PublicId, globals.GlobalPrefix)
 	})
 }

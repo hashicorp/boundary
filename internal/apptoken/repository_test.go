@@ -6,6 +6,7 @@ package apptoken
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -956,6 +957,7 @@ func TestRepository_listAppTokensRefresh(t *testing.T) {
 		// refresh list and see that all nine tokens are returned
 		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
 		require.NoError(err)
+		assert.NotNil(refreshTime)
 		assert.Equal(9, len(tokens))
 
 		// move time forward so that expiration_time is after updatedAfter but before now
@@ -964,6 +966,7 @@ func TestRepository_listAppTokensRefresh(t *testing.T) {
 		// refresh list and see that all nine tokens are returned
 		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
 		require.NoError(err)
+		assert.NotNil(refreshTime)
 		assert.Equal(9, len(tokens))
 	})
 
@@ -989,6 +992,36 @@ func TestRepository_listAppTokensRefresh(t *testing.T) {
 		assert.Nil(tokens)
 		assert.Zero(refreshTime)
 	})
+}
+
+func TestRepository_listDeletedIds(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	assert, require := assert.New(t), require.New(t)
+
+	// Create test data
+	deletedIds := []string{}
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	for i := 0; i < 5; i++ {
+		deletedId := fmt.Sprintf("deleted-id-%d", i)
+		deletedIds = append(deletedIds, deletedId)
+		_, err := sqlDb.ExecContext(ctx, "INSERT INTO app_token_deleted (public_id) VALUES ($1)", deletedId)
+		require.NoError(err)
+	}
+
+	retrievedIds, txnTimestamp, err := repo.listDeletedIds(ctx, time.Now().Add(-1*time.Minute))
+	require.NoError(err)
+	assert.NotNil(txnTimestamp)
+	assert.ElementsMatch(deletedIds, retrievedIds)
+
+	// Test with future timestamp, expect no results
+	retrievedIds, txnTimestamp, err = repo.listDeletedIds(ctx, time.Now().Add(1*time.Minute))
+	require.NoError(err)
+	assert.NotNil(txnTimestamp)
+	assert.Empty(retrievedIds)
 }
 
 func TestRepository_estimatedCount(t *testing.T) {

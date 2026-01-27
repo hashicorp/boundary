@@ -437,7 +437,6 @@ func testUpdateAppToken(t *testing.T, repo *Repository, tokenId string, scopeId 
 		i++
 	}
 
-	// Where clause
 	updateSQL.WriteString(fmt.Sprintf("where public_id = $%d", i))
 	args = append(args, tokenId)
 

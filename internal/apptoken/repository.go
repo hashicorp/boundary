@@ -523,6 +523,31 @@ func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, arg
 	return appTokens, transactionTimestamp, nil
 }
 
+// listDeletedIds lists the public IDs of any app tokens deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "apptoken.(Repository).listDeletedIds"
+	var deletedAppTokens []*deletedAppToken
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAppTokens, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted app tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var deletedIds []string
+	for _, at := range deletedAppTokens {
+		deletedIds = append(deletedIds, at.PublicId)
+	}
+	return deletedIds, transactionTimestamp, nil
+}
+
 // estimatedCount returns an estimate of the total number of items in the global, org, and project app token tables.
 func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 	const op = "apptoken.(Repository).estimatedCount"
