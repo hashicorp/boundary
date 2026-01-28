@@ -464,6 +464,136 @@ func TestList(t *testing.T) {
 		})
 	})
 
+	t.Run("ListRefreshPage validation", func(t *testing.T) {
+		t.Run("missing grants hash", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte(""),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: missing grants hash: parameter violation")
+		})
+
+		t.Run("invalid page size", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				0,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: page size must be at least 1: parameter violation")
+		})
+
+		t.Run("missing filter func", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				nil,
+				&listtoken.Token{},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: missing filter item callback: parameter violation")
+		})
+
+		t.Run("missing token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				nil,
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: missing token: parameter violation")
+		})
+
+		t.Run("missing repo", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				nil,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: missing repo: parameter violation")
+		})
+
+		t.Run("missing scope ids", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{},
+				repo,
+				nil,
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: missing scope ids: parameter violation")
+		})
+
+		t.Run("invalid resource type in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AuthToken},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: token did not have an app token resource type: parameter violation")
+		})
+
+		t.Run("invalid subtype in token", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ListRefreshPage(
+				ctx,
+				[]byte("test_grants_hash"),
+				10,
+				filterNothingFilterFunc,
+				&listtoken.Token{ResourceType: resource.AppToken, Subtype: nil},
+				repo,
+				[]string{globals.GlobalPrefix},
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "apptoken.ListRefreshPage: token did not have a refresh token component: parameter violation")
+		})
+	})
+
 	t.Run("simple listing with pagination", func(t *testing.T) {
 		testCases := []struct {
 			name           string
