@@ -465,6 +465,8 @@ func (atp *appTokenProject) toAppToken() *AppToken {
 		CreatedByUserId:           atp.CreatedByUserId,
 		Revoked:                   atp.Revoked,
 	}
+}
+
 // deletedAppToken represents a deleted app token record in the app_token_deleted table.
 // These records are trimmed after a 30 day retention period.
 type deletedAppToken struct {
