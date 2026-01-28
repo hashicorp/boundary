@@ -585,7 +585,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 				},
 				{
-					GrantThis:   false,
+					GrantThis:   true,
 					Description: "test-2",
 					Grants:      []string{"type=target;actions=list"},
 				},

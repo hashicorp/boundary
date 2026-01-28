@@ -182,7 +182,7 @@ func createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 
-		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
+		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis) || slices.Contains(perm.GrantedScopes, globals.GlobalPrefix)
 		globalPermGrantScope := determineGrantScope(perm.GrantedScopes)
 		globalPermToCreate := &appTokenPermissionGlobal{
 			AppTokenPermissionGlobal: &store.AppTokenPermissionGlobal{
@@ -201,12 +201,14 @@ func createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal
 		}
 		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
 
-		for _, gs := range perm.GrantedScopes {
-			if gs == globals.GrantScopeThis ||
-				gs == globals.GrantScopeChildren ||
-				gs == globals.GrantScopeDescendants {
-				continue
-			}
+		trimmedScopes := slices.DeleteFunc(perm.GrantedScopes, func(s string) bool {
+			return s == globals.GrantScopeThis ||
+				s == globals.GrantScopeChildren ||
+				s == globals.GrantScopeDescendants ||
+				s == globals.GlobalPrefix
+		})
+
+		for _, gs := range trimmedScopes {
 			switch {
 			case strings.HasPrefix(gs, globals.OrgPrefix):
 				individualOrgGlobalPermToCreate := &appTokenPermissionGlobalIndividualOrgGrantScope{
@@ -290,7 +292,7 @@ func createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []in
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 
-		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
+		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis) || slices.Contains(perm.GrantedScopes, token.GetScopeId())
 		orgPermGrantScope := determineGrantScope(perm.GrantedScopes)
 
 		orgPermToCreate := &appTokenPermissionOrg{
@@ -311,11 +313,12 @@ func createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []in
 		}
 		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
 
-		for _, gs := range perm.GrantedScopes {
-			if gs == globals.GrantScopeThis || gs == globals.GrantScopeChildren {
-				continue
-			}
+		// remove GrantScopeThis and GrantScopeChildren from perm.GrantedScopes as they've already been processed
+		trimmedScopes := slices.DeleteFunc(perm.GrantedScopes, func(s string) bool {
+			return s == globals.GrantScopeThis || s == globals.GrantScopeChildren || s == token.GetScopeId()
+		})
 
+		for _, gs := range trimmedScopes {
 			if strings.HasPrefix(gs, globals.ProjectPrefix) {
 				individualProjOrgPermToCreate := &appTokenPermissionOrgIndividualGrantScope{
 					AppTokenPermissionOrgIndividualGrantScope: &store.AppTokenPermissionOrgIndividualGrantScope{
@@ -385,7 +388,8 @@ func createAppTokenProject(ctx context.Context, token *AppToken) (*appTokenProje
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 
-		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis)
+		// true if slices contains only the individual project scope that matches the token's scope ID or `this`
+		grantThisScope := slices.Contains(perm.GrantedScopes, globals.GrantScopeThis) || slices.Contains(perm.GrantedScopes, token.GetScopeId())
 
 		projPermToCreate := &appTokenPermissionProject{
 			AppTokenPermissionProject: &store.AppTokenPermissionProject{
