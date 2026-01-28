@@ -28,4 +28,6 @@ rules:
           - "worker.go"
           - "repository_scope.go"
           - "keys.go"
+          - "testing_ent.go"
+          - "options_ent.go"
     fix: Use SecureRandomReader instead of crypto/rand.Reader directly.
