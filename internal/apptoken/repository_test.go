@@ -6,6 +6,7 @@ package apptoken
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -681,9 +682,9 @@ func TestRepository_queryAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
-	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
-	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
 
 	testCases := []struct {
 		name            string
@@ -781,9 +782,9 @@ func TestRepository_listAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
-	orgToken := TestAppToken(t, repo, org1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
-	projToken := TestAppToken(t, repo, proj1.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
 
 	testCases := []struct {
 		name           string
@@ -877,7 +878,7 @@ func TestRepository_listAppTokens(t *testing.T) {
 
 		// Create enough tokens to exceed the limit
 		for range make([]int, 5) {
-			TestAppToken(t, repo, orgExceedLimit.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgExceedLimitUser, true, "individual")
+			TestAppToken(t, repo, orgExceedLimit.PublicId, orgExceedLimitUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
 		}
 
 		tokens, _, err := repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(10)}...)
@@ -888,6 +889,139 @@ func TestRepository_listAppTokens(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(len(tokens), 4) // limited to 4
 	})
+}
+
+func TestRepository_listAppTokensRefresh(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	// Create test data
+	org1, proj1 := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
+	globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
+
+	expireInSixSeconds := timestamp.New(timestamp.Now().AsTime().Add(6 * time.Second))
+
+	// Create app tokens
+	allTokens := []*AppToken{}
+	for range 3 {
+		gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+		orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+		projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+
+		allTokens = append(allTokens, gToken, orgToken, projToken)
+	}
+
+	t.Run("list and refresh global, org, and project tokens", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		tokens, refreshTime, err := repo.listAppTokens(ctx, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.Equal(9, len(tokens))
+		assert.NotZero(refreshTime)
+
+		time.Sleep(1 * time.Second) // ensure time difference for refresh
+
+		// refresh list and see that no tokens are returned since none have been updated
+		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.Equal(0, len(tokens))
+
+		// update token to trigger refresh
+		time.Sleep(1 * time.Second) // ensure time difference for refresh
+		testUpdateAppToken(t, repo, allTokens[0].PublicId, globals.GlobalPrefix, map[string]any{"name": "updated-global-name", "update_time": timestamp.New(timestamp.Now().AsTime())})
+		testUpdateAppToken(t, repo, allTokens[1].PublicId, org1.PublicId, map[string]any{"name": "updated-org-name", "update_time": timestamp.New(timestamp.Now().AsTime())})
+		testUpdateAppToken(t, repo, allTokens[2].PublicId, proj1.PublicId, map[string]any{"name": "updated-proj-name", "update_time": timestamp.New(timestamp.Now().AsTime())})
+
+		// refresh list and see that three updated tokens are returned
+		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.Equal(3, len(tokens))
+		for _, token := range tokens {
+			found := false
+			for _, at := range allTokens[:3] {
+				if token.PublicId == at.PublicId {
+					found = true
+					break
+				}
+			}
+			assert.True(found)
+		}
+
+		// move time forward to trigger last_approximate_access_time + time_to_stale_seconds is (before now and before expiration_time) and after updatedAfter
+		time.Sleep(2 * time.Second)
+
+		// refresh list and see that all nine tokens are returned
+		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.NotNil(refreshTime)
+		assert.Equal(9, len(tokens))
+
+		// move time forward so that expiration_time is after updatedAfter but before now
+		time.Sleep(4 * time.Second)
+
+		// refresh list and see that all nine tokens are returned
+		tokens, refreshTime, err = repo.listAppTokensRefresh(ctx, refreshTime, []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.NoError(err)
+		assert.NotNil(refreshTime)
+		assert.Equal(9, len(tokens))
+	})
+
+	t.Run("list refresh with missing updatedAfter time", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+
+		emptyTimestamp := timestamp.New(time.Time{})
+		tokens, refreshTime, err := repo.listAppTokensRefresh(ctx, emptyTimestamp.AsTime(), []string{globals.GlobalPrefix, org1.PublicId, proj1.PublicId}, []Option{WithLimit(10)}...)
+		require.Error(err)
+		assert.Contains(err.Error(), "apptoken.(Repository).listAppTokenRefresh: missing updatedAfter time")
+		assert.Nil(tokens)
+		assert.Zero(refreshTime)
+	})
+
+	t.Run("list refresh with missing scope ids", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+
+		tokens, refreshTime, err := repo.listAppTokensRefresh(ctx, timestamp.New(time.Now().Add(-1*time.Hour)).AsTime(), []string{}, []Option{WithLimit(10)}...)
+		require.Error(err)
+		assert.Contains(err.Error(), "apptoken.(Repository).listAppTokenRefresh: missing scope ids")
+		assert.Nil(tokens)
+		assert.Zero(refreshTime)
+	})
+}
+
+func TestRepository_listDeletedIds(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	assert, require := assert.New(t), require.New(t)
+
+	// Create test data
+	deletedIds := []string{}
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	for i := 0; i < 5; i++ {
+		deletedId := fmt.Sprintf("deleted-id-%d", i)
+		deletedIds = append(deletedIds, deletedId)
+		_, err := sqlDb.ExecContext(ctx, "INSERT INTO app_token_deleted (public_id) VALUES ($1)", deletedId)
+		require.NoError(err)
+	}
+
+	retrievedIds, txnTimestamp, err := repo.listDeletedIds(ctx, time.Now().Add(-1*time.Minute))
+	require.NoError(err)
+	assert.NotNil(txnTimestamp)
+	assert.ElementsMatch(deletedIds, retrievedIds)
+
+	// Test with future timestamp, expect no results
+	retrievedIds, txnTimestamp, err = repo.listDeletedIds(ctx, time.Now().Add(1*time.Minute))
+	require.NoError(err)
+	assert.NotNil(txnTimestamp)
+	assert.Empty(retrievedIds)
 }
 
 func TestRepository_estimatedCount(t *testing.T) {
@@ -919,9 +1053,9 @@ func TestRepository_estimatedCount(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
 	orgUser := iam.TestUser(t, iamRepo, org.PublicId)
 
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, []string{"ids=*;type=scope;actions=list,read"}, globalUser, true, globals.GrantScopeIndividual)
-	oToken := TestAppToken(t, repo, org.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
-	pToken := TestAppToken(t, repo, proj.PublicId, []string{"ids=*;type=scope;actions=list,read"}, orgUser, true, globals.GrantScopeIndividual)
+	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	oToken := TestAppToken(t, repo, org.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	pToken := TestAppToken(t, repo, proj.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
 
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")

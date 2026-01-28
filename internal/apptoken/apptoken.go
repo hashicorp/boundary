@@ -360,3 +360,15 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 	}
 	return nil
 }
+
+// deletedAppToken represents a deleted app token record in the app_token_deleted table.
+// These records are trimmed after a 30 day retention period.
+type deletedAppToken struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (at *deletedAppToken) TableName() string {
+	return "app_token_deleted"
+}
