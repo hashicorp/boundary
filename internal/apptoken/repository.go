@@ -5,9 +5,11 @@ package apptoken
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/apptoken/store"
@@ -19,9 +21,10 @@ import (
 
 // Repository is the apptoken database repository
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	reader       db.Reader
+	writer       db.Writer
+	kms          *kms.Kms
+	defaultLimit int
 }
 
 // NewRepository creates a new apptoken Repository
@@ -471,4 +474,147 @@ func determineGrantScope(grantedScopes []string) string {
 		return globals.GrantScopeDescendants
 	}
 	return globals.GrantScopeIndividual
+}
+
+// listAppTokens lists tokens across all three token subtypes (global, org, proj).
+// Cipher information and permissions are not included when listing a token.
+func (r *Repository) listAppTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).listAppTokens"
+	if len(withScopeIds) == 0 {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		limit = opts.withLimit
+	}
+
+	args := []any{sql.Named("scope_ids", withScopeIds)}
+	whereClause := "scope_id in @scope_ids"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+
+	return r.queryAppTokens(ctx, whereClause, args, dbOpts...)
+}
+
+// listAppTokenRefresh lists tokens across all three token subtypes (global, org, proj) that have been
+// updated after the provided time. Cipher information and permissions are not included when listing a token.
+// App Tokens are considered updated when
+//   - update_time is after updatedAfter
+//   - expiration_time is after updatedAfter but before now
+//   - last_approximate_access_time + time_to_stale_seconds is (before now and before expiration_time) and after updatedAfter
+func (r *Repository) listAppTokensRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).listAppTokenRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updatedAfter time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		limit = opts.withLimit
+	}
+
+	args := []any{
+		sql.Named("scope_ids", withScopeIds),
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	}
+	whereClause := "scope_id in @scope_ids and " +
+		"(update_time > @updated_after_time or " +
+		"(expiration_time > @updated_after_time and expiration_time <= CURRENT_TIMESTAMP) or " +
+		"( (approximate_last_access_time is not null and time_to_stale_seconds is not null) and " +
+		"( (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) <= CURRENT_TIMESTAMP) and " +
+		"( (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) > @updated_after_time) and " +
+		"(expiration_time is null or (approximate_last_access_time + (time_to_stale_seconds || ' seconds')::interval) < expiration_time) ))"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryAppTokens(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*AppToken, time.Time, error) {
+	const op = "apptoken.(Repository).queryAppTokens"
+
+	var transactionTimestamp time.Time
+	var appTokens []*AppToken
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var atvs []*appTokenView
+		err := rd.SearchWhere(ctx, &atvs, whereClause, args, opt...)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		appTokens = make([]*AppToken, 0, len(atvs))
+		for _, atv := range atvs {
+			appTokens = append(appTokens, atv.toAppToken())
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return appTokens, transactionTimestamp, nil
+}
+
+// listDeletedIds lists the public IDs of any app tokens deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "apptoken.(Repository).listDeletedIds"
+	var deletedAppTokens []*deletedAppToken
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAppTokens, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted app tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var deletedIds []string
+	for _, at := range deletedAppTokens {
+		deletedIds = append(deletedIds, at.PublicId)
+	}
+	return deletedIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items in the global, org, and project app token tables.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "apptoken.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountAppTokens, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total app tokens"))
+	}
+	return count, nil
 }

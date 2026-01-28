@@ -403,7 +403,7 @@ func TestGrantsForToken(t *testing.T) {
 			}
 
 			// Create a token with the specified grants
-			token := TestAppToken(t, repo, tc.tokenScopeId, tc.grants, tc.u, tc.grantThisScope, tc.grantScope)
+			token := TestAppToken(t, repo, tc.tokenScopeId, tc.u, 0, nil, tc.grants, tc.grantThisScope, tc.grantScope)
 
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)

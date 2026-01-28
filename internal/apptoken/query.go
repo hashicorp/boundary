@@ -395,4 +395,11 @@ left join iam_scope_project
 	   from app_token_project
 	  where public_id = $1
 	`
+
+	// estimateCountAppTokens estimates the total number of app tokens in the three app token tables
+	estimateCountAppTokens = `
+   select sum(reltuples::bigint) as estimate 
+     from pg_class 
+    where oid in ('app_token_global'::regclass, 'app_token_org'::regclass, 'app_token_project'::regclass)
+`
 )
