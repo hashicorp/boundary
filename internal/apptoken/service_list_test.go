@@ -592,7 +592,7 @@ func TestList(t *testing.T) {
 		}
 	})
 
-	t.Run("listing with aggressive filtering and deletions", func(t *testing.T) {
+	t.Run("listing with aggressive filtering", func(t *testing.T) {
 		t.Run("filter out tokens", func(t *testing.T) {
 			t.Parallel()
 			assert, require := assert.New(t), require.New(t)
