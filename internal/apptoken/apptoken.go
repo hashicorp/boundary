@@ -354,11 +354,12 @@ func (atg *appTokenGlobal) toAppToken() *AppToken {
 		return nil
 	}
 	return &AppToken{
-		PublicId:                  atg.PublicId,
-		ScopeId:                   atg.ScopeId,
-		Name:                      atg.Name,
-		Description:               atg.Description,
-		CreateTime:                atg.CreateTime,
+		PublicId:    atg.PublicId,
+		ScopeId:     atg.ScopeId,
+		Name:        atg.Name,
+		Description: atg.Description,
+		CreateTime:  atg.CreateTime,
+		// add update time eventually
 		ApproximateLastAccessTime: atg.ApproximateLastAccessTime,
 		ExpirationTime:            atg.ExpirationTime,
 		TimeToStaleSeconds:        atg.TimeToStaleSeconds,
@@ -372,11 +373,12 @@ func (ato *appTokenOrg) toAppToken() *AppToken {
 		return nil
 	}
 	return &AppToken{
-		PublicId:                  ato.PublicId,
-		ScopeId:                   ato.ScopeId,
-		Name:                      ato.Name,
-		Description:               ato.Description,
-		CreateTime:                ato.CreateTime,
+		PublicId:    ato.PublicId,
+		ScopeId:     ato.ScopeId,
+		Name:        ato.Name,
+		Description: ato.Description,
+		CreateTime:  ato.CreateTime,
+		// add update time eventually
 		ApproximateLastAccessTime: ato.ApproximateLastAccessTime,
 		ExpirationTime:            ato.ExpirationTime,
 		TimeToStaleSeconds:        ato.TimeToStaleSeconds,
@@ -390,11 +392,12 @@ func (atp *appTokenProject) toAppToken() *AppToken {
 		return nil
 	}
 	return &AppToken{
-		PublicId:                  atp.PublicId,
-		ScopeId:                   atp.ScopeId,
-		Name:                      atp.Name,
-		Description:               atp.Description,
-		CreateTime:                atp.CreateTime,
+		PublicId:    atp.PublicId,
+		ScopeId:     atp.ScopeId,
+		Name:        atp.Name,
+		Description: atp.Description,
+		CreateTime:  atp.CreateTime,
+		// add update time eventually
 		ApproximateLastAccessTime: atp.ApproximateLastAccessTime,
 		ExpirationTime:            atp.ExpirationTime,
 		TimeToStaleSeconds:        atp.TimeToStaleSeconds,

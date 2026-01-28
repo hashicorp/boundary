@@ -190,14 +190,12 @@ func createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal
 			},
 		}
 		permissionInserts = append(permissionInserts, globalPermToCreate)
-		// globalInserts = append(globalInserts, globalPermToCreate)
 
 		grantInserts, err := processPermissionGrants(ctx, permId, perm.Grants)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
-		// globalInserts = append(globalInserts, grantInserts...)
 
 		for _, gs := range perm.GrantedScopes {
 			if gs == globals.GrantScopeThis ||
@@ -271,6 +269,9 @@ func createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []in
 	orgInserts = append(orgInserts, []*appTokenOrg{tokenToCreate})
 
 	for _, perm := range token.Permissions {
+		if slices.Contains(perm.GrantedScopes, globals.GlobalPrefix) {
+			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "org cannot have global grant scope")
+		}
 		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) {
 			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "org cannot have descendants grant scope")
 		}
@@ -363,8 +364,16 @@ func createAppTokenProject(ctx context.Context, token *AppToken) (*appTokenProje
 	projectInserts = append(projectInserts, []*appTokenProject{tokenToCreate})
 
 	for _, perm := range token.Permissions {
-		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) || slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) {
-			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "project can only contain individual grant scopes")
+		if slices.Contains(perm.GrantedScopes, globals.GrantScopeDescendants) ||
+			slices.Contains(perm.GrantedScopes, globals.GrantScopeChildren) ||
+			slices.Contains(perm.GrantedScopes, globals.GlobalPrefix) ||
+			slices.ContainsFunc(perm.GrantedScopes, func(s string) bool { return strings.HasPrefix(s, globals.OrgPrefix) }) {
+			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "project can only contain individual project grant scopes")
+		}
+		if slices.ContainsFunc(perm.GrantedScopes, func(s string) bool {
+			return strings.HasPrefix(s, globals.ProjectPrefix) && s != token.GetScopeId()
+		}) {
+			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "project cannot contain individual grant scopes for other projects")
 		}
 
 		permId, err := newAppTokenPermissionId(ctx)

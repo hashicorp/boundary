@@ -4,7 +4,6 @@
 package apptoken
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"slices"
@@ -207,7 +206,7 @@ func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scop
              where atp.app_token_id = $1
           order by atp.private_id, atpg.canonical_grant, atpgios.scope_id, atpgips.scope_id
         `
-		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		rows, err := repo.reader.Query(t.Context(), permQuery, []any{appTokenId})
 		if err != nil {
 			return err
 		}
@@ -274,7 +273,7 @@ func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scop
              where atp.app_token_id = $1
           order by atp.private_id, atpg.canonical_grant, atpis.scope_id
         `
-		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		rows, err := repo.reader.Query(t.Context(), permQuery, []any{appTokenId})
 		if err != nil {
 			return err
 		}
@@ -332,7 +331,7 @@ func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scop
              where atp.app_token_id = $1
           order by atp.private_id, atpg.canonical_grant
         `
-		rows, err := repo.reader.Query(context.Background(), permQuery, []any{appTokenId})
+		rows, err := repo.reader.Query(t.Context(), permQuery, []any{appTokenId})
 		if err != nil {
 			return err
 		}
@@ -402,7 +401,7 @@ func testCheckAppTokenCipher(t *testing.T, repo *Repository, appTokenId string) 
           from app_token_cipher
          where app_token_id = $1
     `
-	rows, err := repo.reader.Query(context.Background(), cipherQuery, []any{appTokenId})
+	rows, err := repo.reader.Query(t.Context(), cipherQuery, []any{appTokenId})
 	if err != nil {
 		return err
 	}
