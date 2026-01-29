@@ -290,6 +290,7 @@ scenario "e2e_aws_rdp_base" {
       step.create_boundary_cluster,
       step.create_rdp_domain_controller,
       step.create_rdp_member_server,
+      step.create_windows_worker,
       step.create_bucket
     ]
 
