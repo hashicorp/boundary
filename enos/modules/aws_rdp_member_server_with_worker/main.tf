@@ -373,7 +373,7 @@ resource "enos_local_exec" "run_powershell_script" {
   inline = ["ssh -i ${local.private_key} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.worker.public_ip} ${local.test_dir}/${basename(local_file.powershell_script.filename)}"]
 }
 
-resource "time_sleep" "wait_2_minutes" {
+resource "time_sleep" "wait_for_instance_reboot_in_script" {
   depends_on      = [enos_local_exec.run_powershell_script]
   create_duration = "2m"
 }
