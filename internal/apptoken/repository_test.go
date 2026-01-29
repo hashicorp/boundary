@@ -339,6 +339,30 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid-global-one-perm-multi-individuals",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", org.GetPublicId(), proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					GrantScope:  "individual",
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					Scopes:      []string{org.GetPublicId(), proj.GetPublicId()},
+				},
+			},
+			wantErr: false,
+		},
 		// org
 		{
 			name: "valid-org-basic-no-perms",
@@ -504,6 +528,69 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		// project
+		{
+			name: "valid-project-basic-no-perms",
+			at: &AppToken{
+				ScopeId:         proj.GetPublicId(),
+				CreatedByUserId: u.PublicId,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-project-one-perm",
+			at: &AppToken{
+				ScopeId:         proj.GetPublicId(),
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+				},
+			},
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-project-two-perm",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+						GrantedScopes: []string{"this", proj.GetPublicId()},
+					},
+					{
+						Label:         "test-2",
+						Grants:        []string{"type=target;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId()},
+					},
+				},
+			},
+			wantErr: false,
+			wantPerms: []testPermission{
+				{
+					GrantThis:   true,
+					Description: "test",
+					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+				},
+				{
+					GrantThis:   true,
+					Description: "test-2",
+					Grants:      []string{"type=target;actions=list"},
+				},
+			},
+		},
 		// invalid
 		{
 			name: "invalid-global-bad-grant",
@@ -577,6 +664,23 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErrMsg:  "is not a child of org",
 		},
 		{
+			name: "invalid-org-granted-global",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{globals.GlobalPrefix},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "org cannot have global grant scope",
+		},
+		{
 			name: "invalid-org-project-and-children",
 			at: &AppToken{
 				ScopeId:         org.PublicId,
@@ -609,6 +713,108 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 			wantErrMsg:  "org cannot have descendants grant scope",
+		},
+		{
+			name: "invalid-org-project-and-children",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj.GetPublicId(), "children"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "children grant scope cannot be combined with individual project grant scopes",
+		},
+		{
+			name: "invalid-org-descendants",
+			at: &AppToken{
+				ScopeId:         org.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "org cannot have descendants grant scope",
+		},
+		{
+			name: "invalid-proj-children",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{"children"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "project can only contain individual project grant scopes",
+		},
+		{
+			name: "invalid-proj-individual-org",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{org.GetPublicId()},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "project can only contain individual project grant scopes",
+		},
+		{
+			name: "invalid-proj-different-proj",
+			at: &AppToken{
+				ScopeId:         proj.PublicId,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list"},
+						GrantedScopes: []string{proj2.GetPublicId()},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+			wantErrMsg:  "project cannot contain individual grant scopes for other projects",
+		},
+		{
+			name: "invalid-duplicate-grants",
+			at: &AppToken{
+				ScopeId:         globals.GlobalPrefix,
+				CreatedByUserId: u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"type=host-catalog;actions=list", "type=host-catalog;actions=list"},
+						GrantedScopes: []string{"descendants"},
+					},
+				},
+			},
+			wantErr:     true,
+			wantIsError: errors.NotUnique,
+			wantErrMsg:  "unique constraint violation",
 		},
 		{
 			name:        "nil-token",
@@ -650,14 +856,16 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
+			assert.NotNil(at.PublicId)
 			assert.NotNil(at.CreateTime)
 			assert.NotNil(at.ApproximateLastAccessTime)
 			assert.NotNil(at.Token)
 			assert.Equal(at.CreateTime, at.ApproximateLastAccessTime)
 			assert.GreaterOrEqual(at.ExpirationTime.AsTime().Unix(), at.CreateTime.AsTime().Unix())
 
-			// validate app token permission global using db queries
-			if tt.at.Permissions != nil {
+			// validate app token permissions using db queries
+			if tt.wantPerms != nil {
+				assert.NotNil(at.Permissions)
 				err = testCheckPermission(t, repo, at.PublicId, tt.at.ScopeId, tt.wantPerms)
 				assert.NoError(err)
 			}

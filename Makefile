@@ -216,6 +216,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org_permission.pb.go
+	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_project.pb.go
+	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_project_permission.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission_individual_org_grant_scope.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_global_permission_individual_project_grant_scope.pb.go
 	@protoc-go-inject-tag -input=./internal/apptoken/store/apptoken_org_permission_individual_grant_scope.pb.go

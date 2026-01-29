@@ -30,6 +30,9 @@ const (
 	appTokenPermissionOrgTableName                     = "app_token_permission_org"
 	appTokenPermissionOrgIndividualGrantScopeTableName = "app_token_permission_org_individual_grant_scope"
 
+	appTokenProjectTableName           = "app_token_project"
+	appTokenPermissionProjectTableName = "app_token_permission_project"
+
 	// The version prefix is used to differentiate token versions just for future proofing.
 	tokenValueVersionPrefix = "0"
 	tokenLength             = 24
@@ -206,6 +209,25 @@ func (ato *appTokenOrg) SetTableName(n string) {
 	ato.tableName = n
 }
 
+// for app_token_project (triggers an insert to app_token)
+type appTokenProject struct {
+	*store.AppTokenProject
+	tableName string
+}
+
+// TableName returns the table name.
+func (atp *appTokenProject) TableName() string {
+	if atp.tableName != "" {
+		return atp.tableName
+	}
+	return appTokenProjectTableName
+}
+
+// SetTableName sets the table name.
+func (atp *appTokenProject) SetTableName(n string) {
+	atp.tableName = n
+}
+
 // for app_token_cipher
 type appTokenCipher struct {
 	*store.AppTokenCipher
@@ -317,6 +339,25 @@ func (atop *appTokenPermissionOrgIndividualGrantScope) SetTableName(n string) {
 	atop.tableName = n
 }
 
+// for app_token_permission_project (triggers an insert to app_token_permission)
+type appTokenPermissionProject struct {
+	*store.AppTokenPermissionProject
+	tableName string
+}
+
+// TableName returns the table name.
+func (atpp *appTokenPermissionProject) TableName() string {
+	if atpp.tableName != "" {
+		return atpp.tableName
+	}
+	return appTokenPermissionProjectTableName
+}
+
+// SetTableName sets the table name.
+func (atpp *appTokenPermissionProject) SetTableName(n string) {
+	atpp.tableName = n
+}
+
 // for app_token_permission_grant (triggers an insert to iam_grant and iam_grant_resource_enm)
 type appTokenPermissionGrant struct {
 	*store.AppTokenPermissionGrant
@@ -359,6 +400,71 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
+}
+
+// the appTokenSubtype interface allows us to implement the
+// toAppToken method for each app token type, which allows us to
+// access the db created fields (CreateTime, etc.) when converting
+// to the common AppToken type.
+type appTokenSubtype interface {
+	toAppToken() *AppToken
+}
+
+func (atg *appTokenGlobal) toAppToken() *AppToken {
+	if atg == nil {
+		return nil
+	}
+	return &AppToken{
+		PublicId:    atg.PublicId,
+		ScopeId:     atg.ScopeId,
+		Name:        atg.Name,
+		Description: atg.Description,
+		CreateTime:  atg.CreateTime,
+		// add update time eventually
+		ApproximateLastAccessTime: atg.ApproximateLastAccessTime,
+		ExpirationTime:            atg.ExpirationTime,
+		TimeToStaleSeconds:        atg.TimeToStaleSeconds,
+		CreatedByUserId:           atg.CreatedByUserId,
+		Revoked:                   atg.Revoked,
+	}
+}
+
+func (ato *appTokenOrg) toAppToken() *AppToken {
+	if ato == nil {
+		return nil
+	}
+	return &AppToken{
+		PublicId:    ato.PublicId,
+		ScopeId:     ato.ScopeId,
+		Name:        ato.Name,
+		Description: ato.Description,
+		CreateTime:  ato.CreateTime,
+		// add update time eventually
+		ApproximateLastAccessTime: ato.ApproximateLastAccessTime,
+		ExpirationTime:            ato.ExpirationTime,
+		TimeToStaleSeconds:        ato.TimeToStaleSeconds,
+		CreatedByUserId:           ato.CreatedByUserId,
+		Revoked:                   ato.Revoked,
+	}
+}
+
+func (atp *appTokenProject) toAppToken() *AppToken {
+	if atp == nil {
+		return nil
+	}
+	return &AppToken{
+		PublicId:    atp.PublicId,
+		ScopeId:     atp.ScopeId,
+		Name:        atp.Name,
+		Description: atp.Description,
+		CreateTime:  atp.CreateTime,
+		// add update time eventually
+		ApproximateLastAccessTime: atp.ApproximateLastAccessTime,
+		ExpirationTime:            atp.ExpirationTime,
+		TimeToStaleSeconds:        atp.TimeToStaleSeconds,
+		CreatedByUserId:           atp.CreatedByUserId,
+		Revoked:                   atp.Revoked,
+	}
 }
 
 // deletedAppToken represents a deleted app token record in the app_token_deleted table.
