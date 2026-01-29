@@ -1202,6 +1202,115 @@ func TestRepository_listAppTokensRefresh(t *testing.T) {
 	})
 }
 
+func TestRepository_DeleteAppToken(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	t.Run("successful-delete-global", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		at := &AppToken{
+			ScopeId:         globals.GlobalPrefix,
+			CreatedByUserId: u.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					GrantedScopes: []string{"this", "descendants"},
+				},
+			},
+		}
+		createdAt, err := repo.CreateAppToken(ctx, at)
+		require.NoError(err)
+		require.NotNil(createdAt)
+		idToDelete := createdAt.PublicId
+
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(1, d)
+		assert.NoError(err)
+
+		// verify it's gone
+		atCheck := allocGlobalAppToken()
+		atCheck.PublicId = idToDelete
+		err = repo.reader.LookupByPublicId(ctx, &atCheck)
+		assert.Error(err)
+		assert.True(errors.IsNotFoundError(err))
+	})
+
+	t.Run("successful-delete-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		at := &AppToken{
+			ScopeId:         org.PublicId,
+			CreatedByUserId: u.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					GrantedScopes: []string{"this", "children"},
+				},
+			},
+		}
+		createdAt, err := repo.CreateAppToken(ctx, at)
+		require.NoError(err)
+		require.NotNil(createdAt)
+		idToDelete := createdAt.PublicId
+
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(1, d)
+		assert.NoError(err)
+
+		// verify it's gone
+		atCheck := allocOrgAppToken()
+		atCheck.PublicId = idToDelete
+		err = repo.reader.LookupByPublicId(ctx, &atCheck)
+		assert.Error(err)
+		assert.True(errors.IsNotFoundError(err))
+	})
+
+	t.Run("successful-delete-proj", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		at := &AppToken{
+			ScopeId:         proj.PublicId,
+			CreatedByUserId: u.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					GrantedScopes: []string{"this"},
+				},
+			},
+		}
+		createdAt, err := repo.CreateAppToken(ctx, at)
+		require.NoError(err)
+		require.NotNil(createdAt)
+		idToDelete := createdAt.PublicId
+
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(1, d)
+		assert.NoError(err)
+
+		// verify it's gone
+		atCheck := allocProjectAppToken()
+		atCheck.PublicId = idToDelete
+		err = repo.reader.LookupByPublicId(ctx, &atCheck)
+		assert.Error(err)
+		assert.True(errors.IsNotFoundError(err))
+	})
+
+	t.Run("invalid-id", func(t *testing.T) {
+		require := require.New(t)
+		idToDelete := "invalid-id"
+
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(0, d)
+		require.Error(err)
+	})
+}
+
 func TestRepository_listDeletedIds(t *testing.T) {
 	ctx := t.Context()
 	conn, _ := db.TestSetup(t, "postgres")

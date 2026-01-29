@@ -402,6 +402,24 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 	return nil
 }
 
+func allocGlobalAppToken() appTokenGlobal {
+	return appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{},
+	}
+}
+
+func allocOrgAppToken() appTokenOrg {
+	return appTokenOrg{
+		AppTokenOrg: &store.AppTokenOrg{},
+	}
+}
+
+func allocProjectAppToken() appTokenProject {
+	return appTokenProject{
+		AppTokenProject: &store.AppTokenProject{},
+	}
+}
+
 // the appTokenSubtype interface allows us to implement the
 // toAppToken method for each app token type, which allows us to
 // access the db created fields (CreateTime, etc.) when converting
