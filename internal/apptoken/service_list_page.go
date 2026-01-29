@@ -41,7 +41,7 @@ func ListPage(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
-	case withScopeIds == nil:
+	case len(withScopeIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
 	case tok.ResourceType != resource.AppToken:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have an app token resource type")

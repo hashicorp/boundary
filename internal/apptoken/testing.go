@@ -415,18 +415,31 @@ func testCheckAppTokenCipher(t *testing.T, repo *Repository, appTokenId string) 
 	return nil
 }
 
-// tempTestRevokeGlobalAppToken is a temporary test function to revoke a global app token
+// tempTestRevokeAppToken is a temporary test function to revoke a global app token
 // TODO: Replace with proper AppToken.Revoke function once added
-func tempTestRevokeGlobalAppToken(t *testing.T, repo *Repository, tokenId string) {
+func tempTestRevokeAppToken(t *testing.T, repo *Repository, tokenId, scopeId string) {
 	t.Helper()
 	ctx := t.Context()
 	require := require.New(t)
 
-	_, err := repo.writer.Exec(ctx, `
-		update app_token_global
+	execSQL := `
+		update app_token_%s
 		set revoked = true, update_time = now()
 		where public_id = $1
-	`, []any{tokenId})
+	`
+	var table string
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		table = "global"
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		table = "org"
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		table = "project"
+	default:
+		t.Fatalf("invalid scope id: %s", scopeId)
+	}
+
+	_, err := repo.writer.Exec(ctx, fmt.Sprintf(execSQL, table), []any{tokenId})
 	require.NoError(err)
 }
 
