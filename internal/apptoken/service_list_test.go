@@ -59,11 +59,61 @@ func TestList(t *testing.T) {
 
 	var globalAppTokens, org1AppTokens, proj1AppTokens, org2AppTokens, proj2AppTokens, allAppTokens []*AppToken
 	for range 5 {
-		globalAppToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
-		org1AppToken := TestAppToken(t, repo, org1.PublicId, org1User, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
-		proj1AppToken := TestAppToken(t, repo, proj1.PublicId, org1User, 0, nil, []string{"ids=*;type=target;actions=list,read"}, true, "individual")
-		org2AppToken := TestAppToken(t, repo, org2.PublicId, org2User, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
-		proj2AppToken := TestAppToken(t, repo, proj2.PublicId, org2User, 0, nil, []string{"ids=*;type=target;actions=list,read"}, true, "individual")
+		globalAppToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:         globals.GlobalPrefix,
+			CreatedByUserId: globalUser.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		org1AppToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:         org1.PublicId,
+			CreatedByUserId: org1User.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		proj1AppToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:         proj1.PublicId,
+			CreatedByUserId: org1User.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=target;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		org2AppToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:         org2.PublicId,
+			CreatedByUserId: org2User.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		proj2AppToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:         proj2.PublicId,
+			CreatedByUserId: org2User.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=target;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
 
 		globalAppTokens = append(globalAppTokens, globalAppToken)
 		org1AppTokens = append(org1AppTokens, org1AppToken)
@@ -866,7 +916,17 @@ func TestList(t *testing.T) {
 			inactiveOrgUser := iam.TestUser(t, iamRepo, inactiveOrg.PublicId)
 
 			// Create a new token in the new org
-			inactiveToken := TestAppToken(t, repo, inactiveOrg.PublicId, inactiveOrgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+			inactiveToken := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         inactiveOrg.PublicId,
+				CreatedByUserId: inactiveOrgUser.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list,read"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			})
 
 			resp, err := List(
 				ctx,
@@ -890,7 +950,7 @@ func TestList(t *testing.T) {
 				testListPageSize,
 				filterOutInactiveFunc,
 				repo,
-				[]string{globals.GlobalPrefix},
+				[]string{globals.GlobalPrefix, inactiveOrg.PublicId},
 			)
 			require.NoError(err)
 			require.NotNil(resp)
@@ -933,7 +993,17 @@ func TestList(t *testing.T) {
 		// Create ten initial tokens
 		var tokensToBeRefreshed []*AppToken
 		for i := 0; i < 10; i++ {
-			token := TestAppToken(t, repo, listRefreshOrg.PublicId, listRefreshUser, 0, nil, []string{fmt.Sprintf("ids=token-%d;type=scope;actions=list,read", i)}, true, "individual")
+			token := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         listRefreshOrg.PublicId,
+				CreatedByUserId: listRefreshUser.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list,read"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			})
 			tokensToBeRefreshed = append(tokensToBeRefreshed, token)
 		}
 		require.Equal(testListPageSize, len(tokensToBeRefreshed))
@@ -1013,8 +1083,28 @@ func TestList(t *testing.T) {
 		// Create 12 new tokens to provide enough data to test revocation, update, deletion, and pagination
 		var tokensToBeRefreshed []*AppToken
 		for i := 0; i < 6; i++ {
-			orgToken := TestAppToken(t, repo, refreshOrg.PublicId, refreshUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
-			projToken := TestAppToken(t, repo, refreshProj.PublicId, refreshUser, 0, nil, []string{"ids=*;type=target;actions=list,read"}, true, "individual")
+			orgToken := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         refreshOrg.PublicId,
+				CreatedByUserId: refreshUser.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list,read"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			})
+			projToken := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         refreshProj.PublicId,
+				CreatedByUserId: refreshUser.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=target;actions=list,read"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			})
 			tokensToBeRefreshed = append(tokensToBeRefreshed, orgToken, projToken)
 		}
 		assert.Equal(12, len(tokensToBeRefreshed))

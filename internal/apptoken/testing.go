@@ -10,13 +10,12 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -55,126 +54,25 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	return repo
 }
 
-func testPublicId(t testing.TB, prefix string) string {
+func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppToken {
 	t.Helper()
-	publicId, err := db.NewPublicId(t.Context(), prefix)
+
+	// Assign a name and description if not set
+	if token.Name == "" {
+		token.Name = fmt.Sprintf("Test App Token %s", time.Now().Format("0405.000000"))
+	}
+	if token.Description == "" {
+		token.Description = "Test App Token Description"
+	}
+
+	// If no expiration time is set, set it to 1 hour from now
+	if token.ExpirationTime == nil {
+		token.ExpirationTime = timestamp.New(time.Now().Add(1 * time.Hour))
+	}
+
+	createdToken, err := repo.CreateAppToken(t.Context(), token)
 	require.NoError(t, err)
-	return publicId
-}
-
-// TestAppToken creates an app token for testing with the specified grants.
-// TODO: Implement TestAppToken once AppToken functionality is added
-func TestAppToken(t *testing.T, repo *Repository, scopeId string, user *iam.User, timeToStaleSeconds uint32, expirationTime *timestamp.Timestamp, grants []string, grantThisScope bool, grantScope string) *AppToken {
-	t.Helper()
-
-	testToken := &AppToken{
-		PublicId:           testPublicId(t, "apt_"),
-		ScopeId:            scopeId,
-		Description:        "test app token",
-		CreatedByUserId:    user.PublicId,
-		TimeToStaleSeconds: timeToStaleSeconds,
-		ExpirationTime:     expirationTime,
-	}
-	tempTestAddGrants(t, repo, testToken, grants, grantThisScope, grantScope)
-	return testToken
-}
-
-// tempTestAddGrants is a temporary test function to add grants to the database for testing
-// TODO: Replace with proper AppToken creation function once AppToken functionality is added
-func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants []string, grantThisScope bool, grantScope string) {
-	t.Helper()
-	ctx := t.Context()
-	require := require.New(t)
-
-	// Determine which table to insert into based on scope prefix
-	var insertTokenSQL, insertPermissionSQL string
-	insertGrantSQL := `
-            insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
-            values ($1, $2, $3)
-        `
-
-	switch {
-	case strings.HasPrefix(token.ScopeId, globals.GlobalPrefix):
-		insertTokenSQL = `
-			insert into app_token_global (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
-			values ($1, $2, $3, $4, $5, $6, $7)
-		`
-		insertPermissionSQL = `
-            insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope)
-            values ($1, $2, $3, $4, $5)
-        `
-
-	case strings.HasPrefix(token.ScopeId, globals.OrgPrefix):
-		insertTokenSQL = `
-			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
-			values ($1, $2, $3, $4, $5, $6, $7)
-		`
-		insertPermissionSQL = `
-            insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope)
-            values ($1, $2, $3, $4, $5)
-        `
-	case strings.HasPrefix(token.ScopeId, globals.ProjectPrefix):
-		insertTokenSQL = `
-			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
-			values ($1, $2, $3, $4, $5, $6, $7)
-		`
-		insertPermissionSQL = `
-            insert into app_token_permission_project (private_id, app_token_id, description, grant_this_scope)
-            values ($1, $2, $3, $4)
-        `
-	default:
-		t.Fatalf("invalid scope id: %s", token.ScopeId)
-	}
-
-	// Insert the app token
-	name := fmt.Sprintf("Test App Token %s", token.PublicId)
-	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{token.PublicId, token.ScopeId, name, "test app token", token.CreatedByUserId, token.TimeToStaleSeconds, token.ExpirationTime})
-	require.NoError(err)
-
-	// Create a permission for this token
-	permissionId := testPublicId(t, "aptp_")
-
-	// Default to 'descendants' if not specified for global/org scopes
-	if grantScope == "" && (strings.HasPrefix(token.ScopeId, globals.GlobalPrefix) || strings.HasPrefix(token.ScopeId, globals.OrgPrefix)) {
-		grantScope = globals.GrantScopeDescendants
-	}
-
-	var permArgs []any
-	if strings.HasPrefix(token.ScopeId, globals.ProjectPrefix) {
-		// Project permissions don't have grant_scope column
-		permArgs = []any{permissionId, token.PublicId, "test permission", grantThisScope}
-	} else {
-		permArgs = []any{permissionId, token.PublicId, "test permission", grantThisScope, grantScope}
-	}
-
-	_, err = repo.writer.Exec(ctx, insertPermissionSQL, permArgs)
-	require.NoError(err)
-
-	// Parse and insert each grant
-	for _, grant := range grants {
-		// Parse the grant to get canonical form
-		perm, err := perms.Parse(ctx, perms.GrantTuple{
-			RoleScopeId:  token.ScopeId,
-			GrantScopeId: token.ScopeId,
-			Grant:        grant,
-		}, perms.WithSkipFinalValidation(true))
-		require.NoError(err)
-
-		canonicalGrant := perm.CanonicalString()
-
-		// Insert into iam_grant lookup table (required for query JOINs)
-		// The database trigger will automatically extract and set the resource type
-		_, err = repo.writer.Exec(ctx, `
-            insert into iam_grant (canonical_grant)
-            values ($1)
-            on conflict (canonical_grant) do nothing
-        `, []any{canonicalGrant})
-		require.NoError(err)
-
-		// Insert the grant with both raw_grant and canonical_grant
-		_, err = repo.writer.Exec(ctx, insertGrantSQL, []any{permissionId, grant, canonicalGrant})
-		require.NoError(err)
-	}
+	return createdToken
 }
 
 // these will eventually expand to cover org and proj

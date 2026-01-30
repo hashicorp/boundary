@@ -402,8 +402,23 @@ func TestGrantsForToken(t *testing.T) {
 				opts = append(opts, WithRecursive(tc.recursive))
 			}
 
+			grantedScopes := []string{tc.grantScope}
+			if tc.grantThisScope {
+				grantedScopes = append(grantedScopes, globals.GrantScopeThis)
+			}
+
 			// Create a token with the specified grants
-			token := TestAppToken(t, repo, tc.tokenScopeId, tc.u, 0, nil, tc.grants, tc.grantThisScope, tc.grantScope)
+			token := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         tc.tokenScopeId,
+				CreatedByUserId: tc.u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        tc.grants,
+						GrantedScopes: grantedScopes,
+					},
+				},
+			})
 
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)

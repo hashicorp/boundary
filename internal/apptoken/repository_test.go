@@ -890,9 +890,39 @@ func TestRepository_queryAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	gToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         globals.GlobalPrefix,
+		CreatedByUserId: globalUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	orgToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         org1.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	projToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         proj1.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
 
 	testCases := []struct {
 		name            string
@@ -990,9 +1020,39 @@ func TestRepository_listAppTokens(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	// Create app tokens
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	gToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         globals.GlobalPrefix,
+		CreatedByUserId: globalUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	orgToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         org1.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	projToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         proj1.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
 
 	testCases := []struct {
 		name           string
@@ -1086,7 +1146,17 @@ func TestRepository_listAppTokens(t *testing.T) {
 
 		// Create enough tokens to exceed the limit
 		for range make([]int, 5) {
-			TestAppToken(t, repo, orgExceedLimit.PublicId, orgExceedLimitUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, "individual")
+			TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         orgExceedLimit.PublicId,
+				CreatedByUserId: orgExceedLimitUser.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list,read"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			})
 		}
 
 		tokens, _, err := repo.listAppTokens(ctx, []string{orgExceedLimit.PublicId}, []Option{WithLimit(10)}...)
@@ -1112,13 +1182,50 @@ func TestRepository_listAppTokensRefresh(t *testing.T) {
 	orgUser := iam.TestUser(t, iamRepo, org1.PublicId)
 
 	expireInSixSeconds := timestamp.New(timestamp.Now().AsTime().Add(6 * time.Second))
+	staleInFourSeconds := uint32(4)
 
 	// Create app tokens
 	allTokens := []*AppToken{}
 	for range 3 {
-		gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-		orgToken := TestAppToken(t, repo, org1.PublicId, orgUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-		projToken := TestAppToken(t, repo, proj1.PublicId, orgUser, 4, expireInSixSeconds, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+		gToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:            globals.GlobalPrefix,
+			CreatedByUserId:    globalUser.PublicId,
+			ExpirationTime:     expireInSixSeconds,
+			TimeToStaleSeconds: staleInFourSeconds,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		orgToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:            org1.PublicId,
+			CreatedByUserId:    orgUser.PublicId,
+			ExpirationTime:     expireInSixSeconds,
+			TimeToStaleSeconds: staleInFourSeconds,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
+		projToken := TestCreateAppToken(t, repo, &AppToken{
+			ScopeId:            proj1.PublicId,
+			CreatedByUserId:    orgUser.PublicId,
+			ExpirationTime:     expireInSixSeconds,
+			TimeToStaleSeconds: staleInFourSeconds,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"ids=*;type=scope;actions=list,read"},
+					GrantedScopes: []string{globals.GrantScopeThis},
+				},
+			},
+		})
 
 		allTokens = append(allTokens, gToken, orgToken, projToken)
 	}
@@ -1261,9 +1368,39 @@ func TestRepository_estimatedCount(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo, iam.WithName("org1"), iam.WithDescription("Test Org 1"))
 	orgUser := iam.TestUser(t, iamRepo, org.PublicId)
 
-	gToken := TestAppToken(t, repo, globals.GlobalPrefix, globalUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	oToken := TestAppToken(t, repo, org.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
-	pToken := TestAppToken(t, repo, proj.PublicId, orgUser, 0, nil, []string{"ids=*;type=scope;actions=list,read"}, true, globals.GrantScopeIndividual)
+	gToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         globals.GlobalPrefix,
+		CreatedByUserId: globalUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	oToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         org.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
+	pToken := TestCreateAppToken(t, repo, &AppToken{
+		ScopeId:         proj.PublicId,
+		CreatedByUserId: orgUser.PublicId,
+		Permissions: []AppTokenPermission{
+			{
+				Label:         "test",
+				Grants:        []string{"ids=*;type=scope;actions=list,read"},
+				GrantedScopes: []string{globals.GrantScopeThis},
+			},
+		},
+	})
 
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")
