@@ -295,11 +295,10 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, pr
 	}
 
 	// Escape '@' when prefixed to password. Vault CLI interprets '@' as a file
-	var passwordArg string
 	if strings.HasPrefix(password, "@") {
-		passwordArg = fmt.Sprintf("password=\\%s", password)
+		password = fmt.Sprintf("password=\\%s", password)
 	} else {
-		passwordArg = fmt.Sprintf("password=%s", password)
+		password = fmt.Sprintf("password=%s", password)
 	}
 
 	// Create secret
@@ -309,7 +308,7 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, pr
 			"-mount", secretPath,
 			secretName,
 			fmt.Sprintf("username=%s", user),
-			passwordArg,
+			password,
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -347,11 +346,10 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 	}
 
 	// Escape '@' when prefixed to password. Vault CLI interprets '@' as a file
-	var passwordArg string
 	if strings.HasPrefix(password, "@") {
-		passwordArg = fmt.Sprintf("password=\\%s", password)
+		password = fmt.Sprintf("password=\\%s", password)
 	} else {
-		passwordArg = fmt.Sprintf("password=%s", password)
+		password = fmt.Sprintf("password=%s", password)
 	}
 
 	// Create secret
@@ -361,7 +359,7 @@ func CreateKvPasswordDomainCredential(t testing.TB, secretPath string, user stri
 			"-mount", secretPath,
 			secretName,
 			fmt.Sprintf("username=%s", user),
-			passwordArg,
+			password,
 			fmt.Sprintf("domain=%s", domain),
 		),
 	)
