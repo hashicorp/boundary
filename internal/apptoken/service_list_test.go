@@ -385,7 +385,7 @@ func TestList(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// There are 25 total tokens created in the test setup above.
-			// We'll page through them 10 at a time, for a total of 3 pages (testListPageSize, testListPageSize, 5).
+			// We'll page through them 10 at a time, for a total of 3 pages.
 
 			firstPageResp, err := List(
 				ctx,
@@ -777,31 +777,31 @@ func TestList(t *testing.T) {
 				name:         "list global tokens",
 				withScopeIds: []string{globals.GlobalPrefix},
 				pageSize:     testListPageSize,
-				wantTokens:   globalAppTokens[0:5],
+				wantTokens:   globalAppTokens,
 			},
 			{
 				name:         "list org1 tokens",
 				withScopeIds: []string{org1.PublicId},
 				pageSize:     testListPageSize,
-				wantTokens:   org1AppTokens[0:5],
+				wantTokens:   org1AppTokens,
 			},
 			{
 				name:         "list proj1 tokens",
 				withScopeIds: []string{proj1.PublicId},
 				pageSize:     testListPageSize,
-				wantTokens:   proj1AppTokens[0:5],
+				wantTokens:   proj1AppTokens,
 			},
 			{
 				name:         "list all org tokens",
 				withScopeIds: []string{org1.PublicId, org2.PublicId},
-				pageSize:     5,
-				wantTokens:   append(org1AppTokens[0:5], org2AppTokens[0:5]...),
+				pageSize:     testListPageSize,
+				wantTokens:   append(org1AppTokens, org2AppTokens...),
 			},
 			{
 				name:         "list all proj tokens",
 				withScopeIds: []string{proj1.PublicId, proj2.PublicId},
 				pageSize:     5,
-				wantTokens:   append(proj1AppTokens[0:5], proj2AppTokens[0:5]...),
+				wantTokens:   append(proj1AppTokens, proj2AppTokens...),
 			},
 			{
 				name: "list all tokens",
@@ -992,7 +992,7 @@ func TestList(t *testing.T) {
 
 		// Create ten initial tokens
 		var tokensToBeRefreshed []*AppToken
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			token := TestCreateAppToken(t, repo, &AppToken{
 				ScopeId:         listRefreshOrg.PublicId,
 				CreatedByUserId: listRefreshUser.PublicId,
@@ -1082,7 +1082,7 @@ func TestList(t *testing.T) {
 
 		// Create 12 new tokens to provide enough data to test revocation, update, deletion, and pagination
 		var tokensToBeRefreshed []*AppToken
-		for i := 0; i < 6; i++ {
+		for range 6 {
 			orgToken := TestCreateAppToken(t, repo, &AppToken{
 				ScopeId:         refreshOrg.PublicId,
 				CreatedByUserId: refreshUser.PublicId,
