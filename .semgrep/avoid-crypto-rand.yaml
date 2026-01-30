@@ -1,0 +1,33 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
+rules:
+  - id: avoid-crypto-rand-use-secure-reader
+    languages:
+      - go
+    severity: WARNING
+    message: |
+      The 'crypto/rand' package is being used directly. 
+      To ensure consistent security patterns across our codebase, 
+      please use 'SecureRandomReader' instead.
+    patterns:
+      - pattern: |
+          rand.Reader
+      - pattern-inside: |
+          import "crypto/rand"
+          ...
+    paths:
+      exclude:
+          - "*_test.go"
+          - "**/website/*"
+          - "**/testing/*"
+          - "options.go"
+          - "testing.go"
+          - "controller.go"
+          - "servers.go"
+          - "worker.go"
+          - "repository_scope.go"
+          - "keys.go"
+          - "testing_ent.go"
+          - "options_ent.go"
+    fix: Use SecureRandomReader instead of crypto/rand.Reader directly.
