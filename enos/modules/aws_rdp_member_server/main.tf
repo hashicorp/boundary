@@ -287,7 +287,7 @@ data "aws_instance" "instance_password" {
 resource "enos_local_exec" "wait_for_ssh" {
   count      = var.server_version != "2016" ? 1 : 0
   depends_on = [time_sleep.wait_5_minutes]
-  inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
+  inline     = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 Administrator@${aws_instance.member_server.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
 # Retrieve the domain hostname of the member server, which will be used in
