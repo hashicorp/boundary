@@ -762,9 +762,7 @@ func TestList(t *testing.T) {
 		})
 	})
 
-	// ========================================
 	// Functional Tests
-	// ========================================
 
 	t.Run("simple listing with pagination", func(t *testing.T) {
 		testCases := []struct {
