@@ -407,4 +407,121 @@ left join iam_scope_project
      from pg_class 
     where oid in ('app_token_global'::regclass, 'app_token_org'::regclass, 'app_token_project'::regclass)
 `
+
+	getAppTokenGlobalQuery = `
+select app_token_permission_global.private_id       as permission_id,
+       app_token_permission_global.description      as description,
+       app_token_permission_global.grant_this_scope as grant_this_scope,
+       app_token_permission_global.grant_scope      as grant_scope,
+       app_token_global.public_id                   as app_token_id,
+
+       -- active_grant_scope_ids -> active grants with valid scopes
+       array_agg(distinct coalesce(org_grants.scope_id, project_grants.scope_id)) 
+         filter (where (org_grants.scope_id is not null and org_scope.public_id is not null)
+                    or (project_grants.scope_id is not null and project_scope.public_id is not null))
+       as active_grant_scope_ids,
+
+       -- deleted_grant_scope_ids -> active grants with no valid scopes
+       array_agg(distinct coalesce(org_grants.scope_id, project_grants.scope_id)) 
+         filter (where (org_grants.scope_id is not null and org_scope.public_id is null)
+                    or (project_grants.scope_id is not null and project_scope.public_id is null))
+       as deleted_grant_scope_ids,
+
+       jsonb_agg(distinct 
+         jsonb_build_object(
+           'scope_id', coalesce(org_grants.scope_id, project_grants.scope_id),
+           'delete_time', (
+             select upper(valid_range) as delete_time
+               from iam_scope_hst
+              where public_id = coalesce(org_grants.scope_id, project_grants.scope_id)
+              order by upper(valid_range) desc
+              limit 1
+           )
+         )
+       ) filter (where (org_grants.scope_id is not null and org_scope.public_id is null) or 
+                       (project_grants.scope_id is not null and project_scope.public_id is null)) 
+         as deleted_scope_details
+     from app_token_global
+     join app_token_permission_global
+       on app_token_global.public_id = app_token_permission_global.app_token_id
+left join app_token_permission_global_individual_org_grant_scope org_grants
+       on app_token_permission_global.private_id = org_grants.permission_id
+left join iam_scope org_scope
+       on org_grants.scope_id = org_scope.public_id
+left join app_token_permission_global_individual_project_grant_scope project_grants
+       on app_token_permission_global.private_id = project_grants.permission_id
+left join iam_scope project_scope
+       on project_grants.scope_id = project_scope.public_id
+    where app_token_global.public_id = @app_token_id
+ group by app_token_permission_global.private_id,
+          app_token_permission_global.description,
+          app_token_permission_global.grant_this_scope,
+          app_token_permission_global.grant_scope,
+          app_token_global.public_id;
+	`
+
+	getAppTokenOrgQuery = `
+select app_token_permission_org.private_id       as permission_id,
+       app_token_permission_org.description      as description,
+       app_token_permission_org.grant_this_scope as grant_this_scope,
+       app_token_permission_org.grant_scope      as grant_scope,
+       app_token_org.public_id                   as app_token_id,
+
+	   -- active_grant_scope_ids -> active grants with valid scopes
+       array_agg(distinct project_grants.scope_id)
+	   filter (where    project_grants.scope_id is not null and project_scope.public_id is not null)
+         as active_grant_scope_ids,
+
+	   -- deleted_grant_scope_ids -> active grants with no valid scopes
+       array_agg(distinct project_grants.scope_id)
+         filter (where    project_grants.scope_id is not null and project_scope.public_id is null)
+         as deleted_grant_scope_ids,
+
+       jsonb_agg(distinct 
+         jsonb_build_object(
+           'scope_id', project_grants.scope_id,
+           'delete_time', (
+             select upper(valid_range) as delete_time
+               from iam_scope_hst
+              where public_id = project_grants.scope_id
+              order by upper(valid_range) desc
+              limit 1
+           )
+         )
+       ) filter (where project_grants.scope_id is not null and project_scope.public_id is null)
+         as deleted_scope_details
+     from app_token_org
+     join app_token_permission_org
+       on app_token_org.public_id = app_token_permission_org.app_token_id
+left join app_token_permission_org_individual_grant_scope project_grants
+       on app_token_permission_org.private_id = project_grants.permission_id
+left join iam_scope project_scope
+       on project_grants.scope_id = project_scope.public_id
+    where app_token_org.public_id = @app_token_id
+ group by app_token_permission_org.private_id,
+          app_token_permission_org.description,
+          app_token_permission_org.grant_this_scope,
+          app_token_permission_org.grant_scope,
+          app_token_org.public_id;
+	`
+
+	getAppTokenProjectQuery = `
+select app_token_permission_project.private_id       as permission_id,
+       app_token_permission_project.description      as description,
+       app_token_permission_project.grant_this_scope as grant_this_scope,
+       app_token_project.scope_id                    as grant_scope,
+       app_token_project.public_id                   as app_token_id,
+       array_agg(app_token_project.scope_id)         as active_grant_scope_ids,
+       '{}'::text[]                                  as deleted_grant_scope_ids,
+       '{}'::text[]                                  as deleted_scope_details
+     from app_token_project
+     join app_token_permission_project
+       on app_token_project.public_id = app_token_permission_project.app_token_id
+    where app_token_project.public_id = @app_token_id
+ group by app_token_permission_project.private_id,
+          app_token_permission_project.description,
+          app_token_permission_project.grant_this_scope,
+          app_token_project.scope_id,
+          app_token_project.public_id;
+	`
 )
