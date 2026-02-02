@@ -108,24 +108,3 @@ if ("${github_token}" -ne "") {
     cd $src_destination
     go mod download
 }
-
-# Setting default terminal app to Windows Terminal (modern terminal)
-# aka Settings > System > For Developers > Terminal to Windows Terminal
-# By default, Windows11 has preferred terminal app set as "Let Windows decide"
-# which causes inconsistent terminal experience affecting images used for RDP tests
-# Two properties need to be set in registry to change default terminal app
-# DelegationTerminal determines which terminal UI to use
-# DelegationConsole determines how the data is communicated between the terminal and the operating system
-# (modern and legacy consoles have different communication protocols)
-# For Windows Terminal (aka Modern Terminal)
-# DelegationConsole ID: {2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}
-# DelegationTerminal ID: {E12CFF52-A866-4C77-9A90-F570A7AA2C6B}
-# For Console Host (aka Legacy Terminal)
-# DelegationConsole ID: {B23D10C0-E52E-411E-9D5B-C09FDF709C7D}
-# DelegationTerminal ID: {B23D10C0-E52E-411E-9D5B-C09FDF709C7D}
-# For "Let Windows Decide" (default)
-# remove both properties (DelegationConsole, DelegationTerminal)
-$registryPath = "HKCU:\Console\%%Startup"
-if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force }
-Set-ItemProperty -Path $registryPath -Name "DelegationConsole" -Value "{2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}"
-Set-ItemProperty -Path $registryPath -Name "DelegationTerminal" -Value "{E12CFF52-A866-4C77-9A90-F570A7AA2C6B}"
