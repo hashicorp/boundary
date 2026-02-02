@@ -248,6 +248,9 @@ ${var.domain_admin_password}
                     Set-ItemProperty  -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"  -Name RestrictReceivingNTLMTraffic -Value 2
                   %{endif~}
 
+                  # Disables safe-mode verification steps that were stopping loggouts on some tests
+                  Disable-ScheduledTask -TaskName "VerifyWinRE" -TaskPath "\Microsoft\Windows\RecoveryEnvironment\"
+
                   # Enable audio
                   Set-Service -Name "Audiosrv" -StartupType Automatic
                   Start-Service -Name "Audiosrv"
