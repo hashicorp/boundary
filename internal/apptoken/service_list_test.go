@@ -123,9 +123,7 @@ func TestList(t *testing.T) {
 		allAppTokens = append(allAppTokens, globalAppToken, org1AppToken, proj1AppToken, org2AppToken, proj2AppToken)
 	}
 
-	// ========================================
 	// Validation Tests
-	// ========================================
 
 	t.Run("List validation", func(t *testing.T) {
 		t.Run("missing grants hash", func(t *testing.T) {
