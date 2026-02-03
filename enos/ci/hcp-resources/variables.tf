@@ -22,6 +22,11 @@ variable "boundary_license_path" {
   type        = string
 }
 
+variable "enos_user" {
+  description = "Name of user and used to tage AWS resources."
+  type        = string
+}
+
 variable "aws_ssh_keypair_name" {
   description = "Name of the AWS EC2 keypair to use for SSH access"
   type        = string
