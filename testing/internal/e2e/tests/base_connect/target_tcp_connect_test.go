@@ -5,6 +5,7 @@ package base_connect_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
 // TestCliTcpTargetConnectTargetBasic uses the boundary cli to create a number of
@@ -91,8 +93,10 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	testProjectName := `E2E/Project-With\Name`
-	testTargetName := `E2E/Test-Target-With\Name`
+	name, err := base62.Random(16)
+	require.NoError(t, err)
+	testProjectName := fmt.Sprintf("e2e Project %s", name)
+	testTargetName := fmt.Sprintf("e2e target %s", name)
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, e2e.WithArgs("-name", testProjectName))
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
