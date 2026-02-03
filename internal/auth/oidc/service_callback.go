@@ -229,7 +229,11 @@ func Callback(
 				val, err := pointerstructure.Get(evalData, searchPath)
 				if err == nil {
 					if str, ok := val.(string); ok {
-						pointerstructure.Set(evalData, searchPath, []string{str})
+						if _, err := pointerstructure.Set(evalData, searchPath, []string{str}); err != nil {
+							// This should never happen, if we are able to Get it,
+							// but we validate anyways 
+							return "", errors.Wrap(ctx, err, op)
+						}
 					}
 				}
 			}
