@@ -47,7 +47,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=group;actions=list",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.Group, resource.Scope},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -55,9 +55,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=group;actions=list,ids=*;type=scope;actions=list,read",
 				},
 			},
@@ -69,7 +69,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=account;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.Account},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -77,9 +77,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=account;actions=list,read",
 				},
 			},
@@ -91,7 +91,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=credential-library;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.CredentialLibrary},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -99,9 +99,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=credential-library;actions=list,read",
 				},
 			},
@@ -114,7 +114,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "children",
+			grantScope:     globals.GrantScopeChildren,
 			rTypes:         []resource.Type{resource.Account, resource.Scope},
 			tokenScopeId:   org1.PublicId,
 			reqScopeId:     org1.PublicId,
@@ -123,8 +123,8 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "global",
-					GrantScopeId:          "children",
+					AppTokenParentScopeId: globals.GlobalPrefix,
+					GrantScopeId:          globals.GrantScopeChildren,
 					Grant:                 "ids=*;type=account;actions=list,ids=*;type=scope;actions=list,read",
 				},
 			},
@@ -136,7 +136,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=auth-method;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "children",
+			grantScope:     globals.GrantScopeChildren,
 			rTypes:         []resource.Type{resource.AuthMethod},
 			tokenScopeId:   org1.PublicId,
 			reqScopeId:     org1.PublicId,
@@ -145,8 +145,8 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "global",
-					GrantScopeId:          "children",
+					AppTokenParentScopeId: globals.GlobalPrefix,
+					GrantScopeId:          globals.GrantScopeChildren,
 					Grant:                 "ids=*;type=auth-method;actions=list,read",
 				},
 			},
@@ -158,7 +158,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=target;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "children",
+			grantScope:     globals.GrantScopeChildren,
 			rTypes:         []resource.Type{resource.Target},
 			tokenScopeId:   org1.PublicId,
 			reqScopeId:     org1.PublicId,
@@ -167,8 +167,8 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "global",
-					GrantScopeId:          "children",
+					AppTokenParentScopeId: globals.GlobalPrefix,
+					GrantScopeId:          globals.GrantScopeChildren,
 					Grant:                 "ids=*;type=target;actions=list,read",
 				},
 			},
@@ -192,7 +192,7 @@ func TestGrantsForToken(t *testing.T) {
 				{
 					AppTokenScopeId:       proj1.PublicId,
 					AppTokenParentScopeId: org1.PublicId,
-					GrantScopeId:          "individual",
+					GrantScopeId:          globals.GrantScopeIndividual,
 					Grant:                 "ids=*;type=host-set;actions=read,ids=*;type=host;actions=list,ids=*;type=target;actions=list,read",
 				},
 			},
@@ -214,7 +214,7 @@ func TestGrantsForToken(t *testing.T) {
 				{
 					AppTokenScopeId:       proj1.PublicId,
 					AppTokenParentScopeId: org1.PublicId,
-					GrantScopeId:          "individual",
+					GrantScopeId:          globals.GrantScopeIndividual,
 					Grant:                 "ids=*;type=target;actions=list,read",
 				},
 			},
@@ -227,7 +227,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.Group, resource.Scope},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -235,9 +235,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=group;actions=list,ids=*;type=scope;actions=list,read",
 				},
 			},
@@ -249,7 +249,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=auth-method;actions=list,read",
 			},
 			grantThisScope: false,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.AuthMethod},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     org1.PublicId,
@@ -257,9 +257,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=auth-method;actions=list,read",
 				},
 			},
@@ -271,7 +271,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=target;actions=list,read",
 			},
 			grantThisScope: false,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.Target},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     proj1.PublicId,
@@ -279,9 +279,9 @@ func TestGrantsForToken(t *testing.T) {
 			wantErr:        false,
 			expectedGrants: tempGrantTuples{
 				{
-					AppTokenScopeId:       "global",
+					AppTokenScopeId:       globals.GlobalPrefix,
 					AppTokenParentScopeId: "",
-					GrantScopeId:          "descendants",
+					GrantScopeId:          globals.GrantScopeDescendants,
 					Grant:                 "ids=*;type=target;actions=list,read",
 				},
 			},
@@ -294,7 +294,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=auth-method;actions=list",
 			},
 			grantThisScope: true,
-			grantScope:     "children",
+			grantScope:     globals.GrantScopeChildren,
 			rTypes:         []resource.Type{resource.Account, resource.AuthMethod},
 			tokenScopeId:   org1.PublicId,
 			reqScopeId:     org1.PublicId,
@@ -303,8 +303,8 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "global",
-					GrantScopeId:          "children",
+					AppTokenParentScopeId: globals.GlobalPrefix,
+					GrantScopeId:          globals.GrantScopeChildren,
 					Grant:                 "ids=*;type=account;actions=list,read,ids=*;type=auth-method;actions=list",
 				},
 			},
@@ -317,7 +317,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=target;actions=list,read",
 			},
 			grantThisScope: false,
-			grantScope:     "children",
+			grantScope:     globals.GrantScopeChildren,
 			rTypes:         []resource.Type{resource.Host, resource.Target},
 			tokenScopeId:   org1.PublicId,
 			reqScopeId:     proj1.PublicId,
@@ -326,8 +326,8 @@ func TestGrantsForToken(t *testing.T) {
 			expectedGrants: tempGrantTuples{
 				{
 					AppTokenScopeId:       org1.PublicId,
-					AppTokenParentScopeId: "global",
-					GrantScopeId:          "children",
+					AppTokenParentScopeId: globals.GlobalPrefix,
+					GrantScopeId:          globals.GrantScopeChildren,
 					Grant:                 "ids=*;type=host;actions=list,ids=*;type=target;actions=list,read",
 				},
 			},
@@ -339,7 +339,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         nil,
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -354,7 +354,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.Unknown},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -369,7 +369,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.All},
 			tokenScopeId:   globals.GlobalPrefix,
 			reqScopeId:     globals.GlobalPrefix,
@@ -384,7 +384,7 @@ func TestGrantsForToken(t *testing.T) {
 				"ids=*;type=scope;actions=list,read",
 			},
 			grantThisScope: true,
-			grantScope:     "descendants",
+			grantScope:     globals.GrantScopeDescendants,
 			rTypes:         []resource.Type{resource.All},
 			tokenScopeId:   globals.GlobalPrefix,
 			recursive:      true,
@@ -402,8 +402,23 @@ func TestGrantsForToken(t *testing.T) {
 				opts = append(opts, WithRecursive(tc.recursive))
 			}
 
+			grantedScopes := []string{tc.grantScope}
+			if tc.grantThisScope {
+				grantedScopes = append(grantedScopes, globals.GrantScopeThis)
+			}
+
 			// Create a token with the specified grants
-			token := TestAppToken(t, repo, tc.tokenScopeId, tc.u, 0, nil, tc.grants, tc.grantThisScope, tc.grantScope)
+			token := TestCreateAppToken(t, repo, &AppToken{
+				ScopeId:         tc.tokenScopeId,
+				CreatedByUserId: tc.u.PublicId,
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        tc.grants,
+						GrantedScopes: grantedScopes,
+					},
+				},
+			})
 
 			// Fetch the grants for the token
 			gt, err := repo.GrantsForToken(ctx, token.PublicId, tc.rTypes, tc.reqScopeId, opts...)
