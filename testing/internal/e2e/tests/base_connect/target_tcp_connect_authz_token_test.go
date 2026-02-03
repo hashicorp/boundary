@@ -39,6 +39,7 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	name, err := base62.Random(16)
+	require.NoError(t, err)
 	testProjectName := fmt.Sprintf("e2e Project %s", name)
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

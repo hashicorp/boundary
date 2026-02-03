@@ -94,6 +94,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	name, err := base62.Random(16)
+	require.NoError(t, err)
 	testProjectName := fmt.Sprintf("e2e Project %s", name)
 	testTargetName := fmt.Sprintf("e2e target %s", name)
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, e2e.WithArgs("-name", testProjectName))
