@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-bexpr"
+	"github.com/hashicorp/go-bexpr/grammar"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/protobuf/proto"
 )
@@ -211,6 +212,28 @@ func Callback(
 				// but we validate anyways
 				return "", errors.Wrap(ctx, err, op)
 			}
+
+			// Before evaluating, we need to normalize any "in" operators to
+			// prevent substring matches
+			ast, err := grammar.Parse("", []byte(mg.Filter))
+			if err != nil {
+				return "", errors.Wrap(ctx, err, op)
+			}
+
+			// Grab the paths from any "in" operators and normalize the data
+			paths := findInOperatorPaths(ast.(grammar.Expression))
+
+			// For all of the paths found, normalize the data to be []string, if string
+			for _, path := range paths {
+				searchPath := "/" + strings.Join(path, "/")
+				val, err := pointerstructure.Get(evalData, searchPath)
+				if err == nil {
+					if str, ok := val.(string); ok {
+						pointerstructure.Set(evalData, searchPath, []string{str})
+					}
+				}
+			}
+
 			match, err := eval.Evaluate(evalData)
 			if err != nil && !errors.Is(err, pointerstructure.ErrNotFound) {
 				return "", errors.Wrap(ctx, err, op)
@@ -266,4 +289,19 @@ func Callback(
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil
+}
+
+// findInOperatorPaths DFS to find the paths used in "in" operators within the expression.
+func findInOperatorPaths(expr grammar.Expression) [][]string {
+	switch e := expr.(type) {
+	case *grammar.MatchExpression:
+		if e.Operator == grammar.MatchIn || e.Operator == grammar.MatchNotIn {
+			return [][]string{e.Selector.Path}
+		}
+	case *grammar.BinaryExpression:
+		return append(findInOperatorPaths(e.Left), findInOperatorPaths(e.Right)...)
+	case *grammar.UnaryExpression:
+		return findInOperatorPaths(e.Operand)
+	}
+	return nil
 }
