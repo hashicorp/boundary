@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     strategy:
       matrix:
-        postgres-version: [ latest, 12-alpine, 13-alpine, 14-alpine, 15-alpine ]
+        postgres-version: [ alpine, 15-alpine, 16-alpine, 17-alpine ]
     name: SQL Tests ${{ matrix.postgres-version }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
