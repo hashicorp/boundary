@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	appTokenTableName = "app_token"
+
 	appTokenCipherTableName          = "app_token_cipher"
 	appTokenPermissionGrantTableName = "app_token_permission_grant"
 
@@ -118,6 +120,25 @@ func (at AppToken) GetName() string {
 // AppToken will satisfy resource requirements
 func (at AppToken) GetVersion() uint32 {
 	return 0
+}
+
+// appToken is the base type for the app_token table
+type appToken struct {
+	*store.AppToken
+	tableName string `gorm:"-"`
+}
+
+// TableName returns the table name.
+func (at *appToken) TableName() string {
+	if at.tableName != "" {
+		return at.tableName
+	}
+	return appTokenTableName
+}
+
+// SetTableName sets the table name.
+func (at *appToken) SetTableName(n string) {
+	at.tableName = n
 }
 
 // appTokenView is used to query the app_token_view database view
@@ -400,6 +421,24 @@ func (atc *appTokenCipher) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
+}
+
+func allocGlobalAppToken() appTokenGlobal {
+	return appTokenGlobal{
+		AppTokenGlobal: &store.AppTokenGlobal{},
+	}
+}
+
+func allocOrgAppToken() appTokenOrg {
+	return appTokenOrg{
+		AppTokenOrg: &store.AppTokenOrg{},
+	}
+}
+
+func allocProjectAppToken() appTokenProject {
+	return appTokenProject{
+		AppTokenProject: &store.AppTokenProject{},
+	}
 }
 
 // the appTokenSubtype interface allows us to implement the

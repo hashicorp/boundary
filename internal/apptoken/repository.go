@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // Repository is the apptoken database repository
@@ -578,6 +579,88 @@ func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, arg
 		return nil, time.Time{}, err
 	}
 	return appTokens, transactionTimestamp, nil
+}
+
+// DeleteAppToken will delete an app token from the repository.
+func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, error) {
+	const op = "apptoken.(Repository).DeleteAppToken"
+	if publicId == "" {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
+	}
+
+	// eventually change this to a lookup to confirm existence before delete
+	tokenToDelete := &appToken{
+		AppToken: &store.AppToken{
+			PublicId: publicId,
+		},
+	}
+
+	var rowsDeleted int
+	var err error
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			rowsDeleted, err = w.Delete(
+				ctx,
+				tokenToDelete,
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	return rowsDeleted, nil
+}
+
+// getAppTokenScopeType returns scope.Type of the apptokenId by reading it from the base type apptoken table
+func getAppTokenScopeType(ctx context.Context, r db.Reader, apptokenId string) (scope.Type, error) {
+	const op = "apptoken.getAppTokenScopeType"
+	if apptokenId == "" {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing apptoken id")
+	}
+	if r == nil {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromAppTokenIdQuery, []any{sql.Named("public_id", apptokenId)})
+	if err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup apptoken scope for :%s", apptokenId)))
+	}
+	var scopeIds []string
+	for rows.Next() {
+		if err := r.ScanRows(ctx, rows, &scopeIds); err != nil {
+			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying apptoken scope for :%s", apptokenId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying apptoken scope for :%s", apptokenId)))
+	}
+	if len(scopeIds) == 0 {
+		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("apptoken %s not found", apptokenId))
+	}
+	if len(scopeIds) > 1 {
+		return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", len(scopeIds)))
+	}
+	scopeId := scopeIds[0]
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		return scope.Global, nil
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		return scope.Org, nil
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		return scope.Project, nil
+	default:
+		return scope.Unknown, fmt.Errorf("unknown scope type for apptoken %s", apptokenId)
+	}
 }
 
 // listDeletedIds lists the public IDs of any app tokens deleted since the timestamp provided.
