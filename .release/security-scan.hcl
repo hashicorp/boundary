@@ -14,7 +14,7 @@ container {
 				# busybox@1.37.0-r12 https://nvd.nist.gov/vuln/detail/CVE-2025-46394
 				#
 				# Boundary does not shell out to the busybox tar program.
-				"CVE-2025-46394", 
+				"CVE-2025-46394",
 
 				# busybox@1.37.0-r12 https://nvd.nist.gov/vuln/detail/CVE-2024-58251
 				#
@@ -29,7 +29,12 @@ container {
 				# iputils@20240905-r0 https://nvd.nist.gov/vuln/detail/CVE-2025-47268
 				#
 				# Boundary does not utilize ping in iputils.
-				"CVE-2025-47268"
+				"CVE-2025-47268",
+
+				# iputils@20240905-r0 https://nvd.nist.gov/vuln/detail/CVE-2025-48964
+				#
+				# Boundary does not utilize ping in iputils.
+				"CVE-2025-48964"
 			]
 		}
 	}
