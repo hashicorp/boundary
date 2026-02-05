@@ -30,6 +30,11 @@ container {
 				#
 				# Boundary does not utilize ping in iputils.
 				"CVE-2025-47268"
+
+				# iputils@20240905-r0 https://nvd.nist.gov/vuln/detail/CVE-2025-48964
+				#
+				# Boundary does not utilize ping in iputils.
+				"CVE-2025-48964"
 			]
 		}
 	}
