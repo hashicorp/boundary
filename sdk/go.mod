@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/sdk
 
-go 1.25.5
+go 1.25.7
 
 require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
