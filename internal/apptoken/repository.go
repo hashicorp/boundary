@@ -588,30 +588,15 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, 
 		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
 	}
 
-	scopeType, err := getAppTokenScopeType(ctx, r.reader, publicId)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot get scope for app token %s", publicId))
-	}
-
-	var tokenToDelete any
-	switch scopeType {
-	case scope.Global:
-		gToken := allocGlobalAppToken()
-		gToken.PublicId = publicId
-		tokenToDelete = &gToken
-	case scope.Org:
-		oToken := allocOrgAppToken()
-		oToken.PublicId = publicId
-		tokenToDelete = &oToken
-	case scope.Project:
-		pToken := allocProjectAppToken()
-		pToken.PublicId = publicId
-		tokenToDelete = &pToken
-	default:
-		return db.NoRowsAffected, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for app token: %s", publicId))
+	// eventually change this to a lookup to confirm existence before delete
+	tokenToDelete := &appToken{
+		AppToken: &store.AppToken{
+			PublicId: publicId,
+		},
 	}
 
 	var rowsDeleted int
+	var err error
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
