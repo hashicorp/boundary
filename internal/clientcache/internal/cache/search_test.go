@@ -442,3 +442,166 @@ func TestSearch(t *testing.T) {
 		assert.Equal(t, &SearchResult{Targets: []*targets.Target{}}, got)
 	})
 }
+
+func TestSortByValid(t *testing.T) {
+	cases := []struct {
+		sortBy SortBy
+		valid  bool
+	}{
+		{SortByDefault, true},
+		{SortBy(""), true},
+		{SortByName, true},
+		{SortByCreatedTime, true},
+		{SortBy("unknown"), false},
+		{SortBy("id"), false},
+		{SortBy("invalid_column"), false},
+		{SortBy("name; DROP TABLE"), false},
+		{SortBy("name'--"), false},
+		{SortBy("name\"--"), false},
+		{SortBy("name\\x00"), false},
+		{SortBy("name,other"), false},
+		{SortBy("name ("), false},
+		{SortBy("name)"), false},
+		{SortBy("name\t"), false},
+		{SortBy("name\n"), false},
+		{SortBy("name\r"), false},
+		{SortBy("name "), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(string(tc.sortBy), func(t *testing.T) {
+			assert.Equal(t, tc.valid, tc.sortBy.Valid())
+		})
+	}
+}
+
+func TestSortDirectionValid(t *testing.T) {
+	cases := []struct {
+		direction SortDirection
+		valid     bool
+	}{
+		{SortDirectionDefault, true},
+		{SortDirection(""), true},
+		{Ascending, true},
+		{Descending, true},
+		{SortDirection("ASC"), false},
+		{SortDirection("DESC"), false},
+		{SortDirection("invalid"), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(string(tc.direction), func(t *testing.T) {
+			assert.Equal(t, tc.valid, tc.direction.Valid())
+		})
+	}
+}
+
+func TestSearch_Sorting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	at := &AuthToken{
+		Id:     "at_sort",
+		UserId: "u_sort",
+	}
+	{
+		u := &user{Id: at.UserId, Address: "address"}
+		rw := db.New(s)
+		require.NoError(t, rw.Create(ctx, u))
+		require.NoError(t, rw.Create(ctx, at))
+
+		targets := []*Target{
+			{FkUserId: u.Id, Id: "t_1", Name: "alpha", Type: "tcp", Item: `{"id": "t_1", "name": "alpha", "type": "tcp"}`},
+			{FkUserId: u.Id, Id: "t_2", Name: "charlie", Type: "tcp", Item: `{"id": "t_2", "name": "charlie", "type": "tcp"}`},
+			{FkUserId: u.Id, Id: "t_3", Name: "bravo", Type: "tcp", Item: `{"id": "t_3", "name": "bravo", "type": "tcp"}`},
+		}
+		require.NoError(t, rw.CreateItems(ctx, targets))
+
+		sessions := []*Session{
+			{FkUserId: u.Id, Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123", Item: `{"id": "s_1", "endpoint": "one", "type": "tcp", "user_id": "u123"}`},
+			{FkUserId: u.Id, Id: "s_2", Endpoint: "two", Type: "ssh", UserId: "u321", Item: `{"id": "s_2", "endpoint": "two", "type": "ssh", "user_id": "u321"}`},
+		}
+		require.NoError(t, rw.CreateItems(ctx, sessions))
+
+		aliases := []*ResolvableAlias{
+			{FkUserId: u.Id, Id: "alt_1", Value: "one", Type: "target", Item: `{"id": "alt_1", "value": "one", "type": "target"}`},
+		}
+		require.NoError(t, rw.CreateItems(ctx, aliases))
+	}
+
+	r, err := NewRepository(ctx, s, &sync.Map{},
+		mapBasedAuthTokenKeyringLookup(nil),
+		sliceBasedAuthTokenBoundaryReader(nil))
+	require.NoError(t, err)
+
+	ss, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+
+	t.Run("no sort specified returns results", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    Targets,
+			AuthTokenId: at.Id,
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Targets, 3)
+	})
+
+	t.Run("invalid sort by value", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    Targets,
+			AuthTokenId: at.Id,
+			SortBy:      SortBy("invalid_column"),
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "invalid sort by value")
+		assert.Nil(t, got)
+	})
+
+	t.Run("invalid sort direction value", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:      Targets,
+			AuthTokenId:   at.Id,
+			SortBy:        SortByName,
+			SortDirection: SortDirection("invalid"),
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "invalid sort direction value")
+		assert.Nil(t, got)
+	})
+
+	t.Run("sort column not allowed for resolvable aliases", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:      ResolvableAliases,
+			AuthTokenId:   at.Id,
+			SortBy:        SortByName,
+			SortDirection: Ascending,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "not allowed for this resource type")
+		assert.Nil(t, got)
+	})
+
+	t.Run("sessions reject name sort", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   at.Id,
+			SortBy:        SortByName,
+			SortDirection: Ascending,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "not allowed for this resource type")
+		assert.Nil(t, got)
+	})
+
+	t.Run("sessions accept created time sort", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   at.Id,
+			SortBy:        SortByCreatedTime,
+			SortDirection: Descending,
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Sessions, 2)
+	})
+}

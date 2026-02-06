@@ -358,6 +358,27 @@ func TestRepository_ListTargets(t *testing.T) {
 		assert.Len(t, l.Targets, len(ts))
 		assert.ElementsMatch(t, l.Targets, ts)
 	})
+
+	t.Run("withSortBy sorts targets", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Descending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[2].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[2].Name)
+	})
+
+	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
+		_, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
+		assert.Error(t, err)
+	})
+
+	t.Run("withSortBy bad SortDirection defaults to Ascending", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, "Something else", []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
+	})
 }
 
 func TestRepository_ListTargetsLimiting(t *testing.T) {
@@ -524,6 +545,25 @@ func TestRepository_QueryTargets(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, l.Targets, 2)
 		assert.ElementsMatch(t, l.Targets, ts[0:2])
+	})
+
+	t.Run("withSortBy sorts targets", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByName, Descending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[1].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[1].Name)
+	})
+
+	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
+		_, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
+		assert.Error(t, err)
+	})
+
+	t.Run("withSortBy bad SortDirection defaults to Ascending", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByName, "Something else", []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
 	})
 }
 
