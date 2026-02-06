@@ -153,11 +153,20 @@ type AppTokenPermission struct {
 	GrantedScopes []string
 	DeletedScopes []DeletedScope
 }
+type AppTokenPermissionResult struct {
+	Label               string
+	GrantThisScope      bool
+	Grants              []string
+	GrantScopes         []string
+	ActiveGrantScopes   []string
+	DeletedGrantScopes  []string
+	DeletedScopeDetails []DeletedScope
+}
 
 // DeletedScope represents a scope which has been deleted from an AppTokenPermission.
 type DeletedScope struct {
-	ScopeId   string
-	TimeStamp *timestamp.Timestamp
+	ScopeId    string
+	DeleteTime *timestamp.Timestamp
 }
 
 // newToken generates a new in-memory token for the app token.
@@ -175,6 +184,7 @@ func newToken(ctx context.Context) (string, error) {
 type appTokenGlobal struct {
 	*store.AppTokenGlobal
 	tableName string
+	// Permissions []AppTokenPermission `gorm:"column:permissions"`
 }
 
 // TableName returns the table name.
@@ -193,7 +203,8 @@ func (atg *appTokenGlobal) SetTableName(n string) {
 // for app_token_org (triggers an insert to app_token)
 type appTokenOrg struct {
 	*store.AppTokenOrg
-	tableName string
+	Permissions []AppTokenPermission `gorm:"column:permissions"`
+	tableName   string               `gorm:"-"`
 }
 
 // TableName returns the table name.
@@ -212,7 +223,8 @@ func (ato *appTokenOrg) SetTableName(n string) {
 // for app_token_project (triggers an insert to app_token)
 type appTokenProject struct {
 	*store.AppTokenProject
-	tableName string
+	Permissions []AppTokenPermission `gorm:"column:permissions"`
+	tableName   string
 }
 
 // TableName returns the table name.

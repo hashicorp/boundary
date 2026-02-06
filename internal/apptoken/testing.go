@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -64,34 +65,48 @@ func testPublicId(t testing.TB, prefix string) string {
 
 // TestAppToken creates an app token for testing with the specified grants.
 // TODO: Implement TestAppToken once AppToken functionality is added
-func TestAppToken(t *testing.T, repo *Repository, scopeId string, user *iam.User, timeToStaleSeconds uint32, expirationTime *timestamp.Timestamp, grants []string, grantThisScope bool, grantScope string) *AppToken {
+func TestAppToken(t *testing.T, repo *Repository, scopeId string, user *iam.User, timeToStaleSeconds uint32, expirationTime *timestamp.Timestamp, grants []string, grantThisScope bool, grantScope string, individualGrantScopes ...string) *AppToken {
 	t.Helper()
 
+	require.NotNil(t, repo)
+
+	appTokenId := testPublicId(t, "apt_")
+
 	testToken := &AppToken{
-		PublicId:           testPublicId(t, "apt_"),
+		PublicId:           appTokenId,
 		ScopeId:            scopeId,
+		Name:               fmt.Sprintf("Test App Token %s", appTokenId),
 		Description:        "test app token",
 		CreatedByUserId:    user.PublicId,
 		TimeToStaleSeconds: timeToStaleSeconds,
 		ExpirationTime:     expirationTime,
 	}
-	tempTestAddGrants(t, repo, testToken, grants, grantThisScope, grantScope)
+	tempTestAddGrants(t, repo, testToken, grants, grantThisScope, grantScope, individualGrantScopes...)
+
+	cipherToken := testAppTokenCipher(t, repo, appTokenId, scopeId)
+	testToken.Token = cipherToken
+
 	return testToken
 }
 
 // tempTestAddGrants is a temporary test function to add grants to the database for testing
 // TODO: Replace with proper AppToken creation function once AppToken functionality is added
-func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants []string, grantThisScope bool, grantScope string) {
+func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants []string, grantThisScope bool, grantScope string, individualGrantScopes ...string) {
 	t.Helper()
 	ctx := t.Context()
 	require := require.New(t)
 
+	var (
+		individualOrgGrantScopes     []string
+		individualProjectGrantScopes []string
+	)
+
 	// Determine which table to insert into based on scope prefix
-	var insertTokenSQL, insertPermissionSQL string
+	var insertTokenSQL, insertPermissionSQL, insertIndividualOrgPermissionSQL, insertIndividualProjectPermissionSQL string
 	insertGrantSQL := `
             insert into app_token_permission_grant (permission_id, raw_grant, canonical_grant)
             values ($1, $2, $3)
-        `
+	`
 
 	switch {
 	case strings.HasPrefix(token.ScopeId, globals.GlobalPrefix):
@@ -103,7 +118,25 @@ func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants [
             insert into app_token_permission_global (private_id, app_token_id, description, grant_this_scope, grant_scope)
             values ($1, $2, $3, $4, $5)
         `
+		insertIndividualOrgPermissionSQL = `
+			insert into app_token_permission_global_individual_org_grant_scope (permission_id, scope_id, grant_scope)
+			values ($1, $2, $3)
+		`
+		insertIndividualProjectPermissionSQL = `
+			insert into app_token_permission_global_individual_project_grant_scope (permission_id, scope_id, grant_scope)
+			values ($1, $2, $3)
+		`
 
+		for _, scopeId := range individualGrantScopes {
+			switch {
+			case strings.HasPrefix(scopeId, globals.OrgPrefix):
+				individualOrgGrantScopes = append(individualOrgGrantScopes, scopeId)
+			case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+				individualProjectGrantScopes = append(individualProjectGrantScopes, scopeId)
+			default:
+				t.Fatalf("global token contains invalid individual grant scope id: %s", scopeId)
+			}
+		}
 	case strings.HasPrefix(token.ScopeId, globals.OrgPrefix):
 		insertTokenSQL = `
 			insert into app_token_org (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
@@ -113,6 +146,19 @@ func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants [
             insert into app_token_permission_org (private_id, app_token_id, description, grant_this_scope, grant_scope)
             values ($1, $2, $3, $4, $5)
         `
+		insertIndividualProjectPermissionSQL = `
+			insert into app_token_permission_org_individual_grant_scope (permission_id, scope_id, grant_scope)
+			values ($1, $2, $3)
+		`
+
+		for _, scopeId := range individualGrantScopes {
+			switch {
+			case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+				individualProjectGrantScopes = append(individualProjectGrantScopes, scopeId)
+			default:
+				t.Fatalf("org token contains invalid individual grant scope id: %s", scopeId)
+			}
+		}
 	case strings.HasPrefix(token.ScopeId, globals.ProjectPrefix):
 		insertTokenSQL = `
 			insert into app_token_project (public_id, scope_id, name, description, created_by_user_id, time_to_stale_seconds, expiration_time)
@@ -127,8 +173,7 @@ func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants [
 	}
 
 	// Insert the app token
-	name := fmt.Sprintf("Test App Token %s", token.PublicId)
-	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{token.PublicId, token.ScopeId, name, "test app token", token.CreatedByUserId, token.TimeToStaleSeconds, token.ExpirationTime})
+	_, err := repo.writer.Exec(ctx, insertTokenSQL, []any{token.PublicId, token.ScopeId, token.Name, "test app token", token.CreatedByUserId, token.TimeToStaleSeconds, token.ExpirationTime})
 	require.NoError(err)
 
 	// Create a permission for this token
@@ -174,6 +219,24 @@ func tempTestAddGrants(t *testing.T, repo *Repository, token *AppToken, grants [
 		// Insert the grant with both raw_grant and canonical_grant
 		_, err = repo.writer.Exec(ctx, insertGrantSQL, []any{permissionId, grant, canonicalGrant})
 		require.NoError(err)
+	}
+
+	// Insert any individual grant scopes for global/org tokens
+	switch {
+	case strings.HasPrefix(token.ScopeId, globals.GlobalPrefix):
+		for _, scopeId := range individualOrgGrantScopes {
+			_, err = repo.writer.Exec(ctx, insertIndividualOrgPermissionSQL, []any{permissionId, scopeId, grantScope})
+			require.NoError(err)
+		}
+		for _, scopeId := range individualProjectGrantScopes {
+			_, err = repo.writer.Exec(ctx, insertIndividualProjectPermissionSQL, []any{permissionId, scopeId, grantScope})
+			require.NoError(err)
+		}
+	case strings.HasPrefix(token.ScopeId, globals.OrgPrefix):
+		for _, scopeId := range individualProjectGrantScopes {
+			_, err = repo.writer.Exec(ctx, insertIndividualProjectPermissionSQL, []any{permissionId, scopeId, grantScope})
+			require.NoError(err)
+		}
 	}
 }
 
@@ -491,4 +554,35 @@ func testUpdateAppToken(t *testing.T, repo *Repository, tokenId string, scopeId 
 
 	_, err := repo.writer.Exec(ctx, updateSQL.String(), args)
 	require.NoError(err)
+}
+
+func testAppTokenCipher(t *testing.T, repo *Repository, appTokenId, scopeId string) string {
+	ctx := t.Context()
+
+	// get the rootkey for this scope to encrypt the app token
+	keys, err := repo.kms.ListKeys(ctx, scopeId)
+	require.NoError(t, err)
+	require.NotEmpty(t, keys)
+	rootKeyId := keys[0].Id
+
+	cipherToken, err := newToken(ctx)
+	require.NoError(t, err)
+
+	atc := &appTokenCipher{
+		AppTokenCipher: &store.AppTokenCipher{
+			AppTokenId: appTokenId,
+			Token:      cipherToken,
+			KeyId:      rootKeyId,
+		},
+	}
+	databaseWrapper, err := repo.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	err = atc.encrypt(ctx, databaseWrapper)
+	require.NoError(t, err)
+
+	err = repo.writer.Create(ctx, atc)
+	require.NoError(t, err)
+
+	return atc.Token
 }

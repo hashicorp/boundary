@@ -106,8 +106,8 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 		var g grantsForTokenResult
 		if err := rows.Scan(
 			&g.PermissionId,
-			&g.Description,
-			&g.GrantThisScope,
+			&g.Description,    // TODO: aren't using this (and some other fields), should we remove it from the Scan()?
+			&g.GrantThisScope, // TODO: not in use, but should be. grant_this should spawn an additional GrantTuple with the current scope as the GrantScopeId
 			&g.GrantScope,
 			&g.AppTokenId,
 			&g.AppTokenParentScopeId,
@@ -133,6 +133,8 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 
 	resp := make(tempGrantTuples, 0, len(grants))
 	for _, grant := range grants {
+		// TODO: If grant_this_scope is true, we need to add an additional
+		// grant tuple with the current request scope as the GrantScopeId
 		resp = append(resp, tempGrantTuple{
 			AppTokenId:            grant.AppTokenId,
 			AppTokenScopeId:       scopeId,

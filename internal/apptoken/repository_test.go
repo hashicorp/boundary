@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -873,6 +874,74 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			// validate app token cipher using db queries
 			err = testCheckAppTokenCipher(t, repo, at.PublicId)
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_LookupAppToken(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+
+	// Create some scopes! :O
+	org1, proj1 := iam.TestScopes(t, iamRepo)
+	org2, _ := iam.TestScopes(t, iamRepo)
+
+	tests := []struct {
+		appTokens  []*AppToken
+		name       string
+		wantErrMsg string
+	}{
+		{
+			name: "global token: multiple grants, an individual org & project grant scope",
+			appTokens: []*AppToken{
+				TestAppToken(t, repo, globals.GlobalPrefix, u, 100, timestamp.New(time.Now().Add(time.Hour)), []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"}, true, globals.GrantScopeIndividual, org1.PublicId, org2.PublicId, proj1.PublicId),
+			},
+		},
+		// {
+		// 	name: "global token: multiple grants, children grant scope with individual project grant scopes",
+		// 	appTokens: []*AppToken{
+		// 		TestAppToken(t, repo, globals.GlobalPrefix, u, 0, timestamp.New(time.Now().Add(time.Hour)), []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"}, true, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId),
+		// 	},
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			for _, want := range tt.appTokens {
+				got, err := repo.LookupAppToken(ctx, want.PublicId)
+				assert.NoError(err)
+				assert.NotNil(got)
+				assert.Equal(want.PublicId, got.PublicId)
+				assert.Equal(want.ScopeId, got.ScopeId)
+				assert.Equal(want.Name, got.Name)
+				assert.Equal(want.Description, got.Description)
+				assert.Equal(want.TimeToStaleSeconds, got.TimeToStaleSeconds)
+				assert.Equal(want.Token, got.Token)
+				assert.Equal(want.CreatedByUserId, got.CreatedByUserId)
+				assert.Equal(want.KeyId, got.KeyId)
+				assert.Equal(want.Revoked, got.Revoked)
+				assert.Equal(want.Token, got.Token)
+
+				// Round to time.Minute to account for lost time between creating tokens and the next run
+				now := time.Now().UTC()
+				assert.Equal(now.Round(time.Minute), got.CreateTime.AsTime().Round(time.Minute)) // would time.Hour be more sensible? This'll fail if the test takes > 1 min
+				assert.Equal(now.Round(time.Minute), got.UpdateTime.AsTime().Round(time.Minute))
+				assert.Equal(want.ExpirationTime.AsTime().Round(time.Minute), got.ExpirationTime.AsTime().Round(time.Minute))
+				// assert.Equal(want.ApproximateLastAccessTime, got.ApproximateLastAccessTime.AsTime()) <-- TODO: DB trigger is making this non-null when it should be null
+
+				for i := range want.Permissions {
+					assert.Equal(want.Permissions[i].Label, got.Permissions[i].Label)
+					assert.True(slices.Equal(want.Permissions[i].Grants, got.Permissions[i].Grants))
+					assert.True(slices.Equal(want.Permissions[i].GrantedScopes, got.Permissions[i].GrantedScopes))
+					assert.True(slices.Equal(want.Permissions[i].DeletedScopes, got.Permissions[i].DeletedScopes))
+				}
+			}
 		})
 	}
 }

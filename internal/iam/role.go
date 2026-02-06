@@ -212,7 +212,7 @@ func (s *deletedRole) TableName() string {
 // all iam_role entries that are created in global-level scopes through gorm.
 type globalRole struct {
 	*store.GlobalRole
-	GrantScopes []*RoleGrantScope `gorm:"-"`
+	GrantScopes []*RoleGrantScope `gorm:"-"` // TODO: Unused: this field is never assigned to, and is ignored during DB operations. Remove?
 	tableName   string            `gorm:"-"`
 }
 
@@ -349,7 +349,7 @@ func (g *globalRole) toRole() *Role {
 // all iam_role entries that are created in org-level scopes through gorm.
 type orgRole struct {
 	*store.OrgRole
-	GrantScopes []*RoleGrantScope `gorm:"-"`
+	GrantScopes []*RoleGrantScope `gorm:"-"` // TODO: Unused: this field is never assigned to, and is ignored during DB operations. Remove?
 	tableName   string            `gorm:"-"`
 }
 
@@ -486,13 +486,12 @@ func (o *orgRole) toRole() *Role {
 // all iam_role entries that are created in project-level scopes through gorm.
 type projectRole struct {
 	*store.ProjectRole
-	GrantScopes []*RoleGrantScope `gorm:"-"`
+	GrantScopes []*RoleGrantScope `gorm:"-"` // TODO: Unused: this field is never assigned to, and is ignored during DB operations. Remove?
 	tableName   string            `gorm:"-"`
 }
 
 func (p *projectRole) removeGrantScope() {
 	// no-op since hierarchical isn't supported by project roles
-	return
 }
 
 func (p *projectRole) setGrantScope(ctx context.Context, specialGrant string) error {

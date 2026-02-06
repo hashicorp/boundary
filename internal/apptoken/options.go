@@ -15,6 +15,8 @@ type Option func(*options)
 type options struct {
 	withRecursive          bool
 	withLimit              int
+	withReader             db.Reader
+	withWriter             db.Writer
 	withStartPageAfterItem pagination.Item
 }
 
@@ -51,6 +53,18 @@ func WithLimit(limit int) Option {
 		} else {
 			o.withLimit = db.DefaultLimit
 		}
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }
 

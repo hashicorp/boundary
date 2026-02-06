@@ -304,6 +304,12 @@ func TestGrantsForToken(t *testing.T) {
 				{
 					AppTokenScopeId:       org1.PublicId,
 					AppTokenParentScopeId: "global",
+					GrantScopeId:          org1.PublicId, // because grantThisScope = true
+					Grant:                 "ids=*;type=account;actions=list,read,ids=*;type=auth-method;actions=list",
+				},
+				{
+					AppTokenScopeId:       org1.PublicId,
+					AppTokenParentScopeId: "global",
 					GrantScopeId:          "children",
 					Grant:                 "ids=*;type=account;actions=list,read,ids=*;type=auth-method;actions=list",
 				},
