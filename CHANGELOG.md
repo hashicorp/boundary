@@ -26,6 +26,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Removed the error log during RDP basic settings exchange: When you connect to
   an RDP target using the built-in Windows Remote Desktop Connection app. ([PR](https://github.com/hashicorp/boundary/pull/6136))
 
+## 0.20.1 (2025/11/03)
+
+### New and Improved
+
+* Added a complete IBM Key Protect wrapper implementation with configuration options and KMS client integration ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/292))
+
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
