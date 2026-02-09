@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.21.1 (2026/02/10)
+
+### Security
+
+* Go version bumped to 1.25.7 to address CVE-2025-61730 ([PR](https://github.com/hashicorp/boundary/pull/6409))
+* Go Cryptography dependency update to address CVE-2025-58181 and CVE-2025-47914
+  ([PR](https://github.com/hashicorp/boundary/pull/6272))
+
 ## 0.21.0 (2025/12/11)
 
 ### New and Improved
