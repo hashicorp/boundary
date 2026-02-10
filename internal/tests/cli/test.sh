@@ -43,5 +43,22 @@ until boundary scopes list; do
     sleep 1
 done
 
+c=0
+until curl -s http://localhost:9203/health\?worker_info\=1 | jq -e '.worker_process_info.upstream_connection_state == "READY"' > /dev/null; do
+    echo 'waiting for boundary worker to be up'
+    ((c+=1))
+    if [[ $c -ge $max ]]; then
+        die "timeout waiting for boundary worker to get healthy"
+    fi
+    sleep 1
+done
+
+# Wait a little longer to ensure the worker is fully ready before we start
+# running tests. Without this, there were some flaky tests, specifically when
+# trying to connect to a target in the alias tests (those are the first to run).
+# The worker health check alone was not sufficient during testing, and it was
+# not clear what else could be checked to ensure the worker was fully ready.
+sleep 10
+
 echo "running bats tests"
 bats -p ./boundary
