@@ -67,6 +67,7 @@ install-no-plugins: install
 
 .PHONY: build-pprof
 build-pprof: BUILD_TAGS+=pprof
+build-pprof: BUILD_TAGS+=ui
 build-pprof:
 	@echo "==> Building Boundary with memory pprof enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
