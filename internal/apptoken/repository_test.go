@@ -168,14 +168,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   true,
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
@@ -192,26 +192,26 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 					{
 						Label:         "test-2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantErr: false,
 			wantPerms: []testPermission{
 				{
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					GrantThis:   true,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
 				},
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   false,
 					Description: "test-2",
 					Grants:      []string{"type=target;actions=list"},
@@ -252,7 +252,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -281,22 +281,22 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId(), proj2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId(), proj2.GetPublicId()},
 					},
 					{
 						Label:         "test3",
 						Grants:        []string{"type=session;actions=list"},
-						GrantedScopes: []string{"this", proj2.GetPublicId(), "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, proj2.GetPublicId(), globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test4",
 						Grants:        []string{"type=role;actions=list", "type=user;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 					{
 						Label:         "test5",
 						Grants:        []string{"type=group;actions=list", "type=scope;actions=list"},
-						GrantedScopes: []string{"this", org2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, org2.GetPublicId()},
 					},
 				},
 			},
@@ -317,14 +317,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				},
 				{
 					Description: "test3",
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   true,
 					Grants:      []string{"type=session;actions=list"},
 					Scopes:      []string{proj2.GetPublicId()},
 				},
 				{
 					Description: "test4",
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					GrantThis:   false,
 					Grants:      []string{"type=role;actions=list", "type=user;actions=list"},
 					Scopes:      []string{},
@@ -348,7 +348,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", org.GetPublicId(), proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, org.GetPublicId(), proj.GetPublicId()},
 					},
 				},
 			},
@@ -381,14 +381,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   true,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
@@ -405,26 +405,26 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test-2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantErr: false,
 			wantPerms: []testPermission{
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   true,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
 				},
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   false,
 					Description: "test-2",
 					Grants:      []string{"type=target;actions=list"},
@@ -465,7 +465,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -489,24 +489,24 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 					{
 						Label:         "test3",
 						Grants:        []string{"type=session;actions=list", "type=role;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   false,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list"},
 					Scopes:      []string{},
@@ -520,7 +520,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				},
 				{
 					GrantThis:   true,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test3",
 					Grants:      []string{"type=session;actions=list", "type=role;actions=list"},
 					Scopes:      []string{},
@@ -546,7 +546,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -568,7 +568,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 					{
 						Label:         "test-2",
@@ -601,7 +601,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"oops_broken", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -633,7 +633,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=session;actions=list"},
-						GrantedScopes: []string{"children", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeChildren, globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -655,7 +655,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj2.GetPublicId()},
 					},
 				},
 			},
@@ -689,7 +689,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{proj.GetPublicId(), "children"},
+						GrantedScopes: []string{proj.GetPublicId(), globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -706,7 +706,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -723,7 +723,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{proj.GetPublicId(), "children"},
+						GrantedScopes: []string{proj.GetPublicId(), globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -740,7 +740,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -757,7 +757,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -808,7 +808,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
