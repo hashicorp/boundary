@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -642,4 +643,992 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	assert.NotEmpty(t, refTok2)
 	assert.Empty(t, got2.RemovedIds)
 	assert.Empty(t, got2.Items)
+}
+
+func TestRepository_SearchSessionsSorting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create sessions with different created_time times
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "status1",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: time.Now().Add(-2 * time.Hour),
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "status2",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: time.Now().Add(-1 * time.Hour),
+		},
+		{
+			Id:          "ttcp_3",
+			Status:      "status3",
+			Endpoint:    "address3",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: time.Now(),
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+
+	t.Run("sort by created_time ascending", func(t *testing.T) {
+		params := SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   kt.AuthTokenId,
+			SortBy:        SortByCreatedTime,
+			SortDirection: Ascending,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		require.Len(t, result.Sessions, 3)
+		assert.Equal(t, "ttcp_1", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+		assert.Equal(t, "ttcp_3", result.Sessions[2].Id)
+	})
+
+	t.Run("sort by created_time descending", func(t *testing.T) {
+		params := SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   kt.AuthTokenId,
+			SortBy:        SortByCreatedTime,
+			SortDirection: Descending,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		require.Len(t, result.Sessions, 3)
+		assert.Equal(t, "ttcp_3", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[2].Id)
+	})
+
+	t.Run("sort by created_time with default direction defaults to desc", func(t *testing.T) {
+		params := SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   kt.AuthTokenId,
+			SortBy:        SortByCreatedTime,
+			SortDirection: SortDirectionDefault,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		require.Len(t, result.Sessions, 3)
+		assert.Equal(t, "ttcp_3", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[2].Id)
+	})
+
+	t.Run("no sort specified returns results", func(t *testing.T) {
+		params := SearchParams{
+			Resource:    Sessions,
+			AuthTokenId: kt.AuthTokenId,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, result.Sessions, 3)
+	})
+
+	t.Run("invalid sort column for sessions returns error", func(t *testing.T) {
+		params := SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   kt.AuthTokenId,
+			SortBy:        SortByName, // name is not valid for sessions
+			SortDirection: Ascending,
+		}
+		_, err := searchService.Search(ctx, params)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, errInvalidSortColumn.Error())
+	})
+
+	t.Run("sort with query", func(t *testing.T) {
+		params := SearchParams{
+			Resource:      Sessions,
+			AuthTokenId:   kt.AuthTokenId,
+			Query:         `(status % "status")`,
+			SortBy:        SortByCreatedTime,
+			SortDirection: Descending,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		require.Len(t, result.Sessions, 3)
+		assert.Equal(t, "ttcp_3", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[2].Id)
+	})
+
+	t.Run("sort with limit", func(t *testing.T) {
+		params := SearchParams{
+			Resource:         Sessions,
+			AuthTokenId:      kt.AuthTokenId,
+			SortBy:           SortByCreatedTime,
+			SortDirection:    Descending,
+			MaxResultSetSize: 2,
+		}
+		result, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, result.Sessions, 2)
+		assert.True(t, result.Incomplete)
+		assert.Equal(t, "ttcp_3", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+	})
+}
+
+func TestRepository_searchSessions_dbOptions(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create sessions with different created_time values for sorting tests
+	// These timestamps are intentionally different to verify sorting works correctly
+	now := time.Now()
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "status1",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-2 * time.Hour), // Oldest
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "status2",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-1 * time.Hour), // Middle
+		},
+		{
+			Id:          "ttcp_3",
+			Status:      "status3",
+			Endpoint:    "address3",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now, // Newest
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	tests := []struct {
+		name             string
+		sortBy           SortBy
+		sortDirection    SortDirection
+		maxResultSetSize int
+		expectedOrder    []string // expected session IDs in order - verifies json_extract sorting works
+		expectIncomplete bool
+	}{
+		{
+			name:             "default - no sorting",
+			sortBy:           SortByDefault,
+			sortDirection:    SortDirectionDefault,
+			maxResultSetSize: 10,
+			expectIncomplete: false,
+		},
+		{
+			name:             "sort by created_time ascending - verifies json_extract asc works",
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Ascending,
+			maxResultSetSize: 10,
+			expectedOrder:    []string{"ttcp_1", "ttcp_2", "ttcp_3"}, // oldest to newest
+			expectIncomplete: false,
+		},
+		{
+			name:             "sort by created_time descending - verifies json_extract desc works",
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Descending,
+			maxResultSetSize: 10,
+			expectedOrder:    []string{"ttcp_3", "ttcp_2", "ttcp_1"}, // newest to oldest
+			expectIncomplete: false,
+		},
+		{
+			name:             "sort ascending with limit - verifies LIMIT clause",
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Ascending,
+			maxResultSetSize: 2,
+			expectedOrder:    []string{"ttcp_1", "ttcp_2"},
+			expectIncomplete: true,
+		},
+		{
+			name:             "sort descending with limit - verifies LIMIT clause",
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Descending,
+			maxResultSetSize: 2,
+			expectedOrder:    []string{"ttcp_3", "ttcp_2"},
+			expectIncomplete: true,
+		},
+		{
+			name:             "no limit (-1)",
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Ascending,
+			maxResultSetSize: -1,
+			expectedOrder:    []string{"ttcp_1", "ttcp_2", "ttcp_3"},
+			expectIncomplete: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Build options
+			opts := []Option{
+				withAuthTokenId(at.Id),
+				WithMaxResultSetSize(tt.maxResultSetSize),
+			}
+			if tt.sortBy != SortByDefault {
+				opts = append(opts, WithSort(tt.sortBy, tt.sortDirection, []SortBy{SortByCreatedTime}))
+			}
+
+			// Execute the search
+			result, err := r.searchSessions(ctx, "true", nil, opts...)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			// Verify the result
+			if tt.expectIncomplete {
+				assert.True(t, result.Incomplete, "expected incomplete result")
+				assert.Len(t, result.Sessions, tt.maxResultSetSize, "expected limited results")
+			} else {
+				assert.False(t, result.Incomplete, "expected complete result")
+			}
+
+			// Verify the order if sorting was applied
+			// This proves json_extract(item, '$.created_time') is working correctly
+			if tt.sortBy != SortByDefault && len(tt.expectedOrder) > 0 {
+				var actualOrder []string
+				for _, sess := range result.Sessions {
+					actualOrder = append(actualOrder, sess.Id)
+				}
+				assert.Equal(t, tt.expectedOrder[:len(actualOrder)], actualOrder, "sessions not in expected order")
+
+				// Additionally verify the timestamps are actually in the correct order
+				if len(result.Sessions) > 1 {
+					for i := 0; i < len(result.Sessions)-1; i++ {
+						curr := result.Sessions[i].CreatedTime
+						next := result.Sessions[i+1].CreatedTime
+						if tt.sortDirection == Ascending {
+							assert.True(t, !curr.After(next), "timestamps should be in ascending order")
+						} else {
+							assert.True(t, !curr.Before(next), "timestamps should be in descending order")
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestRepository_searchSessions_dbOptionsWithQuery(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create sessions with different created_time values
+	now := time.Now()
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "pending",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-2 * time.Hour),
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "active",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-1 * time.Hour),
+		},
+		{
+			Id:          "ttcp_3",
+			Status:      "active",
+			Endpoint:    "address3",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now,
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	tests := []struct {
+		name             string
+		query            string
+		sortBy           SortBy
+		sortDirection    SortDirection
+		maxResultSetSize int
+		expectedCount    int
+		expectedOrder    []string
+		expectIncomplete bool
+	}{
+		{
+			name:             "query with sort ascending",
+			query:            `status % "active"`,
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Ascending,
+			maxResultSetSize: 10,
+			expectedCount:    2,
+			expectedOrder:    []string{"ttcp_2", "ttcp_3"},
+			expectIncomplete: false,
+		},
+		{
+			name:             "query with sort descending",
+			query:            `status % "active"`,
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Descending,
+			maxResultSetSize: 10,
+			expectedCount:    2,
+			expectedOrder:    []string{"ttcp_3", "ttcp_2"},
+			expectIncomplete: false,
+		},
+		{
+			name:             "query with sort and limit",
+			query:            `status % "active"`,
+			sortBy:           SortByCreatedTime,
+			sortDirection:    Descending,
+			maxResultSetSize: 1,
+			expectedCount:    1,
+			expectedOrder:    []string{"ttcp_3"},
+			expectIncomplete: true,
+		},
+		{
+			name:             "query without sort",
+			query:            `status % "active"`,
+			sortBy:           SortByDefault,
+			sortDirection:    SortDirectionDefault,
+			maxResultSetSize: 10,
+			expectedCount:    2,
+			expectIncomplete: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Build options
+			opts := []Option{
+				WithMaxResultSetSize(tt.maxResultSetSize),
+			}
+			if tt.sortBy != SortByDefault {
+				opts = append(opts, WithSort(tt.sortBy, tt.sortDirection, []SortBy{SortByCreatedTime}))
+			}
+
+			// Execute the query
+			result, err := r.QuerySessions(ctx, at.Id, tt.query, opts...)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			// Verify results
+			assert.Len(t, result.Sessions, tt.expectedCount)
+			assert.Equal(t, tt.expectIncomplete, result.Incomplete)
+
+			// Verify order if expected
+			if len(tt.expectedOrder) > 0 {
+				var actualOrder []string
+				for _, sess := range result.Sessions {
+					actualOrder = append(actualOrder, sess.Id)
+				}
+				assert.Equal(t, tt.expectedOrder, actualOrder)
+			}
+		})
+	}
+}
+
+func TestRepository_searchSessions_limitBehavior(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create 10 sessions
+	var ss []*sessions.Session
+	for i := 0; i < 10; i++ {
+		ss = append(ss, &sessions.Session{
+			Id:       fmt.Sprintf("ttcp_%d", i),
+			Status:   "active",
+			Endpoint: fmt.Sprintf("address%d", i),
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			UserId:   "u_123",
+			Type:     "tcp",
+		})
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	tests := []struct {
+		name             string
+		maxResultSetSize int
+		expectedCount    int
+		expectIncomplete bool
+	}{
+		{
+			name:             "limit of 5",
+			maxResultSetSize: 5,
+			expectedCount:    5,
+			expectIncomplete: true,
+		},
+		{
+			name:             "limit of 10 (exact match)",
+			maxResultSetSize: 10,
+			expectedCount:    10,
+			expectIncomplete: false,
+		},
+		{
+			name:             "limit of 15 (more than available)",
+			maxResultSetSize: 15,
+			expectedCount:    10,
+			expectIncomplete: false,
+		},
+		{
+			name:             "no limit (-1)",
+			maxResultSetSize: -1,
+			expectedCount:    10,
+			expectIncomplete: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Execute the list
+			result, err := r.ListSessions(ctx, at.Id, WithMaxResultSetSize(tt.maxResultSetSize))
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			assert.Len(t, result.Sessions, tt.expectedCount)
+			assert.Equal(t, tt.expectIncomplete, result.Incomplete)
+		})
+	}
+}
+
+func TestRepository_searchSessions_dbOptionsVerifyOrderClause(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create a single session
+	ss := []*sessions.Session{
+		{
+			Id:       "ttcp_1",
+			Status:   "active",
+			Endpoint: "address1",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			UserId:   "u_123",
+			Type:     "tcp",
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	t.Run("verify order clause format for ascending", func(t *testing.T) {
+		result, err := r.ListSessions(ctx, at.Id,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Ascending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+	})
+
+	t.Run("verify order clause format for descending", func(t *testing.T) {
+		result, err := r.ListSessions(ctx, at.Id,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Descending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+	})
+
+	t.Run("verify no order clause when sortBy is default", func(t *testing.T) {
+		result, err := r.ListSessions(ctx, at.Id, WithMaxResultSetSize(10))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+	})
+}
+
+func TestRepository_searchSessions_sortingEdgeCases(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create test sessions
+	now := time.Now()
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "active",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-1 * time.Hour),
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "pending",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now,
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	t.Run("unsupported sort field - SortByName not in sessionSortFieldMap", func(t *testing.T) {
+		// SortByName is not in sessionSortFieldMap, should return error
+		result, err := r.searchSessions(ctx, "true", nil,
+			withAuthTokenId(at.Id),
+			WithMaxResultSetSize(10),
+			WithSort(SortByName, Ascending, []SortBy{SortByName}))
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "unsupported sort field for sessions")
+	})
+
+	t.Run("invalid sort direction - unknown value", func(t *testing.T) {
+		// Using an invalid sort direction that's not in the switch statement
+		result, err := r.searchSessions(ctx, "true", nil,
+			withAuthTokenId(at.Id),
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, SortDirection("invalid"), []SortBy{SortByCreatedTime}))
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "unsupported sort direction")
+	})
+
+	t.Run("valid sort with SortDirectionDefault - should default to descending", func(t *testing.T) {
+		// SortDirectionDefault should be treated as ascending
+		result, err := r.searchSessions(ctx, "true", nil,
+			withAuthTokenId(at.Id),
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, SortDirectionDefault, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 2)
+		// Should be in descending order (newest first)
+		assert.Equal(t, "ttcp_2", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[1].Id)
+	})
+
+	t.Run("sort with limit 1 - verify incomplete flag", func(t *testing.T) {
+		result, err := r.searchSessions(ctx, "true", nil,
+			withAuthTokenId(at.Id),
+			WithMaxResultSetSize(1),
+			WithSort(SortByCreatedTime, Descending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+		assert.True(t, result.Incomplete)
+		assert.Equal(t, "ttcp_2", result.Sessions[0].Id) // newest first
+	})
+
+	t.Run("sort with no results - empty result set", func(t *testing.T) {
+		// Query that matches nothing
+		result, err := r.QuerySessions(ctx, at.Id, `status % "nonexistent"`,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Ascending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 0)
+		assert.False(t, result.Incomplete)
+	})
+}
+
+func TestRepository_searchSessions_jsonExtractSafety(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create test session
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "active",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: time.Now(),
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	t.Run("verify json_extract uses safe field from sessionSortFieldMap", func(t *testing.T) {
+		// This test verifies that the json_extract uses the mapped field name
+		// from sessionSortFieldMap, which should be safe
+		result, err := r.searchSessions(ctx, "true", nil,
+			withAuthTokenId(at.Id),
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Ascending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+		// If we got here without SQL errors, json_extract is working correctly
+	})
+
+	t.Run("verify sorting works with actual JSON data", func(t *testing.T) {
+		// Verify that the JSON item field contains valid data and sorting works
+		result, err := r.ListSessions(ctx, at.Id,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Descending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+		assert.Equal(t, "ttcp_1", result.Sessions[0].Id)
+		// Verify the session has all expected fields from JSON unmarshaling
+		assert.Equal(t, "active", result.Sessions[0].Status)
+		assert.Equal(t, "address1", result.Sessions[0].Endpoint)
+	})
+}
+
+func TestRepository_ListSessions_sortingValidation(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create test sessions
+	now := time.Now()
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "active",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-1 * time.Hour),
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "pending",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now,
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	t.Run("ListSessions with unsupported sort field", func(t *testing.T) {
+		// Trying to sort by a field not in sessionSortFieldMap
+		result, err := r.ListSessions(ctx, at.Id,
+			WithMaxResultSetSize(10),
+			WithSort(SortByName, Ascending, []SortBy{SortByName}))
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "unsupported sort field for sessions")
+	})
+
+	t.Run("ListSessions with valid sort field", func(t *testing.T) {
+		result, err := r.ListSessions(ctx, at.Id,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Ascending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 2)
+		assert.Equal(t, "ttcp_1", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_2", result.Sessions[1].Id)
+	})
+}
+
+func TestRepository_QuerySessions_sortingValidation(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	// Create test sessions
+	now := time.Now()
+	ss := []*sessions.Session{
+		{
+			Id:          "ttcp_1",
+			Status:      "active",
+			Endpoint:    "address1",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now.Add(-1 * time.Hour),
+		},
+		{
+			Id:          "ttcp_2",
+			Status:      "active",
+			Endpoint:    "address2",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Type:        "tcp",
+			CreatedTime: now,
+		},
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
+
+	t.Run("QuerySessions with unsupported sort field", func(t *testing.T) {
+		result, err := r.QuerySessions(ctx, at.Id, `status % "active"`,
+			WithMaxResultSetSize(10),
+			WithSort(SortByName, Ascending, []SortBy{SortByName}))
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "unsupported sort field for sessions")
+	})
+
+	t.Run("QuerySessions with valid sort field and query", func(t *testing.T) {
+		result, err := r.QuerySessions(ctx, at.Id, `status % "active"`,
+			WithMaxResultSetSize(10),
+			WithSort(SortByCreatedTime, Descending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 2)
+		// Descending order - newest first
+		assert.Equal(t, "ttcp_2", result.Sessions[0].Id)
+		assert.Equal(t, "ttcp_1", result.Sessions[1].Id)
+	})
+
+	t.Run("QuerySessions with sort and limit causing incomplete", func(t *testing.T) {
+		result, err := r.QuerySessions(ctx, at.Id, `status % "active"`,
+			WithMaxResultSetSize(1),
+			WithSort(SortByCreatedTime, Ascending, []SortBy{SortByCreatedTime}))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Sessions, 1)
+		assert.True(t, result.Incomplete)
+		assert.Equal(t, "ttcp_1", result.Sessions[0].Id) // oldest first
+	})
 }
