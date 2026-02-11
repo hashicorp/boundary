@@ -878,6 +878,184 @@ func TestRepository_CreateAppToken(t *testing.T) {
 	}
 }
 
+func TestRepository_LookupAppToken(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+
+	org1, proj1a := iam.TestScopes(t, iamRepo)
+	proj1b := iam.TestProject(t, iamRepo, org1.PublicId)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+
+	tests := []struct {
+		name       string
+		wantToken  *AppToken
+		wantErrMsg string
+	}{
+		{
+			name: "global token: multiple grants, grant this with individual org and project grant scopes",
+			wantToken: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
+						GrantedScopes: []string{globals.GrantScopeThis, org1.PublicId, org2.PublicId, proj2.PublicId},
+					},
+				},
+			},
+		},
+		{
+			name: "global token: multiple grants, children grant scope with individual project grant scopes",
+			wantToken: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 10,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1a.PublicId, proj2.PublicId},
+					},
+				},
+			},
+		},
+		{
+			name: "org token: multiple grants, individual project grant scopes",
+			wantToken: &AppToken{
+				ScopeId:            org1.PublicId,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=group;actions=read", "ids=*;type=user;actions=create"},
+						GrantedScopes: []string{globals.GrantScopeThis, proj1a.PublicId, proj1b.PublicId},
+					},
+				},
+			},
+		},
+		{
+			name: "org token: multiple grants, children grant scope",
+			wantToken: &AppToken{
+				ScopeId:            org1.PublicId,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=group;actions=read", "ids=*;type=user;actions=create"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
+					},
+				},
+			},
+		},
+		{
+			name: "org token: multiple permissions",
+			wantToken: &AppToken{
+				ScopeId:            org1.PublicId,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test perm 1",
+						Grants:        []string{"ids=*;type=user;actions=create"},
+						GrantedScopes: []string{globals.GrantScopeThis, proj1a.PublicId},
+					},
+					{
+						Label:         "test perm 2",
+						Grants:        []string{"ids=*;type=group;actions=read"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
+					},
+				},
+			},
+		},
+		{
+			name: "project token: multiple grants, this grant scope",
+			wantToken: &AppToken{
+				ScopeId:            proj2.PublicId,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=target;actions=create,update", "ids=*;type=alias;actions=read,delete"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			},
+		},
+		{
+			name: "project token: multiple permissions",
+			wantToken: &AppToken{
+				ScopeId:            proj2.PublicId,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test perm 1",
+						Grants:        []string{"ids=*;type=target;actions=create,update"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						Label:         "test perm 2",
+						Grants:        []string{"ids=*;type=alias;actions=read,delete"},
+						GrantedScopes: []string{globals.GrantScopeThis},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			// Create the token
+			want := TestCreateAppToken(t, repo, tt.wantToken)
+
+			// Lookup the token
+			got, err := repo.LookupAppToken(ctx, want.PublicId)
+			assert.NoError(err)
+			assert.NotNil(got)
+			assert.Equal(want.PublicId, got.PublicId)
+			assert.Equal(want.ScopeId, got.ScopeId)
+			assert.Equal(want.Name, got.Name)
+			assert.Equal(want.Description, got.Description)
+			assert.Equal(want.TimeToStaleSeconds, got.TimeToStaleSeconds)
+			assert.Equal(want.Token, got.Token)
+			assert.Equal(want.CreatedByUserId, got.CreatedByUserId)
+			assert.Equal(want.KeyId, got.KeyId)
+			assert.Equal(want.Revoked, got.Revoked)
+			assert.ElementsMatch(want.Permissions, got.Permissions)
+
+			// Assert that times are not zero
+			assert.False(want.CreateTime.AsTime().IsZero())
+			assert.False(want.UpdateTime.AsTime().IsZero())
+			assert.False(want.ApproximateLastAccessTime.AsTime().IsZero())
+			assert.False(want.ExpirationTime.AsTime().IsZero())
+
+			// Assert that times are within one second of the values captured at creation time
+			assert.WithinDuration(want.CreateTime.AsTime(), got.CreateTime.AsTime(), time.Second)
+			assert.WithinDuration(want.UpdateTime.AsTime(), got.UpdateTime.AsTime(), time.Second)
+			assert.WithinDuration(want.ApproximateLastAccessTime.AsTime(), got.ApproximateLastAccessTime.AsTime(), time.Second)
+			assert.WithinDuration(want.ExpirationTime.AsTime(), got.ExpirationTime.AsTime(), time.Second)
+		})
+	}
+}
+
 func TestRepository_queryAppTokens(t *testing.T) {
 	ctx := t.Context()
 	conn, _ := db.TestSetup(t, "postgres")

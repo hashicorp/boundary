@@ -6,6 +6,7 @@ package apptoken
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // Repository is the apptoken database repository
@@ -48,6 +50,191 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		writer: w,
 		kms:    kms,
 	}, nil
+}
+
+// lookupAppTokenResults represents the raw result of the app token lookup queries: [getAppTokenGlobalQuery], [getAppTokenOrgQuery], and [getAppTokenProjectQuery]
+type lookupAppTokenResult struct {
+	publicId                  string
+	scopeId                   string
+	name                      *string
+	description               *string
+	createTime                *timestamp.Timestamp
+	updateTime                *timestamp.Timestamp
+	approximateLastAccessTime *timestamp.Timestamp
+	expirationTime            *timestamp.Timestamp
+	timeToStaleSeconds        uint32
+	createdByUserId           string
+	revoked                   bool
+	tokenBytes                []byte
+	permissionsJSON           []byte
+}
+
+// appTokenPermissionResult represents the unpacked results of the [lookupAppTokenResult]'s permissionsJSON field
+type appTokenPermissionResult struct {
+	Label               string         `json:"label"`
+	GrantThisScope      bool           `json:"grant_this_scope"`
+	Grants              []string       `json:"grants"`
+	GrantScope          string         `json:"grant_scope"`
+	ActiveGrantScopes   []string       `json:"active_grant_scopes"`
+	DeletedGrantScopes  []string       `json:"deleted_grant_scopes"`
+	DeletedScopeDetails []DeletedScope `json:"deleted_scope_details"`
+}
+
+// LookupAppToken returns an AppToken for the id. Returns nil if no AppToken is found for id.
+func (r *Repository) LookupAppToken(ctx context.Context, id string, opt ...Option) (*AppToken, error) {
+	const op = "apptoken.(Repository).LookupAppToken"
+	if id == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+
+	opts := getOpts(opt...)
+
+	var at AppToken
+	lookupFunc := func(reader db.Reader, w db.Writer) error {
+		scopeType, err := getAppTokenScopeType(ctx, reader, id)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		var query string
+		switch scopeType {
+		case scope.Global:
+			query = getAppTokenGlobalQuery
+
+		case scope.Org:
+			query = getAppTokenOrgQuery
+
+		case scope.Project:
+			query = getAppTokenProjectQuery
+
+		case scope.Unknown:
+			return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for app token: %s", id))
+		}
+
+		rows, err := reader.Query(ctx, query, []any{
+			sql.Named("app_token_id", id),
+		})
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		var (
+			res            lookupAppTokenResult
+			permissionsRes []appTokenPermissionResult
+		)
+		defer rows.Close()
+		if rows.Next() {
+			if err := rows.Scan(
+				&res.publicId,
+				&res.scopeId,
+				&res.name,
+				&res.description,
+				&res.revoked,
+				&res.createTime,
+				&res.updateTime,
+				&res.createdByUserId,
+				&res.approximateLastAccessTime,
+				&res.timeToStaleSeconds,
+				&res.expirationTime,
+				&res.tokenBytes,
+				&res.permissionsJSON,
+			); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if res.publicId == "" {
+				return errors.New(ctx, errors.NotFound, op, fmt.Sprintf("app token %v not found", id))
+			}
+
+			// Unpack permissions JSON from query results
+			if err := json.Unmarshal(res.permissionsJSON, &permissionsRes); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to unmarshal permissions"))
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		at.PublicId = res.publicId
+		at.ScopeId = res.scopeId
+		if res.name != nil {
+			at.Name = *res.name
+		}
+		if res.description != nil {
+			at.Description = *res.description
+		}
+		at.Revoked = res.revoked
+		at.CreateTime = res.createTime
+		at.UpdateTime = res.updateTime
+		at.CreatedByUserId = res.createdByUserId
+		at.ApproximateLastAccessTime = res.approximateLastAccessTime
+		at.TimeToStaleSeconds = res.timeToStaleSeconds
+		at.ExpirationTime = res.expirationTime
+
+		// Build granted scopes list for each permission
+		at.Permissions = make([]AppTokenPermission, len(permissionsRes))
+		for i, permission := range permissionsRes {
+			var grantedScopes []string
+
+			// Add non-individual grant scopes (children, descendants)
+			if permission.GrantScope == globals.GrantScopeChildren ||
+				permission.GrantScope == globals.GrantScopeDescendants {
+				grantedScopes = append(grantedScopes, permission.GrantScope)
+			}
+			// Add 'this' if grant_this_scope is true
+			if permission.GrantThisScope {
+				grantedScopes = append(grantedScopes, globals.GrantScopeThis)
+			}
+			// Add any active, individual grant scopes
+			if len(permission.ActiveGrantScopes) > 0 {
+				grantedScopes = append(grantedScopes, permission.ActiveGrantScopes...)
+			}
+			at.Permissions[i] = AppTokenPermission{
+				Label:         permission.Label,
+				Grants:        permission.Grants,
+				GrantedScopes: grantedScopes,
+				DeletedScopes: permission.DeletedScopeDetails,
+			}
+		}
+
+		atc := &appTokenCipher{
+			AppTokenCipher: &store.AppTokenCipher{
+				AppTokenId: id,
+				CtToken:    res.tokenBytes,
+			},
+		}
+		databaseWrapper, err := r.kms.GetWrapper(ctx, at.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := atc.decrypt(ctx, databaseWrapper); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		at.Token = atc.Token
+
+		return nil
+	}
+
+	var err error
+	if !util.IsNil(opts.withReader) && !util.IsNil(opts.withWriter) {
+		if !opts.withWriter.IsTx(ctx) {
+			return nil, errors.New(ctx, errors.Internal, op, "writer is not in transaction")
+		}
+		err = lookupFunc(opts.withReader, opts.withWriter)
+	} else {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			lookupFunc,
+		)
+	}
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", id)))
+	}
+	return &at, nil
 }
 
 // CreateToken creates the provided app token in the repository.
