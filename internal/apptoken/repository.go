@@ -203,7 +203,9 @@ func createAppTokenGlobal(ctx context.Context, token *AppToken) (*appTokenGlobal
 		}
 		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
 
-		trimmedScopes := slices.DeleteFunc(perm.GrantedScopes, func(s string) bool {
+		// Create a copy of GrantedScopes before filtering to avoid mutating it
+		grantedScopes := slices.Clone(perm.GrantedScopes)
+		trimmedScopes := slices.DeleteFunc(grantedScopes, func(s string) bool {
 			return s == globals.GrantScopeThis ||
 				s == globals.GrantScopeChildren ||
 				s == globals.GrantScopeDescendants ||
@@ -315,8 +317,11 @@ func createAppTokenOrg(ctx context.Context, token *AppToken) (*appTokenOrg, []in
 		}
 		permissionGrantInserts = append(permissionGrantInserts, grantInserts...)
 
+		// Create a copy of GrantedScopes before filtering to avoid mutating it
+		grantedScopes := slices.Clone(perm.GrantedScopes)
+
 		// remove GrantScopeThis and GrantScopeChildren from perm.GrantedScopes as they've already been processed
-		trimmedScopes := slices.DeleteFunc(perm.GrantedScopes, func(s string) bool {
+		trimmedScopes := slices.DeleteFunc(grantedScopes, func(s string) bool {
 			return s == globals.GrantScopeThis || s == globals.GrantScopeChildren || s == token.GetScopeId()
 		})
 
