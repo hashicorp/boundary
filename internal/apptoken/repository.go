@@ -420,35 +420,6 @@ func createAppTokenProject(ctx context.Context, token *AppToken) (*appTokenProje
 	return tokenToCreate, projectInserts, nil
 }
 
-// TODO: Implement additional fields in AppToken and complete this method
-// getAppTokenById retrieves an AppToken by its public ID
-func (r *Repository) getAppTokenById(ctx context.Context, id string) (*AppToken, error) {
-	const op = "apptoken.(Repository).getAppTokenById"
-	if id == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing id")
-	}
-
-	rows, err := r.reader.Query(ctx, getAppTokenByIdQuery, []any{id})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	defer rows.Close()
-
-	var at AppToken
-	if rows.Next() {
-		if err := rows.Scan(&at.PublicId, &at.ScopeId); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if at.PublicId == "" {
-		return nil, errors.New(ctx, errors.NotFound, op, "app token not found")
-	}
-	return &at, nil
-}
-
 // processPermissionGrants validates grants and creates grant objects for insertion
 func processPermissionGrants(ctx context.Context, permId string, grants []string) ([]*appTokenPermissionGrant, error) {
 	const op = "apptoken.processPermissionGrants"

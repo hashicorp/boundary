@@ -380,22 +380,6 @@ left join iam_scope_project
              app_token_org.public_id;
     `
 
-	// TODO: This will be properly implemented with the Create method
-	// getAppTokenByIdQuery retrieves an AppToken by its public ID
-	getAppTokenByIdQuery = `
-	 select public_id, scope_id
-	   from app_token_global
-	  where public_id = $1
-	  union all
-	 select public_id, scope_id
-	   from app_token_org
-	  where public_id = $1
-	  union all
-	 select public_id, scope_id
-	   from app_token_project
-	  where public_id = $1
-	`
-
 	// estimateCountAppTokens estimates the total number of app tokens in the three app token tables
 	estimateCountAppTokens = `
    select sum(reltuples::bigint) as estimate 
