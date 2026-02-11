@@ -9,7 +9,9 @@ import (
 	stderrors "errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
@@ -57,7 +59,17 @@ const (
 	forceRefreshKey     = "force_refresh"
 	authTokenIdKey      = "auth_token_id"
 	maxResultSetSizeKey = "max_result_set_size"
+	// SortByKey The key used as the query parameter for which column to sort resources by
+	SortByKey = "sort_by"
+	// SortDirectionKey The key used as the query parameter for which direction, asc or desc, to sort resources by.
+	SortDirectionKey = "sort_direction"
 )
+
+// SortableColumnsForResource Defines which columns a given resource can be sorted by
+var SortableColumnsForResource = map[cache.SearchableResource][]cache.SortBy{
+	cache.Targets:  {cache.SortByName},
+	cache.Sessions: {cache.SortByCreatedTime},
+}
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchHandlerFunc"
@@ -84,6 +96,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		maxResultSetSizeInt, maxResultSetSizeIntErr := strconv.Atoi(maxResultSetSizeStr)
 		query := q.Get(queryKey)
 		filter := q.Get(filterKey)
+		sb := q.Get(SortByKey)
+		sd := q.Get(SortDirectionKey)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
@@ -118,6 +132,20 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		case searchableResource == cache.ImplicitScopes && filter != "":
 			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("filter is not supported for resource %q", resource)))
 			writeError(w, fmt.Sprintf("filter is not supported for resource %q", resource), http.StatusBadRequest)
+			return
+		}
+
+		sortBy, valid := parseSortBy(sb, searchableResource)
+		if !valid {
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_by parameter %q not valid for resource %q", sb, searchableResource)))
+			writeError(w, fmt.Sprintf("sort_by parameter %q not valid for resource %q", sb, searchableResource), http.StatusBadRequest)
+			return
+		}
+
+		sortDirection, valid := parseSortDirection(sd)
+		if !valid {
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("sort_direction parameter %q not valid", sd)))
+			writeError(w, fmt.Sprintf("sort_direction parameter %q not valid ", sd), http.StatusBadRequest)
 			return
 		}
 
@@ -175,6 +203,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 			Query:            query,
 			Filter:           filter,
 			MaxResultSetSize: maxResultSetSizeInt,
+			SortBy:           sortBy,
+			SortDirection:    sortDirection,
 		})
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when performing search", "auth_token_id", authTokenId, "resource", searchableResource, "query", query, "filter", filter))
@@ -236,4 +266,37 @@ func writeUnsupportedError(w http.ResponseWriter) {
 		return
 	}
 	http.Error(w, string(b), http.StatusBadRequest)
+}
+
+// Parses a raw sort direction string into a cache.SortDirection
+// Returns the sort direction and whether the provided direction was valid or not
+func parseSortDirection(sd string) (cache.SortDirection, bool) {
+	sd = strings.ToLower(sd)
+	switch sd {
+	case "asc", "ascending":
+		return cache.Ascending, true
+	case "desc", "descending":
+		return cache.Descending, true
+	case "":
+		return cache.SortDirectionDefault, true
+	default:
+		return cache.SortDirectionDefault, false
+	}
+}
+
+// Parses a raw column name to sort by into a cache.SortBy
+// Returns the column to sort by and whether the provided column was valid or not
+func parseSortBy(sb string, sr cache.SearchableResource) (cache.SortBy, bool) {
+	sb = strings.ToLower(sb)
+	by := cache.SortBy(sb)
+
+	if by == cache.SortByDefault {
+		return cache.SortByDefault, true
+	}
+
+	sortableBys, ok := SortableColumnsForResource[sr]
+	if !ok || !slices.Contains(sortableBys, by) {
+		return cache.SortByDefault, false
+	}
+	return by, true
 }
