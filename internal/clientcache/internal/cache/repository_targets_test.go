@@ -6,7 +6,6 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -375,9 +374,6 @@ func TestRepository_ListTargets(t *testing.T) {
 	t.Run("withSortBy Ascending sorts targets ascending order", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Ascending, []SortBy{SortByName}))
 		assert.NoError(t, err)
-		for _, t := range l.Targets {
-			fmt.Println(t.Name)
-		}
 
 		assert.Equal(t, ts[4].Name, l.Targets[4].Name)
 		assert.Equal(t, ts[3].Name, l.Targets[3].Name)
