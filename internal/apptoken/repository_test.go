@@ -1054,6 +1054,13 @@ func TestRepository_LookupAppToken(t *testing.T) {
 			assert.WithinDuration(want.ExpirationTime.AsTime(), got.ExpirationTime.AsTime(), time.Second)
 		})
 	}
+
+	// Lookup a random token ID and assert not found error
+	t.Run("no token found", func(t *testing.T) {
+		token, err := repo.LookupAppToken(ctx, "appt_12345")
+		assert.NoError(t, err)
+		assert.Nil(t, token)
+	})
 }
 
 func TestRepository_queryAppTokens(t *testing.T) {
