@@ -79,7 +79,6 @@ func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppTok
 	return createdToken
 }
 
-// these will eventually expand to cover org and proj
 func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
