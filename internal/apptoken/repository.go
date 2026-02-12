@@ -17,10 +17,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 )
 
@@ -91,24 +89,21 @@ func (r *Repository) LookupAppToken(ctx context.Context, id string, opt ...Optio
 
 	var at AppToken
 	lookupFunc := func(reader db.Reader, w db.Writer) error {
-		scopeType, err := getAppTokenScopeType(ctx, reader, id)
+		scopeId, err := getAppTokenScopeId(ctx, reader, id)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 
 		var query string
-		switch scopeType {
-		case scope.Global:
+		switch {
+		case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 			query = getAppTokenGlobalQuery
-
-		case scope.Org:
+		case strings.HasPrefix(scopeId, globals.OrgPrefix):
 			query = getAppTokenOrgQuery
-
-		case scope.Project:
+		case strings.HasPrefix(scopeId, globals.ProjectPrefix):
 			query = getAppTokenProjectQuery
-
-		case scope.Unknown:
-			return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for app token: %s", id))
+		default:
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type for scope id: %s", scopeId))
 		}
 
 		rows, err := reader.Query(ctx, query, []any{
@@ -142,7 +137,7 @@ func (r *Repository) LookupAppToken(ctx context.Context, id string, opt ...Optio
 				return errors.Wrap(ctx, err, op)
 			}
 			if res.publicId == "" {
-				return errors.New(ctx, errors.NotFound, op, fmt.Sprintf("app token %v not found", id))
+				return errors.New(ctx, errors.NotFound, op, "app token not found")
 			}
 
 			// Unpack permissions JSON from query results
@@ -787,87 +782,33 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// getAppTokenScopeType returns the [scope.Type] of an App Token by reading it from the base type app_token table.
-// Use this to get scope ID to determine which of the app token subtype tables to operate on.
-func getAppTokenScopeType(ctx context.Context, reader db.Reader, id string) (scope.Type, error) {
-	const op = "apptoken.getAppTokenScopeType"
+// getAppTokenScopeId returns the scope id of the app token
+func getAppTokenScopeId(ctx context.Context, reader db.Reader, id string) (string, error) {
+	const op = "apptoken.getAppTokenScopeId"
 	if id == "" {
-		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing app token id")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing app token id")
 	}
 	if reader == nil {
-		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
 	}
 	rows, err := reader.Query(ctx, scopeIdFromAppTokenIdQuery, []any{sql.Named("public_id", id)})
 	if err != nil {
-		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup app token scope for id: %s", id)))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup app token scope for id: %s", id)))
 	}
 	defer rows.Close()
 
-	var scopeIds []string
+	var scopeId string
 	for rows.Next() {
-		if err := reader.ScanRows(ctx, rows, &scopeIds); err != nil {
-			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying app token scope for id: %s", id)))
+		if err := reader.ScanRows(ctx, rows, &scopeId); err != nil {
+			return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying app token scope for id: %s", id)))
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying app token scope for id: %s", id)))
-	}
-	if len(scopeIds) == 0 {
-		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("app token %s not found", id))
-	}
-	if len(scopeIds) > 1 {
-		return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", len(scopeIds)))
-	}
-	scopeId := scopeIds[0]
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
-		return scope.Global, nil
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
-		return scope.Org, nil
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
-		return scope.Project, nil
-	default:
-		return scope.Unknown, fmt.Errorf("unknown scope type for app token %s", id)
-	}
-}
-
-// getAppTokenScope returns the scope of the app token
-func getAppTokenScope(ctx context.Context, r db.Reader, id string) (*iam.Scope, error) {
-	const op = "apptoken.getAppTokenScope"
-	if id == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing app token id")
-	}
-	if r == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
-	}
-	rows, err := r.Query(ctx, scopeIdFromAppTokenIdQuery, []any{sql.Named("public_id", id)})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup app token scope for :%s", id)))
-	}
-	defer rows.Close()
-
-	var scopeIds []string
-	for rows.Next() {
-		if err := r.ScanRows(ctx, rows, &scopeIds); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying app token scope for :%s", id)))
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying app token scope for :%s", id)))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying app token scope for id: %s", id)))
 	}
 
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("app token %s not found", id))
+	if scopeId == "" {
+		return "", errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("app token %s not found", id))
 	}
-	if len(scopeIds) > 1 {
-		return nil, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", len(scopeIds)))
-	}
-
-	scp := iam.AllocScope()
-	scp.PublicId = scopeIds[0]
-	err = r.LookupByPublicId(ctx, &scp)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup app token scope"))
-	}
-	return &scp, nil
+	return scopeId, nil
 }

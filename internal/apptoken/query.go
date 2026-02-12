@@ -390,7 +390,8 @@ left join iam_scope_project
 	scopeIdFromAppTokenIdQuery = `
     select scope_id
       from app_token
-     where public_id = @public_id;
+     where public_id = @public_id
+     limit 1;
 `
 
 	getAppTokenGlobalQuery = `

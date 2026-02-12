@@ -69,11 +69,10 @@ func (r *Repository) GrantsForToken(ctx context.Context, tokenId string, res []r
 
 	opts := getOpts(opt...)
 
-	scope, err := getAppTokenScope(ctx, r.reader, tokenId)
+	scopeId, err := getAppTokenScopeId(ctx, r.reader, tokenId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	scopeId := scope.GetPublicId()
 
 	// find the correct query to use
 	query, err := r.resolveAppTokenQuery(ctx, scopeId, res, reqScopeId, opts.withRecursive)
