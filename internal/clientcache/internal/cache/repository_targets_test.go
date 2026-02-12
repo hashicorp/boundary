@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -340,9 +341,11 @@ func TestRepository_ListTargets(t *testing.T) {
 	})
 
 	ts := []*targets.Target{
-		target("1"),
-		target("2"),
-		target("3"),
+		target("TARGET 1"),
+		target("Target 1"),
+		target("TaRgEt 2"),
+		target("Target 2"),
+		target("Target 3"),
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
@@ -362,9 +365,25 @@ func TestRepository_ListTargets(t *testing.T) {
 	t.Run("withSortBy sorts targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Descending, []SortBy{SortByName}))
 		assert.NoError(t, err)
-		assert.Equal(t, ts[2].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[4].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[3].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[3].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[4].Name)
+	})
+
+	t.Run("withSortBy Ascending sorts targets ascending order", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Ascending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+		for _, t := range l.Targets {
+			fmt.Println(t.Name)
+		}
+
+		assert.Equal(t, ts[4].Name, l.Targets[4].Name)
+		assert.Equal(t, ts[3].Name, l.Targets[3].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
 		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
-		assert.Equal(t, ts[0].Name, l.Targets[2].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
 	})
 
 	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
