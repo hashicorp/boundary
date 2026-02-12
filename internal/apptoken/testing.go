@@ -57,6 +57,10 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppToken {
 	t.Helper()
 
+	if token == nil {
+		return nil
+	}
+
 	// Assign a name and description if not set
 	if token.Name == "" {
 		token.Name = fmt.Sprintf("Test App Token %s", time.Now().Format("0405.000000"))
@@ -75,7 +79,6 @@ func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppTok
 	return createdToken
 }
 
-// these will eventually expand to cover org and proj
 func testCheckPermission(t *testing.T, repo *Repository, appTokenId string, scopeId string, wantPerms []testPermission) error {
 	assert := assert.New(t)
 
