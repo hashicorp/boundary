@@ -386,7 +386,7 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 		orderClause := ""
 		switch opts.withSortBy {
 		case "name":
-			orderClause = fmt.Sprintf("lower(%s) %s, %s %s", opts.withSortBy, sd, opts.withSortBy, sd)
+			orderClause = fmt.Sprintf("%s collate nocase %s, %s %s", opts.withSortBy, sd, opts.withSortBy, sd)
 		default:
 			orderClause = fmt.Sprintf("%s %s", opts.withSortBy, sd)
 		}
