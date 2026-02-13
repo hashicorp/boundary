@@ -287,10 +287,8 @@ locals {
 
 
 resource "enos_local_exec" "wait_for_ssh" {
-  depends_on = [
-    aws_instance.worker,
-  ]
-  inline = ["timeout 600s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
+  depends_on = [aws_instance.worker]
+  inline = ["timeout 900s bash -c 'until ssh -i ${local.private_key} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 Administrator@${aws_instance.worker.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
 resource "enos_local_exec" "make_dir" {

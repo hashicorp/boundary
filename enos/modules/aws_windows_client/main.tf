@@ -310,7 +310,7 @@ resource "local_sensitive_file" "private_key" {
 # can just SSH using the private key
 resource "enos_local_exec" "wait_for_ssh" {
   depends_on = [aws_instance.client]
-  inline     = ["timeout 600s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 Administrator@${aws_instance.client.public_ip} \"echo ready\"; do sleep 10; done'"]
+  inline     = ["timeout 900s bash -c 'until ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o BatchMode=Yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 Administrator@${aws_instance.client.public_ip} \"echo ready\"; do sleep 10; done'"]
 }
 
 resource "enos_local_exec" "get_go_version" {
