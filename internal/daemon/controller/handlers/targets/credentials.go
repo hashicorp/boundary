@@ -27,6 +27,16 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 	const op = "targets.dynamicToWorkerCredential"
 	var workerCred *serverpb.Credential
 	switch c := cred.(type) {
+	case credential.UsernamePasswordDomain:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_UsernamePasswordDomain{
+				UsernamePasswordDomain: &serverpb.UsernamePasswordDomain{
+					Username: c.Username(),
+					Password: string(c.Password()),
+					Domain:   c.Domain(),
+				},
+			},
+		}
 	case credential.UsernamePassword:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_UsernamePassword{

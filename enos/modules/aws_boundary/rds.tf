@@ -6,14 +6,18 @@ resource "aws_db_subnet_group" "boundary" {
   subnet_ids = data.aws_subnets.infra.ids
 }
 
+data "aws_rds_engine_version" "default" {
+  engine = var.db_engine
+}
+
 resource "aws_db_instance" "boundary" {
   count               = var.db_create == true ? 1 : 0
   identifier          = "boundary-db-${random_string.cluster_id.result}"
   allocated_storage   = var.db_storage
   storage_type        = var.db_storage_type
   iops                = var.db_storage_iops
-  engine              = var.db_engine
-  engine_version      = var.db_engine == "aurora-postgres" ? null : var.db_version
+  engine              = data.aws_rds_engine_version.default.engine
+  engine_version      = data.aws_rds_engine_version.default.version
   instance_class      = var.db_class
   monitoring_interval = var.db_monitoring_interval
   monitoring_role_arn = var.db_monitoring_role_arn

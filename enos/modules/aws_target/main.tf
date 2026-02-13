@@ -126,12 +126,17 @@ resource "aws_instance" "target" {
     "Type" : "target",
     "Project" : "Enos",
     "Project Name" : "qti-enos-boundary",
-    "Environment" : var.environment
+    "Environment" : var.environment,
     "Enos User" : var.enos_user,
   })
 
   root_block_device {
     encrypted = true
+  }
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
   }
 }
 

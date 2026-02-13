@@ -5,7 +5,7 @@ terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "3.0.1"
+      version = "3.6.2"
     }
 
     enos = {
@@ -81,6 +81,11 @@ variable "aws_ssh_private_key_path" {
 }
 variable "target_address" {
   description = "Address of target"
+  type        = string
+  default     = ""
+}
+variable "target_container_name" {
+  description = "Container Name of target"
   type        = string
   default     = ""
 }
@@ -310,6 +315,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name
     E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password
+    E2E_TARGET_CONTAINER_NAME     = var.target_container_name
     E2E_TARGET_ADDRESS            = var.target_address
     E2E_TARGET_PORT               = var.target_port
     E2E_SSH_USER                  = var.target_user

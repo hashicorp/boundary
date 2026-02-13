@@ -2,6 +2,22 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+## 0.20.2 (2026/02/10)
+
+### Security
+
+* Go version bumped to 1.25.7 to address CVE-2025-61730 ([PR](https://github.com/hashicorp/boundary/pull/6409))
+* Go Cryptography dependency update to address CVE-2025-58181 and CVE-2025-47914
+  ([PR](https://github.com/hashicorp/boundary/pull/6272))
+
+## 0.20.1 (2025/11/03)
+
+### New and Improved
+
+* Added a complete IBM Key Protect wrapper implementation with configuration options and KMS client integration ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/292))
+
 ## 0.20.0 (2025/09/25)
 
 ### New and Improved
@@ -17,8 +33,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 * cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
-  This new helper command allows users to authorize sessions against Cassandra 
-  targets and automatically invoke a Cassandra client with the appropriate 
+  This new helper command allows users to authorize sessions against Cassandra
+  targets and automatically invoke a Cassandra client with the appropriate
   connection parameters and credentials. Currently only username/password credentials are automatically attached.
 * ui: Improved load times for resource tables with search and filtering capabilities by replacing indexeddb for local data storage with sqlite (WASM) and OPFS ([PR](https://github.com/hashicorp/boundary-ui/pull/2984))
 

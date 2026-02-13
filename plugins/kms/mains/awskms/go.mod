@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/kms/mains/awskms
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.8
