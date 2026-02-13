@@ -216,11 +216,16 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 	// Ensure closing the listener runs on any other return condition
 	defer listenerCloseFunc()
 
-	// automatically close the proxy when inactive
-	proxyAutoClose := time.AfterFunc(10*time.Minute, func() {
-		p.cancel()
-		p.setCloseReason("Inactivity timeout reached")
-	})
+	var proxyAutoClose *time.Timer
+	if opts.withInactivityTimeout > 0 {
+		// automatically close the proxy when inactive
+		proxyAutoClose = time.AfterFunc(opts.withInactivityTimeout, func() {
+			p.cancel()
+			p.setCloseReason("Inactivity timeout reached")
+		})
+		// Stop timer until we have at least one connection, then reset/stop based on activity
+		proxyAutoClose.Stop()
+	}
 
 	activeConnCh := make(chan int32)
 	activeConnFn := func(d int32) {
@@ -342,13 +347,16 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 				}
 			case activeConns := <-activeConnCh:
 				switch {
-				case activeConns > 0:
-					// always stop the timer when a new connection is made,
-					// even if timeout opt is 0
-					proxyAutoClose.Stop()
+				case proxyAutoClose == nil:
+					//  do nothing if timer is not set
 				case opts.withInactivityTimeout <= 0:
 					// no timeout was set, timer should not be reset for inactivity
+					// this should never happen due to the proxyAutoClose nil check above, but just in case
+				case activeConns > 0:
+					// stop timer when we have a new conneciton
+					proxyAutoClose.Stop()
 				case activeConns == 0:
+					// reset timer when we have no more active connections
 					proxyAutoClose.Reset(opts.withInactivityTimeout)
 				}
 			}

@@ -54,6 +54,10 @@ type TerminationInfo struct {
 var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
+
+	// rdpDefaultTimeout is the default inactivity timeout for boundary connect rdp
+	// The default is zero (no timeout), however it is overridden for macOS clients only in connect_darwin.go
+	rdpDefaultTimeout time.Duration = 0
 )
 
 type Command struct {
@@ -516,24 +520,17 @@ func (c *Command) Run(args []string) (retCode int) {
 	clientProxyCloseCh := make(chan struct{})
 	connCountCloseCh := make(chan struct{})
 
-	if c.flagInactiveTimeout == 0 {
-		// no timeout was specified by the user, so use our defaults based on subcommand
+	switch {
+	case c.flagInactiveTimeout < 0:
+		// timeout has been disabled, no need for option
+	case c.flagInactiveTimeout == 0:
+		// no timeout was specified, use protocol-specific defaults
 		switch c.Func {
-		case "connect":
-			// connect is when there is no subcommand specified, this case should
-			// have the most generous timeout
-			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(30*time.Second))
 		case "rdp":
-			// rdp has a gui, so give the user a chance to click "reconnect"
-			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(5*time.Second))
-		case "ssh":
-			// one second is probably enough for ssh
-			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(time.Second))
-		default:
-			// for other protocols, give some extra leeway just in case
-			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(3*time.Second))
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(rdpDefaultTimeout))
 		}
-	} else {
+	default:
+		// use provided timeout
 		apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(c.flagInactiveTimeout))
 	}
 
