@@ -402,10 +402,4 @@ left join iam_scope_project
      from pg_class
     where oid in ('app_token_global'::regclass, 'app_token_org'::regclass, 'app_token_project'::regclass)
   `
-
-	scopeIdFromAppTokenIdQuery = `
-	 select scope_id
-		 from app_token
-		where public_id = @public_id
-  `
 )
