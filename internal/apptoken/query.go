@@ -574,7 +574,7 @@ with token_permissions as (
          app_token_project.scope_id                            as grant_scope,
          array_agg(app_token_permission_grant.canonical_grant) as canonical_grants,
          app_token_project.public_id                           as app_token_id,
-         array_agg(app_token_project.scope_id)                 as active_grant_scope_ids,
+         '{}'::text[]                                          as active_grant_scope_ids,
          '{}'::text[]                                          as deleted_grant_scope_ids,
          jsonb '[]'                                            as deleted_scope_details
        from app_token_project
@@ -584,9 +584,6 @@ with token_permissions as (
          on app_token_permission_project.private_id = app_token_permission_grant.permission_id
       where app_token_project.public_id = @app_token_id
    group by app_token_permission_project.private_id,
-            app_token_permission_project.description,
-            app_token_permission_project.grant_this_scope,
-            app_token_project.scope_id,
             app_token_project.public_id
 )
    select app_token_project.public_id,
