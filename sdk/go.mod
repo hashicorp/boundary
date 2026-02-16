@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/coder/websocket v1.8.14
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.5
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.8
 	github.com/hashicorp/eventlogger v0.2.11
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
 	github.com/hashicorp/go-hclog v1.6.3
@@ -15,8 +15,8 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/genproto/googleapis/api v0.0.0-20260120221211-b8f7ae30c516
-	google.golang.org/grpc v1.78.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57
+	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -58,10 +58,10 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
