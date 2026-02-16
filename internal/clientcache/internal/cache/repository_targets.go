@@ -379,7 +379,18 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 		if sd != Ascending && sd != Descending {
 			sd = Ascending
 		}
-		orderClause := fmt.Sprintf("%s %s", opts.withSortBy, sd)
+
+		// Sorting by name requires doing case insensitive, then tie-breaking with case sensitive to put names which were
+		// originally capitalized first. To avoid weird behavior when adding new columns, break sort by name's case
+		// out separately.
+		orderClause := ""
+		switch opts.withSortBy {
+		case "name":
+			orderClause = fmt.Sprintf("%s collate nocase %s, %s %s", opts.withSortBy, sd, opts.withSortBy, sd)
+		default:
+			orderClause = fmt.Sprintf("%s %s", opts.withSortBy, sd)
+		}
+
 		dbOpts = append(dbOpts, db.WithOrder(orderClause))
 	}
 
