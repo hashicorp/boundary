@@ -580,6 +580,47 @@ func (r *Repository) queryAppTokens(ctx context.Context, whereClause string, arg
 	return appTokens, transactionTimestamp, nil
 }
 
+// DeleteAppToken will delete an app token from the repository.
+func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, error) {
+	const op = "apptoken.(Repository).DeleteAppToken"
+	if publicId == "" {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
+	}
+
+	// eventually change this to a lookup to confirm existence before delete
+	tokenToDelete := &appToken{
+		AppToken: &store.AppToken{
+			PublicId: publicId,
+		},
+	}
+
+	var rowsDeleted int
+	var err error
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			rowsDeleted, err = w.Delete(
+				ctx,
+				tokenToDelete,
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	return rowsDeleted, nil
+}
+
 // listDeletedIds lists the public IDs of any app tokens deleted since the timestamp provided.
 func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "apptoken.(Repository).listDeletedIds"
