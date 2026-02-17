@@ -3,9 +3,13 @@ name: build
 on:
   push:
     branches:
-      - '**'
+      - 'main'
+      - 'release/**'
     tags-ignore:
       - '**'
+    paths-ignore:
+      - 'website/**'
+  pull_request:
     paths-ignore:
       - 'website/**'
   workflow_call:
