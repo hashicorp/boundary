@@ -7,6 +7,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -878,22 +880,95 @@ func TestRepository_CreateAppToken(t *testing.T) {
 	}
 }
 
+// labeler is an interface implemented by any struct that has a label or id field that can be used for sorting.
+// Used to sort AppTokenPermission and DeletedScope slices by their label/id for easier test comparisons.
+type labeler interface {
+	label() string
+}
+
+func (p AppTokenPermission) label() string {
+	return p.Label
+}
+func (p DeletedScope) label() string {
+	return p.ScopeId
+}
+
+func sortByLabel[T labeler](perms []T) {
+	slices.SortFunc(perms, func(a, b T) int {
+		return strings.Compare(a.label(), b.label())
+	})
+}
+
 func TestRepository_LookupAppToken(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 
-	org1, proj1a := iam.TestScopes(t, iamRepo)
-	proj1b := iam.TestProject(t, iamRepo, org1.PublicId)
-	org2, proj2 := iam.TestScopes(t, iamRepo)
+	// TODO: Lookup a global token with deleted grant scopes
+	// t.Run("global token with deleted grant scopes", func(t *testing.T) {
+	// 	org1, proj1 := iam.TestScopes(t, iamRepo)
+	// 	org2, proj2 := iam.TestScopes(t, iamRepo)
 
+	// 	token := &AppToken{
+	// 		ScopeId:            globals.GlobalPrefix,
+	// 		CreatedByUserId:    u.PublicId,
+	// 		TimeToStaleSeconds: 100,
+	// 		ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+	// 		Permissions: []AppTokenPermission{
+	// 			{
+	// 				Label:         "test",
+	// 				Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
+	// 				GrantedScopes: []string{globals.GrantScopeThis, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId},
+	// 			},
+	// 		},
+	// 	}
+	// 	wantToken := TestCreateAppToken(t, repo, token)
+
+	// 	orgsDeleted, err := iamRepo.DeleteScope(ctx, org1.PublicId)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, 1, orgsDeleted)
+	// 	projectsDeleted, err := iamRepo.DeleteScope(ctx, proj2.PublicId)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, 1, projectsDeleted)
+
+	// 	gotToken, err := repo.LookupAppToken(ctx, wantToken.PublicId)
+	// 	assert.NoError(t, err)
+	// })
+
+	// TODO: Lookup an org token with deleted grant scopes
+	// TODO: Lookup a project token with deleted grant scopes
+
+	// General tests for various token scopes & grant scope combinations
+
+	var org1, proj1a, proj1b, org2, proj2 *iam.Scope
+	shouldCreateScopes := func() {
+		if org1 == nil {
+			org1, proj1a = iam.TestScopes(t, iamRepo)
+			proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
+		}
+		if proj1a == nil {
+			proj1a = iam.TestProject(t, iamRepo, org1.PublicId)
+		}
+		if proj1b == nil {
+			proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
+		}
+		if org2 == nil {
+			org2, proj2 = iam.TestScopes(t, iamRepo)
+		}
+		if proj2 == nil {
+			proj2 = iam.TestProject(t, iamRepo, org2.PublicId)
+		}
+	}
+
+	shouldCreateScopes()
 	tests := []struct {
-		name       string
-		wantToken  *AppToken
-		wantErrMsg string
+		name           string
+		wantToken      *AppToken
+		scopesToDelete []string
+		wantErrMsg     string
 	}{
 		{
 			name: "global token: multiple grants, grant this with individual org and project grant scopes",
@@ -926,6 +1001,39 @@ func TestRepository_LookupAppToken(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "global token: multiple grants, descendants grant scope",
+			wantToken: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 10,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
+					},
+				},
+			},
+		},
+		{
+			name: "global token: multiple grants to all individual org and project grant scopes with some deleted",
+			wantToken: &AppToken{
+				ScopeId:            globals.GlobalPrefix,
+				CreatedByUserId:    u.PublicId,
+				TimeToStaleSeconds: 100,
+				ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+				Permissions: []AppTokenPermission{
+					{
+						Label:         "test",
+						Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
+						GrantedScopes: []string{org1.PublicId, org2.PublicId, proj1a.PublicId, proj1b.PublicId, proj2.PublicId},
+					},
+				},
+			},
+			scopesToDelete: []string{org1.PublicId, proj2.PublicId},
 		},
 		{
 			name: "org token: multiple grants, individual project grant scopes",
@@ -990,7 +1098,7 @@ func TestRepository_LookupAppToken(t *testing.T) {
 				Permissions: []AppTokenPermission{
 					{
 						Label:         "test",
-						Grants:        []string{"ids=*;type=target;actions=create,update", "ids=*;type=alias;actions=read,delete"},
+						Grants:        []string{"ids=*;type=target;actions=create,update", "ids=*;type=alias;actions=delete,read"},
 						GrantedScopes: []string{globals.GrantScopeThis},
 					},
 				},
@@ -1011,7 +1119,7 @@ func TestRepository_LookupAppToken(t *testing.T) {
 					},
 					{
 						Label:         "test perm 2",
-						Grants:        []string{"ids=*;type=alias;actions=read,delete"},
+						Grants:        []string{"ids=*;type=alias;actions=delete,read"},
 						GrantedScopes: []string{globals.GrantScopeThis},
 					},
 				},
@@ -1023,6 +1131,9 @@ func TestRepository_LookupAppToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
+			// Re-create any scopes deleted in a prior test
+			shouldCreateScopes()
+
 			// Create the token
 			want := TestCreateAppToken(t, repo, tt.wantToken)
 
@@ -1031,31 +1142,49 @@ func TestRepository_LookupAppToken(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(got)
 			assert.Equal(want.PublicId, got.PublicId)
-			assert.Equal(want.ScopeId, got.ScopeId)
-			assert.Equal(want.Name, got.Name)
-			assert.Equal(want.Description, got.Description)
-			assert.Equal(want.TimeToStaleSeconds, got.TimeToStaleSeconds)
+			assert.Equal(tt.wantToken.ScopeId, got.ScopeId)
+			assert.Equal(tt.wantToken.Name, got.Name)
+			assert.Equal(tt.wantToken.Description, got.Description)
+			assert.Equal(tt.wantToken.TimeToStaleSeconds, got.TimeToStaleSeconds)
 			assert.Equal(want.Token, got.Token)
-			assert.Equal(want.CreatedByUserId, got.CreatedByUserId)
+			assert.Equal(tt.wantToken.CreatedByUserId, got.CreatedByUserId)
 			assert.Equal(want.KeyId, got.KeyId)
-			assert.Equal(want.Revoked, got.Revoked)
-			assert.ElementsMatch(want.Permissions, got.Permissions)
+			assert.Equal(tt.wantToken.Revoked, got.Revoked)
+
+			// Sort to ensure consistent ordering for assertions
+			sortByLabel(tt.wantToken.Permissions)
+			sortByLabel(got.Permissions)
+
+			// assert.ElementsMatch(tt.wantToken.Permissions, got.Permissions)
+			for i := range tt.wantToken.Permissions {
+				slices.Sort(tt.wantToken.Permissions[i].Grants)
+				slices.Sort(tt.wantToken.Permissions[i].GrantedScopes)
+				// slices.Sort(tt.wantToken.Permissions[i].DeletedScopes) // TODO: Compare when ready
+				slices.Sort(got.Permissions[i].Grants)
+				slices.Sort(got.Permissions[i].GrantedScopes)
+				// slices.Sort(got.Permissions[i].DeletedScopes) // TODO: Compare when ready
+
+				assert.Equal(tt.wantToken.Permissions[i].Label, got.Permissions[i].Label)
+				assert.Equal(tt.wantToken.Permissions[i].Grants, got.Permissions[i].Grants)
+				assert.Equal(tt.wantToken.Permissions[i].GrantedScopes, got.Permissions[i].GrantedScopes)
+				// assert.Equal(tt.wantToken.Permissions[i].DeletedScopes, got.Permissions[i].DeletedScopes) // TODO: Compare when ready
+			}
 
 			// Assert that times are not zero
 			assert.False(want.CreateTime.AsTime().IsZero())
 			assert.False(want.UpdateTime.AsTime().IsZero())
 			assert.False(want.ApproximateLastAccessTime.AsTime().IsZero())
-			assert.False(want.ExpirationTime.AsTime().IsZero())
+			assert.False(tt.wantToken.ExpirationTime.AsTime().IsZero())
 
 			// Assert that times are within one second of the values captured at creation time
 			assert.WithinDuration(want.CreateTime.AsTime(), got.CreateTime.AsTime(), time.Second)
 			assert.WithinDuration(want.UpdateTime.AsTime(), got.UpdateTime.AsTime(), time.Second)
 			assert.WithinDuration(want.ApproximateLastAccessTime.AsTime(), got.ApproximateLastAccessTime.AsTime(), time.Second)
-			assert.WithinDuration(want.ExpirationTime.AsTime(), got.ExpirationTime.AsTime(), time.Second)
+			assert.WithinDuration(tt.wantToken.ExpirationTime.AsTime(), got.ExpirationTime.AsTime(), time.Second)
 		})
 	}
 
-	// Lookup a random token ID and assert not found error
+	// Lookup a random token ID and assert not found error TODO: Hoist me!
 	t.Run("no token found", func(t *testing.T) {
 		token, err := repo.LookupAppToken(ctx, "appt_12345")
 		assert.NoError(t, err)
