@@ -57,9 +57,9 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppToken {
 	t.Helper()
 
-	if token == nil {
-		return nil
-	}
+	require := require.New(t)
+	require.NotNil(repo)
+	require.NotNil(token)
 
 	// Assign a name and description if not set
 	if token.Name == "" {
@@ -75,7 +75,7 @@ func TestCreateAppToken(t *testing.T, repo *Repository, token *AppToken) *AppTok
 	}
 
 	createdToken, err := repo.CreateAppToken(t.Context(), token)
-	require.NoError(t, err)
+	require.NoError(err)
 	return createdToken
 }
 

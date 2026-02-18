@@ -143,7 +143,7 @@ func (r *Repository) LookupAppToken(ctx context.Context, id string, opt ...Optio
 				return errors.Wrap(ctx, err, op)
 			}
 			if res.publicId == "" {
-				return errors.New(ctx, errors.NotFound, op, "app token not found")
+				return errors.New(ctx, errors.RecordNotFound, op, "app token not found")
 			}
 
 			// Unpack permissions JSON from query results
