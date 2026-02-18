@@ -907,78 +907,14 @@ func TestRepository_LookupAppToken(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 
-	// TODO: Lookup a global token with deleted grant scopes
-	// t.Run("global token with deleted grant scopes", func(t *testing.T) {
-	// 	org1, proj1 := iam.TestScopes(t, iamRepo)
-	// 	org2, proj2 := iam.TestScopes(t, iamRepo)
+	org1, proj1a := iam.TestScopes(t, iamRepo)
+	proj1b := iam.TestProject(t, iamRepo, org1.PublicId)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
 
-	// 	token := &AppToken{
-	// 		ScopeId:            globals.GlobalPrefix,
-	// 		CreatedByUserId:    u.PublicId,
-	// 		TimeToStaleSeconds: 100,
-	// 		ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
-	// 		Permissions: []AppTokenPermission{
-	// 			{
-	// 				Label:         "test",
-	// 				Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
-	// 				GrantedScopes: []string{globals.GrantScopeThis, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId},
-	// 			},
-	// 		},
-	// 	}
-	// 	wantToken := TestCreateAppToken(t, repo, token)
-
-	// 	orgsDeleted, err := iamRepo.DeleteScope(ctx, org1.PublicId)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, 1, orgsDeleted)
-	// 	projectsDeleted, err := iamRepo.DeleteScope(ctx, proj2.PublicId)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, 1, projectsDeleted)
-
-	// 	gotToken, err := repo.LookupAppToken(ctx, wantToken.PublicId)
-	// 	assert.NoError(t, err)
-	// })
-
-	// TODO: Lookup an org token with deleted grant scopes
-	// TODO: Lookup a project token with deleted grant scopes
-
-	// TODO: delete me!
-	// type testPermission struct {
-	// 	AppTokenPermission
-	// 	scopesToDelete []string
-	// }
-
-	// General tests for various token scopes & grant scope combinations
-
-	var org1, proj1a, proj1b, org2, proj2 *iam.Scope
-	shouldCreateScopes := func() {
-		if org1 == nil {
-			org1, proj1a = iam.TestScopes(t, iamRepo)
-			proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
-		}
-		if proj1a == nil {
-			proj1a = iam.TestProject(t, iamRepo, org1.PublicId)
-		}
-		if proj1b == nil {
-			proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
-		}
-		if org2 == nil {
-			org2, proj2 = iam.TestScopes(t, iamRepo)
-		}
-		if proj2 == nil {
-			proj2 = iam.TestProject(t, iamRepo, org2.PublicId)
-		}
-	}
-
-	shouldCreateScopes()
 	tests := []struct {
-		name      string
-		wantToken func() *AppToken
-
-		scopeId        string               // TODO: delete me!
-		expirationTime *timestamp.Timestamp // TODO: delete me!
-
-		tokenCreateFn  func(individualGrantScopesToKeep, individualGrantScopesToDelete []string) *AppToken
-		scopesToDelete map[string]struct{}
+		name           string
+		wantToken      func() *AppToken
+		scopesToDelete func() []string
 		wantErrMsg     string
 	}{
 		{
@@ -1017,28 +953,34 @@ func TestRepository_LookupAppToken(t *testing.T) {
 				}
 			},
 		},
-		// TODO: Uncomment me
-		// {
-		// 	name: "global token: multiple grants, children grant scope with individual project grant scopes",
-		// 	wantToken: func() *AppToken {
-		// 		return &AppToken{
-		// 			ScopeId:            globals.GlobalPrefix,
-		// 			CreatedByUserId:    u.PublicId,
-		// 			TimeToStaleSeconds: 10,
-		// 			ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
-		// 			Permissions: []AppTokenPermission{
-		// 				{
-		// 					Label:         "test",
-		// 					Grants:        []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"},
-		// 					GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1a.PublicId, proj2.PublicId},
-		// 				},
-		// 			},
-		// 		}
-		// 	},
-		// 	scopesToDelete: map[*string]struct{}{&proj2.PublicId: {}},
-		// },
 		{
-			name: "global token: multiple grants, descendants grant scope",
+			name: "global token: multiple permissions with individual org and project grant scopes",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 10,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=alias;actions=create"},
+							GrantedScopes: []string{proj1a.PublicId, proj2.PublicId},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=alias;actions=create"},
+							GrantedScopes: []string{org1.PublicId, proj2.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj2.PublicId}
+			},
+		},
+		{
+			name: "global token: multiple grants with descendants grant scope",
 			wantToken: func() *AppToken {
 				return &AppToken{
 					ScopeId:            globals.GlobalPrefix,
@@ -1072,24 +1014,12 @@ func TestRepository_LookupAppToken(t *testing.T) {
 					},
 				}
 			},
-			scopesToDelete: map[string]struct{}{org1.PublicId: {}, proj2.PublicId: {}},
-			// tokenCreateFn: func(individualGrantScopesToKeep, individualGrantScopesToDelete []string) *AppToken {
-			// 	return &AppToken{
-			// 	ScopeId:            globals.GlobalPrefix,
-			// 	CreatedByUserId:    u.PublicId,
-			// 	TimeToStaleSeconds: 100,
-			// 	ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
-			// 	Permissions: []AppTokenPermission{
-			// 		{
-			// 			Label:         "test",
-			// 			Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
-			// 			GrantedScopes: []string{org1.PublicId, org2.PublicId, proj1a.PublicId, proj1b.PublicId, proj2.PublicId},
-			// 		},
-			// 	},
-			// }
+			scopesToDelete: func() []string {
+				return []string{proj2.PublicId, org1.PublicId}
+			},
 		},
 		{
-			name: "org token: multiple grants, individual project grant scopes",
+			name: "org token: multiple grants with individual project grant scopes",
 			wantToken: func() *AppToken {
 				return &AppToken{
 					ScopeId:            org1.PublicId,
@@ -1105,9 +1035,12 @@ func TestRepository_LookupAppToken(t *testing.T) {
 					},
 				}
 			},
+			scopesToDelete: func() []string {
+				return []string{proj1b.PublicId}
+			},
 		},
 		{
-			name: "org token: multiple grants, children grant scope",
+			name: "org token: multiple grants with children grant scope",
 			wantToken: func() *AppToken {
 				return &AppToken{
 					ScopeId:            org1.PublicId,
@@ -1145,6 +1078,34 @@ func TestRepository_LookupAppToken(t *testing.T) {
 						},
 					},
 				}
+			},
+		},
+		{
+			name: "org token: multiple permissions with a deleted scope from each",
+			wantToken: func() *AppToken {
+				proj3 := iam.TestProject(t, iamRepo, org1.PublicId)
+
+				return &AppToken{
+					ScopeId:            org1.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=user;actions=create"},
+							GrantedScopes: []string{proj1a.PublicId, proj3.PublicId},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=group;actions=read"},
+							GrantedScopes: []string{proj1a.PublicId, proj1b.PublicId, proj3.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj1a.PublicId}
 			},
 		},
 		{
@@ -1194,58 +1155,37 @@ func TestRepository_LookupAppToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			// Re-create any scopes deleted in a prior test
-			// shouldCreateScopes()
-
 			// Create the token
-			// if len(tt.scopesToDelete) > 0 {
-			// 	for i := range tt.wantToken.Permissions {
-			// 		tt.wantToken.Permissions[i].GrantedScopes = append(tt.wantToken.Permissions[i].GrantedScopes, tt.scopesToDelete...)
-			// 	}
-			// }
-
 			wantToken := tt.wantToken()
 			want := TestCreateAppToken(t, repo, wantToken)
 
-			// Delete scopes (if applicable)
+			var scopesToDelete []string
+			if tt.scopesToDelete != nil {
+				scopesToDelete = tt.scopesToDelete()
+			}
 			deletedScopes := make(map[string]struct{})
-			// deleteScopes := func(scopesToDelete []string) {
-			// Add child project scopes if deleting an org
-			if _, ok := tt.scopesToDelete[org1.PublicId]; ok {
-				tt.scopesToDelete[proj1a.PublicId] = struct{}{}
-				tt.scopesToDelete[proj1b.PublicId] = struct{}{}
+
+			// If deleting an org, add its child project scopes
+			if slices.Contains(scopesToDelete, org1.PublicId) {
+				scopesToDelete = append(scopesToDelete, proj1a.PublicId, proj1b.PublicId)
 			}
-			if _, ok := tt.scopesToDelete[org2.PublicId]; ok {
-				tt.scopesToDelete[proj2.PublicId] = struct{}{}
+			if slices.Contains(scopesToDelete, org2.PublicId) {
+				scopesToDelete = append(scopesToDelete, proj2.PublicId)
 			}
+			slices.Sort(scopesToDelete)
 
-			for scopeId := range tt.scopesToDelete {
-
-				// if _, alreadyDeleted := deletedScopes[*scopeId]; alreadyDeleted {
-				// 	continue
-				// }
-
+			// Delete the scope referenced by the current App Token, and then re-create it so it can be used for the other tests
+			for _, scopeId := range scopesToDelete {
 				_, err := iamRepo.DeleteScope(ctx, scopeId)
 				assert.NoError(err)
-				deletedScopes[scopeId] = struct{}{}
-				// deletedScopes[scopeId] = struct{}{}
 
-				// If the deleted scope is an org, also delete its projects to ensure the token's permissions are properly updated to reflect the deleted scopes
+				deletedScopes[scopeId] = struct{}{}
+
 				switch scopeId {
 				case org1.PublicId:
-					// org1, proj1a = iam.TestScopes(t, iamRepo)
 					org1 = iam.TestOrg(t, iamRepo)
-					// proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
-
-					// tt.scopesToDelete[&proj1a.PublicId] = struct{}{}
-					// tt.scopesToDelete[&proj1b.PublicId] = struct{}{}
-
-					// deleteScopes([]string{proj1a.PublicId, proj1b.PublicId})
 				case org2.PublicId:
 					org2 = iam.TestOrg(t, iamRepo)
-
-					// tt.scopesToDelete[&proj2.PublicId] = struct{}{}
-					// org2, proj2 = iam.TestScopes(t, iamRepo)
 				case proj1a.PublicId:
 					proj1a = iam.TestProject(t, iamRepo, org1.PublicId)
 				case proj1b.PublicId:
@@ -1254,7 +1194,6 @@ func TestRepository_LookupAppToken(t *testing.T) {
 					proj2 = iam.TestProject(t, iamRepo, org2.PublicId)
 				}
 			}
-			// }
 
 			// Lookup the token
 			got, err := repo.LookupAppToken(ctx, want.PublicId)
@@ -1283,9 +1222,6 @@ func TestRepository_LookupAppToken(t *testing.T) {
 			for i := range wantToken.Permissions {
 				assert.Equal(wantToken.Permissions[i].Label, got.Permissions[i].Label)
 				assert.ElementsMatch(wantToken.Permissions[i].Grants, got.Permissions[i].Grants)
-
-				// slices.Sort(tt.wantToken.Permissions[i].GrantedScopes) // TODO: Unnecessary
-				// sortByLabel(tt.wantToken.Permissions[i].DeletedScopes)
 
 				wantGrantedScopes := make([]string, 0)
 

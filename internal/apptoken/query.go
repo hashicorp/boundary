@@ -496,7 +496,21 @@ left join app_token_cipher
 	`
 
 	getAppTokenOrgQuery = `
-with token_permissions as (
+with scope_hst as (
+   select iam_scope_hst.public_id       as scope_id,
+          upper(valid_range)::timestamp as delete_time
+     from iam_scope_hst
+left join app_token_permission_org
+       on app_token_permission_org.app_token_id = @app_token_id
+left join app_token_permission_org_individual_grant_scope project_grants
+       on app_token_permission_org.private_id = project_grants.permission_id
+      and project_grants.scope_id = iam_scope_hst.public_id
+left join iam_scope project_scope
+       on project_grants.scope_id = project_scope.public_id
+    where iam_scope_hst.public_id = project_grants.scope_id
+  and not upper_inf(valid_range)
+ order by upper(valid_range) desc
+), token_permissions as (
   select app_token_permission_org.private_id                            as permission_id,
          app_token_permission_org.description                           as description,
          app_token_permission_org.grant_this_scope                      as grant_this_scope,
@@ -517,18 +531,11 @@ with token_permissions as (
          -- deleted_scope_details -> details about deleted scopes
          jsonb_agg(distinct
            jsonb_build_object(
-             'scope_id', project_grants.scope_id,
-             'delete_time', (
-               select upper(valid_range) as delete_time
-                 from iam_scope_hst
-                where public_id = project_grants.scope_id
-                order by upper(valid_range) desc
-                limit 1
-             )
+             'scope_id',    scope_hst.scope_id,
+             'delete_time', scope_hst.delete_time
            )
-         ) filter (
-           where project_grants.scope_id is not null and project_scope.public_id is null
-         ) as deleted_scope_details
+         ) filter (where scope_hst.scope_id is not null and scope_hst.delete_time is not null) 
+           as deleted_scope_details
        from app_token_org
   left join app_token_permission_org
          on app_token_org.public_id = app_token_permission_org.app_token_id
@@ -538,11 +545,10 @@ with token_permissions as (
          on project_grants.scope_id = project_scope.public_id
   left join app_token_permission_grant
          on app_token_permission_org.private_id = app_token_permission_grant.permission_id
+  left join scope_hst
+         on project_grants.scope_id = scope_hst.scope_id
       where app_token_org.public_id = @app_token_id
    group by app_token_permission_org.private_id,
-            app_token_permission_org.description,
-            app_token_permission_org.grant_this_scope,
-            app_token_permission_org.grant_scope,
             app_token_org.public_id
 )
    select app_token_org.public_id,
