@@ -69,13 +69,19 @@ type lookupAppTokenResult struct {
 
 // appTokenPermissionResult represents the unpacked results of the [lookupAppTokenResult]'s permissionsJSON field
 type appTokenPermissionResult struct {
-	Label               string         `json:"label"`
-	GrantThisScope      bool           `json:"grant_this_scope"`
-	Grants              []string       `json:"grants"`
-	GrantScope          string         `json:"grant_scope"`
-	ActiveGrantScopes   []string       `json:"active_grant_scopes"`
-	DeletedGrantScopes  []string       `json:"deleted_grant_scopes"`
-	DeletedScopeDetails []DeletedScope `json:"deleted_scope_details"`
+	Label               string               `json:"label"`
+	GrantThisScope      bool                 `json:"grant_this_scope"`
+	Grants              []string             `json:"grants"`
+	GrantScope          string               `json:"grant_scope"`
+	ActiveGrantScopes   []string             `json:"active_grant_scopes"`
+	DeletedGrantScopes  []string             `json:"deleted_grant_scopes"`
+	DeletedScopeDetails []deletedScopeResult `json:"deleted_scope_details"`
+}
+
+// deletedScopeResult represents a scope which has been deleted from an AppTokenPermission.
+type deletedScopeResult struct {
+	ScopeId   string `json:"scope_id"`
+	TimeStamp string `json:"delete_time"`
 }
 
 // LookupAppToken returns an AppToken for the id. Returns nil if no AppToken is found for id.
@@ -187,7 +193,20 @@ func (r *Repository) LookupAppToken(ctx context.Context, id string, opt ...Optio
 				Label:         permission.Label,
 				Grants:        permission.Grants,
 				GrantedScopes: grantedScopes,
-				DeletedScopes: permission.DeletedScopeDetails,
+			}
+			if len(permission.DeletedScopeDetails) > 0 {
+
+				at.Permissions[i].DeletedScopes = make([]DeletedScope, len(permission.DeletedScopeDetails))
+				for j, detail := range permission.DeletedScopeDetails {
+					ts, err := time.Parse("2006-01-02T15:04:05.999999999", detail.TimeStamp)
+					if err != nil {
+						return errors.Wrap(ctx, err, op, errors.WithMsg("failed to parse deleted scope timestamp"))
+					}
+					at.Permissions[i].DeletedScopes[j] = DeletedScope{
+						ScopeId:   detail.ScopeId,
+						TimeStamp: timestamp.New(ts),
+					}
+				}
 			}
 		}
 

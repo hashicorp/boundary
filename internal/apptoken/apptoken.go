@@ -156,8 +156,8 @@ type AppTokenPermission struct {
 
 // DeletedScope represents a scope which has been deleted from an AppTokenPermission.
 type DeletedScope struct {
-	ScopeId   string
-	TimeStamp *timestamp.Timestamp
+	ScopeId   string               `json:"scope_id"`
+	TimeStamp *timestamp.Timestamp `json:"delete_time"`
 }
 
 // newToken generates a new in-memory token for the app token.
