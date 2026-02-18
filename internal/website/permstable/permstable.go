@@ -402,14 +402,14 @@ var resources = map[resource.Type]info{
 		scopes: iamScopes,
 		actionDescOverrides: map[action.Type]string{
 			action.Authenticate: "Authenticate to an auth method",
-			action.ChangeState: "Change the active and visibility state of an OIDC-type auth method",
+			action.ChangeState:  "Change the active and visibility state of an OIDC-type auth method",
 		},
 	},
 	resource.AuthToken: {
 		scopes: iamScopes,
 		actionDescOverrides: map[action.Type]string{
 			action.DeleteSelf: "Deletes the auth token associated with the current user",
-			action.ReadSelf: "Reads the details of the auth token associated with the current user",
+			action.ReadSelf:   "Reads the details of the auth token associated with the current user",
 		},
 	},
 	resource.Billing: {
@@ -457,12 +457,12 @@ var resources = map[resource.Type]info{
 	resource.Scope: {
 		scopes: iamScopes,
 		actionDescOverrides: map[action.Type]string{
-			action.DestroyScopeKeyVersion: "Destroy a key version in the scope",
+			action.DestroyScopeKeyVersion: 			   "Destroy a key version in the scope",
 			action.ListScopeKeyVersionDestructionJobs: "List all pending key version destruction jobs within a scope",
-			action.ListScopeKeys: "List the keys within a given scope",
-			action.RotateScopeKeys: "Replace a scope's current KEK and DEKs with a new set of keys",
-			action.AttachStoragePolicy: "Attach a storage policy to all session recordings in the scope",
-			action.DetachStoragePolicy: "Detach a storage policy from all session recordings in the scope",
+			action.ListScopeKeys:                      "List the keys within a given scope",
+			action.RotateScopeKeys:                    "Replace a scope's current KEK and DEKs with a new set of keys",
+			action.AttachStoragePolicy:                "Attach a storage policy to all session recordings in the scope",
+			action.DetachStoragePolicy:                "Detach a storage policy from all session recordings in the scope",
 		},
 	},
 	resource.Session: {
@@ -498,9 +498,9 @@ var resources = map[resource.Type]info{
 	resource.Worker: {
 		scopes: []string{"Global"},
 		actionDescOverrides: map[action.Type]string{
-			action.CreateControllerLed: "Create a worker using the controller-led workflow",
-			action.CreateWorkerLed:     "Create a worker using the worker-led workflow",
-			action.ReadCertificateAuthority: "Read the details of the certificate authority that is used to authorize Boundary workers",
+			action.CreateControllerLed: 			 "Create a worker using the controller-led workflow",
+			action.CreateWorkerLed:                  "Create a worker using the worker-led workflow",
+			action.ReadCertificateAuthority:         "Read the details of the certificate authority that is used to authorize Boundary workers",
 			action.ReinitializeCertificateAuthority: "Reinitialize the certificate authority that is used to authorize Boundary workers",
 		},
 	},
