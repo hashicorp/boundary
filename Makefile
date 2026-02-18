@@ -57,6 +57,11 @@ build: build-ui-ifne
 	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
+.PHONY: build-no-ui
+build-no-ui:
+	@echo "==> Building Boundary without UI features"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build

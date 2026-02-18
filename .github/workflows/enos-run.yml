@@ -335,7 +335,7 @@ jobs:
           token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
             channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
       - name: Send Slack message if Run but Retry passes
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
@@ -344,5 +344,4 @@ jobs:
           token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
             channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-
+            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
