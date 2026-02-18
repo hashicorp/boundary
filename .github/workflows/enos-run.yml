@@ -179,11 +179,21 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /tmp/test-deps
-          key: enos-test-deps-password-store-1.7.4-vault-1.12.2
+          key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
       - name: Debug dep-cache
         run: |
           mkdir -p /tmp/test-deps
           ls -la /tmp/test-deps
+      - name: Download jq
+        if: steps.dep-cache.outputs.cache-hit != 'true'
+        # NOTE: if you update the jq version make sure to update the dep cache key
+        run: |
+          mkdir -p /tmp/test-deps
+          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
+      - name: Install jq
+        run: |
+          chmod +x /tmp/test-deps/jq-bin
+          sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
       - name: Download and unzip pass for Boundary keyring
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the password store version make sure to update the dep cache key
