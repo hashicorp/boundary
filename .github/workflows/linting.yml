@@ -27,6 +27,7 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
       - name: Install Dependencies
         # if we really need to we can update this to run `make tools`
         # later but its just not necessary to only run linters
