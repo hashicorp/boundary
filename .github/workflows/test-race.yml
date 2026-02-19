@@ -68,7 +68,7 @@ jobs:
         id: plugin-cache-key
         run: |
           echo "key=${{ runner.os }}-plugins-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
-      - name: Determin plugin cache path
+      - name: Determine plugin cache path
         id: plugin-cache-paths
         run: |
           echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
@@ -143,15 +143,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go
           fail-on-cache-miss: false
-      - name: Install tools if tparse doesn't exist
+      - name: Install tools
+        if: steps.go-cache.outputs.cache-hit != 'true'
         run: |
-          if command -v tparse &> /dev/null; then
-            echo "tparse exists"
-          else
-            echo "tparse doesn't exist"
-            go mod download
-            make tools
-          fi
+          go mod download
+          make tools
       - name: Set up plugin cache
         id: plugin-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
