@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
+	"github.com/hashicorp/go-bexpr/grammar"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
@@ -871,6 +872,148 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			for _, mg := range memberships {
 				assert.True(strutil.StrListContains(matchingIds, mg.ManagedGroupId))
 			}
+		})
+	}
+}
+
+func Test_normalizeInSyntaxClaims(t *testing.T) {
+	tests := []struct {
+		name         string
+		filter       string
+		evalData     map[string]any
+		expectedData map[string]any
+	}{
+		{
+			name:   "IN normalizes string to array",
+			filter: `"operator" in "/userinfo/roles"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": "operator",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": []string{"operator"},
+				},
+			},
+		},
+		{
+			name:   "CONTAINS does not normalize",
+			filter: `"/userinfo/email" contains "@example.com"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"email": "test@example.com",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"email": "test@example.com",
+				},
+			},
+		},
+		{
+			name:   "NOT IN normalizes string to array",
+			filter: `"admin" not in "/userinfo/roles"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": "user",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": []string{"user"},
+				},
+			},
+		},
+		{
+			name:   "Token nested path - IN normalizes",
+			filter: `"infosec" in "/token/custom/department"`,
+			evalData: map[string]any{
+				"token": map[string]any{
+					"custom": map[string]any{
+						"department": "infosec",
+					},
+				},
+			},
+			expectedData: map[string]any{
+				"token": map[string]any{
+					"custom": map[string]any{
+						"department": []string{"infosec"},
+					},
+				},
+			},
+		},
+		{
+			name:   "OR with multiple departments - both paths normalized",
+			filter: `"infosec" in "/token/custom/department" or "ops" in "/token/custom/department"`,
+			evalData: map[string]any{
+				"token": map[string]any{
+					"custom": map[string]any{
+						"department": "infosec",
+					},
+				},
+			},
+			expectedData: map[string]any{
+				"token": map[string]any{
+					"custom": map[string]any{
+						"department": []string{"infosec"},
+					},
+				},
+			},
+		},
+		{
+			name:   "NOT wrapping IN - UnaryExpression",
+			filter: `not "banned" in "/userinfo/roles"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": "user",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": []string{"user"},
+				},
+			},
+		},
+		{
+			name:   "IN AND CONTAINS - only IN normalized",
+			filter: `"operator" in "/userinfo/roles" and "/userinfo/email" contains "@example.com"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": "operator",
+					"email": "testuser@example.com",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": []string{"operator"},
+					"email": "testuser@example.com",
+				},
+			},
+		},
+		{
+			name:   "IN OR CONTAINS same path - IN causes normalization",
+			filter: `"admin" in "/userinfo/roles" or "/userinfo/roles" contains "admin"`,
+			evalData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": "operator",
+				},
+			},
+			expectedData: map[string]any{
+				"userinfo": map[string]any{
+					"roles": []string{"operator"},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			ast, err := grammar.Parse("", []byte(tt.filter))
+			require.NoError(t, err)
+			normalizeInSyntaxClaims(ast.(grammar.Expression), tt.filter, tt.evalData)
+			assert.Equal(tt.expectedData, tt.evalData)
 		})
 	}
 }

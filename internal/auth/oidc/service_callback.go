@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-bexpr"
+	"github.com/hashicorp/go-bexpr/grammar"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/protobuf/proto"
 )
@@ -203,8 +204,17 @@ func Callback(
 			"token":    idTkClaims,
 			"userinfo": userInfoClaims,
 		}
+
 		// Iterate through and check claims against filters
 		for _, mg := range mgs {
+
+			ast, err := grammar.Parse("", []byte(mg.Filter))
+			if err != nil {
+				return "", errors.Wrap(ctx, err, op)
+			}
+
+			//normalize the "in" claims
+			normalizeInSyntaxClaims(ast.(grammar.Expression), mg.Filter, evalData)
 			eval, err := bexpr.CreateEvaluator(mg.Filter)
 			if err != nil {
 				// We check all filters on ingress so this should never happen,
@@ -266,4 +276,41 @@ func Callback(
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil
+}
+
+// normalizeInSyntaxClaims traverses AST and normalizes string values to []string
+// for any MatchIn/MatchNotIn that uses "in"/"not in" syntax (not "contains")
+func normalizeInSyntaxClaims(expr grammar.Expression, filter string, data map[string]any) {
+	switch e := expr.(type) {
+	case *grammar.MatchExpression:
+		if e.Operator == grammar.MatchIn || e.Operator == grammar.MatchNotIn {
+			searchPath := "/" + strings.Join(e.Selector.Path, "/")
+
+			// Because the AST does not retain original syntax, we need to check the original
+			//  filter string to see if "in"/"not in" syntax was used.
+			// This is to `normalize` only those cases, and not affect "contains" syntax.
+			if usesInSyntax(filter, searchPath, e.Value.Raw) {
+				val, err := pointerstructure.Get(data, searchPath)
+				if err == nil {
+					if str, ok := val.(string); ok {
+						pointerstructure.Set(data, searchPath, []string{str})
+					}
+				}
+			}
+		}
+	case *grammar.BinaryExpression:
+		normalizeInSyntaxClaims(e.Left, filter, data)
+		normalizeInSyntaxClaims(e.Right, filter, data)
+	case *grammar.UnaryExpression:
+		normalizeInSyntaxClaims(e.Operand, filter, data)
+	}
+}
+
+// usesInSyntax checks if the original filter used "in" or "not in" syntax for this path/value
+// We rebuild the patterns to search for in the filter string.
+func usesInSyntax(filter string, selector string, value string) bool {
+	// Looking for both "in" and "not in" exact pattern
+	inPattern := fmt.Sprintf(`"%s" in "%s"`, value, selector)
+	notInPattern := fmt.Sprintf(`"%s" not in "%s"`, value, selector)
+	return strings.Contains(filter, inPattern) || strings.Contains(filter, notInPattern)
 }
