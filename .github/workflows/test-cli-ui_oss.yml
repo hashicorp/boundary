@@ -83,8 +83,6 @@ jobs:
           rm /tmp/${{ inputs.artifact-name }}
       - name: Versions
         run: |
-          echo "go version:"
-          go version
           echo "bats version:"
           bats --version
           echo "jq version:"

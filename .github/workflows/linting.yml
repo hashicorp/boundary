@@ -31,19 +31,13 @@ jobs:
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
-          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
-      - name: Determine Go modules cache key
-        id: go-mod-cache-key
-        run: |
-          echo "key=go-mod-${{ hashFiles('**/go.sum') }}" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ steps.go-mod-cache-key.outputs.key }}
+          key: go-mod-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             go-mod
       - name: Install Dependencies
