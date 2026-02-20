@@ -106,10 +106,6 @@ jobs:
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
-      - name: Determine Go modules cache key
-        id: go-mod-cache-key
-        run: |
-          echo "key=go-mod-${{ hashFiles('**/go.sum') }}" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         id: go-mod-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
