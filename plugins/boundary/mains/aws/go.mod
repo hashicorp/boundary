@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/hashicorp/boundary-plugin-aws v0.5.2
-	github.com/hashicorp/boundary/sdk v0.0.56
+	github.com/hashicorp/boundary/sdk v0.0.57
 )
 
 require (
@@ -61,7 +61,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
