@@ -25,32 +25,33 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName                string
-	withDescription         string
-	withLimit               int
-	withMaxAge              int
-	withApiUrl              *url.URL
-	withCertificates        []*x509.Certificate
-	withAudClaims           []string
-	withSigningAlgs         []Alg
-	withClaimsScopes        []string
-	withPrompts             []PromptParam
-	withEmail               string
-	withFullName            string
-	withOrderByCreateTime   bool
-	ascending               bool
-	withUnauthenticatedUser bool
-	withForce               bool
-	withDryRun              bool
-	withAuthMethod          *AuthMethod
-	withPublicId            string
-	withRoundtripPayload    string
-	withKeyId               string
-	withIssuer              *url.URL
-	withOperationalState    AuthMethodState
-	withAccountClaimMap     map[string]AccountToClaim
-	withReader              db.Reader
-	withStartPageAfterItem  pagination.Item
+	withName                    string
+	withDescription             string
+	withLimit                   int
+	withMaxAge                  int
+	withApiUrl                  *url.URL
+	withCertificates            []*x509.Certificate
+	withAudClaims               []string
+	withSigningAlgs             []Alg
+	withClaimsScopes            []string
+	withPrompts                 []PromptParam
+	withEmail                   string
+	withFullName                string
+	withOrderByCreateTime       bool
+	ascending                   bool
+	withUnauthenticatedUser     bool
+	withForce                   bool
+	withDryRun                  bool
+	withAuthMethod              *AuthMethod
+	withPublicId                string
+	withRoundtripPayload        string
+	withKeyId                   string
+	withIssuer                  *url.URL
+	withOperationalState        AuthMethodState
+	withAccountClaimMap         map[string]AccountToClaim
+	withReader                  db.Reader
+	withStartPageAfterItem      pagination.Item
+	withoutStrictTypeComparison bool
 }
 
 func getDefaultOptions() options {
@@ -248,5 +249,12 @@ func WithPrompts(prompt ...PromptParam) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
+	}
+}
+// WithoutStrictTypeComparison provides an option to disable strict 
+// type comparison during filter evaluation.
+func WithoutStrictTypeComparison(enabled bool) Option {
+	return func(o *options) {
+		o.withoutStrictTypeComparison = enabled
 	}
 }

@@ -205,7 +205,15 @@ func Callback(
 		}
 		// Iterate through and check claims against filters
 		for _, mg := range mgs {
-			eval, err := bexpr.CreateEvaluator(mg.Filter)
+			evalOptions := []bexpr.Option{}
+
+			// This is default case. We should always be strict unless consumer requests otherwise, because it is safer.
+			// Strict evaluation means that IN syntanx do not support matching substrings.
+			if !mg.DisableStrictFilterEvaluation {
+				evalOptions = append(evalOptions, bexpr.WithStrictEvaluation())
+			}
+
+			eval, err := bexpr.CreateEvaluator(mg.Filter, evalOptions...)
 			if err != nil {
 				// We check all filters on ingress so this should never happen,
 				// but we validate anyways

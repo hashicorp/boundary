@@ -11,7 +11,8 @@ import (
 )
 
 type OidcManagedGroupAttributes struct {
-	Filter string `json:"filter,omitempty"`
+	Filter                        string `json:"filter,omitempty"`
+	DisableStrictFilterEvaluation bool   `json:"disable_strict_filter_evaluation,omitempty"`
 }
 
 func AttributesMapToOidcManagedGroupAttributes(in map[string]any) (*OidcManagedGroupAttributes, error) {

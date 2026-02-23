@@ -25,6 +25,7 @@ const (
 	NameField                              = "Name"
 	DescriptionField                       = "Description"
 	FilterField                            = "Filter"
+	DisableStrictFilterEvaluationField     = "DisableStrictFilterEvaluation"
 	IssuerField                            = "Issuer"
 	ClientIdField                          = "ClientId"
 	ClientSecretField                      = "ClientSecret"
