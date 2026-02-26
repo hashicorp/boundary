@@ -33,7 +33,7 @@ jobs:
         id: dep-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          path: /tmp/bats-cli-ui-deps
+          path: /tmp/test-deps
           key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
       - name: Set up Node for Bats install
         uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
@@ -46,32 +46,32 @@ jobs:
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the jq version make sure to update the dep cache key
         run: |
-          mkdir -p /tmp/bats-cli-ui-deps
-          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/bats-cli-ui-deps/jq-bin
+          mkdir -p /tmp/test-deps
+          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
       - name: Install jq for Bats CLI UI tests
         run: |
-          chmod +x /tmp/bats-cli-ui-deps/jq-bin
-          sudo cp /tmp/bats-cli-ui-deps/jq-bin /usr/local/bin/jq
+          chmod +x /tmp/test-deps/jq-bin
+          sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
       - name: Download and unzip pass for Boundary keyring
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the password store version make sure to update the dep cache key
         run: |
-          mkdir -p /tmp/bats-cli-ui-deps/pass
-          wget https://github.com/zx2c4/password-store/archive/refs/tags/1.7.4.tar.gz -O /tmp/bats-cli-ui-deps/pass/pass.tar.gz
-          cd /tmp/bats-cli-ui-deps/pass
+          mkdir -p /tmp/test-deps/pass
+          wget https://github.com/zx2c4/password-store/archive/refs/tags/1.7.4.tar.gz -O /tmp/test-deps/pass/pass.tar.gz
+          cd /tmp/test-deps/pass
           tar -xvf pass.tar.gz
       - name: Install pass for Boundary keyring
         run: |
-          cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
+          cd /tmp/test-deps/pass/password-store-1.7.4
           sudo make install
           pass init ${{ secrets.ENOS_GPG_UID }}
       - name: Download Vault AMD64 binary for integration testing
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
-          wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/bats-cli-ui-deps/vault.zip
+          wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault
         run: |
-          unzip /tmp/bats-cli-ui-deps/vault.zip -d /usr/local/bin
+          unzip /tmp/test-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -83,8 +83,6 @@ jobs:
           rm /tmp/${{ inputs.artifact-name }}
       - name: Versions
         run: |
-          echo "go version:"
-          go version
           echo "bats version:"
           bats --version
           echo "jq version:"

@@ -17,10 +17,10 @@ jobs:
   setup:
     outputs:
       go-version: ${{ steps.get-go-version.outputs.go-version }}
-      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
       cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
       cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
-      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+      go-mod-cache-key: ${{ steps.go-mod-cache-key.outputs.key }}
+      go-tools-cache-key: ${{ steps.go-tools-cache-key.outputs.key }}
       plugin-cache-path: ${{ steps.plugin-cache-paths.outputs.path }}
       plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
@@ -40,35 +40,48 @@ jobs:
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
-      - name: Determine go cache key
-        id: go-cache-key
-        run: |
-          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Determine Go modules cache key
+        id: go-mod-cache-key
+        run: |
+          echo "key=go-mod-${{ hashFiles('**/go.sum') }}" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
             ${{ steps.go-cache-paths.outputs.go-mod }}
-            ${{ steps.go-cache-paths.outputs.go-bin }}
-          key: ${{ steps.go-cache-key.outputs.key }}
+          key: ${{ steps.go-mod-cache-key.outputs.key }}
           restore-keys: |
-            ${{ runner.os }}-go
-      - name: Install Tools
+            go-mod
+      - name: Determine Go tools cache key
+        id: go-tools-cache-key
+        run: |
+          echo "key=go-tools-${{ steps.get-go-version.outputs.go-version }}-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Set up Go tools cache
+        id: go-tools-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-tools-cache-key.outputs.key }}
+          restore-keys: |
+            go-tools-${{ steps.get-go-version.outputs.go-version }}
+      - name: Go mod download
         run: |
           go mod download
+      - name: Install Tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
           make tools
       - name: Determine plugin cache key
         id: plugin-cache-key
         run: |
-          echo "key=${{ runner.os }}-plugins-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
-      - name: Determin plugin cache path
+          echo "key=plugins-${{ runner.os }}-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine plugin cache path
         id: plugin-cache-paths
         run: |
           echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
@@ -80,7 +93,7 @@ jobs:
             ${{ steps.plugin-cache-paths.outputs.path }}
           key: ${{ steps.plugin-cache-key.outputs.key }}
           restore-keys: |
-            ${{ runner.os }}-plugin
+            plugins-${{ runner.os }}
       - name: Build Plugins
         if: steps.plugin-cache.outputs.cache-hit != 'true'
         run: |
@@ -103,12 +116,10 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ needs.setup.outputs.cache-go-build }}
             ${{ needs.setup.outputs.cache-go-mod }}
-            ${{ needs.setup.outputs.cache-go-bin }}
-          key: ${{ needs.setup.outputs.go-cache-key }}
+          key: ${{ needs.setup.outputs.go-mod-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-go
+            go-mod
           fail-on-cache-miss: false
       - name: Test ${{ matrix.module }} Module
         run: |
@@ -132,26 +143,28 @@ jobs:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
-        id: go-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ needs.setup.outputs.cache-go-build }}
             ${{ needs.setup.outputs.cache-go-mod }}
-            ${{ needs.setup.outputs.cache-go-bin }}
-          key: ${{ needs.setup.outputs.go-cache-key }}
+          key: ${{ needs.setup.outputs.go-mod-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-go
+            go-mod
           fail-on-cache-miss: false
-      - name: Install tools if tparse doesn't exist
+      - name: Set up Go tools cache
+        id: go-tools-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-tools-cache-key }}
+          restore-keys: |
+            go-tools-${{ needs.setup.outputs.go-version }}
+      - name: Install tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
         run: |
-          if command -v tparse &> /dev/null; then
-            echo "tparse exists"
-          else
-            echo "tparse doesn't exist"
-            go mod download
-            make tools
-          fi
+          go mod download
+          make tools
       - name: Set up plugin cache
         id: plugin-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -160,7 +173,7 @@ jobs:
             ${{ needs.setup.outputs.plugin-cache-path }}
           key: ${{ needs.setup.outputs.plugin-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-plugin
+            plugins-${{ runner.os }}
       - name: GH fix for localhost resolution
         if: github.repository == 'hashicorp/boundary'
         run: |
