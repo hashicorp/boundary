@@ -160,10 +160,12 @@ jobs:
           key: ${{ needs.setup.outputs.go-tools-cache-key }}
           restore-keys: |
             go-tools-${{ needs.setup.outputs.go-version }}
-      - name: Install tools
-        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+      - name: Go mod download
         run: |
           go mod download
+      - name: Install Tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
           make tools
       - name: Set up plugin cache
         id: plugin-cache
