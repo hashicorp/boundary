@@ -26,11 +26,36 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod
+      - name: Set up Go tools cache
+        id: go-tools-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: go-tools-${{ steps.get-go-version.outputs.go-version }}-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}
+          restore-keys: |
+            go-tools-${{ steps.get-go-version.outputs.go-version }}
       - name: Running go mod tidy
         run: |
           go mod tidy
       - name: Install Dependencies
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
         run: |
+          go mod download
           make tools
       - name: Running make gen
         run: |
