@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -99,15 +101,76 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	if err != nil {
 		return origSecret
 	}
-	dst := new(bytes.Buffer)
-	if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+
+	// The following operations are performed to better format unspecified credential types.
+	// Credential values are printed with no indentation so that X.509 certificates can be
+	// easily copied and pasted by the user.
+	var out []string
+	var baseCredMap map[string]any
+	err = json.Unmarshal(in, &baseCredMap)
+	if err != nil {
 		return origSecret
 	}
-	secretStr := strings.Split(dst.String(), "\n")
-	if len(secretStr) > 0 {
-		secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
+	sortedKeys := make([]string, len(baseCredMap))
+	for k := range baseCredMap {
+		sortedKeys = append(sortedKeys, k)
 	}
-	return secretStr
+	sort.Strings(sortedKeys)
+
+	for _, k := range sortedKeys {
+		switch iface := baseCredMap[k].(type) {
+		case nil:
+			if len(k) > 0 {
+				out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			}
+		case map[string]any:
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			certs := make(map[string]any)
+			for kk, vv := range iface {
+				// If the value is PEM formatted, add it to a map to be formatted without indents.
+				switch vv := vv.(type) {
+				case []byte:
+					if p, _ := pem.Decode(vv); p != nil {
+						certs[kk] = vv
+					}
+				case string:
+					if p, _ := pem.Decode([]byte(vv)); p != nil {
+						// If the value is PEM formatted, add it to a map to be formatted without indents.
+						certs[kk] = vv
+					}
+				default:
+					// Print out when base.WrapMap() is called on iface below.
+				}
+			}
+			for c := range certs {
+				delete(iface, c)
+				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, c))
+				out = append(out, fmt.Sprintf("%v\n", certs[c]))
+			}
+			if len(iface) > 0 {
+				out = append(out, base.WrapMap(indent+6, 16, iface))
+			}
+		default:
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			data, err := json.Marshal(iface)
+			if err != nil {
+				out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
+				continue
+			}
+			dst := new(bytes.Buffer)
+			if err := json.Indent(dst, data, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+				out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
+				continue
+			}
+			secretStr := strings.Split(dst.String(), "\n")
+			if len(secretStr) > 0 {
+				secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
+			}
+			return secretStr
+		}
+	}
+
+	return out
 }
 
 func generateConnectionInfoTableOutput(in ConnectionInfo) string {
