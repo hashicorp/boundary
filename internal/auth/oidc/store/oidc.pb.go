@@ -870,9 +870,12 @@ type ManagedGroup struct {
 	AuthMethodId string `protobuf:"bytes,70,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"not_null"`
 	// filter is a go-bexpr filter
 	// @inject_tag: `gorm:"not_null"`
-	Filter        string `protobuf:"bytes,80,opt,name=filter,proto3" json:"filter,omitempty" gorm:"not_null"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Filter string `protobuf:"bytes,80,opt,name=filter,proto3" json:"filter,omitempty" gorm:"not_null"`
+	// disable_strict_filter_evaluation is a go-bexpr eval option
+	// @inject_tag: `gorm:"not_null"`
+	DisableStrictFilterEvaluation bool `protobuf:"varint,90,opt,name=disable_strict_filter_evaluation,json=disableStrictFilterEvaluation,proto3" json:"disable_strict_filter_evaluation,omitempty" gorm:"not_null"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *ManagedGroup) Reset() {
@@ -959,6 +962,13 @@ func (x *ManagedGroup) GetFilter() string {
 		return x.Filter
 	}
 	return ""
+}
+
+func (x *ManagedGroup) GetDisableStrictFilterEvaluation() bool {
+	if x != nil {
+		return x.DisableStrictFilterEvaluation
+	}
+	return false
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a
@@ -1194,7 +1204,7 @@ const file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = "" +
 	"from_claim\x18\x14 \x01(\tR\tfromClaim\x12\x19\n" +
 	"\bto_claim\x18\x1e \x01(\tR\atoClaim\x12K\n" +
 	"\vcreate_time\x18( \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +
-	"createTime\"\xa6\x03\n" +
+	"createTime\"\xc2\x04\n" +
 	"\fManagedGroup\x12\x1b\n" +
 	"\tpublic_id\x18\n" +
 	" \x01(\tR\bpublicId\x12K\n" +
@@ -1209,7 +1219,9 @@ const file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = "" +
 	"\aversion\x18< \x01(\rR\aversion\x12$\n" +
 	"\x0eauth_method_id\x18F \x01(\tR\fauthMethodId\x127\n" +
 	"\x06filter\x18P \x01(\tB\x1f\xc2\xdd)\x1b\n" +
-	"\x06Filter\x12\x11attributes.filterR\x06filter\"\xaf\x01\n" +
+	"\x06Filter\x12\x11attributes.filterR\x06filter\x12\x99\x01\n" +
+	" disable_strict_filter_evaluation\x18Z \x01(\bBP\xc2\xdd)L\n" +
+	"\x1dDisableStrictFilterEvaluation\x12+attributes.disable_strict_filter_evaluationR\x1ddisableStrictFilterEvaluation\"\xaf\x01\n" +
 	"\x19ManagedGroupMemberAccount\x12K\n" +
 	"\vcreate_time\x18\n" +
 	" \x01(\v2*.controller.storage.timestamp.v1.TimestampR\n" +

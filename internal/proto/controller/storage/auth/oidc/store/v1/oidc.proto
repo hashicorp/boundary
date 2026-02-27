@@ -358,6 +358,13 @@ message ManagedGroup {
     this: "Filter"
     that: "attributes.filter"
   }];
+  
+  // disable_strict_filter_evaluation is a go-bexpr eval option
+  // @inject_tag: `gorm:"not_null"`
+  bool disable_strict_filter_evaluation = 90 [(custom_options.v1.mask_mapping) = {
+    this: "DisableStrictFilterEvaluation"
+    that: "attributes.disable_strict_filter_evaluation"
+  }];
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a

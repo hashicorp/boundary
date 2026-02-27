@@ -32,10 +32,11 @@ func NewManagedGroup(ctx context.Context, authMethodId string, filter string, op
 	opts := getOpts(opt...)
 	mg := &ManagedGroup{
 		ManagedGroup: &store.ManagedGroup{
-			AuthMethodId: authMethodId,
-			Name:         opts.withName,
-			Description:  opts.withDescription,
-			Filter:       filter,
+			AuthMethodId:                  authMethodId,
+			Name:                          opts.withName,
+			Description:                   opts.withDescription,
+			Filter:                        filter,
+			DisableStrictFilterEvaluation: opts.withoutStrictTypeComparison,
 		},
 	}
 	if err := mg.validate(ctx, op); err != nil {

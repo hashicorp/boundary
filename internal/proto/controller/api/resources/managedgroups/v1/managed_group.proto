@@ -95,6 +95,16 @@ message OidcManagedGroupAttributes {
       that: "Filter"
     }
   ]; // @gotags: `class:"public"`
+
+  // disable_strict_filter_evaluation is determine the evalution behavior.
+  bool disable_strict_filter_evaluation = 20 [
+    json_name = "disable_strict_filter_evaluation",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.disable_strict_filter_evaluation"
+      that: "DisableStrictFilterEvaluation"
+    }
+  ]; // @gotags: `class:"public"`
 }
 
 // Attributes associated only with ManagedGroups with type "ldap".

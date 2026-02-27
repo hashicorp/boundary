@@ -269,6 +269,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 		case strings.EqualFold(NameField, f):
 		case strings.EqualFold(DescriptionField, f):
 		case strings.EqualFold(FilterField, f):
+		case strings.EqualFold(DisableStrictFilterEvaluationField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -276,9 +277,10 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
-			NameField:        mg.Name,
-			DescriptionField: mg.Description,
-			FilterField:      mg.Filter,
+			NameField:                          mg.Name,
+			DescriptionField:                   mg.Description,
+			FilterField:                        mg.Filter,
+			DisableStrictFilterEvaluationField: mg.DisableStrictFilterEvaluation,
 		},
 		fieldMaskPaths,
 		nil,

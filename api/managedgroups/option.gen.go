@@ -143,6 +143,30 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithOidcManagedGroupDisableStrictFilterEvaluation(inDisableStrictFilterEvaluation bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["disable_strict_filter_evaluation"] = inDisableStrictFilterEvaluation
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcManagedGroupDisableStrictFilterEvaluation() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["disable_strict_filter_evaluation"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcManagedGroupFilter(inFilter string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

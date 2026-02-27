@@ -499,6 +499,9 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
 	attrs := item.GetOidcManagedGroupAttributes()
+	if attrs.GetDisableStrictFilterEvaluation() {
+		opts = append(opts, oidc.WithoutStrictTypeComparison(true))
+	}
 	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build managed group for creation: %v.", err)
@@ -594,6 +597,7 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	}
 	// Set this regardless; it'll only take effect if the masks contain the value
 	mg.Filter = item.GetOidcManagedGroupAttributes().GetFilter()
+	mg.DisableStrictFilterEvaluation = item.GetOidcManagedGroupAttributes().GetDisableStrictFilterEvaluation()
 
 	version := item.GetVersion()
 
@@ -839,7 +843,8 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 			break
 		}
 		attrs := &pb.OidcManagedGroupAttributes{
-			Filter: i.GetFilter(),
+			Filter:                        i.GetFilter(),
+			DisableStrictFilterEvaluation: i.GetDisableStrictFilterEvaluation(),
 		}
 		out.Attrs = &pb.ManagedGroup_OidcManagedGroupAttributes{
 			OidcManagedGroupAttributes: attrs,
