@@ -110,9 +110,15 @@ variable "ssh_user" {
   default     = "ubuntu"
 }
 
-variable "ssh_aws_keypair" {
+variable "aws_ssh_keypair_name" {
   description = "SSH keypair used to connect to EC2 instances"
   type        = string
+}
+
+variable "aws_ssh_private_key" {
+  description = "SSH private key content for connecting to instances"
+  type        = string
+  sensitive   = true
 }
 
 variable "ubuntu_ami_id" {
