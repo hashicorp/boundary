@@ -18,6 +18,10 @@ resource "aws_instance" "vault_instance" {
     },
   )
 
+  root_block_device {
+    encrypted = true
+  }
+
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
