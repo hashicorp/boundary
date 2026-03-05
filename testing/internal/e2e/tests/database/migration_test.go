@@ -79,7 +79,7 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
-	pool.MaxWait = 10 * time.Second
+	pool.MaxWait = 30 * time.Second
 
 	// Set up docker network
 	network, err := pool.CreateNetwork(t.Name())
