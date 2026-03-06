@@ -132,12 +132,23 @@ resource "enos_local_exec" "check_health" {
   inline = ["timeout 10s bash -c 'until vault status; do sleep 2; done'"]
 }
 
+# Get the host machine's IP address
+# Uses 'ip' (Linux) with fallback to 'ifconfig' (macOS) for cross-platform support
+data "external" "host_ip" {
+  program = ["bash", "-c", "echo '{\"ip\":\"'$(command -v ip >/dev/null 2>&1 && ip -4 route get 8.8.8.8 | grep -oP 'src \\K[\\d.]+' | head -1 || ifconfig 2>/dev/null | grep 'inet ' | grep -v 127.0.0.1 | head -1 | awk '{print $2}')'\"}' "]
+}
+
 output "address_public" {
-  value = "http://${var.container_name}:${var.vault_port}"
+  value = "http://127.0.0.1:${var.vault_port}"
 }
 
 output "address_private" {
   value = "http://${var.container_name}:${var.vault_port_internal}"
+}
+
+output "address_unified" {
+  description = "Unified address accessible from both host and containers"
+  value       = "http://${data.external.host_ip.result.ip}:${var.vault_port}"
 }
 
 output "token" {

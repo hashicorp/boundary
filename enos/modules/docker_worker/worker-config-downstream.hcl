@@ -4,20 +4,23 @@
 disable_mlock = true
 
 listener "tcp" {
-  address     = "0.0.0.0:${port}"
+  # setting to 127.0.0.1 so that it won't be accessible by the local machine
+  # outside of the container, which is a more realistic configuration for a downstream worker
+  address     = "127.0.0.1:${port}"
   purpose     = "proxy"
   tls_disable = true
 }
 
 listener "tcp" {
-  address = "0.0.0.0:${port_ops}"
+  # setting to 127.0.0.1 so that it won't be accessible by the local machine
+  # outside of the container, which is a more realistic configuration for a downstream worker
+  address = "127.0.0.1:${port_ops}"
   purpose = "ops"
   tls_disable = true
 }
 
 worker {
   name = "${worker_name}"
-  public_addr = "${worker_name}:${port}"
   initial_upstreams = ["${initial_upstream}"]
 
   tags {

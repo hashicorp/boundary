@@ -65,6 +65,11 @@ variable "worker_led_registration" {
   type        = bool
   default     = false
 }
+variable "is_downstream_worker" {
+  description = "Whether this worker is a downstream worker, which affects its health check and registration process"
+  type        = bool
+  default     = false
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -139,7 +144,7 @@ resource "enos_local_exec" "get_worker_led_token" {
 }
 
 resource "enos_local_exec" "check_address" {
-  count = var.worker_led_registration ? 0 : 1
+  count = var.worker_led_registration || var.is_downstream_worker ? 0 : 1
   depends_on = [
     docker_container.worker
   ]
