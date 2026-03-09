@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package db
@@ -253,6 +253,17 @@ func Test_getOpts(t *testing.T) {
 		var rowsAffected int64
 		opts = GetOpts(WithReturnRowsAffected(&rowsAffected))
 		testOpts.withRowsAffected = &rowsAffected
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithTable", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of ""
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithTable("foo"))
+		testOpts.withTable = "foo"
 		assert.Equal(opts, testOpts)
 	})
 }

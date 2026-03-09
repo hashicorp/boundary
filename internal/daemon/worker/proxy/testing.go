@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package proxy
@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"nhooyr.io/websocket"
 )
 
 // TestWsConn creates a websocket client and handler simulating the local websocket proxy
@@ -50,5 +50,5 @@ func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *webso
 	require.NoError(err)
 	t.Cleanup(func() { _ = clientConn.Close(websocket.StatusGoingAway, "done") })
 	wg.Wait()
-	return
+	return clientConn, proxyConn
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oidc
@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -32,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -68,7 +70,7 @@ func TestAuthMethod(
 	require.NoError(err)
 
 	if len(opts.withAudClaims) > 0 {
-		newAudClaims := make([]any, 0, len(opts.withAudClaims))
+		newAudClaims := make([]*AudClaim, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
 			aud, err := NewAudClaim(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -79,7 +81,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withAudClaims), len(authMethod.AudClaims))
 	}
 	if len(opts.withCertificates) > 0 {
-		newCerts := make([]any, 0, len(opts.withCertificates))
+		newCerts := make([]*Certificate, 0, len(opts.withCertificates))
 		for _, c := range opts.withCertificates {
 			pem, err := EncodeCertificates(ctx, c)
 			require.NoError(err)
@@ -92,7 +94,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withCertificates), len(authMethod.Certificates))
 	}
 	if len(opts.withSigningAlgs) > 0 {
-		newAlgs := make([]any, 0, len(opts.withSigningAlgs))
+		newAlgs := make([]*SigningAlg, 0, len(opts.withSigningAlgs))
 		for _, a := range opts.withSigningAlgs {
 			alg, err := NewSigningAlg(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -103,7 +105,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
 	if len(opts.withClaimsScopes) > 0 {
-		newClaimsScopes := make([]any, 0, len(opts.withClaimsScopes))
+		newClaimsScopes := make([]*ClaimsScope, 0, len(opts.withClaimsScopes))
 		for _, cs := range opts.withClaimsScopes {
 			s, err := NewClaimsScope(ctx, authMethod.PublicId, cs)
 			require.NoError(err)
@@ -114,7 +116,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
 	}
 	if len(opts.withAccountClaimMap) > 0 {
-		newAccountClaimMaps := make([]any, 0, len(opts.withAccountClaimMap))
+		newAccountClaimMaps := make([]*AccountClaimMap, 0, len(opts.withAccountClaimMap))
 		for k, v := range opts.withAccountClaimMap {
 			acm, err := NewAccountClaimMap(ctx, authMethod.PublicId, k, v)
 			require.NoError(err)
@@ -124,7 +126,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withAccountClaimMap), len(authMethod.AccountClaimMaps))
 	}
 	if len(opts.withPrompts) > 0 {
-		newPrompts := make([]any, 0, len(opts.withPrompts))
+		newPrompts := make([]*Prompt, 0, len(opts.withPrompts))
 		for _, p := range opts.withPrompts {
 			prompt, err := NewPrompt(ctx, authMethod.PublicId, p)
 			require.NoError(err)
@@ -192,6 +194,25 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt 
 	return a
 }
 
+// TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
+// OIDC managed group, and add the newly created account as a member of the OIDC managed group.
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+	t.Helper()
+	uuid, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeId, ActivePublicState,
+		"alice-rp", "fido",
+		WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
+		WithSigningAlgs(Alg(oidc.RS256)),
+		WithApiUrl(TestConvertToUrls(t, fmt.Sprintf("https://%s.com/callback", uuid))[0]))
+	account := TestAccount(t, conn, testAuthMethod, "testacct")
+	managedGroup := TestManagedGroup(t, conn, testAuthMethod, `"/token/sub" matches ".*"`)
+	TestManagedGroupMember(t, conn, managedGroup.PublicId, account.PublicId)
+	return testAuthMethod, account, managedGroup
+}
+
 // TestManagedGroup creates a test oidc managed group.
 func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
 	t.Helper()
@@ -211,13 +232,13 @@ func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, filter string, 
 }
 
 // TestManagedGroupMember adds given account IDs to a managed group
-func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, accountId string, opt ...Option) *ManagedGroupMemberAccount {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	mg, err := NewManagedGroupMemberAccount(ctx, managedGroupId, memberId, opt...)
+	mg, err := NewManagedGroupMemberAccount(ctx, managedGroupId, accountId, opt...)
 	require.NoError(err)
 
 	require.NoError(rw.Create(ctx, mg))

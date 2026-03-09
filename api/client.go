@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package api
@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -171,12 +172,6 @@ func DefaultConfig() (*Config, error) {
 		TLSConfig:  &TLSConfig{},
 	}
 
-	// We read the environment now; after DefaultClient returns we can override
-	// values from command line flags, which should take precedence.
-	if err := config.ReadEnvironment(); err != nil {
-		return config, fmt.Errorf("failed to read environment: %w", err)
-	}
-
 	transport := config.HttpClient.Transport.(*http.Transport)
 	transport.TLSHandshakeTimeout = 10 * time.Second
 	transport.TLSClientConfig = &tls.Config{
@@ -186,6 +181,11 @@ func DefaultConfig() (*Config, error) {
 	config.Backoff = RateLimitLinearJitterBackoff
 	config.MaxRetries = 2
 	config.Headers = make(http.Header)
+
+	// Read from environment last to ensure it takes precedence.
+	if err := config.ReadEnvironment(); err != nil {
+		return config, fmt.Errorf("failed to read environment: %w", err)
+	}
 
 	return config, nil
 }
@@ -307,6 +307,12 @@ func (c *Config) ReadEnvironment() error {
 		maxRetries, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
 			return err
+		}
+		// maxRetries is a 32-bit unsigned integer stored inside an uint64.
+		// c.MaxRetries is a signed integer that is at least 32 bits in size.
+		// Check bounds against lowest denominator before casting.
+		if maxRetries > math.MaxInt32 {
+			return fmt.Errorf("max retries must be less than or equal to %d", math.MaxInt32)
 		}
 		c.MaxRetries = int(maxRetries)
 	}

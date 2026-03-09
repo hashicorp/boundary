@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package static
@@ -9,6 +9,7 @@ const (
 	descriptionField          = "Description"
 	usernameField             = "Username"
 	passwordField             = "Password"
+	domainField               = "Domain"
 	privateKeyField           = "PrivateKey"
 	PrivateKeyPassphraseField = "PrivateKeyPassphrase"
 	objectField               = "Object"

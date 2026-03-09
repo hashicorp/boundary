@@ -1,12 +1,7 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
-
-telemetry {
-  prometheus_retention_time = "24h"
-  disable_hostname          = true
-}
 
 listener "tcp" {
   address     = "0.0.0.0:${port}"

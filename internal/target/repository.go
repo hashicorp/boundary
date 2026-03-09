@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target
@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -47,7 +49,8 @@ type Repository struct {
 	// has access to in terms of actions and resources and we use it to build queries.
 	// These are passed in on the repository constructor using `WithPermissions`, meaning the
 	// `Repository` object is contextualized to whatever the request context is.
-	permissions []perms.Permission
+	permissions  []perms.Permission
+	randomReader io.Reader
 }
 
 // NewRepository creates a new target Repository.
@@ -85,12 +88,96 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		kms:          kms,
 		defaultLimit: opts.WithLimit,
 		permissions:  opts.WithPermissions,
+		randomReader: opts.withRandomReader,
 	}, nil
+}
+
+// LookupTargetForSessionAuthorization will look up a target in the repository and return the target
+// with its host source ids, credential source ids, and server certificate, if applicable.  If the target is not
+// found, it will return nil, nil.
+// Supported option: WithAlias if the session authorization uses a target alias
+func (r *Repository) LookupTargetForSessionAuthorization(ctx context.Context, publicId string, projectId string, opt ...Option) (Target, error) {
+	const op = "target.(Repository).LookupTargetForSessionAuthorization"
+	opts := GetOpts(opt...)
+	switch {
+	case publicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case projectId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+
+	target := allocTargetView()
+	target.PublicId = publicId
+	var address string
+	var hostSources []HostSource
+	var credSources []CredentialSource
+	var cert *ServerCertificate
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			lookupErr := read.LookupById(ctx, &target)
+			if lookupErr != nil {
+				return errors.Wrap(ctx, lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+			}
+
+			var err error
+			if hostSources, err = fetchHostSources(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if credSources, err = fetchCredentialSources(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			targetAddress, err := fetchAddress(ctx, read, target.PublicId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			if targetAddress != nil {
+				address = targetAddress.GetAddress()
+			}
+
+			if opts.WithAlias != nil {
+				cert, err = fetchTargetAliasProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, opts.WithAlias, databaseWrapper, target.GetSessionMaxSeconds(), WithRandomReader(r.randomReader))
+				if err != nil && !errors.IsNotFoundError(err) {
+					return errors.Wrap(ctx, err, op)
+				}
+			} else {
+				cert, err = fetchTargetProxyServerCertificate(ctx, read, w, target.PublicId, target.ProjectId, databaseWrapper, target.GetSessionMaxSeconds())
+				if err != nil && !errors.IsNotFoundError(err) {
+					return errors.Wrap(ctx, err, op)
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	subtype, err := target.targetSubtype(ctx, address)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	subtype.SetHostSources(hostSources)
+	subtype.SetCredentialSources(credSources)
+	subtype.SetProxyServerCertificate(cert)
+
+	return subtype, nil
 }
 
 // LookupTarget will look up a target in the repository and return the target
 // with its host source ids and credential source ids.  If the target is not
-// found, it will return nil, nil, nil, nil. No options are currently supported.
+// found, it will return nil, nil.
+// Supported options: WithName, WithProjectId, and WithProjectName
 func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := GetOpts(opt...)
@@ -387,9 +474,9 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 
 		var clauses []string
 		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
-		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.GrantScopeId))
 
-		if len(p.ResourceIds) > 0 {
+		if len(p.ResourceIds) > 0 && !p.All {
 			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
 			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
 		}
@@ -512,9 +599,10 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 
-	vet, ok := subtypeRegistry.vetFunc(target.GetType())
+	targetType := target.GetType()
+	vet, ok := subtypeRegistry.vetFunc(targetType)
 	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", targetType))
 	}
 	if err := vet(ctx, target); err != nil {
 		return nil, err
@@ -536,9 +624,9 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 			return nil, err
 		}
 	} else {
-		prefix, ok := subtypeRegistry.idPrefix(target.GetType())
+		prefix, ok := subtypeRegistry.idPrefix(targetType)
 		if !ok {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", targetType))
 		}
 		id, err := db.NewPublicId(ctx, prefix)
 		if err != nil {
@@ -550,16 +638,27 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	var address *Address
 	var err error
 	if t.GetAddress() != "" {
-		t.SetAddress(strings.TrimSpace(t.GetAddress()))
+		host, err := util.ParseAddress(ctx, t.GetAddress())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
+		}
+		t.SetAddress(host)
 		address, err = NewAddress(ctx, t.GetPublicId(), t.GetAddress())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
+	serverCert := t.GetProxyServerCertificate()
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
@@ -608,6 +707,29 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 				msgs = append(msgs, &targetAliasOplogMsg)
 			}
 
+			if serverCert != nil {
+				proxyCert := allocTargetProxyCertificate()
+				err = proxyCert.fromServerCertificate(ctx, serverCert)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert server certificate to target proxy certificate"))
+				}
+				proxyCert.TargetId = t.GetPublicId()
+				id, err := db.NewPublicId(ctx, globals.ProxyServerCertificatePrefix)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				proxyCert.PublicId = id
+				if err := proxyCert.Encrypt(ctx, databaseWrapper); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error encrypting target proxy certificate"))
+				}
+
+				var targetProxyCertOplogMsg oplog.Message
+				if err := w.Create(ctx, proxyCert, db.NewOplogMsg(&targetProxyCertOplogMsg)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target proxy certificate"))
+				}
+				msgs = append(msgs, &targetProxyCertOplogMsg)
+			}
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
@@ -650,7 +772,6 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		return nil, db.NoRowsAffected, err
 	}
 
-	var addressEndpoint string
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
@@ -663,8 +784,6 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("egressworkerfilter", f):
 		case strings.EqualFold("ingressworkerfilter", f):
 		case strings.EqualFold("address", f):
-			target.SetAddress(strings.TrimSpace(target.GetAddress()))
-			addressEndpoint = target.GetAddress()
 		case strings.EqualFold("storagebucketid", f):
 		case strings.EqualFold("enablesessionrecording", f):
 		default:
@@ -698,12 +817,19 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	// The Address field is not a part of the target schema in the database. It
 	// is a part of a different table called target_address, which is why the
 	// Address field must be filtered out of the dbMask & nullFields slices.
+	var addressEndpoint string
 	var updateAddress, deleteAddress bool
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch {
 		case strings.EqualFold("Address", f):
 			updateAddress = true
+			address, err := util.ParseAddress(ctx, target.GetAddress())
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
+			}
+			target.SetAddress(address)
+			addressEndpoint = target.GetAddress()
 		default:
 			filteredDbMask = append(filteredDbMask, f)
 		}

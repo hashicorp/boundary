@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package subtypes
@@ -51,7 +51,6 @@ func TestProtoAttributeKey(t *testing.T) {
 }
 
 func TestProtoAttributeKeyErrors(t *testing.T) {
-	type notproto struct{}
 	cases := []struct {
 		name        string
 		msg         proto.Message

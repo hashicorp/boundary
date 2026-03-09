@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package globals
@@ -14,11 +14,12 @@ const (
 	AnonymousUserId        = "u_anon"
 	RecoveryUserId         = "u_recovery"
 
-	MinimumSupportedPostgresVersion = "12"
+	MinimumSupportedPostgresVersion = "15"
 
 	GrantScopeThis        = "this"
 	GrantScopeChildren    = "children"
 	GrantScopeDescendants = "descendants"
+	GrantScopeIndividual  = "individual"
 
 	// CorrelationIdKey defines the http header and grpc metadata key used for specifying a
 	// correlation id. When getting the correlationId (from the http header or grpc metadata)

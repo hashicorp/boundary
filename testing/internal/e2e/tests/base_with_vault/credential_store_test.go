@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_with_vault_test
@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
@@ -28,7 +29,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -48,14 +49,15 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
@@ -67,6 +69,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
 		)
@@ -74,12 +77,29 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	})
 
 	// Create credentials in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", passwordPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", domainPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -91,7 +111,9 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
+			"-policy="+passwordPolicyName,
+			"-policy="+domainPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -129,6 +151,16 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// Create a credential library for the Domain
+	domainCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+		t,
+		ctx,
+		storeId,
+		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, domainSecretName),
+		"username_password_domain",
+	)
+	require.NoError(t, err)
+
 	// Get credentials for target (expect empty)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
@@ -144,6 +176,8 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, passwordCredentialLibraryId)
 	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, domainCredentialLibraryId)
+	require.NoError(t, err)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
@@ -154,10 +188,11 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	require.Len(t, newSessionAuthorization.Credentials, 2)
+	require.Len(t, newSessionAuthorization.Credentials, 3)
 
 	for _, v := range newSessionAuthorization.Credentials {
-		if v.CredentialSource.CredentialType == "ssh_private_key" {
+		switch v.CredentialSource.CredentialType {
+		case "ssh_private_key":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedKey, ok := v.Credential["private_key"].(string)
@@ -168,7 +203,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, string(keyData), retrievedKey)
 			t.Log("Successfully retrieved private key credentials for target")
-		} else if v.CredentialSource.CredentialType == "username_password" {
+		case "username_password":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedPassword, ok := v.Credential["password"].(string)
@@ -176,6 +211,17 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")
+		case "username_password_domain":
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
+			retrievedDomain, ok := v.Credential["domain"].(string)
+			require.True(t, ok)
+			assert.Equal(t, c.TargetSshUser, retrievedUser)
+			assert.Equal(t, domainPassword, retrievedPassword)
+			assert.Equal(t, "domain.com", retrievedDomain)
+			t.Log("Successfully retrieved username/password/domain credentials for target")
 		}
 	}
 }
@@ -189,11 +235,15 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
+
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
 
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -208,28 +258,52 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Create credential in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	// Create credentials in vault
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	passwordSecretName, passwordPolicyName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", passwordPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	domainSecretName, domainPolicyName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com")
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", domainPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credentials")
 
 	// Create vault token for boundary
@@ -238,7 +312,9 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
+			"-policy="+passwordPolicyName,
+			"-policy="+domainPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -281,6 +357,15 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	newPasswordCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newPasswordCredentialLibraryId)
 
+	// Create a credential library for the domain
+	newCredentialLibraryResult, err = clClient.Create(ctx, "vault-generic", newCredentialStoreId,
+		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+domainSecretName),
+		credentiallibraries.WithCredentialType("username_password_domain"),
+	)
+	require.NoError(t, err)
+	newDomainCredentialLibraryId := newCredentialLibraryResult.Item.Id
+	t.Logf("Created Credential Library: %s", newDomainCredentialLibraryId)
+
 	// Add private key brokered credentials to target
 	tClient := targets.NewClient(client)
 	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
@@ -296,14 +381,22 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// Add password brokered credentials to target
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
+		targets.WithBrokeredCredentialSourceIds([]string{newDomainCredentialLibraryId}),
+		targets.WithAutomaticVersioning(true),
+	)
+	require.NoError(t, err)
+
 	// Get credentials for target
 	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	require.Len(t, newSessionAuthorization.Credentials, 2)
+	require.Len(t, newSessionAuthorization.Credentials, 3)
 
 	for _, v := range newSessionAuthorization.Credentials {
-		if v.CredentialSource.CredentialType == "ssh_private_key" {
+		switch v.CredentialSource.CredentialType {
+		case "ssh_private_key":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
@@ -315,7 +408,8 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			keysMatch := string(k) == retrievedKey // This is done to prevent printing out key info
 			require.True(t, keysMatch, "Key retrieved from vault does not match expected value")
 			t.Log("Successfully retrieved credentials for target")
-		} else if v.CredentialSource.CredentialType == "username_password" {
+
+		case "username_password":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedPassword, ok := v.Credential["password"].(string)
@@ -323,6 +417,18 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")
+		case "username_password_domain":
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
+			retrievedDomain, ok := v.Credential["domain"].(string)
+			require.True(t, ok)
+			assert.Equal(t, c.TargetSshUser, retrievedUser)
+			assert.Equal(t, domainPassword, retrievedPassword)
+			assert.Equal(t, "domain.com", retrievedDomain)
+			t.Log("Successfully retrieved username/password/domain credentials for target")
+
 		}
 	}
 }

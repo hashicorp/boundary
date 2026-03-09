@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package iam
@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // AddPrincipalRoles provides the ability to add principals (userIds and
@@ -35,8 +36,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	if len(userIds) == 0 && len(groupIds) == 0 && len(managedGroupIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
 	}
-
-	newUserRoles := make([]any, 0, len(userIds))
+	newUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
@@ -44,7 +44,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newUserRoles = append(newUserRoles, usrRole)
 	}
-	newGrpRoles := make([]any, 0, len(groupIds))
+	newGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -52,7 +52,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
 	}
-	newManagedGrpRoles := make([]any, 0, len(managedGroupIds))
+	newManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
 		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -60,15 +60,12 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 	}
-
-	role := allocRole()
-	role.PublicId = roleId
-	scope, err := role.GetScope(ctx, r.reader)
+	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -80,15 +77,33 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			var updatedRole Resource
+			switch scp.GetType() {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = roleVersion + 1
+
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -119,8 +134,8 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -160,9 +175,6 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleVersion == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
-	role.PublicId = roleId
-
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
@@ -170,7 +182,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	toSet, err := r.PrincipalsToSet(ctx, &role, userIds, groupIds, managedGroupIds)
+	toSet, err := r.PrincipalsToSet(ctx, &Role{PublicId: roleId}, userIds, groupIds, managedGroupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -180,11 +192,11 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return toSet.UnchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
-	scope, err := role.GetScope(ctx, r.reader)
+	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -199,15 +211,32 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
-			roleTicket, err := w.GetTicket(ctx, &role)
+			var updatedRole Resource
+			switch scp.GetType() {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for role"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -217,8 +246,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			msgs := make([]*oplog.Message, 0, 5)
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			msgs = append(msgs, &roleOplogMsg)
@@ -335,10 +364,13 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
-	role.PublicId = roleId
 
-	deleteUserRoles := make([]any, 0, len(userIds))
+	var roleResource Resource
+	scp, err := getRoleScope(ctx, r.reader, roleId)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
+	}
+	deleteUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
@@ -346,7 +378,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		}
 		deleteUserRoles = append(deleteUserRoles, usrRole)
 	}
-	deleteGrpRoles := make([]any, 0, len(groupIds))
+	deleteGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -354,7 +386,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		}
 		deleteGrpRoles = append(deleteGrpRoles, grpRole)
 	}
-	deleteManagedGrpRoles := make([]any, 0, len(managedGroupIds))
+	deleteManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
 		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -363,11 +395,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		deleteManagedGrpRoles = append(deleteManagedGrpRoles, managedGrpRole)
 	}
 
-	scope, err := role.GetScope(ctx, r.reader)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope to create metadata", roleId)))
-	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -379,15 +407,32 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			var updatedRole Resource
+			switch scp.Type {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown role resource type %T", roleResource))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -433,8 +478,8 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -465,12 +510,12 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 }
 
 type PrincipalSet struct {
-	AddUserRoles            []any
-	AddGroupRoles           []any
-	AddManagedGroupRoles    []any
-	DeleteUserRoles         []any
-	DeleteGroupRoles        []any
-	DeleteManagedGroupRoles []any
+	AddUserRoles            []*UserRole
+	AddGroupRoles           []*GroupRole
+	AddManagedGroupRoles    []*ManagedGroupRole
+	DeleteUserRoles         []*UserRole
+	DeleteGroupRoles        []*GroupRole
+	DeleteManagedGroupRoles []*ManagedGroupRole
 	// unchangedPrincipalRoles is set iff there are no changes, that is, the
 	// length of all other members is zero
 	UnchangedPrincipalRoles []*PrincipalRole
@@ -503,7 +548,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
 		}
 	}
-	var newUserRoles []any
+	var newUserRoles []*UserRole
 	userIdsMap := map[string]struct{}{}
 	for _, id := range userIds {
 		userIdsMap[id] = struct{}{}
@@ -515,7 +560,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newUserRoles = append(newUserRoles, usrRole)
 		}
 	}
-	var newGrpRoles []any
+	var newGrpRoles []*GroupRole
 	groupIdsMap := map[string]struct{}{}
 	for _, id := range groupIds {
 		groupIdsMap[id] = struct{}{}
@@ -527,7 +572,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newGrpRoles = append(newGrpRoles, grpRole)
 		}
 	}
-	var newManagedGrpRoles []any
+	var newManagedGrpRoles []*ManagedGroupRole
 	managedGroupIdsMap := map[string]struct{}{}
 	for _, id := range managedGroupIds {
 		managedGroupIdsMap[id] = struct{}{}
@@ -539,7 +584,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 		}
 	}
-	var deleteUserRoles []any
+	var deleteUserRoles []*UserRole
 	for _, p := range existingUsers {
 		if _, ok := userIdsMap[p.PrincipalId]; !ok {
 			usrRole, err := NewUserRole(ctx, p.GetRoleId(), p.GetPrincipalId())
@@ -549,7 +594,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteUserRoles = append(deleteUserRoles, usrRole)
 		}
 	}
-	var deleteGrpRoles []any
+	var deleteGrpRoles []*GroupRole
 	for _, p := range existingGroups {
 		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
 			grpRole, err := NewGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
@@ -559,7 +604,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteGrpRoles = append(deleteGrpRoles, grpRole)
 		}
 	}
-	var deleteManagedGrpRoles []any
+	var deleteManagedGrpRoles []*ManagedGroupRole
 	for _, p := range existingManagedGroups {
 		if _, ok := managedGroupIdsMap[p.PrincipalId]; !ok {
 			managedGrpRole, err := NewManagedGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
@@ -620,5 +665,5 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 		}
 	}
 
-	return
+	return users, groups, managedGroups, retErr
 }

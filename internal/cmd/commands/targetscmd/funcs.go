@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package targetscmd
@@ -314,6 +314,9 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId != "" {
 		*opts = append(*opts, targets.WithScopeId(c.FlagScopeId))
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-name") && c.FlagScopeName != "" {
+		*opts = append(*opts, targets.WithScopeName(c.FlagScopeName))
 	}
 
 	switch c.Func {

@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # Infrastructure
@@ -25,12 +25,6 @@ variable "enos_user" {
 }
 
 # Test configs
-variable "boundary_docker_image_name" {
-  description = "Name:Tag of Docker image to use"
-  type        = string
-  default     = "docker.io/hashicorp/boundary:latest"
-}
-
 variable "boundary_docker_image_file" {
   description = "Path to Boundary Docker image"
   type        = string
@@ -115,6 +109,12 @@ variable "crt_bundle_path" {
   default     = null
 }
 
+variable crt_bundle_path_windows {
+  description = "Path to CRT generated boundary bundle for windows"
+  type        = string
+  default     = null
+}
+
 variable "boundary_install_dir" {
   description = "Path boundary binaries will be installed to on remote instances"
   type        = string
@@ -130,7 +130,7 @@ variable "vault_instance_type" {
 variable "vault_version" {
   description = "Version of Vault to use"
   type        = string
-  default     = "1.12.2"
+  default     = "1.17.6"
 }
 
 variable "test_email" {
@@ -175,6 +175,18 @@ variable "boundary_license_path" {
   default     = null
 }
 
+variable "boundary_license" {
+  description = "Boundary license"
+  type        = string
+  default     = null
+}
+
+variable "vault_license_path" {
+  description = "Vault license path"
+  type        = string
+  default     = null
+}
+
 variable "go_test_timeout" {
   description = "Timeout for go test used in e2e tests"
   type        = string
@@ -199,4 +211,81 @@ variable "hcp_boundary_cluster_id" {
   default     = ""
   // If using HCP int, ensure that the cluster id starts with "int-"
   // Example: "int-19283a-123123-..."
+}
+
+variable "gcp_target_instance_type" {
+  description = "Instance type for test target nodes"
+  type        = string
+  default     = "e2-micro"
+}
+
+variable "gcp_region" {
+  description = "GCP region where the resources will be created"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "gcp_zone" {
+  description = "GCP zone where the resources will be created"
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "gcp_project_id" {
+  description = "GCP project where the resources will be created"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gcp_private_key_path" {
+  description = "Path to the GCP private key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gcp_private_key" {
+  description = "GCP private key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gcp_private_key_id" {
+  description = "GCP private key ID"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gcp_client_email" {
+  description = "GCP client email"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "windows_instance_type" {
+  description = "Instance type for Windows client nodes"
+  type        = string
+  default     = "m7i-flex.xlarge"
+}
+
+variable "ui_build_override" {
+  description = "Override for build for UI automation"
+  type        = string
+  default     = ""
+}
+
+variable "github_token" {
+  description = "github token to the hashicorp org. needed to run RDP automated tests (requires contents (read-only) and actions (read-only) with fine-grained tokens or repo access using classic tokens)"
+  type        = string
+  default     = ""
+}
+
+variable "worker_version" {
+  description = "Manually set worker version to test different worker/controller version combinations"
+  type        = string
+  default     = null
 }

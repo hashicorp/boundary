@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_test
@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,7 @@ const (
 	testCredentialsFile = "testdata/credential.json"
 	testPemFile         = "testdata/private-key.pem"
 	testPassword        = "password"
+	testDomain          = "domain.com"
 )
 
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
@@ -38,7 +40,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -58,7 +60,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -75,9 +77,11 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	privateKeyCredentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
 	require.NoError(t, err)
-	pwCredentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
+	pwCredentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
 	require.NoError(t, err)
 	jsonCredentialId, err := boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
+	require.NoError(t, err)
+	updCredentialId, err := boundary.CreateStaticCredentialUsernamePasswordDomainCli(t, ctx, storeId, c.TargetSshUser, testPassword, testDomain)
 	require.NoError(t, err)
 
 	// Get credentials for target (expect empty)
@@ -96,6 +100,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialId)
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, updCredentialId)
 	require.NoError(t, err)
 
 	// Get credentials for target
@@ -125,6 +131,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": testPassword},
 		{"username": c.TargetSshUser, "private_key": sshPrivateKey},
+		{"username": c.TargetSshUser, "password": testPassword, "domain": testDomain},
 		expectedJsonCredentials,
 	}
 
@@ -142,7 +149,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 				e2e.WithArgs("credential-stores", "read", "-id", storeId, "-format", "json"),
 			)
 			if output.Err == nil {
-				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
+				return fmt.Errorf("Deleted credential can still be read: %q", output.Stdout)
 			}
 
 			var response boundary.CliError
@@ -195,11 +202,15 @@ func TestApiStaticCredentialStore(t *testing.T) {
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
+
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
 
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
@@ -214,7 +225,7 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)
@@ -233,11 +244,15 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	newCredentialsId := newCredentialsResult.Item.Id
 	t.Logf("Created Credentials: %s", newCredentialsId)
 
+	updCredentialId, err := boundary.CreateStaticCredentialPasswordDomainApi(t, ctx, client, storeId, c.TargetSshUser, testPassword, testDomain)
+	require.NoError(t, err)
+	t.Logf("Created Credentials: %s", updCredentialId)
+
 	// Add credentials to target
 	tClient := targets.NewClient(client)
 	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithAutomaticVersioning(true),
-		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId}),
+		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId, updCredentialId}),
 	)
 	require.NoError(t, err)
 
@@ -249,7 +264,16 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.True(t, ok)
 	retrievedKey, ok := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
 	require.True(t, ok)
+	retrievedDomainUser, ok := newSessionAuthorization.Credentials[1].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedDomainPW, ok := newSessionAuthorization.Credentials[1].Credential["password"].(string)
+	require.True(t, ok)
+	retrievedDomain, ok := newSessionAuthorization.Credentials[1].Credential["domain"].(string)
+	require.True(t, ok)
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
+	assert.Equal(t, c.TargetSshUser, retrievedDomainUser)
+	assert.Equal(t, testPassword, retrievedDomainPW)
+	assert.Equal(t, testDomain, retrievedDomain)
 	require.Equal(t, string(k), retrievedKey)
 	t.Log("Successfully retrieved credentials for target")
 }

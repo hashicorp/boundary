@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package purge
@@ -43,7 +43,7 @@ func (c *purgeJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (c *purgeJob) Run(ctx context.Context) error {
+func (c *purgeJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "purge.(purgeJob).Run"
 	_, err := c.w.Exec(ctx, c.query, nil)
 	if err != nil {

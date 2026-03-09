@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package fstest provides test implementations of the fs interfaces.
@@ -169,7 +169,7 @@ func (l *LimitedSpaceFile) WriteAndClose(p []byte) (n int, err error) {
 	}
 	n, err = l.MemFile.Write(p)
 	if err != nil {
-		return
+		return n, err
 	}
 	return n, l.MemFile.Close()
 }

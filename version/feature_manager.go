@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package version
@@ -24,6 +24,8 @@ const (
 	SupportIdInGrants
 	PluginDelete
 	LocalStorageState
+	StorageBucketCredentialState
+	RDPSessionProxy
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -90,6 +92,16 @@ func init() {
 	// Worker supports reporting local storage state
 	featureMap[LocalStorageState] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.16.0"),
+	}
+
+	// Worker supports reporting the state of storage bucket credentials
+	featureMap[StorageBucketCredentialState] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.17.0"),
+	}
+
+	// Worker supports RDP session proxy
+	featureMap[RDPSessionProxy] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.20.0"),
 	}
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
@@ -29,7 +29,15 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-const gatewayTarget = ""
+const (
+	// Indicate to the gRPC client logic that we're handling the dialing ourselves
+	// through the grpc.WithContextDialer option and that it should not attempt
+	// its own DNS resolution.
+	gatewayTarget = "passthrough:"
+
+	// userAgentsKey defines the gRPC metadata key used to forward the User-Agent header to the gRPC server.
+	userAgentsKey = "userAgents"
+)
 
 type grpcServerListener interface {
 	net.Listener
@@ -58,6 +66,7 @@ func (noDelimiterStreamingMarshaler) Delimiter() []byte {
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
 		runtime.WithMetadata(correlationIdAnnotator),
+		runtime.WithMetadata(userAgentHeadersAnnotator),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
 			&runtime.HTTPBodyMarshaler{
 				Marshaler: handlers.JSONMarshaler(),
@@ -65,6 +74,7 @@ func newGrpcGatewayMux() *runtime.ServeMux {
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
+		runtime.WithDisablePathLengthFallback(),
 	)
 }
 
@@ -79,7 +89,6 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 	if correlationId == "" {
 		var err error
 		correlationId, err = uuid.GenerateUUID()
-
 		// GenerateUUID should not return an error. If it does, panic since there is no
 		// err return path here.
 		if err != nil {
@@ -89,6 +98,16 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 
 	return metadata.New(map[string]string{
 		globals.CorrelationIdKey: correlationId,
+	})
+}
+
+func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
+	userAgent := req.Header.Get("User-Agent")
+	if userAgent == "" {
+		return metadata.MD{}
+	}
+	return metadata.New(map[string]string{
+		userAgentsKey: userAgent,
 	})
 }
 

@@ -1,15 +1,18 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package server
 
 import (
 	"context"
+	"io"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/assert"
 )
@@ -77,10 +80,11 @@ func Test_GetOpts(t *testing.T) {
 		tags := []*Tag{
 			{Key: "key1", Value: "val1"},
 			{Key: "key2", Value: "val2"},
+			nil,
 		}
 		opts := GetOpts(WithWorkerTags(tags...))
 		testOpts := getDefaultOptions()
-		testOpts.withWorkerTags = tags
+		testOpts.withWorkerTags = tags[:2]
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
@@ -247,6 +251,30 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithLocalStorageState(AvailableLocalStorageState.String()))
 		testOpts := getDefaultOptions()
 		testOpts.withLocalStorageState = AvailableLocalStorageState.String()
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		reader := &db.Db{}
+		writer := &db.Db{}
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.WithReader)
+		assert.Nil(t, testOpts.WithWriter)
+		testOpts.WithReader = reader
+		testOpts.WithWriter = writer
+		opts := GetOpts(WithReaderWriter(reader, writer))
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, reader, opts.WithReader)
+		assert.Equal(t, writer, opts.WithWriter)
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		reader := io.Reader(&strings.Reader{})
+		opts := GetOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)

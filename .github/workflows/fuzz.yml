@@ -33,8 +33,8 @@ jobs:
   fuzz-grants-parse:
     name: Fuzz grants.Parse
     runs-on: ubuntu-latest
-    steps:    
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -42,14 +42,15 @@ jobs:
         run: |
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
       - shell: bash
         run: go test ./internal/perms -fuzz=FuzzParse -fuzztime=30s
       - name: Upload fuzz failure seed corpus as run artifact
         if: failure()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: fuzz-corpus
           path: ./internal/perms/testdata/fuzz

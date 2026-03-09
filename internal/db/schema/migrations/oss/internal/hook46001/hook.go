@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package hook46001 implements the hook CheckFunc & RepairFunc definitions for CVE-2022-36130.

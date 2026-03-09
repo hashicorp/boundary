@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -242,7 +243,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.baseContext,
 			c.IamRepoFn,
 			c.ServersRepoFn,
-			c.workerStatusGracePeriod,
+			c.workerRPCGracePeriod,
 			c.kms,
 			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
@@ -265,7 +266,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.StaticCredentialRepoFn,
 			c.TargetAliasRepoFn,
 			c.downstreamWorkers,
-			c.workerStatusGracePeriod,
+			c.workerRPCGracePeriod,
 			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension,
 		)
@@ -377,72 +378,76 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 }
 
 func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
+	conn, err := grpc.NewClient(gatewayTarget, dialOptions...)
+	if err != nil {
+		return err
+	}
 	// Register*ServiceHandlerServer methods ignore the passed in context.
 	// Passing it in anyways in case this changes in the future.
-	if err := services.RegisterHostCatalogServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterHostCatalogServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register host catalog service handler: %w", err)
 	}
-	if err := services.RegisterHostSetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterHostSetServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register host set service handler: %w", err)
 	}
-	if err := services.RegisterHostServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterHostServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	if err := services.RegisterAccountServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterAccountServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	if err := services.RegisterAuthMethodServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterAuthMethodServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register auth method service handler: %w", err)
 	}
-	if err := services.RegisterAuthTokenServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterAuthTokenServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register auth token service handler: %w", err)
 	}
-	if err := services.RegisterScopeServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterScopeServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register scope service handler: %w", err)
 	}
-	if err := services.RegisterUserServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterUserServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register user service handler: %w", err)
 	}
-	if err := services.RegisterTargetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterTargetServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register target service handler: %w", err)
 	}
-	if err := services.RegisterGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterGroupServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register group service handler: %w", err)
 	}
-	if err := services.RegisterRoleServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterRoleServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register role service handler: %w", err)
 	}
-	if err := services.RegisterSessionServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterSessionServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register session service handler: %w", err)
 	}
-	if err := services.RegisterManagedGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterManagedGroupServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register managed groups service handler: %w", err)
 	}
-	if err := services.RegisterCredentialStoreServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterCredentialStoreServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register credential store service handler: %w", err)
 	}
-	if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterCredentialLibraryServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register credential library service handler: %w", err)
 	}
-	if err := services.RegisterWorkerServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterWorkerServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register worker service handler: %w", err)
 	}
-	if err := services.RegisterCredentialServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterCredentialServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register credential service handler: %w", err)
 	}
-	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterSessionRecordingServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register session recording service handler: %w", err)
 	}
-	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterStorageBucketServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register storage bucket service handler: %w", err)
 	}
-	if err := services.RegisterAliasServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterAliasServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register alias service handler: %w", err)
 	}
-	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterPolicyServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register policy handler: %w", err)
 	}
-	if err := services.RegisterBillingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+	if err := services.RegisterBillingServiceHandler(ctx, gwMux, conn); err != nil {
 		return fmt.Errorf("failed to register billing service handler: %w", err)
 	}
 
@@ -498,6 +503,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			requestInfo.EventId = info.EventId
 			requestInfo.TraceId = info.Id
 			requestInfo.ClientIp = info.ClientIp
+			requestInfo.Actions = getActions(info.Path)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
@@ -649,7 +655,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
-		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":"+auth.CallbackAction)
 
 		// How we get the parameters changes based on the method. Right now only
 		// GET is supported with query args, but this can support POST with JSON
@@ -736,4 +742,20 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 
 		h.ServeHTTP(w, req)
 	})
+}
+
+// getActions takes in a URL Path and returns the actions from the URL
+func getActions(urlPath string) []string {
+	// Remove any query parameters
+	urlPath = strings.Split(urlPath, "?")[0]
+
+	lastPart := path.Base(urlPath)
+
+	_, rest, _ := strings.Cut(lastPart, ":")
+	if rest == "" {
+		return []string{}
+	}
+
+	// Split the rest on ":", returning all actions and sub-actions
+	return strings.Split(rest, ":")
 }

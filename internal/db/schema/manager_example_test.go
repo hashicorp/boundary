@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package schema_test
@@ -26,7 +26,7 @@ func ExampleManager_hooks() {
 
 	d, err := common.SqlOpen(dialect, u)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	editions := edition.Editions{
 		{
@@ -146,7 +146,7 @@ func ExampleManager_hooks() {
 		schema.WithEditions(editions),
 	)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	_, err = m.ApplyMigrations(ctx)
 	checkErr, _ := err.(schema.MigrationCheckError)
@@ -171,7 +171,7 @@ func ExampleManager_hooks() {
 
 	logs, err := m.ApplyMigrations(ctx)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	for _, log := range logs {
 		fmt.Printf("%s:%d:\n", log.Edition, log.Version)

@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 terraform {
@@ -66,13 +66,13 @@ variable "target_port" {
   type        = string
   default     = ""
 }
-variable "vault_addr" {
-  description = "External network address of Vault. Will be converted to a URL below"
+variable "vault_addr_public" {
+  description = "Public address to a vault instance"
   type        = string
   default     = ""
 }
-variable "vault_addr_internal" {
-  description = "Internal network address of Vault (i.e. within a docker network). Will be converted to a URL below"
+variable "vault_addr_private" {
+  description = "Private address to a vault instance"
   type        = string
   default     = ""
 }
@@ -80,11 +80,6 @@ variable "vault_root_token" {
   description = "Root token for vault instance"
   type        = string
   default     = ""
-}
-variable "vault_port" {
-  description = "External Port that vault instance is attached to (outside of docker network)"
-  type        = string
-  default     = "8200"
 }
 variable "aws_access_key_id" {
   description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
@@ -140,7 +135,11 @@ variable "worker_tag_ingress" {
   type    = string
   default = ""
 }
-variable "worker_tag_egress" {
+variable "worker_tag_isolated" {
+  type    = string
+  default = ""
+}
+variable "worker_tag_collocated" {
   type    = string
   default = ""
 }
@@ -157,10 +156,109 @@ variable "boundary_license" {
   default = ""
 }
 
+variable "target_rdp_domain_controller_addr" {
+  description = "Address of RDP domain controller"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_domain_controller_addr_ipv6" {
+  description = "IPV6 ddress of RDP domain controller"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_domain_controller_user" {
+  description = "Username for RDP domain controller"
+  type        = string
+  default     = "Administrator"
+}
+variable "target_rdp_domain_controller_password" {
+  description = "Password for RDP domain controller"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_domain_controller_ssh_key" {
+  description = "Path to the ssh key for the windows domain controller and worker"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_addr" {
+  description = "Address of RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_domain_hostname" {
+  description = "Domain Name of RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_member_server_user" {
+  description = "Username for RDP member server"
+  type        = string
+  default     = "Administrator"
+}
+variable "target_rdp_member_server_password" {
+  description = "Password for RDP member server"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_domain_name" {
+  description = "Domain name of RDP targets"
+  type        = string
+  default     = ""
+}
+variable "target_rdp_server_version" {
+  description = "Server version of rdp target"
+  type        = string
+  default     = ""
+}
+variable "client_version" {
+  description = "Client version of RDP client"
+  type        = string
+  default     = ""
+}
+variable "client_ip_public" {
+  description = "Public IP of the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_username" {
+  description = "Username for the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_password" {
+  description = "Password for the client machine"
+  type        = string
+  default     = ""
+}
+variable "client_test_dir" {
+  description = "Directory on the client machine where tests will be run"
+  type        = string
+  default     = ""
+}
+variable "client_ssh_key" {
+  description = "Path to the ssh key for the windows client"
+  type        = string
+  default     = ""
+}
+variable "controller_ip_public" {
+  description = "public ip of the controller"
+  type        = string
+  default     = ""
+}
+variable "ip_version" {
+  description = "ip version used to setup boundary instance, should be 4, 6, or dual"
+  type        = string
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "ip_version must be one of: [4, 6, dual]"
+  }
+}
+
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
-  vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
   package_name             = reverse(split("/", var.test_package))[0]
@@ -168,33 +266,54 @@ locals {
 
 resource "enos_local_exec" "run_e2e_test" {
   environment = {
-    E2E_TESTS                     = "true"
-    BOUNDARY_ADDR                 = var.alb_boundary_api_addr
-    BOUNDARY_LICENSE              = var.boundary_license
-    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id
-    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name
-    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password
-    E2E_TARGET_ADDRESS            = var.target_address
-    E2E_TARGET_PORT               = var.target_port
-    E2E_SSH_USER                  = var.target_user
-    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
-    E2E_SSH_CA_KEY                = ""
-    VAULT_ADDR                    = local.vault_addr
-    VAULT_TOKEN                   = var.vault_root_token
-    E2E_VAULT_ADDR                = local.vault_addr_internal
-    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
-    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
-    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1
-    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
-    E2E_AWS_REGION                = var.aws_region
-    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
-    E2E_AWS_ROLE_ARN              = var.aws_role_arn
-    E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
-    E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
-    E2E_WORKER_ADDRESS            = var.worker_address
-    E2E_MAX_PAGE_SIZE             = var.max_page_size
+    E2E_TESTS                                    = "true"
+    BOUNDARY_ADDR                                = var.alb_boundary_api_addr
+    BOUNDARY_LICENSE                             = var.boundary_license
+    E2E_PASSWORD_AUTH_METHOD_ID                  = var.auth_method_id
+    E2E_PASSWORD_ADMIN_LOGIN_NAME                = var.auth_login_name
+    E2E_PASSWORD_ADMIN_PASSWORD                  = var.auth_password
+    E2E_TARGET_ADDRESS                           = var.target_address
+    E2E_TARGET_PORT                              = var.target_port
+    E2E_SSH_USER                                 = var.target_user
+    E2E_SSH_KEY_PATH                             = local.aws_ssh_private_key_path
+    E2E_SSH_CA_KEY                               = ""
+    VAULT_ADDR                                   = var.vault_addr_public
+    VAULT_TOKEN                                  = var.vault_root_token
+    E2E_VAULT_ADDR_PUBLIC                        = var.vault_addr_public
+    E2E_VAULT_ADDR_PRIVATE                       = var.vault_addr_private
+    E2E_AWS_ACCESS_KEY_ID                        = var.aws_access_key_id
+    E2E_AWS_SECRET_ACCESS_KEY                    = var.aws_secret_access_key
+    E2E_AWS_HOST_SET_FILTER                      = var.aws_host_set_filter1
+    E2E_AWS_HOST_SET_IPS                         = local.aws_host_set_ips1
+    E2E_AWS_HOST_SET_FILTER2                     = var.aws_host_set_filter2
+    E2E_AWS_HOST_SET_IPS2                        = local.aws_host_set_ips2
+    E2E_AWS_REGION                               = var.aws_region
+    E2E_AWS_BUCKET_NAME                          = var.aws_bucket_name
+    E2E_AWS_ROLE_ARN                             = var.aws_role_arn
+    E2E_WORKER_TAG_INGRESS                       = var.worker_tag_ingress
+    E2E_WORKER_TAG_ISOLATED                      = var.worker_tag_isolated
+    E2E_WORKER_TAG_COLLOCATED                    = var.worker_tag_collocated
+    E2E_WORKER_ADDRESS                           = var.worker_address
+    E2E_MAX_PAGE_SIZE                            = var.max_page_size
+    E2E_IP_VERSION                               = var.ip_version
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR        = var.target_rdp_domain_controller_addr
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_ADDR_IPV6   = var.target_rdp_domain_controller_addr_ipv6
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_USER        = var.target_rdp_domain_controller_user
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_PASSWORD    = var.target_rdp_domain_controller_password
+    E2E_TARGET_RDP_DOMAIN_CONTROLLER_SSH_KEY     = var.target_rdp_domain_controller_ssh_key
+    E2E_TARGET_RDP_MEMBER_SERVER_ADDR            = var.target_rdp_member_server_addr
+    E2E_TARGET_RDP_MEMBER_SERVER_DOMAIN_HOSTNAME = var.target_rdp_member_server_domain_hostname
+    E2E_TARGET_RDP_MEMBER_SERVER_USER            = var.target_rdp_member_server_user
+    E2E_TARGET_RDP_MEMBER_SERVER_PASSWORD        = var.target_rdp_member_server_password
+    E2E_TARGET_RDP_DOMAIN_NAME                   = var.target_rdp_domain_name
+    E2E_TARGET_RDP_SERVER_VERSION                = var.target_rdp_server_version
+    E2E_CONTROLLER_IP_PUBLIC                     = var.controller_ip_public
+    E2E_CLIENT_IP_PUBLIC                         = var.client_ip_public
+    E2E_CLIENT_USERNAME                          = var.client_username
+    E2E_CLIENT_PASSWORD                          = var.client_password
+    E2E_CLIENT_TEST_DIR                          = var.client_test_dir
+    E2E_CLIENT_VERSION                           = var.client_version
+    E2E_CLIENT_SSH_KEY                           = var.client_ssh_key
   }
 
   inline = var.debug_no_run ? [""] : [

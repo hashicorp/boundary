@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package plugin
@@ -77,7 +77,6 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", p.ScopeId, p.Name)))

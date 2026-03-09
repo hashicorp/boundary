@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package password
@@ -92,7 +92,6 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("in scope: %s: name %s already exists", m.ScopeId, m.Name))
@@ -146,7 +145,6 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(publicId))
 	}

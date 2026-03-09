@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target_test
@@ -65,10 +65,10 @@ func TestService_List(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj1.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}),
 	)

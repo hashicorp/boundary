@@ -43,6 +43,7 @@ database-up:
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
+		-e TEST_DATABASE_UP_WITH_OP=$(TEST_DATABASE_UP_WITH_OP) \
 		-e PGDATA=/pgdata \
 		--mount type=tmpfs,destination=/pgdata \
 		-v "$(CWD)/../../../internal/db/schema/migrations":/migrations \
@@ -54,6 +55,7 @@ database-up:
 	@echo "Test database available at:        127.0.0.1:$(TEST_DB_PORT)"
 	@echo "For database logs run:"
 	@echo "    docker logs $(TEST_CONTAINER_NAME)"
+
 clean:
 	docker stop $(TEST_CONTAINER_NAME) || true
 	docker rm -v $(TEST_CONTAINER_NAME) || true

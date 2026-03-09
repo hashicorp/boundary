@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package db
@@ -108,7 +108,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i any, opType Op
 	case withOplog && (opType == CreateItemsOp || opType == DeleteItemsOp):
 		afterFn = func(i any, rowsAffected int) error {
 			const op = "db.afterFnMultiItem"
-			err := rw.addOplogForItems(ctx, opType, opts, ticket, i.([]any))
+			err := rw.addOplogForItems(ctx, opType, opts, ticket, items)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
 			}

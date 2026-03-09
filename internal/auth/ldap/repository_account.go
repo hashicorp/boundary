@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package ldap
@@ -65,7 +65,6 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, _ ...Option)
 			return nil
 		},
 	)
-
 	if err != nil {
 		switch {
 		case errors.IsUniqueError(err):

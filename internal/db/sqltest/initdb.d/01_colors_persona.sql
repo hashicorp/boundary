@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- There is a theme to the data in this file.
@@ -105,49 +105,62 @@ begin;
     ('g___cr-group', 'u______carly'),
     ('g___cg-group', 'u_______cora');
 
-  insert into iam_role
-    (scope_id,       public_id,      name)
+  insert into iam_role_global
+    (scope_id,       public_id,      name,      grant_this_role_scope,      grant_scope)
   values
-    ('p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
-    ('p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
-    ('p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
-    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist'),
-    ('o_____colors', 'r_op_rc__art', 'Red Color Artist'),
-    ('o_____colors', 'r_op_gc__art', 'Green Color Artist'),
-    ('o_____colors', 'r_oo_____art', 'Color Artist'),
-          ('global', 'r_go____name', 'Color Namer'),
-          ('global', 'r_gp____spec', 'Blue Color Inspector'),
-          ('global', 'r_gg_____buy', 'Purchaser'),
-          ('global', 'r_gg____shop', 'Shopper');
+    ('global', 'r_go____name', 'Color Namer', false, 'individual'),
+    ('global', 'r_gp____spec', 'Blue Color Inspector', false, 'individual'),
+    ('global', 'r_gg_____buy', 'Purchaser', true, 'individual'),
+    ('global', 'r_gg____shop', 'Shopper', true, 'individual');
 
-  insert into iam_role_grant_scope
-    (role_id,        scope_id_or_special)
+  insert into iam_role_global_individual_org_grant_scope
+    (role_id,       scope_id,       grant_scope)
   values
-    ('r_pp_bc__mix', 'this'),
-    ('r_pp_rc__mix', 'p____rcolors'),
-    ('r_pp_gc__mix', 'this'),
-    ('r_op_bc__art', 'p____bcolors'),
-    ('r_op_rc__art', 'p____rcolors'),
-    ('r_op_gc__art', 'p____gcolors'),
-    ('r_go____name', 'o_____colors'),
-    ('r_gp____spec', 'p____bcolors'),
-    ('r_gg_____buy', 'global'),
-    ('r_gg____shop', 'global');
+    ('r_go____name', 'o_____colors', 'individual');
+
+  insert into iam_role_global_individual_project_grant_scope
+    (role_id,       scope_id,       grant_scope)
+  values
+    ('r_gp____spec', 'p____bcolors', 'individual');
+
+
+  insert into iam_role_org
+    (scope_id,       public_id,      name,      grant_this_role_scope,      grant_scope)
+  values
+    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist', false, 'individual'),
+    ('o_____colors', 'r_op_rc__art', 'Red Color Artist', false, 'individual'),
+    ('o_____colors', 'r_op_gc__art', 'Green Color Artist', false, 'individual'),
+    ('o_____colors', 'r_oo_____art', 'Color Artist', false, 'individual');
+
+  insert into iam_role_org_individual_grant_scope
+    (role_id,       scope_id,       grant_scope)
+  values
+    ('r_op_bc__art', 'p____bcolors', 'individual'),
+    ('r_op_rc__art', 'p____rcolors', 'individual'),
+    ('r_op_gc__art', 'p____gcolors', 'individual');
+
+
+  insert into iam_role_project
+    (scope_id,       public_id,      name,      grant_this_role_scope)
+  values
+    ('p____bcolors', 'r_pp_bc__mix', 'Color Mixer', true),
+    ('p____rcolors', 'r_pp_rc__mix', 'Color Mixer', true),
+    ('p____gcolors', 'r_pp_gc__mix', 'Color Mixer', true);
 
   insert into iam_role_grant
-    (role_id,        canonical_grant,             raw_grant)
+    (role_id,        canonical_grant,                                    raw_grant)
   values
-    ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-    ('r_gg____shop', 'type=*;action=view',        'view anything'),
-    ('r_go____name', 'type=color;action=name',    'name colors'),
-    ('r_gp____spec', 'type=color;action=inspect', 'inspect colors'),
-    ('r_oo_____art', 'type=color;action=create',  'create color'),
-    ('r_op_bc__art', 'type=color;action=create',  'create color'),
-    ('r_op_rc__art', 'type=color;action=create',  'create color'),
-    ('r_op_gc__art', 'type=color;action=create',  'create color'),
-    ('r_pp_bc__mix', 'type=color;action=mix',     'mix color'),
-    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
-    ('r_pp_gc__mix', 'type=color;action=mix',     'mix color');
+    ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
+    ('r_gg____shop', 'ids=*;type=*;actions=read;output_fields=id',       'ids=*;type=*;actions=read;output_fields=id'),
+    ('r_go____name', 'ids=*;type=group;actions=create,update,read,list', 'ids=*;type=group;actions=create,update,read,'),
+    ('r_gp____spec', 'ids=*;type=group;actions=delete',                  'ids=*;type=group;actions=delete'),
+    ('r_oo_____art', 'ids=*;type=group;actions=create',                  'ids=*;type=group;actions=create'),
+    ('r_op_bc__art', 'ids=*;type=auth-token;actions=create',             'ids=*;type=auth-token;actions=create'),
+    ('r_op_rc__art', 'ids=*;type=target;actions=create',                 'ids=*;type=targets;actions=create'),
+    ('r_op_gc__art', 'ids=*;type=auth-method;actions=authenticate',      'ids=*;type=auth-method;actions=create'),
+    ('r_pp_bc__mix', 'ids=*;type=group;actions=add-members',             'ids=*;type=group;actions=add-members'),
+    ('r_pp_rc__mix', 'ids=*;type=group;actions=set-members',             'ids=*;type=group;actions=set-members'),
+    ('r_pp_gc__mix', 'ids=*;type=group;actions=delete-members',          'ids=*;type=group;actions=delete-members');
 
   insert into iam_group_role
     (role_id,        principal_id)
@@ -427,6 +440,13 @@ begin;
     ('p____rcolors', 'tssh______cr', 'Red Color SSH Target',   false,                    null),
     ('p____gcolors', 'tssh______cg', 'Green Color SSH Target', true,                     'sb____colors');
 
+  insert into target_rdp
+    (project_id,     public_id,      name,                     enable_session_recording, storage_bucket_id)
+  values
+    ('p____bcolors', 'trdp______cb', 'Blue Color RDP Target',  true,                     'sb____global'),
+    ('p____rcolors', 'trdp______cr', 'Red Color RDP Target',   false,                    null),
+    ('p____gcolors', 'trdp______cg', 'Green Color RDP Target', true,                     'sb____colors');
+
   insert into target_host_set
     (project_id,     target_id,      host_set_id)
   values
@@ -438,13 +458,19 @@ begin;
     ('p____bcolors', 'tssh______cb', 'hs__st____b2'),
     ('p____bcolors', 'tssh______cb', 'hs__plg___b1'),
     ('p____rcolors', 'tssh______cr', 'hs__st____r1'),
-    ('p____rcolors', 'tssh______cr', 'hs__st____r2');
+    ('p____rcolors', 'tssh______cr', 'hs__st____r2'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b1'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b2'),
+    ('p____bcolors', 'trdp______cb', 'hs__plg___b1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r2');
 
   insert into target_address
     (target_id,      address)
   values
     ('t_________cg', '8.8.8.8'),
-    ('tssh______cg', '8.8.8.8');
+    ('tssh______cg', '8.8.8.8'),
+    ('trdp______cg', '8.8.8.8');
 
   insert into credential_vault_store
     (project_id,     public_id,      name,                description, vault_address,               namespace)
@@ -453,7 +479,7 @@ begin;
     ('p____rcolors', 'cvs__rcolors', 'red vault store',   'Some',      'https://red.vault.color',   'red'),
     ('p____gcolors', 'cvs__gcolors', 'green vault store', 'Maybe',     'https://green.vault.color', 'green');
 
-  insert into credential_vault_library
+  insert into credential_vault_generic_library
     (store_id,       public_id,      name,                  description, vault_path, http_method)
   values
     ('cvs__bcolors', 'cvl_______b1', 'blue vault library',  'None',      '/secrets', 'GET'),
@@ -466,6 +492,13 @@ begin;
     ('cvs__bcolors', 'cvl__ssh__b1', 'blue vault ssh library',  '/ssh/sign/blue',   'admin',  'ed25519', 0),
     ('cvs__rcolors', 'cvl__ssh__r1', 'red vault ssh library',   '/ssh/issue/red',   'webdev', 'ecdsa',   521),
     ('cvs__gcolors', 'cvl__ssh__g1', 'green vault ssh library', '/ssh/issue/green', 'dba',    'rsa',     4096);
+
+  insert into credential_vault_ldap_library
+    (store_id,       public_id,      name,                       vault_path,                                                 credential_type)
+   values
+    ('cvs__bcolors', 'cvl__ldap_b1', 'blue vault ldap library',  '/ldap/static-cred/blue',                                   'username_password_domain'),
+    ('cvs__rcolors', 'cvl__ldap_r1', 'red vault ldap library',   '/ldap/creds/red',                                          'username_password_domain'),
+    ('cvs__gcolors', 'cvl__ldap_g1', 'green vault ldap library', '/ldap/static-cred/org-colors-r-us/group-green-color/green','username_password_domain');
 
   insert into credential_static_store
     (project_id,     public_id,      name,                            description)
@@ -488,6 +521,13 @@ begin;
     ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csu__rcolors', 'Red username password cred',   'ruser',  'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea),
     ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csu__gcolors', 'Green username password cred', 'guser',  'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea);
 
+  insert into credential_static_username_password_domain_credential
+    (key_id,         project_id,     store_id,       public_id,      name,                           username,  password_encrypted,   password_hmac,         domain)
+    values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'csud_bcolors', 'Blue username password cred',  'buser',   'bpasswd-enc'::bytea, 'bpasswd-hmac'::bytea, 'blue.domain'),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csud_rcolors', 'Red username password cred',   'ruser',   'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea, 'red.domain'),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csud_gcolors', 'Green username password cred', 'guser',   'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea, 'green.domain');
+
   insert into credential_static_ssh_private_key_credential
     (key_id,         project_id,     store_id,       public_id,      name,                           username, private_key_encrypted, private_key_hmac)
   values
@@ -502,7 +542,9 @@ begin;
     ('p____bcolors', 'tssh______cb', 'csj__bcolors',       'injected_application'),
     ('p____gcolors', 'tssh______cg', 'csj__gcolors',       'brokered'),
     ('p____gcolors', 'tssh______cg', 'csu__gcolors',       'brokered'),
-    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application');
+    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application'),
+    ('p____gcolors', 'tssh______cg', 'csud_gcolors',       'brokered');
+    ;
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)
@@ -547,6 +589,7 @@ begin;
     ('s1______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'csu__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'cspk_gcolors',       'injected_application'), -- tssh______cg
+    ('s1______cora', 'csud_gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'cspk_gcolors',       'injected_application'); -- tssh______cg
 

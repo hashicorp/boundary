@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -215,7 +215,7 @@ func (c *client) lookupToken(ctx context.Context) (*vault.Secret, error) {
 func (c *client) swapToken(ctx context.Context, new TokenSecret) (old TokenSecret) {
 	old = TokenSecret(c.cl.Token())
 	c.cl.SetToken(string(new))
-	return
+	return old
 }
 
 func (c *client) get(ctx context.Context, path string) (*vault.Secret, error) {

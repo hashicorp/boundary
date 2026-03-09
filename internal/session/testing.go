@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -41,35 +41,28 @@ func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, 
 	err = rw.Create(ctx, c)
 	require.NoError(err)
 
-	connectedState, err := NewConnectionState(ctx, c.PublicId, StatusConnected)
-	require.NoError(err)
-	err = rw.Create(ctx, connectedState)
-	require.NoError(err)
 	return c
-}
-
-// TestConnectionState creates a test connection state for the connectionId in the repository.
-func TestConnectionState(t testing.TB, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
-	t.Helper()
-	ctx := context.Background()
-	require := require.New(t)
-	rw := db.New(conn)
-	s, err := NewConnectionState(ctx, connectionId, state)
-	require.NoError(err)
-	err = rw.Create(context.Background(), s)
-	require.NoError(err)
-	return s
 }
 
 // TestState creates a test state for the sessionId in the repository.
 func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State {
+	const insertSessionState = `
+insert into session_state (session_id, state, active_time_range)
+     values               ($1,         $2,    tstzrange($3, null, '[]'))
+  returning lower(active_time_range) as start_time
+;`
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	s, err := NewState(context.Background(), sessionId, state)
 	require.NoError(err)
-	err = rw.Create(context.Background(), s)
+	rows, err := rw.Query(context.Background(), insertSessionState, []any{s.SessionId, s.Status, s.StartTime})
 	require.NoError(err)
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&s.StartTime)
+		require.NoError(err)
+	}
 	return s
 }
 
@@ -159,7 +152,23 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		require.NoError(err)
 	}
 
-	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
+	if opts.withProxyCertificate != nil {
+		sessionProxyCertificate := opts.withProxyCertificate
+		sessionProxyCertificate.SessionId = s.PublicId
+
+		if len(sessionProxyCertificate.PrivateKey) == 0 || len(sessionProxyCertificate.Certificate) == 0 {
+			t.Fatalf("proxy certificate and private key must both be set")
+		}
+		err := sessionProxyCertificate.Encrypt(ctx, wrapper)
+		if err != nil {
+			require.NoError(err)
+		}
+		if err = rw.Create(ctx, sessionProxyCertificate); err != nil {
+			require.NoError(err)
+		}
+	}
+
+	ss, err := fetchStates(ctx, rw, s.PublicId, opts.withDbOpts...)
 	require.NoError(err)
 	s.States = ss
 

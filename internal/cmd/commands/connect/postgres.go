@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package connect
@@ -98,6 +98,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Cr
 			})
 			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", password))
 			if err != nil {
+				_ = passfile.Close()
 				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {
@@ -110,5 +111,5 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Cr
 			}
 		}
 	}
-	return
+	return args, envs, retCreds, retErr
 }

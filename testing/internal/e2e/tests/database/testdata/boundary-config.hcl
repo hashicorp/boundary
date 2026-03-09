@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
@@ -91,7 +91,7 @@ events {
     ]
 
     file {
-      path      = "/logs"
+      path      = "/boundary/logs"
       file_name = "audit.log"
     }
 

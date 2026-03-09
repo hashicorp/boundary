@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package proxy
@@ -14,10 +14,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/coder/websocket"
 	"github.com/hashicorp/boundary/api/consts"
 	pb "github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/boundary/sdk/wspb"
-	"nhooyr.io/websocket"
 )
 
 func (p *ClientProxy) getWsConn(ctx context.Context) (*websocket.Conn, string, error) {

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package purge
@@ -26,7 +26,7 @@ func TestPurgeTables(t *testing.T) {
 		t.Errorf("error getting db connection %s", err)
 	}
 
-	rows, err := db.Query("select get_deletion_tables()")
+	rows, err := db.Query("select tablename from deletion_table")
 	if err != nil {
 		t.Errorf("unable to query for deletion tables %s", err)
 	}
@@ -54,7 +54,7 @@ func TestPurgeTables(t *testing.T) {
 			query: query,
 		}
 
-		err = sJob.Run(ctx)
+		err = sJob.Run(ctx, 0)
 		require.NoError(t, err)
 
 		var count int

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package job
@@ -35,7 +35,7 @@ func (r dataKeyVersionDestructionMonitorJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (r *dataKeyVersionDestructionMonitorJob) Run(ctx context.Context) error {
+func (r *dataKeyVersionDestructionMonitorJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "kmsjob.(dataKeyVersionDestructionMonitorJob).Run"
 
 	if err := r.kmsRepo.MonitorDataKeyVersionDestruction(ctx); err != nil {

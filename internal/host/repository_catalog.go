@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package host
@@ -119,7 +119,7 @@ func (s *CatalogRepository) ListDeletedIds(ctx context.Context, since time.Time)
 	var deletedCatalogIDs []string
 	var transactionTimestamp time.Time
 	if _, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		rows, err := s.writer.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
+		rows, err := w.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

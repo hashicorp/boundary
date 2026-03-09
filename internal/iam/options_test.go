@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package iam
@@ -98,5 +98,14 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
 		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+	})
+	t.Run("WithRecursive", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRecursive(true))
+		defaultOpts := getDefaultOptions()
+		assert.False(defaultOpts.withRecursive)
+		assert.True(opts.withRecursive)
+		falseRecurse := getOpts(WithRecursive(false))
+		assert.False(falseRecurse.withRecursive)
 	})
 }

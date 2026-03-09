@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package loopback
@@ -104,6 +104,7 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	ret.ListHostsFn = ret.listHosts
 
 	// Set storage methods
+	ret.NormalizeStorageBucketDataFn = ret.normalizeStorageBucketData
 	ret.OnCreateStorageBucketFn = ret.onCreateStorageBucket
 	ret.OnUpdateStorageBucketFn = ret.onUpdateStorageBucket
 	ret.OnDeleteStorageBucketFn = ret.onDeleteStorageBucket

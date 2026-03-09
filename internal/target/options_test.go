@@ -1,10 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,9 +169,9 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithPermissions", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithPermissions([]perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}))
+		opts := GetOpts(WithPermissions([]perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}))
 		testOpts := getDefaultOptions()
-		testOpts.WithPermissions = []perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}
+		testOpts.WithPermissions = []perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCredentialLibraries", func(t *testing.T) {
@@ -267,5 +268,27 @@ func Test_GetOpts(t *testing.T) {
 		input := []*talias.Alias{al}
 		opts := GetOpts(WithAliases(input))
 		assert.Equal(input, opts.withAliases)
+	})
+	t.Run("WithAlias", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		al, err := talias.NewAlias(context.Background(), "global", "test")
+		require.NoError(err)
+		opts := GetOpts(WithAlias(al))
+		assert.Equal(al, opts.WithAlias)
+	})
+	t.Run("WithTargetId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithTargetId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.withTargetId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts := GetOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
+		assert.Equal(opts, testOpts)
 	})
 }

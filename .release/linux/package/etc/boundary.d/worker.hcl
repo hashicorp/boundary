@@ -13,7 +13,7 @@
 #   description = "A default worker created demonstration"
 
 #   # Workers must be able to reach controllers on :9201
-#   controllers = [
+#   initial_upstreams = [
 #     "10.0.0.1",
 #     "10.0.0.2",
 #     "10.0.0.3",

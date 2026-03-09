@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package helper
@@ -11,9 +11,11 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -22,26 +24,17 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"nhooyr.io/websocket"
 )
 
 const (
-	DefaultWorkerStatusGracePeriod           = time.Second * 15
-	DefaultSuccessfulStatusGracePeriod       = time.Second * 15
+	DefaultControllerRPCGracePeriod          = time.Second * 15
 	expectConnectionStateOnControllerTimeout = time.Minute * 2
-	expectConnectionStateOnWorkerTimeout     = DefaultWorkerStatusGracePeriod * 3
+	expectConnectionStateOnWorkerTimeout     = DefaultControllerRPCGracePeriod * 3
 
 	// This is the interval that we check states on in the worker. It
 	// needs to be particularly granular to ensure that we allow for
 	// adequate time to catch any edge cases where the connection state
 	// disappears from the worker before we can update the state.
-	//
-	// As of this writing, the (hardcoded) status request interval on
-	// the worker is 2 seconds, and a session is removed from the state
-	// when it has no connections left on the *next* pass. A one second
-	// interval would only mean two chances to check with a high
-	// possibility of skew; while it seems okay I'm still not 100%
-	// comfortable with this little resolution.
 	expectConnectionStateOnWorkerInterval = time.Millisecond * 100
 )
 
@@ -76,11 +69,18 @@ func NewTestSession(
 	sessAuth, err := sar.GetSessionAuthorization()
 	require.NoError(err)
 
+	sessAuthData, err := sessAuth.GetSessionAuthorizationData()
+	if len(opts.WithWorkerInfo) != 0 {
+		sessAuthData.WorkerInfo = opts.WithWorkerInfo
+	}
+	require.NoError(err)
+
 	proxy, err := apiproxy.New(
 		ctx,
 		sessAuth.AuthorizationToken,
 		apiproxy.WithWorkerHost(sessAuth.SessionId),
 		apiproxy.WithSkipSessionTeardown(opts.WithSkipSessionTeardown),
+		apiproxy.WithSessionAuthorizationData(sessAuthData),
 	)
 	require.NoError(err)
 
@@ -155,11 +155,9 @@ func (s *TestSession) ExpectConnectionStateOnController(
 		}
 
 		for i, conn := range conns {
-			_, states, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
+			c, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
 			require.NoError(err)
-			// Look at the first state in the returned list, which will
-			// be the most recent state.
-			actualStates[i] = states[0].Status
+			actualStates[i] = session.ConnectionStatusFromString(c.Status)
 		}
 
 		if reflect.DeepEqual(expectStates, actualStates) {
@@ -430,26 +428,71 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 	require.NoError(err)
 
 	go ts.run()
+
+	require.Eventually(func() bool {
+		c, err := net.Dial(ts.ln.Addr().Network(), ts.ln.Addr().String())
+		if err != nil {
+			return false
+		}
+		_, err = c.Write([]byte("test"))
+		if err != nil {
+			return false
+		}
+		buf := make([]byte, len("test"))
+		_, err = c.Read(buf)
+		if err != nil {
+			return false
+		}
+		if string(buf) != "test" {
+			return false
+		}
+		if err := c.Close(); err != nil {
+			return false
+		}
+		return true
+	}, 10*time.Second, 100*time.Millisecond)
+
 	return ts
 }
 
+// ExpectWorkers is a blocking call, where the method validates that the expected workers
+// can be found in the controllers status update. If the provided list of workers is empty,
+// this method will validate that the controller worker routing info is not called.
 func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
-	updateTimes := c.Controller().WorkerStatusUpdateTimes()
-	workerMap := map[string]*worker.TestWorker{}
-	for _, w := range workers {
-		workerMap[w.Name()] = w
+	t.Helper()
+	// validate the controller has no reported workers
+	if len(workers) == 0 {
+		assert.Eventually(t, func() bool {
+			workers := []string{}
+			c.Controller().WorkerRoutingInfoUpdateTimes().Range(func(workerId, lastRoutingInfo any) bool {
+				if assert.NotNil(t, workerId) {
+					return false
+				}
+				if assert.NotNil(t, lastRoutingInfo) {
+					return false
+				}
+				if time.Since(lastRoutingInfo.(time.Time)) < DefaultControllerRPCGracePeriod {
+					workers = append(workers, workerId.(string))
+				}
+				return true
+			})
+			return len(workers) == 0
+		}, 2*DefaultControllerRPCGracePeriod, 250*time.Millisecond)
+		return
 	}
-	updateTimes.Range(func(k, v any) bool {
-		require.NotNil(t, k)
-		require.NotNil(t, v)
-		if workerMap[k.(string)] == nil {
-			// We don't remove from updateTimes currently so if we're not
-			// expecting it we'll see an out-of-date entry
-			return true
-		}
-		assert.WithinDuration(t, time.Now(), v.(time.Time), 30*time.Second)
-		delete(workerMap, k.(string))
-		return true
-	})
-	assert.Empty(t, workerMap)
+
+	// validate the controller has expected workers
+	wg := new(sync.WaitGroup)
+	for _, w := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, w.Worker().WaitForNextSuccessfulRoutingInfoUpdate())
+			assert.Eventually(t, func() bool {
+				_, ok := c.Controller().WorkerRoutingInfoUpdateTimes().Load(w.Name())
+				return ok
+			}, 30*time.Second, time.Second)
+		}()
+	}
+	wg.Wait()
 }

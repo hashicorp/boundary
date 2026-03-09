@@ -29,6 +29,8 @@ load _target_host_sources
 
 @test "boundary/target/connect: unpriv user can connect to default target" {
   run connect_nc $DEFAULT_TARGET
+  echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -87,6 +89,7 @@ load _target_host_sources
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
   run connect_nc $id
   echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -149,4 +152,9 @@ load _target_host_sources
   [ "$status" -eq 0 ]
   run update_address $id "localhost"
   [ "$status" -eq 0 ]
+}
+
+teardown_file() {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run delete_target $id
 }

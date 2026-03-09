@@ -1,11 +1,11 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "3.0.1"
+      version = "3.6.2"
     }
 
     tls = {
@@ -77,6 +77,10 @@ resource "docker_container" "openssh_server" {
     internal = 2222
     external = 2222
   }
+  volumes {
+    host_path      = format("%s/%s", abspath(path.module), "/custom-cont-init.d")
+    container_path = "/custom-cont-init.d"
+  }
 }
 
 resource "enos_local_exec" "wait" {
@@ -93,6 +97,10 @@ output "user" {
 
 output "address" {
   value = docker_container.openssh_server.network_data[0].ip_address
+}
+
+output "container_name" {
+  value = var.container_name
 }
 
 output "port" {

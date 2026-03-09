@@ -1,11 +1,10 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -29,7 +28,7 @@ func TestCliAuthenticatePrimary(t *testing.T) {
 	require.NoError(t, err)
 
 	var cmd *exec.Cmd
-	ctx := context.Background()
+	ctx := t.Context()
 	cmd = exec.CommandContext(ctx, "boundary", "authenticate", "-addr", bc.Address, "-format", "json")
 
 	f, err := pty.Start(cmd)

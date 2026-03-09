@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package clientagentcmd
@@ -9,10 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 )
-
-// TODO (ICU-13140): Remove this and re-enable error output for background
-// client agent token sending.
-const allowErrorOutput = false
 
 func init() {
 	if err := wrapper.RegisterSuccessfulCommandCallback("client-agent", hook); err != nil {
@@ -25,7 +21,7 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 		return
 	}
 	client, err := baseCmd.Client()
-	if err != nil && allowErrorOutput {
+	if err != nil && baseCmd.FlagOutputClientAgentCliError {
 		baseCmd.PrintCliError(err)
 		return
 	}
@@ -33,10 +29,10 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 		client.SetToken(token)
 	}
 	_, apiErr, err := addToken(ctx, client, baseCmd.FlagClientAgentPort)
-	if err != nil && allowErrorOutput {
+	if err != nil && baseCmd.FlagOutputClientAgentCliError {
 		baseCmd.PrintCliError(err)
 	}
-	if apiErr != nil && allowErrorOutput {
+	if apiErr != nil && baseCmd.FlagOutputClientAgentCliError {
 		baseCmd.PrintApiError(apiErr, "sending token to client agent in the background")
 	}
 }

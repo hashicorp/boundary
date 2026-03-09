@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 syntax = "proto3";
@@ -51,4 +51,7 @@ message RequestInfo {
 
   // the client ip for the request
   string client_ip = 140;
+
+  // url actions from the request path
+  repeated string actions = 141;
 }

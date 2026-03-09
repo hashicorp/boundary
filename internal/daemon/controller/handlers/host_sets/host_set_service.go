@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package host_sets
@@ -68,8 +68,6 @@ var (
 	)
 )
 
-const domain = "host"
-
 func init() {
 	var err error
 	if maskManager[static.Subtype], err = handlers.NewMaskManager(
@@ -126,7 +124,7 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -306,7 +304,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -348,7 +346,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -393,7 +391,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -433,7 +431,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -451,7 +449,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHosts)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHosts, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -490,7 +488,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHosts)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHosts, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -528,7 +526,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHosts)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHosts, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -724,7 +722,7 @@ func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, 
 	case hostplugin.Subtype:
 		hs, hosts, plg, err = s.updatePluginInRepo(ctx, projectId, req)
 	}
-	return
+	return hs, hosts, plg, err
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool, error) {
@@ -755,10 +753,11 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 
 func newOutputOpts(ctx context.Context, item host.Set, plg *plugins.PluginInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Id:      item.GetPublicId(),
-		Type:    resource.HostSet,
-		Pin:     item.GetCatalogId(),
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Id:            item.GetPublicId(),
+		Type:          resource.HostSet,
+		Pin:           item.GetCatalogId(),
 	}
 	res.Id = item.GetPublicId()
 	idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype]
@@ -855,7 +854,7 @@ func (s Service) removeInRepo(ctx context.Context, projectId, setId string, host
 	return out, hl, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (host.Catalog, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (host.Catalog, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 
 	staticRepo, err := s.staticRepoFn()
@@ -870,7 +869,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.HostSet), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -930,7 +929,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		cat = pc
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
-	return cat, auth.Verify(ctx, opts...)
+	return cat, auth.Verify(ctx, resource.HostSet, opts...)
 }
 
 func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {

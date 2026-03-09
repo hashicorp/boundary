@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package server
@@ -180,11 +180,11 @@ listener "tcp" {
 listener "tcp" {
 	address = "127.0.0.1:9501"
 	purpose = "cluster"
-}
+}  
 `
 )
 
-func TestRealodControllerRateLimits(t *testing.T) {
+func TestReloadControllerRateLimits(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -202,22 +202,28 @@ func TestRealodControllerRateLimits(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
-
 		args := []string{"-config", td + "/config.hcl"}
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
+		}
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
 		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading
@@ -262,7 +268,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+		t.Fatal("timeout waiting for reload signal")
 	}
 
 	// Make another request, the limit should have reset and the new limit
@@ -282,7 +288,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
+func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 	td := t.TempDir()
 
 	// Create and migrate database A and B.
@@ -301,6 +307,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -308,15 +315,21 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
+		}
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
 		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	c := http.Client{}
@@ -377,7 +390,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsDisable(t *testing.T) {
+func TestReloadControllerRateLimitsDisable(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -395,6 +408,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -402,15 +416,21 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
+		}
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
 		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading
@@ -475,7 +495,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsEnable(t *testing.T) {
+func TestReloadControllerRateLimitsEnable(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -494,6 +514,7 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	earlyExitChan := make(chan struct{})
 	go func() {
 		defer wg.Done()
 
@@ -501,15 +522,21 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
+		}
+		select {
+		case earlyExitChan <- struct{}{}:
+		default:
 		}
 	}()
 
 	// Wait until things are up and running (or timeout).
 	select {
 	case <-cmd.startedCh:
-	case <-time.After(15 * time.Second):
-		t.Fatal("timeout")
+	case <-earlyExitChan:
+		t.Fatal("server exited early")
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout waiting for server to start")
 	}
 
 	// Change config so it is ready for reloading

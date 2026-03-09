@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package cmd
@@ -241,7 +241,7 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 
 	initCommands(ui, serverCmdUi, runOpts)
 
-	hiddenCommands := []string{"version", "client-agent", "client-agent status", "client-agent pause", "client-agent resume", "client-agent sessions"}
+	hiddenCommands := []string{"version"}
 
 	cli := &cli.CLI{
 		Name:     "boundary",

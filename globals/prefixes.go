@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package globals
@@ -71,13 +71,20 @@ const (
 	VaultSshCertificateCredentialLibraryPrefix = "clvsclt"
 	// DynamicCredentialPrefix is the prefix for Vault dynamic credentials
 	VaultDynamicCredentialPrefix = "cdvlt"
+	// VaultLdapCredentialLibraryPrefix is the prefix for Vault Ldap credential libraries
+	VaultLdapCredentialLibraryPrefix = "clvllt"
 
 	// UsernamePasswordCredentialPrefix is the prefix for username/password
 	// creds
 	UsernamePasswordCredentialPrefix = "credup"
+	// UsernamePasswordDomainCredentialPrefix is the prefix for username/password/domain
+	// creds
+	UsernamePasswordDomainCredentialPrefix = "credupd"
 	// UsernamePasswordCredentialPreviousPrefix is the previous prefix for
 	// username/password creds
 	UsernamePasswordCredentialPreviousPrefix = "cred"
+	// PasswordCredentialPrefix is the prefix for password creds
+	PasswordCredentialPrefix = "credp"
 	// SshPrivateKeyCredentialPrefix is the prefix for SSH private key creds
 	SshPrivateKeyCredentialPrefix = "credspk"
 	// JsonCredentialPrefix is the prefix for generic JSON creds
@@ -111,6 +118,8 @@ const (
 	TcpTargetPrefix = "ttcp"
 	// SshTargetPrefix is the prefix for TCP targets
 	SshTargetPrefix = "tssh"
+	// RdpTargetPrefix is the prefix for RDP targets
+	RdpTargetPrefix = "trdp"
 
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
@@ -130,6 +139,9 @@ const (
 
 	// TargetAliasPrefix is the prefix for target aliases
 	TargetAliasPrefix = "alt"
+
+	// ProxyServerCertificatePrefix is the prefix for proxy server certificates
+	ProxyServerCertificatePrefix = "psc"
 )
 
 type ResourceInfo struct {
@@ -235,6 +247,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Type:    resource.CredentialLibrary,
 		Subtype: UnknownSubtype,
 	},
+	VaultLdapCredentialLibraryPrefix: {
+		Type:    resource.CredentialLibrary,
+		Subtype: UnknownSubtype,
+	},
 	VaultDynamicCredentialPrefix: {
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
@@ -244,7 +260,15 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
 	},
+	UsernamePasswordDomainCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
 	UsernamePasswordCredentialPreviousPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	PasswordCredentialPrefix: {
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
 	},
@@ -305,6 +329,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 	SshTargetPrefix: {
+		Type:    resource.Target,
+		Subtype: UnknownSubtype,
+	},
+	RdpTargetPrefix: {
 		Type:    resource.Target,
 		Subtype: UnknownSubtype,
 	},

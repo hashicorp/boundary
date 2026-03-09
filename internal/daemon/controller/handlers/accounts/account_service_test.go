@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package accounts_test
@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -44,8 +45,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-const domain = "auth"
 
 var (
 	pwAuthorizedActions = []string{
@@ -134,13 +133,15 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return oidc.NewRepository(ctx, rw, rw, kmsCache, oidc.WithLimit(1))
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return ldap.NewRepository(ctx, rw, rw, kmsCache, ldap.WithLimit(ctx, 1))
 	}
 
 	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
@@ -175,9 +176,10 @@ func TestGet(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
-	// Create a managed group that will always match, so we can test that it is
+	// Create some managed groups that will always match, so we can test that it is
 	// returned in results
 	mg := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
+	mg2 := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
 	oidcWireAccount := pb.Account{
 		Id:           oidcA.GetPublicId(),
 		AuthMethodId: oidcA.GetAuthMethodId(),
@@ -193,7 +195,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		AuthorizedActions: oidcAuthorizedActions,
-		ManagedGroupIds:   []string{mg.GetPublicId()},
+		ManagedGroupIds:   []string{mg.GetPublicId(), mg2.GetPublicId()},
 	}
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
@@ -204,6 +206,7 @@ func TestGet(t *testing.T) {
 		ldap.WithDn(ctx, "test-dn"),
 	)
 	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+	ldapMg2 := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
 	ldapWireAccount := pb.Account{
 		Id:           ldapAcct.GetPublicId(),
 		AuthMethodId: ldapAm.GetPublicId(),
@@ -222,7 +225,7 @@ func TestGet(t *testing.T) {
 		},
 		Type:              ldap.Subtype.String(),
 		AuthorizedActions: ldapAuthorizedActions,
-		ManagedGroupIds:   []string{ldapMg.GetPublicId()},
+		ManagedGroupIds:   []string{ldapMg.GetPublicId(), ldapMg2.GetPublicId()},
 	}
 
 	cases := []struct {
@@ -289,12 +292,14 @@ func TestGet(t *testing.T) {
 
 			if globals.ResourceInfoFromPrefix(tc.req.Id).Subtype == oidc.Subtype {
 				// Set up managed groups before getting. First get the current
-				// managed group to make sure we have the right version.
+				// managed groups to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
 				require.NoError(err)
 				currMg, err := oidcRepo.LookupManagedGroup(ctx, mg.GetPublicId())
 				require.NoError(err)
-				_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg})
+				currMg2, err := oidcRepo.LookupManagedGroup(ctx, mg2.GetPublicId())
+				require.NoError(err)
+				_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg, currMg2})
 				require.NoError(err)
 			}
 
@@ -2421,6 +2426,41 @@ func TestCreateOidc(t *testing.T) {
 			},
 		},
 		{
+			name: "Create a valid Account with IPv6 issuer address",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Issuer:  "https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/v1/myissuer",
+							Subject: "valid-account-ipv6-iss",
+						},
+					},
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Subject: "valid-account-ipv6-iss",
+							Issuer:  "https://[2001:beef::1]:44344/v1/myissuer",
+						},
+					},
+					AuthorizedActions: oidcAuthorizedActions,
+				},
+			},
+		},
+		{
 			name: "Create a valid Account without type defined",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
@@ -2559,6 +2599,25 @@ func TestCreateOidc(t *testing.T) {
 			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Malformed issuer url",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Issuer:  "https://2000:0005::0001]", // missing '[' after https://
+							Subject: "valid-account-ipv6-iss",
+						},
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, `Error: "Error in provided request.", Details: {{name: "attributes.issuer", desc: "Cannot be parsed as a url. parse \"https://2000:0005::0001]\": invalid port \":0001]\" after host"}}`),
 		},
 	}
 	for _, tc := range cases {
@@ -4384,4 +4443,121 @@ func TestChangePassword(t *testing.T) {
 			assert.Nil(changeResp)
 		})
 	}
+}
+
+// The purpose of this test is mainly to ensure that we are properly fetching
+// membership information in GrantsForUser across managed group types
+func TestGrantsAcrossManagedGroups(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
+	// Create a managed group that will always match, so we can test that it is
+	// returned in results
+	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
+	oidc.TestManagedGroupMember(t, conn, oidcMg.GetPublicId(), oidcAcct.GetPublicId())
+
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-acct",
+		ldap.WithMemberOfGroups(ctx, "admin"),
+		ldap.WithFullName(ctx, "test-name"),
+		ldap.WithEmail(ctx, "test-email"),
+		ldap.WithDn(ctx, "test-dn"),
+	)
+	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepo, err := iamRepoFn()
+	require.NoError(t, err)
+
+	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(oidcAcct.GetPublicId(), ldapAcct.GetPublicId()))
+
+	// Create two roles, each containing a single managed group, and add a
+	// unique grant to each
+	oidcRole := iam.TestRole(t, conn, org.GetPublicId(), iam.WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	iam.TestManagedGroupRole(t, conn, oidcRole.GetPublicId(), oidcMg.GetPublicId())
+	iam.TestRoleGrant(t, conn, oidcRole.GetPublicId(), "ids=ttcp_oidc;actions=read")
+	ldapRole := iam.TestRole(t, conn, org.GetPublicId(), iam.WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	iam.TestManagedGroupRole(t, conn, ldapRole.GetPublicId(), ldapMg.GetPublicId())
+	iam.TestRoleGrant(t, conn, ldapRole.GetPublicId(), "ids=ttcp_ldap;actions=read")
+
+	// targets must be in a project scope so we're passing in a scope ID which we expect the user to have access to
+	// which is the project under the role's org
+	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	require.NoError(t, err)
+
+	// Verify we see both grants
+	var foundOidc, foundLdap bool
+	for _, grant := range grants {
+		if grant.Grant == "ids=ttcp_oidc;actions=read" {
+			foundOidc = true
+		}
+		if grant.Grant == "ids=ttcp_ldap;actions=read" {
+			foundLdap = true
+		}
+	}
+	assert.True(t, foundOidc)
+	assert.True(t, foundLdap)
+
+	// Delete the ldap managed group
+	ldapRepo, err := ldap.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	numDeleted, err := ldapRepo.DeleteManagedGroup(ctx, org.GetPublicId(), ldapMg.GetPublicId())
+	require.NoError(t, err)
+	assert.Equal(t, 1, numDeleted)
+
+	// Verify we don't see the ldap grant anymore
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	require.NoError(t, err)
+	foundOidc = false
+	foundLdap = false
+	for _, grant := range grants {
+		if grant.Grant == "ids=ttcp_oidc;actions=read" {
+			foundOidc = true
+		}
+		if grant.Grant == "ids=ttcp_ldap;actions=read" {
+			foundLdap = true
+		}
+	}
+	assert.True(t, foundOidc)
+	assert.False(t, foundLdap)
+
+	// Delete the oidc managed group
+	oidcRepo, err := oidc.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	numDeleted, err = oidcRepo.DeleteManagedGroup(ctx, org.GetPublicId(), oidcMg.GetPublicId())
+	require.NoError(t, err)
+	assert.Equal(t, 1, numDeleted)
+
+	// Verify we don't see the oidc grant anymore
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	require.NoError(t, err)
+	foundOidc = false
+	foundLdap = false
+	for _, grant := range grants {
+		if grant.Grant == "ids=ttcp_oidc;actions=read" {
+			foundOidc = true
+		}
+		if grant.Grant == "ids=ttcp_ldap;actions=read" {
+			foundLdap = true
+		}
+	}
+	assert.False(t, foundOidc)
+	assert.False(t, foundLdap)
 }

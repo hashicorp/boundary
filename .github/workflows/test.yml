@@ -17,15 +17,15 @@ jobs:
   setup:
     outputs:
       go-version: ${{ steps.get-go-version.outputs.go-version }}
-      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
       cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
       cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
-      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+      go-mod-cache-key: ${{ steps.go-mod-cache-key.outputs.key }}
+      go-tools-cache-key: ${{ steps.go-tools-cache-key.outputs.key }}
       plugin-cache-path: ${{ steps.plugin-cache-paths.outputs.path }}
       plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: '0'
       - name: Determine Go version
@@ -36,51 +36,64 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
-      - name: Determine go cache key
-        id: go-cache-key
-        run: |
-          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Determine Go modules cache key
+        id: go-mod-cache-key
+        run: |
+          echo "key=go-mod-${{ hashFiles('**/go.sum') }}" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
             ${{ steps.go-cache-paths.outputs.go-mod }}
-            ${{ steps.go-cache-paths.outputs.go-bin }}
-          key: ${{ steps.go-cache-key.outputs.key }}
+          key: ${{ steps.go-mod-cache-key.outputs.key }}
           restore-keys: |
-            ${{ runner.os }}-go
-      - name: Install Tools
+            go-mod
+      - name: Determine Go tools cache key
+        id: go-tools-cache-key
+        run: |
+          echo "key=go-tools-${{ steps.get-go-version.outputs.go-version }}-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Set up Go tools cache
+        id: go-tools-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-tools-cache-key.outputs.key }}
+          restore-keys: |
+            go-tools-${{ steps.get-go-version.outputs.go-version }}
+      - name: Go mod download
         run: |
           go mod download
+      - name: Install Tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
           make tools
       - name: Determine plugin cache key
         id: plugin-cache-key
         run: |
-          echo "key=${{ runner.os }}-plugins-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
-      - name: Determin plugin cache path
+          echo "key=plugins-${{ runner.os }}-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine plugin cache path
         id: plugin-cache-paths
         run: |
           echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ${{ steps.plugin-cache-paths.outputs.path }}
           key: ${{ steps.plugin-cache-key.outputs.key }}
           restore-keys: |
-            ${{ runner.os }}-plugin
+            plugins-${{ runner.os }}
       - name: Build Plugins
         if: steps.plugin-cache.outputs.cache-hit != 'true'
         run: |
@@ -93,23 +106,21 @@ jobs:
       matrix:
         module: ["api", "sdk"]
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Set up go
-        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ needs.setup.outputs.cache-go-build }}
             ${{ needs.setup.outputs.cache-go-mod }}
-            ${{ needs.setup.outputs.cache-go-bin }}
-          key: ${{ needs.setup.outputs.go-cache-key }}
+          key: ${{ needs.setup.outputs.go-mod-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-go
-          fail-on-cache-miss: true
+            go-mod
+          fail-on-cache-miss: false
       - name: Test ${{ matrix.module }} Module
         run: |
           make test-${{ matrix.module }}
@@ -125,32 +136,44 @@ jobs:
           ulimit -Sa
           echo "Hard limits"
           ulimit -Ha
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Set up go
-        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ${{ needs.setup.outputs.cache-go-build }}
             ${{ needs.setup.outputs.cache-go-mod }}
-            ${{ needs.setup.outputs.cache-go-bin }}
-          key: ${{ needs.setup.outputs.go-cache-key }}
+          key: ${{ needs.setup.outputs.go-mod-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-go
-          fail-on-cache-miss: true
+            go-mod
+          fail-on-cache-miss: false
+      - name: Set up Go tools cache
+        id: go-tools-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-tools-cache-key }}
+          restore-keys: |
+            go-tools-${{ needs.setup.outputs.go-version }}
+      - name: Install tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          go mod download
+          make tools
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ${{ needs.setup.outputs.plugin-cache-path }}
           key: ${{ needs.setup.outputs.plugin-cache-key }}
           restore-keys: |
-            ${{ runner.os }}-plugin
+            plugins-${{ runner.os }}
       - name: GH fix for localhost resolution
         if: github.repository == 'hashicorp/boundary'
         run: |
@@ -164,7 +187,7 @@ jobs:
           until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit 255; sleep 1; done
 
       - name: Test
-        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3.0.0
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
         env:
           TEST_PACKAGE: "./..."
           TESTARGS: -v

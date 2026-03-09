@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package tcp
@@ -28,7 +28,7 @@ func init() {
 // handleProxy returns a ProxyConnFn which starts the copy between the
 // connections and blocks until an error (EOF on happy path) is received on
 // either connection.
-func handleProxy(controlCtx context.Context, _ context.Context, _ proxy.DecryptFn, out *proxy.ProxyDialer, connId string, _ *anypb.Any, _ proxy.RecordingManager) (proxy.ProxyConnFn, error) {
+func handleProxy(controlCtx context.Context, _ context.Context, _ proxy.DecryptFn, out *proxy.ProxyDialer, connId string, _ *anypb.Any, _ proxy.RecordingManager, _ ...proxy.Option) (proxy.ProxyConnFn, error) {
 	const op = "tcp.HandleProxy"
 	switch {
 	case out == nil:

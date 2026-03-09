@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # For this scenario to work, add the following line to /etc/hosts
@@ -17,7 +17,6 @@ scenario "e2e_docker_base" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
@@ -68,7 +67,8 @@ scenario "e2e_docker_base" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -80,7 +80,7 @@ scenario "e2e_docker_base" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address

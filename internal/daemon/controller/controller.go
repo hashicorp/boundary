@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
@@ -45,7 +46,6 @@ import (
 	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/recording"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
@@ -88,10 +88,10 @@ type downstreamWorkersTicker interface {
 }
 
 var (
-	downstreamReceiverFactory func() downstreamReceiver
+	downstreamReceiverFactory func(*atomic.Int64) (downstreamReceiver, error)
 
-	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
+	graphFactory                   func(context.Context, string, string) (downstream.Graph, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, downstream.Graph, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
@@ -110,19 +110,20 @@ type Controller struct {
 	workerAuthCache *sync.Map
 
 	// downstream workers and routes to those workers
-	downstreamWorkers common.Downstreamers
+	downstreamWorkers downstream.Graph
 	downstreamConns   downstreamReceiver
 
 	apiListeners    []*base.ServerListener
 	clusterListener *base.ServerListener
 
 	// Used for testing and tracking worker health
-	workerStatusUpdateTimes *sync.Map
+	workerRoutingInfoUpdateTimes *sync.Map
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
-	workerStatusGracePeriod *atomic.Int64
-	livenessTimeToStale     *atomic.Int64
+	workerRPCGracePeriod        *atomic.Int64
+	livenessTimeToStale         *atomic.Int64
+	getDownstreamWorkersTimeout *atomic.Int64
 
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
@@ -176,22 +177,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
-		conf:                    conf,
-		logger:                  conf.Logger.Named("controller"),
-		started:                 ua.NewBool(false),
-		tickerWg:                new(sync.WaitGroup),
-		schedulerWg:             new(sync.WaitGroup),
-		workerAuthCache:         new(sync.Map),
-		workerStatusUpdateTimes: new(sync.Map),
-		enabledPlugins:          conf.Server.EnabledPlugins,
-		apiListeners:            make([]*base.ServerListener, 0),
-		downstreamConnManager:   cluster.NewDownstreamManager(),
-		workerStatusGracePeriod: new(atomic.Int64),
-		livenessTimeToStale:     new(atomic.Int64),
-	}
-
-	if downstreamReceiverFactory != nil {
-		c.downstreamConns = downstreamReceiverFactory()
+		conf:                         conf,
+		logger:                       conf.Logger.Named("controller"),
+		started:                      ua.NewBool(false),
+		tickerWg:                     new(sync.WaitGroup),
+		schedulerWg:                  new(sync.WaitGroup),
+		workerAuthCache:              new(sync.Map),
+		workerRoutingInfoUpdateTimes: new(sync.Map),
+		enabledPlugins:               conf.Server.EnabledPlugins,
+		apiListeners:                 make([]*base.ServerListener, 0),
+		downstreamConnManager:        cluster.NewDownstreamManager(),
+		workerRPCGracePeriod:         new(atomic.Int64),
+		livenessTimeToStale:          new(atomic.Int64),
+		getDownstreamWorkersTimeout:  new(atomic.Int64),
 	}
 
 	c.started.Store(false)
@@ -225,17 +223,32 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	switch conf.RawConfig.Controller.WorkerStatusGracePeriodDuration {
+	switch conf.RawConfig.Controller.WorkerRPCGracePeriodDuration {
 	case 0:
-		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
 	default:
-		c.workerStatusGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerStatusGracePeriodDuration))
+		c.workerRPCGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerRPCGracePeriodDuration))
 	}
 	switch conf.RawConfig.Controller.LivenessTimeToStaleDuration {
 	case 0:
 		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
 	default:
 		c.livenessTimeToStale.Store(int64(conf.RawConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
+	default:
+		c.getDownstreamWorkersTimeout.Store(int64(conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration))
+	}
+
+	if downstreamReceiverFactory != nil {
+		var err error
+		c.downstreamConns, err = downstreamReceiverFactory(c.getDownstreamWorkersTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to initialize downstream receiver: %w", op, err)
+		}
 	}
 
 	clusterListeners := make([]*base.ServerListener, 0)
@@ -308,6 +321,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
+		case enabledPlugin == base.EnabledPluginGCP && !c.conf.SkipPlugins:
+			fallthrough
 		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
@@ -384,8 +399,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	// TODO: Allow setting run jobs limit from config
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
+
+	schedulerOpts := []scheduler.Option{}
 	if c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration > 0 {
 		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration))
 	}
@@ -418,7 +433,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
+		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler, vault.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
@@ -430,7 +445,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return host.NewCatalogRepository(ctx, dbase, dbase)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
-		return server.NewRepository(ctx, dbase, dbase, c.kms)
+		return server.NewRepository(ctx, dbase, dbase, c.kms, server.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -439,12 +454,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return ldap.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(ctx, dbase, dbase, c.kms)
+		return password.NewRepository(ctx, dbase, dbase, c.kms, password.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.AuthMethodRepoFn = func() (*auth.AuthMethodRepository, error) {
 		return auth.NewAuthMethodRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		o = append(o, target.WithRandomReader(c.conf.SecureRandomReader))
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
@@ -480,9 +496,15 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
-	if downstreamersFactory != nil {
+	if c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers > 0 {
+		if err := password.SetHashingPermits(int(c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers)); err != nil {
+			return nil, fmt.Errorf("unable to set number of concurrent password workers: %w", err)
+		}
+	}
+
+	if graphFactory != nil {
 		boundVer := version.Get().VersionNumber()
-		c.downstreamWorkers, err = downstreamersFactory(ctx, "root", boundVer)
+		c.downstreamWorkers, err = graphFactory(ctx, "root", boundVer)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
 		}
@@ -579,7 +601,7 @@ func (c *Controller) Start() error {
 		// we'll use "root" to designate that this is the root of the graph (aka
 		// a controller)
 		boundVer := version.Get().VersionNumber()
-		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns)
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns, c.getDownstreamWorkersTimeout)
 		if err != nil {
 			return fmt.Errorf("error creating downstream workers ticker: %w", err)
 		}
@@ -608,7 +630,7 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerRPCGracePeriod); err != nil {
 		return err
 	}
 	var serverJobOpts []serversjob.Option
@@ -618,19 +640,16 @@ func (c *Controller) registerJobs() error {
 			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
 		)
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerStatusGracePeriod, serverJobOpts...); err != nil {
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerRPCGracePeriod, serverJobOpts...); err != nil {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
 		return err
 	}
-	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
-		return err
-	}
 	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
-	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
+	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw, c.conf.SecureRandomReader); err != nil {
 		return err
 	}
 	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
@@ -663,10 +682,44 @@ func (c *Controller) Shutdown() error {
 	return nil
 }
 
-// WorkerStatusUpdateTimes returns the map, which specifically is held in _this_
+// WorkerRoutingInfoUpdateTimes returns the map, which specifically is held in _this_
 // controller, not the DB. It's used in tests to verify that a given controller
 // is receiving updates from an expected set of workers, to test out balancing
 // and auto reconnection.
-func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
-	return c.workerStatusUpdateTimes
+func (c *Controller) WorkerRoutingInfoUpdateTimes() *sync.Map {
+	return c.workerRoutingInfoUpdateTimes
+}
+
+// ReloadTimings reloads timing related parameters
+func (c *Controller) ReloadTimings(newConfig *config.Config) error {
+	const op = "controller.(Controller).ReloadTimings"
+
+	switch {
+	case newConfig == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config")
+	case newConfig.Controller == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config.Controller")
+	}
+
+	switch newConfig.Controller.WorkerRPCGracePeriodDuration {
+	case 0:
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerRPCGracePeriod.Store(int64(newConfig.Controller.WorkerRPCGracePeriodDuration))
+	}
+	switch newConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(newConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch newConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
+	default:
+		c.getDownstreamWorkersTimeout.Store(int64(newConfig.Controller.GetDownstreamWorkersTimeoutDuration))
+	}
+
+	return nil
 }

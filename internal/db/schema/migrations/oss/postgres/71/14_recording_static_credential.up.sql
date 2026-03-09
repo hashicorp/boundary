@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -32,6 +32,7 @@ begin;
     'along with the values of those entities at the time of the recording. '
     'These values are also stored in the BSR file.';
 
+  -- This function is updated in 98/01_credential_static_username_password_domain_credential.up.sql
   create function insert_recording_static_credentials() returns trigger
   as $$
   begin

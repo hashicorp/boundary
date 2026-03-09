@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package errors
@@ -267,6 +267,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "purposefully aborted without error",
 		Kind:    Other,
 	},
+	ImmutableColumn: {
+		Message: "immutable column",
+		Kind:    Integrity,
+	},
 	UnexpectedRowsAffected: {
 		Message: "unexpected number of rows affected",
 		Kind:    Integrity,
@@ -337,6 +341,14 @@ var errorCodeInfo = map[Code]Info{
 	},
 	Closed: {
 		Message: "closed",
+		Kind:    State,
+	},
+	Paused: {
+		Message: "paused",
+		Kind:    State,
+	},
+	WindowsRDPClientEarlyDisconnection: {
+		Message: "rdp client disconnected early",
 		Kind:    State,
 	},
 	ExternalPlugin: {

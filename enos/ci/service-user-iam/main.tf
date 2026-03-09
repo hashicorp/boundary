@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 terraform {
@@ -65,6 +65,10 @@ data "aws_iam_policy_document" "enos_policy_document" {
   statement {
     effect = "Allow"
     actions = [
+      "acm:ImportCertificate",
+      "acm:DeleteCertificate",
+      "acm:DescribeCertificate",
+      "acm:ListTagsForCertificate",
       "ec2:AssociateRouteTable",
       "ec2:AttachInternetGateway",
       "ec2:AuthorizeSecurityGroupEgress",
@@ -110,6 +114,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:DescribeVpcs",
       "ec2:DetachInternetGateway",
       "ec2:DisassociateRouteTable",
+      "ec2:GetPasswordData",
       "ec2:ImportKeyPair",
       "ec2:ModifyInstanceAttribute",
       "ec2:ModifySubnetAttribute",
@@ -119,6 +124,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:RevokeSecurityGroupIngress",
       "ec2:RunInstances",
       "ec2:TerminateInstances",
+      "ec2:UnassignIpv6Addresses",
       "elasticloadbalancing:AddTags",
       "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
       "elasticloadbalancing:AttachLoadBalancerToSubnets",
@@ -132,6 +138,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "elasticloadbalancing:DeleteRule",
       "elasticloadbalancing:DeleteTargetGroup",
       "elasticloadbalancing:DeregisterTargets",
+      "elasticloadbalancing:DescribeListenerAttributes",
       "elasticloadbalancing:DescribeListeners",
       "elasticloadbalancing:DescribeLoadBalancerAttributes",
       "elasticloadbalancing:DescribeLoadBalancers",
@@ -141,6 +148,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "elasticloadbalancing:DescribeTargetGroups",
       "elasticloadbalancing:DescribeTargetHealth",
       "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyListenerAttributes",
       "elasticloadbalancing:ModifyLoadBalancerAttributes",
       "elasticloadbalancing:ModifyRule",
       "elasticloadbalancing:ModifyTargetGroup",
@@ -178,6 +186,9 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "iam:GetUser",
       "iam:GetUserId",
       "iam:GetUserPolicy",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:ListPolicyVersions",
       "iam:ListAccessKeys",
       "iam:ListAttachedRolePolicies",
       "iam:ListGroupsForUser",
@@ -213,6 +224,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBInstance",
       "rds:DeleteDBSubnetGroup",
+      "rds:DescribeDBEngineVersions",
       "rds:DescribeDBInstances",
       "rds:DescribeDBSubnetGroups",
       "rds:ListTagsForResource",
@@ -226,6 +238,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "s3:HeadBucket",
       "s3:PutBucket*",
       "s3:ListBucket",
+      "s3:PutLifecycleConfiguration",
     ]
 
     resources = ["*"]
@@ -262,73 +275,5 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
     ]
 
     resources = ["*"]
-  }
-}
-
-resource "aws_iam_policy" "demo_user" {
-  name        = "DemoUser"
-  path        = "/"
-  description = "Used to allow temporary IAM user creation for end-to-end tests"
-  policy      = data.aws_iam_policy_document.demo_user_policy_document.json
-}
-
-data "aws_iam_policy_document" "demo_user_policy_document" {
-  statement {
-    sid = "BoundaryHostPlugin"
-    actions = [
-      "ec2:DescribeInstances*"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "BoundarySessionS3OnlyMyAccount"
-    effect = "Allow"
-    actions = [
-      "s3:DeleteObject",
-      "s3:GetObject",
-      "s3:GetObjectAttributes",
-      "s3:PutObject",
-      "s3:ListBucket",
-    ]
-
-    condition {
-      test     = "StringEquals"
-      variable = "s3:ResourceAccount"
-      values   = [data.aws_caller_identity.current.account_id]
-    }
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid = "IAMAKRotate"
-    actions = [
-      "iam:CreateAccessKey",
-      "iam:DeleteAccessKey",
-      "iam:ListAccessKeys",
-      "iam:UpdateAccessKey"
-    ]
-
-    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}"]
-  }
-
-  statement {
-    sid       = "ExplicitDeny"
-    effect    = "Deny"
-    resources = ["*"]
-    not_actions = [
-      "ec2:DescribeInstances",
-      "iam:CreateAccessKey",
-      "iam:DeleteAccessKey",
-      "iam:ListAccessKeys",
-      "iam:UpdateAccessKey",
-      "s3:DeleteObject",
-      "s3:GetObject",
-      "s3:GetObjectAttributes",
-      "s3:PutObject",
-      "s3:ListBucket",
-    ]
   }
 }

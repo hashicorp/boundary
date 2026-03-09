@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base
@@ -150,7 +150,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 	}
 
 	// Create the dev auth method
-	pwRepo, err := password.NewRepository(ctx, rw, rw, kmsCache)
+	pwRepo, err := password.NewRepository(ctx, rw, rw, kmsCache, password.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating password repo: %w", err)
 	}
@@ -222,6 +222,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 			acct,
 			password.WithPassword(loginPassword),
 			password.WithPublicId(accountId),
+			password.WithRandomReader(b.SecureRandomReader),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error saving auth account to the db: %w", err)
@@ -509,7 +510,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		return nil, fmt.Errorf("failed to add config keys to kms: %w", err)
 	}
 
-	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache, target.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target repository: %w", err)
 	}

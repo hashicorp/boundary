@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package managedsecret provides a SBC subtype for a Managed Secret SBC.
@@ -59,6 +59,9 @@ func (h sbcHooks) NewStorageBucketCredential(
 		secrets, err = proto.Marshal(opts.WithSecret)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to marshal secrets"))
+		}
+		if len(secrets) == 0 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "empty secret")
 		}
 	}
 

@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -23,6 +23,7 @@ begin;
   -- ids too.
   -- Note: does not end in _deleted so as
   -- not to be attached a trigger in the below function.
+  -- replaced in 98/04_rdp_targets.up.sql
   create view target_all_subtypes_deleted_view
   as
     select public_id, delete_time from target_tcp_deleted
@@ -117,6 +118,7 @@ begin;
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Credential libraries
+  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_deleted (
     public_id wt_public_id primary key,
     delete_time wt_timestamp not null
@@ -308,6 +310,7 @@ begin;
     'affected by the trigger and the current timestamp. It is used to populate rows '
     'of the deleted tables.';
 
+  -- Removed in 91/05_deletion_tables_view and replaced with a view.
   create function get_deletion_tables() returns setof name
   as $$
     select c.relname

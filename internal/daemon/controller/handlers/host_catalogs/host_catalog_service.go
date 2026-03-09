@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package host_catalogs
@@ -72,7 +72,19 @@ var (
 			),
 		},
 	}
+
+	additionalResourceGrants = []resource.Type{
+		resource.HostSet,
+		resource.Host,
+	}
+
+	validateWorkerFilterFn = validateWorkerFilterUnsupported
+	workerFilterToProto    = false
 )
+
+func validateWorkerFilterUnsupported(_ string) error {
+	return fmt.Errorf("Worker filter on host catalogs is an Enterprise-only feature")
+}
 
 const domain = "host"
 
@@ -80,7 +92,7 @@ func init() {
 	var err error
 	if staticMaskManager, err = handlers.NewMaskManager(
 		context.Background(),
-		handlers.MaskDestination{&store.HostCatalog{}},
+		handlers.MaskDestination{&store.HostCatalog{}, &store.UnimplementedCatalogFields{}},
 		handlers.MaskSource{&pb.HostCatalog{}},
 	); err != nil {
 		panic(err)
@@ -155,7 +167,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -311,7 +323,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -342,7 +354,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -368,7 +380,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -399,7 +411,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -428,7 +440,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -462,7 +474,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -482,7 +494,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -656,7 +668,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 	case hostplugin.Subtype:
 		hc, plg, err = s.updatePluginInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	}
-	return
+	return hc, plg, err
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -685,11 +697,11 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.HostCatalog), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive), auth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -746,7 +758,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		}
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.HostCatalog, opts...)
 }
 
 func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
@@ -768,9 +780,10 @@ func newOutputOpts(
 	pluginMap map[string]*plugin.Plugin,
 ) ([]handlers.Option, bool, error) {
 	res := perms.Resource{
-		Type:    resource.HostCatalog,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetProjectId(),
+		Type:          resource.HostCatalog,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetProjectId(),
+		ParentScopeId: scopeInfoMap[item.GetProjectId()].GetParentScopeId(),
 	}
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {
@@ -795,7 +808,7 @@ func newOutputOpts(
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, item.GetPublicId())
 			if err != nil {
 				return nil, false, err
 			}
@@ -871,6 +884,11 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 		if outputFields.Has(globals.SecretsHmacField) {
 			out.SecretsHmac = base58.Encode(h.GetSecretsHmac())
 		}
+		if outputFields.Has(globals.WorkerFilterField) && h.GetWorkerFilter() != "" {
+			if workerFilterToProto {
+				out.WorkerFilter = wrapperspb.String(h.GetWorkerFilter())
+			}
+		}
 		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}
 			err := proto.Unmarshal(h.Attributes, attrs)
@@ -918,6 +936,9 @@ func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *
 	if secrets := item.GetSecrets(); secrets != nil {
 		opts = append(opts, hostplugin.WithSecrets(secrets))
 	}
+	if workerFilter := item.GetWorkerFilter(); workerFilter != nil {
+		opts = append(opts, hostplugin.WithWorkerFilter(workerFilter.GetValue()))
+	}
 	hc, err := hostplugin.NewHostCatalog(ctx, projectId, plgId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
@@ -959,6 +980,12 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 				badFields[globals.PluginIdField] = "Can't set the plugin name field along with this field."
 				badFields[globals.PluginNameField] = "Can't set the plugin id field along with this field."
 			}
+			if req.GetItem().GetWorkerFilter() != nil {
+				err := validateWorkerFilterFn(req.GetItem().GetWorkerFilter().GetValue())
+				if err != nil {
+					badFields[globals.WorkerFilterField] = err.Error()
+				}
+			}
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("This is a required field and must be either %q or %q.", static.Subtype.String(), hostplugin.Subtype.String())
 		}
@@ -986,6 +1013,12 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			}
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This is a read only field."
+			}
+			if req.GetItem().GetWorkerFilter() != nil {
+				err := validateWorkerFilterFn(req.GetItem().GetWorkerFilter().GetValue())
+				if err != nil {
+					badFields[globals.WorkerFilterField] = err.Error()
+				}
 			}
 		}
 		return badFields

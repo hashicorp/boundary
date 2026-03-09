@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package config
@@ -235,5 +235,5 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		c.UI.Error(fmt.Sprintf("Wrong number of bytes written to file, expected %d, wrote %d", len(raw), n))
 	}
 
-	return
+	return ret
 }

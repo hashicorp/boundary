@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_test
@@ -25,10 +25,11 @@ import (
 // all targets in a single invocation.
 func TestCliPaginateTargets(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -85,7 +86,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	assert.Empty(t, initialTargets.ListToken)
 
 	// Create a new target and destroy one of the other targets
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -127,12 +128,13 @@ func TestCliPaginateTargets(t *testing.T) {
 // all targets in a single invocation.
 func TestApiPaginateTargets(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	sClient := scopes.NewClient(client)
 	tClient := targets.NewClient(client)
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)

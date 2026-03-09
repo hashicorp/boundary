@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 module "aws_az_finder" {
@@ -43,6 +43,14 @@ module "aws_bucket" {
   source = "./modules/aws_bucket"
 }
 
+module "aws_rdp_domain_controller" {
+  source = "./modules/aws_rdp_domain_controller"
+}
+
+module "aws_rdp_member_server" {
+  source = "./modules/aws_rdp_member_server"
+}
+
 module "build_crt" {
   source = "./modules/build_crt"
 }
@@ -82,6 +90,18 @@ module "aws_vpc" {
   }
 }
 
+module "aws_vpc_ipv6" {
+  source = "./modules/aws_vpc_ipv6"
+
+  environment = var.environment
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+}
+
 module "read_license" {
   source = "./modules/read_license"
 }
@@ -101,6 +121,14 @@ module "aws_target" {
   project_name = "qti-enos-boundary"
   environment  = var.environment
   enos_user    = var.enos_user
+}
+
+module "aws_windows_client" {
+  source = "./modules/aws_windows_client"
+}
+
+module "aws_rdp_member_server_with_worker" {
+  source = "./modules/aws_rdp_member_server_with_worker"
 }
 
 module "vault" {
@@ -177,4 +205,16 @@ module "docker_ldap" {
 
 module "docker_minio" {
   source = "./modules/docker_minio"
+}
+
+module "gcp_iam_setup" {
+  source         = "./modules/gcp_iam_setup"
+  gcp_project_id = var.gcp_project_id
+}
+
+module "gcp_target" {
+  source       = "./modules/gcp_target"
+  target_count = var.target_count
+  environment  = var.environment
+  enos_user    = var.enos_user
 }

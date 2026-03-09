@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_database" {
@@ -26,7 +26,8 @@ scenario "e2e_database" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -35,8 +36,7 @@ scenario "e2e_database" {
 
     variables {
       instance_type = [
-        var.worker_instance_type,
-        var.controller_instance_type
+        var.target_instance_type
       ]
     }
   }
@@ -114,7 +114,7 @@ scenario "e2e_database" {
     module = module.test_e2e
     depends_on = [
       step.create_targets_with_tag,
-      step.iam_setup,
+      step.iam_setup
     ]
 
     variables {

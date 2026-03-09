@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -7,6 +7,7 @@ begin;
   insert into credential_type_enm (name)
    values ('ssh_private_key');
 
+  -- Renamed in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_library_ssh_private_key_mapping_override (
     library_id wt_public_id primary key
       constraint credential_vault_library_fkey

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package plugin
@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -37,15 +39,19 @@ func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginS
 		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
 	case plgHc == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "host catalog is nil")
+	case plgHc.GetWorkerFilter().GetValue() != "" && plgHc.GetPlugin() == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin data is not available on host catalog with worker filter")
 	case plgHc.GetAttributes() == nil:
 		return nil
 	}
 
 	ret, err := plgClient.NormalizeCatalogData(ctx, &plgpb.NormalizeCatalogDataRequest{
 		Attributes: plgHc.GetAttributes(),
+		Plugin:     plgHc.GetPlugin(),
 	})
 	switch {
 	case err == nil:
+		// TODO: this should be updated to return these attributes rather than updating them in-place
 		if ret.Attributes != nil {
 			plgHc.Attrs = &pb.HostCatalog_Attributes{
 				Attributes: ret.Attributes,
@@ -105,24 +111,28 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
 	// If secrets were passed in, HMAC 'em
 	if c.Secrets != nil && len(c.Secrets.GetFields()) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-		}
 		if err := c.hmacSecrets(ctx, databaseWrapper); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
 		}
 	}
 
-	plgHc, err := toPluginCatalog(ctx, c)
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plgHc, err := toPluginCatalog(ctx, c, plg)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	if plgHc.GetAttributes() != nil {
@@ -173,16 +183,12 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				pluginCalledSuccessfully = true
 			}
 
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+			if len(plgResp.GetPersisted().GetSecrets().GetFields()) > 0 {
 				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				dbWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-				}
-				if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+				if err := hcSecret.encrypt(ctx, databaseWrapper); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				if hcSecret != nil {
@@ -202,16 +208,11 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", c.ProjectId, c.Name)))
 		}
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s", c.ProjectId)))
-	}
-	plg, err := r.getPlugin(ctx, newHostCatalog.GetPluginId())
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return newHostCatalog, plg, nil
 }
@@ -275,6 +276,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
 	}
 
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
 	var updateAttributes bool
@@ -313,15 +319,17 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				nullFields = append(nullFields, "SecretsHmac")
 			default:
 				// If secrets were passed in, HMAC 'em
-				databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-				}
 				if err := newCatalog.hmacSecrets(ctx, databaseWrapper); err != nil {
 					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
 				}
 				dbMask = append(dbMask, "SecretsHmac")
 			}
+		case strings.EqualFold("WorkerFilter", f) && c.WorkerFilter == "":
+			nullFields = append(nullFields, "WorkerFilter")
+			newCatalog.WorkerFilter = c.WorkerFilter
+		case strings.EqualFold("WorkerFilter", f) && c.WorkerFilter != "":
+			dbMask = append(dbMask, "WorkerFilter")
+			newCatalog.WorkerFilter = c.WorkerFilter
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -339,28 +347,27 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		needSetSync = true
 	}
 
-	// Get the plugin for the host catalog - this is to return it back
-	// after the update is complete. We don't actually do anything with
-	// the record otherwise. Fetch it here so that if there's an
-	// integrity error, we don't call the plugin.
+	// Get the plugin for the host catalog - this is to return it back after the
+	// update is complete, as well as forwarding it to the actual plugin given
+	// that it is necessary if we're using a worker filter. Fetch it here so
+	// that if there's an integrity error, we don't call the plugin.
 	plg, err := r.getPlugin(ctx, currentCatalog.GetPluginId())
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	// Get the plugin client.
-	plgClient, ok := r.plugins[currentCatalog.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
-	}
-
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
-	currPlgHc, err := toPluginCatalog(ctx, currentCatalog)
+	currPlgHc, err := toPluginCatalog(ctx, currentCatalog, plg)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
+	newPlgHc, err := toPluginCatalog(ctx, newCatalog, plg)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, newPlgHc, r.plugins)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -376,10 +383,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		}
 	}
 
-	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeDatabase)
-	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-	}
 	// Get the oplog.
 	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -395,7 +398,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
 			ticket, err := w.GetTicket(ctx, newCatalog)
 			if err != nil {
@@ -444,7 +447,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			var updatedPersisted bool
 			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
 				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
-					// Flag the secret to be deleted.
+					// Flag the secret to be deleted if it exists.
 					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
@@ -457,17 +460,19 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsDeleted != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsDeleted))
+					if secretsDeleted > 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 0 or 1 catalog secret to be deleted, got %d", secretsDeleted))
 					}
-					updatedPersisted = true
-					msgs = append(msgs, &sOplogMsg)
+					if secretsDeleted == 1 {
+						updatedPersisted = true
+						msgs = append(msgs, &sOplogMsg)
+					}
 				} else {
 					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+					if err := hcSecret.encrypt(ctx, databaseWrapper); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
 
@@ -517,7 +522,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			if needSetSync {
 				// We also need to mark all host sets in this catalog to be
 				// synced as well.
-				setsForCatalog, _, err := r.getSets(ctx, "", returnedCatalog.PublicId)
+				setsForCatalog, _, err := r.getSets(ctx, "", returnedCatalog.PublicId, host.WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get sets for host catalog"))
 				}
@@ -550,7 +555,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newCatalog.PublicId, newCatalog.Name)))
@@ -606,7 +610,12 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 	if c == nil {
 		return db.NoRowsAffected, nil
 	}
-	plgHc, err := toPluginCatalog(ctx, c)
+
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -624,9 +633,9 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		plgSets = append(plgSets, ps)
 	}
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{
 		Catalog:   plgHc,
@@ -668,7 +677,6 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", c.PublicId)))
 	}
@@ -697,14 +705,19 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	return c, p, nil
 }
 
-func (r *Repository) getPlugin(ctx context.Context, plgId string) (*plg.Plugin, error) {
+func (r *Repository) getPlugin(ctx context.Context, plgId string, opts ...Option) (*plg.Plugin, error) {
 	const op = "plugin.(Repository).getPlugin"
 	if plgId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
+	opt := getOpts(opts...)
+	reader := r.reader
+	if !util.IsNil(opt.WithReader) {
+		reader = opt.WithReader
+	}
 	plg := plg.NewPlugin()
 	plg.PublicId = plgId
-	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
+	if err := reader.LookupByPublicId(ctx, plg); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))
 	}
 	return plg, nil
@@ -712,24 +725,30 @@ func (r *Repository) getPlugin(ctx context.Context, plgId string) (*plg.Plugin, 
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
 // by the host plugin system.
-func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, error) {
+func toPluginCatalog(ctx context.Context, in *HostCatalog, plg *plg.Plugin) (*pb.HostCatalog, error) {
 	const op = "plugin.toPluginCatalog"
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
-	var name, description *wrapperspb.StringValue
+	var name, description, workerFilter *wrapperspb.StringValue
 	if inName := in.GetName(); inName != "" {
 		name = wrapperspb.String(inName)
 	}
 	if inDescription := in.GetDescription(); inDescription != "" {
 		description = wrapperspb.String(inDescription)
 	}
+	if inWorkerFilter := in.GetWorkerFilter(); inWorkerFilter != "" {
+		workerFilter = wrapperspb.String(inWorkerFilter)
+	}
 
 	hc := &pb.HostCatalog{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetProjectId(),
-		Name:        name,
-		Description: description,
+		Id:           in.GetPublicId(),
+		ScopeId:      in.GetProjectId(),
+		Name:         name,
+		Description:  description,
+		WorkerFilter: workerFilter,
+		PluginId:     in.GetPluginId(),
+		Plugin:       toPluginInfo(plg),
 	}
 	if len(in.GetSecretsHmac()) > 0 {
 		hc.SecretsHmac = base58.Encode(in.GetSecretsHmac())
@@ -747,6 +766,18 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		hc.Secrets = in.Secrets
 	}
 	return hc, nil
+}
+
+// toPluginInfo converts a Plugin object into PluginInfo.
+func toPluginInfo(plg *plg.Plugin) *plugins.PluginInfo {
+	if plg == nil {
+		return nil
+	}
+	return &plugins.PluginInfo{
+		Id:          plg.GetPublicId(),
+		Name:        plg.GetName(),
+		Description: plg.GetDescription(),
+	}
 }
 
 // toPluginPersistedData converts a *HostCatalogSecret from storage to a

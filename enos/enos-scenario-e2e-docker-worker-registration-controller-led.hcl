@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # For this scenario to work, add the following line to /etc/hosts
@@ -18,7 +18,6 @@ scenario "e2e_docker_worker_registration_controller_led" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
@@ -85,7 +84,8 @@ scenario "e2e_docker_worker_registration_controller_led" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -98,7 +98,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster, local.network_database]
       database_network = local.network_database
       postgres_address = step.create_boundary_database.address
@@ -112,7 +112,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
     depends_on = [step.create_boundary]
     variables {
       address      = step.create_boundary.address
-      image_name   = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name   = step.build_boundary_docker_image.image_name
       network_name = local.network_cluster
       login_name   = step.create_boundary.login_name
       password     = step.create_boundary.password
@@ -156,7 +156,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.create_boundary
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file      = "worker-config-controller-led.hcl"
       container_name   = "worker"
@@ -192,8 +192,8 @@ scenario "e2e_docker_worker_registration_controller_led" {
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
-      vault_addr               = step.create_vault.address
-      vault_addr_internal      = step.create_vault.address_internal
+      vault_addr_public        = step.create_vault.address_public
+      vault_addr_private       = step.create_vault.address_private
       vault_root_token         = step.create_vault.token
       vault_port               = step.create_vault.port
       worker_tag_egress        = local.egress_tag

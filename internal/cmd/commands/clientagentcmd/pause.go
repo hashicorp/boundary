@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package clientagentcmd
@@ -53,7 +53,7 @@ func (c *PauseCommand) Flags() *base.FlagSets {
 		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 	})
 
-	f.UintVar(&base.UintVar{
+	f.Uint16Var(&base.Uint16Var{
 		Name:    "client-agent--port",
 		Target:  &c.FlagClientAgentPort,
 		Default: 9300,

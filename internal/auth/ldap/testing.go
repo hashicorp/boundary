@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package ldap
@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"net/url"
@@ -19,8 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,6 +180,21 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 	return a
 }
 
+// TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
+// LDAP managed group, and add the newly created account as a member of the LDAP managed group.
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+	t.Helper()
+	uuid, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := TestAuthMethod(t, conn, databaseWrapper, scopeId, []string{fmt.Sprintf("ldap://%s", uuid)})
+	managedGroup := TestManagedGroup(t, conn, am, []string{uuid})
+	acct := TestAccount(t, conn, am, "testacct", WithMemberOfGroups(ctx, uuid))
+	return am, acct, managedGroup
+}
+
 // TestManagedGroup creates a test ldap managed group.
 func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, grpNames []string, opt ...Option) *ManagedGroup {
 	t.Helper()
@@ -255,6 +275,9 @@ func TestConvertToUrls(t testing.TB, urls ...string) []*url.URL {
 	require.NotEmpty(urls)
 	var convertedUrls []*url.URL
 	for _, u := range urls {
+		var err error
+		u, err = parseutil.NormalizeAddr(u)
+		require.NoError(err)
 		parsed, err := url.Parse(u)
 		require.NoError(err)
 		require.Contains([]string{"ldap", "ldaps"}, parsed.Scheme)

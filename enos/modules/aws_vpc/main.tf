@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 variable "name" {
@@ -55,6 +55,8 @@ locals {
   )
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_availability_zones" "available" {
   state = "available"
 
@@ -71,7 +73,7 @@ data "aws_ami" "ubuntu" {
   # Currently latest LTS-1
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-*-server-*"]
   }
 
   filter {
@@ -137,7 +139,7 @@ resource "aws_vpc" "vpc" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = var.name
+      "Name" = "${var.name}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
     },
   )
 }
@@ -208,7 +210,7 @@ output "vpc_id" {
 
 output "vpc_cidr" {
   description = "CIDR for whole VPC"
-  value       = var.cidr
+  value       = aws_vpc.vpc.cidr_block
 }
 
 output "vpc_subnets" {

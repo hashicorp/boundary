@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package connect
@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -20,15 +19,15 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	exec "golang.org/x/sys/execabs"
 )
-
-const sessionCancelTimeout = 10 * time.Second
 
 type SessionInfo struct {
 	Address         string                       `json:"address"`
@@ -55,20 +54,26 @@ type TerminationInfo struct {
 var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
+
+	// rdpDefaultTimeout is the default inactivity timeout for boundary connect rdp
+	// The default is zero (no timeout), however it is overridden for macOS clients only in connect_darwin.go
+	rdpDefaultTimeout time.Duration = 0
 )
 
 type Command struct {
 	*base.Command
 
-	flagAuthzToken string
-	flagListenAddr string
-	flagListenPort int
-	flagTargetId   string
-	flagTargetName string
-	flagHostId     string
-	flagExec       string
-	flagUsername   string
-	flagDbname     string
+	flagAuthzToken                    string
+	flagListenAddr                    string
+	flagListenPort                    int64
+	flagTargetId                      string
+	flagTargetName                    string
+	flagHostId                        string
+	flagExec                          string
+	flagUsername                      string
+	flagDbname                        string
+	flagMongoDbAuthenticationDatabase string
+	flagInactiveTimeout               time.Duration
 
 	// HTTP
 	httpFlags
@@ -78,6 +83,18 @@ type Command struct {
 
 	// Postgres
 	postgresFlags
+
+	// MySQL
+	mysqlFlags
+
+	// MongoDB
+	mongoFlags
+
+	// Cassandra
+	cassandraFlags
+
+	// Redis
+	redisFlags
 
 	// RDP
 	rdpFlags
@@ -105,6 +122,14 @@ func (c *Command) Synopsis() string {
 		return httpSynopsis
 	case "postgres":
 		return postgresSynopsis
+	case "mysql":
+		return mysqlSynopsis
+	case "mongo":
+		return mongoSynopsis
+	case "cassandra":
+		return cassandraSynopsis
+	case "redis":
+		return redisSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -200,6 +225,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
 	})
 
+	f.DurationVar(&base.DurationVar{
+		Name:       "inactive-timeout",
+		Target:     &c.flagInactiveTimeout,
+		Completion: complete.PredictAnything,
+		Usage:      "How long to wait between connections before closing the session. Increase this value if the proxy closes during long-running processes, or use -1 to disable the timeout.",
+	})
+
 	switch c.Func {
 	case "connect":
 		f.StringVar(&base.StringVar{
@@ -210,7 +242,7 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
 		})
 
-		f.IntVar(&base.IntVar{
+		f.Int64Var(&base.Int64Var{
 			Name:       "listen-port",
 			Target:     &c.flagListenPort,
 			EnvVar:     "BOUNDARY_CONNECT_LISTEN_PORT",
@@ -223,6 +255,18 @@ func (c *Command) Flags() *base.FlagSets {
 
 	case "postgres":
 		postgresOptions(c, set)
+
+	case "mysql":
+		mysqlOptions(c, set)
+
+	case "mongo":
+		mongoOptions(c, set)
+
+	case "cassandra":
+		cassandraOptions(c, set)
+
+	case "redis":
+		redisOptions(c, set)
 
 	case "rdp":
 		rdpOptions(c, set)
@@ -311,12 +355,33 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.sshFlags.defaultExec()
 		case "postgres":
 			c.flagExec = c.postgresFlags.defaultExec()
+		case "mysql":
+			c.flagExec = c.mysqlFlags.defaultExec()
+		case "mongo":
+			c.flagExec = c.mongoFlags.defaultExec()
+		case "cassandra":
+			c.flagExec = c.cassandraFlags.defaultExec()
+		case "redis":
+			c.flagExec = c.redisFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
 			c.flagExec = c.kubeFlags.defaultExec()
 		}
 	}
+
+	var addr netip.Addr
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
+	}
+	addr, err := netip.ParseAddr(c.flagListenAddr)
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
+		return base.CommandCliError
+	}
+	listenAddr := netip.AddrPortFrom(addr, uint16(c.flagListenPort))
+
+	var clientProxy *apiproxy.ClientProxy
 
 	authzString := c.flagAuthzToken
 	switch {
@@ -413,27 +478,35 @@ func (c *Command) Run(args []string) (retCode int) {
 			HostId:          sa.HostId,
 			Credentials:     sa.Credentials,
 		}
+
+		// the session was created specifically for this `boundary connect`
+		// command, and should be closed as soon as the command has exited
+		defer func() {
+			var err error
+			switch {
+			case clientProxy != nil:
+				err = clientProxy.CloseSession(0)
+			default:
+				// this is a weird special case. normally we let the client proxy end
+				// the session, but it failed to be inited, so we need to create the
+				// session client to ensure we don't leave hanging sessions
+				sClient := sessions.NewClient(client)
+				_, err = sClient.Cancel(c.Context, sa.SessionId, 0, sessions.WithAutomaticVersioning(true))
+			}
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("Error closing session after command end: %w", err))
+			}
+		}()
+
 		authzString = sa.AuthorizationToken
 	}
-
-	var listenAddr netip.AddrPort
-	var addr netip.Addr
-	if c.flagListenAddr == "" {
-		c.flagListenAddr = "127.0.0.1"
-	}
-	addr, err := netip.ParseAddr(c.flagListenAddr)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
-		return base.CommandCliError
-	}
-	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
 	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
 	if listenAddr.IsValid() {
 		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
 	}
-	clientProxy, err := apiproxy.New(
+	clientProxy, err = apiproxy.New(
 		c.proxyCtx,
 		authzString,
 		apiProxyOpts...,
@@ -447,10 +520,27 @@ func (c *Command) Run(args []string) (retCode int) {
 	clientProxyCloseCh := make(chan struct{})
 	connCountCloseCh := make(chan struct{})
 
+	switch {
+	case c.flagInactiveTimeout < 0:
+		// timeout has been disabled, no need for option
+	case c.flagInactiveTimeout == 0:
+		// no timeout was specified, use protocol-specific defaults
+		switch c.Func {
+		case "rdp":
+			apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(rdpDefaultTimeout))
+		}
+	default:
+		// use provided timeout
+		apiProxyOpts = append(apiProxyOpts, apiproxy.WithInactivityTimeout(c.flagInactiveTimeout))
+	}
+
 	proxyError := new(atomic.Error)
 	go func() {
 		defer close(clientProxyCloseCh)
-		proxyError.Store(clientProxy.Start())
+		defer c.proxyCancel()
+		if err = clientProxy.Start(apiProxyOpts...); err != nil {
+			proxyError.Store(err)
+		}
 	}()
 	go func() {
 		defer close(connCountCloseCh)
@@ -474,16 +564,20 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		proxyAddr := clientProxy.ListenerAddress(context.Background())
-		var clientProxyHost, clientProxyPort string
-		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
-		if err != nil {
-			if strings.Contains(err.Error(), "missing port") {
-				clientProxyHost = proxyAddr
-			} else {
-				c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
+		if proxyAddr == "" {
+			if err := proxyError.Load(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error starting proxy: %w", err))
 				return base.CommandCliError
 			}
+			c.PrintCliError(fmt.Errorf("Error starting proxy: no address returned"))
+			return base.CommandCliError
+		}
+		var clientProxyHost, clientProxyPort string
+		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
+		if err != nil && !errors.Is(err, util.ErrMissingPort) {
+			c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+			return base.CommandCliError
 		}
 		c.sessInfo.Address = clientProxyHost
 
@@ -527,10 +621,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		if c.execCmdReturnValue != nil {
 			// Don't print out in this case, so ensure we clear it
 			termInfo.Reason = ""
-		} else if time.Now().After(clientProxy.SessionExpiration()) {
-			termInfo.Reason = "Session has expired"
-		} else if clientProxy.ConnectionsLeft() == 0 {
-			termInfo.Reason = "No connections left in session"
+		} else if r := clientProxy.CloseReason(); r != "" {
+			termInfo.Reason = r
 		} else if err := proxyError.Load(); err != nil {
 			termInfo.Reason = "Error from proxy client: " + err.Error()
 		}
@@ -556,7 +648,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	return
+	return retCode
 }
 
 func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
@@ -605,15 +697,11 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	addr := clientProxy.ListenerAddress(context.Background())
 	var host, port string
 	var err error
-	host, port, err = net.SplitHostPort(addr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			host = addr
-		} else {
-			c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
-			c.execCmdReturnValue.Store(int32(3))
-			return
-		}
+	host, port, err = util.SplitHostPort(addr)
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
+		c.execCmdReturnValue.Store(int32(3))
+		return
 	}
 
 	var args []string
@@ -650,6 +738,46 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, pgArgs...)
 		envs = append(envs, pgEnvs...)
 		creds = pgCreds
+
+	case "mysql":
+		mysqlArgs, mysqlEnvs, mysqlCreds, mysqlErr := c.mysqlFlags.buildArgs(c, port, host, addr, creds)
+		if mysqlErr != nil {
+			argsErr = mysqlErr
+			break
+		}
+		args = append(args, mysqlArgs...)
+		envs = append(envs, mysqlEnvs...)
+		creds = mysqlCreds
+
+	case "mongo":
+		mongoArgs, mongoEnvs, mongoCreds, mongoErr := c.mongoFlags.buildArgs(c, port, host, addr, creds)
+		if mongoErr != nil {
+			argsErr = mongoErr
+			break
+		}
+		args = append(args, mongoArgs...)
+		envs = append(envs, mongoEnvs...)
+		creds = mongoCreds
+
+	case "cassandra":
+		cassandraArgs, cassandraEnvs, cassandraCreds, cassandraErr := c.cassandraFlags.buildArgs(c, port, host, addr, creds)
+		if cassandraErr != nil {
+			argsErr = cassandraErr
+			break
+		}
+		args = append(args, cassandraArgs...)
+		envs = append(envs, cassandraEnvs...)
+		creds = cassandraCreds
+
+	case "redis":
+		redisArgs, redisEnvs, redisCreds, redisErr := c.redisFlags.buildArgs(c, port, host, addr, creds)
+		if redisErr != nil {
+			argsErr = redisErr
+			break
+		}
+		args = append(args, redisArgs...)
+		envs = append(envs, redisEnvs...)
+		creds = redisCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
@@ -721,10 +849,9 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmdExit := make(chan struct{})
 
-	if err := cmd.Run(); err != nil {
-		exitCode := 2
-
+	cmdError := func(err error) {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if exitError.Success() {
 				c.execCmdReturnValue.Store(0)
@@ -737,8 +864,30 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		}
 
 		c.PrintCliError(fmt.Errorf("Failed to run command: %w", err))
-		c.execCmdReturnValue.Store(int32(exitCode))
+		c.execCmdReturnValue.Store(2)
 		return
 	}
-	c.execCmdReturnValue.Store(0)
+
+	go func() {
+		defer close(cmdExit)
+		if err := cmd.Start(); err != nil {
+			cmdError(err)
+			return
+		}
+		if err := cmd.Wait(); err != nil {
+			cmdError(err)
+			return
+		}
+		c.execCmdReturnValue.Store(0)
+	}()
+
+	for {
+		select {
+		case <-c.proxyCtx.Done():
+			// the proxy exited for some reason, end the cmd since connections are no longer possible
+			_ = endProcess(cmd.Process)
+		case <-cmdExit:
+			return
+		}
+	}
 }

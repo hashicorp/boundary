@@ -1,10 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package census
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -25,9 +26,10 @@ type censusJob struct {
 	sessionsAgent    any
 	activeUsersAgent any
 	eventCtx         context.Context
+	randReader       io.Reader
 }
 
-func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer) (*censusJob, error) {
+func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer, randomReader io.Reader) (*censusJob, error) {
 	const op = "censusJob.newCensusJob"
 	switch {
 	case r == nil:
@@ -44,6 +46,7 @@ func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer
 		sessionsAgent:    nil,
 		activeUsersAgent: nil,
 		eventCtx:         ctx,
+		randReader:       randomReader,
 	}, nil
 }
 
@@ -54,7 +57,7 @@ func (c *censusJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (c *censusJob) Run(ctx context.Context) error {
+func (c *censusJob) Run(ctx context.Context, _ time.Duration) error {
 	err := RunFn(ctx, c)
 	return err
 }

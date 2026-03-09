@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package main
@@ -141,6 +141,10 @@ type structInfo struct {
 	// fieldFilter is a set of field names that will not result in generated API
 	// fields
 	fieldFilter []string
+
+	// nonPaginatedListing indicates a collection that does not support
+	// pagination
+	nonPaginatedListing bool
 
 	allowEmpty bool
 }
@@ -638,6 +642,22 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentiallibraries.VaultLdapCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_ldap_credential_library_attributes.gen.go",
+		subtypeName: "VaultLdapCredentialLibrary",
+		subtype:     "vault-ldap",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentiallibraries.CredentialLibrary{},
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
@@ -673,6 +693,22 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
+		inProto:     &credentials.PasswordAttributes{},
+		outFile:     "credentials/password_attributes.gen.go",
+		subtypeName: "PasswordCredential",
+		subtype:     "password",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:     &credentials.UsernamePasswordAttributes{},
 		outFile:     "credentials/username_password_attributes.gen.go",
 		subtypeName: "UsernamePasswordCredential",
@@ -684,6 +720,30 @@ var inputStructs = []*structInfo{
 			},
 			{
 				Name:        "Password",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:     &credentials.UsernamePasswordDomainAttributes{},
+		outFile:     "credentials/username_password_domain_attributes.gen.go",
+		subtypeName: "UsernamePasswordDomainCredential",
+		subtype:     "username_password_domain",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Domain",
 				SkipDefault: true,
 			},
 		},
@@ -1072,6 +1132,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &targets.RdpTargetAttributes{},
+		outFile:        "targets/rdp_target_attributes.gen.go",
+		subtypeName:    "RdpTarget",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
@@ -1224,6 +1293,15 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &session_recordings.Credential{},
 		outFile: "sessionrecordings/credential.gen.go",
+	},
+	{
+		inProto:        &session_recordings.PasswordCredentialAttributes{},
+		outFile:        "sessionrecordings/password_credential_attributes.gen.go",
+		subtype:        "password",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto:        &session_recordings.UsernamePasswordCredentialAttributes{},
@@ -1426,5 +1504,6 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		versionEnabled:      true,
+		nonPaginatedListing: true,
 	},
 }

@@ -1,8 +1,10 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
+# 127.0.0.1 localhost worker
+# 127.0.0.1 localhost vault
 
 scenario "e2e_docker_base_with_vault" {
   terraform_cli = terraform_cli.default
@@ -17,7 +19,6 @@ scenario "e2e_docker_base_with_vault" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
@@ -68,7 +69,8 @@ scenario "e2e_docker_base_with_vault" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -80,7 +82,7 @@ scenario "e2e_docker_base_with_vault" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
@@ -111,6 +113,17 @@ scenario "e2e_docker_base_with_vault" {
     }
   }
 
+  step "create_ldap_server" {
+    module = module.docker_ldap
+    depends_on = [
+      step.create_docker_network
+    ]
+    variables {
+      image_name   = "${var.docker_mirror}/osixia/openldap:latest"
+      network_name = [local.network_cluster]
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e_docker
     depends_on = [
@@ -134,11 +147,18 @@ scenario "e2e_docker_base_with_vault" {
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
-      vault_addr               = step.create_vault.address
-      vault_addr_internal      = step.create_vault.address_internal
+      vault_addr_public        = step.create_vault.address_public
+      vault_addr_private       = step.create_vault.address_private
       vault_root_token         = step.create_vault.token
       vault_port               = step.create_vault.port
       max_page_size            = step.create_boundary.max_page_size
+      ldap_address             = step.create_ldap_server.address
+      ldap_domain_dn           = step.create_ldap_server.domain_dn
+      ldap_admin_dn            = step.create_ldap_server.admin_dn
+      ldap_admin_password      = step.create_ldap_server.admin_password
+      ldap_user_name           = step.create_ldap_server.user_name
+      ldap_user_password       = step.create_ldap_server.user_password
+      ldap_group_name          = step.create_ldap_server.group_name
     }
   }
 }

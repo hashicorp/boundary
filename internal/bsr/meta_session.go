@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package bsr
@@ -111,6 +111,16 @@ type StaticUsernamePasswordCredential struct {
 	CredentialStore StaticCredentialStore
 }
 
+// StaticPasswordCredential represents a Static password credential used for this session
+type StaticPasswordCredential struct {
+	PublicId        string
+	Name            string // optional field
+	Description     string // optional field
+	PasswordHmac    []byte
+	Purposes        []string
+	CredentialStore StaticCredentialStore
+}
+
 // StaticSshPrivateKeyCredential represents a Static Ssh private key credential used for this session
 type StaticSshPrivateKeyCredential struct {
 	PublicId                 string
@@ -179,6 +189,7 @@ type SessionMeta struct {
 
 	StaticJSONCredentials             []StaticJsonCredential
 	StaticUsernamePasswordCredentials []StaticUsernamePasswordCredential
+	StaticPasswordCredentials         []StaticPasswordCredential
 	StaticSshPrivateKeyCredentials    []StaticSshPrivateKeyCredential
 	VaultGenericLibraries             []VaultGenericLibrary
 	VaultSshCertificateLibraries      []VaultSshCertificateLibrary

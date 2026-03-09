@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package aws_test
@@ -20,7 +20,7 @@ func TestCliWorker(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -32,7 +32,7 @@ func TestCliWorker(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 
 	// Set incorrect worker filter, expect connection failure
@@ -74,7 +74,7 @@ func TestCliWorker(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", targetId,
-			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagIsolated),
 			"-format", "json",
 		),
 	)

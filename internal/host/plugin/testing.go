@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package plugin
@@ -125,10 +125,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, host1))
 
-	var ipAddresses []any
+	var ipAddresses []*host.IpAddress
 	if len(host1.GetIpAddresses()) > 0 {
 		sort.Strings(host1.IpAddresses)
-		ipAddresses = make([]any, 0, len(host1.GetIpAddresses()))
+		ipAddresses = make([]*host.IpAddress, 0, len(host1.GetIpAddresses()))
 		for _, a := range host1.GetIpAddresses() {
 			obj, err := host.NewIpAddress(ctx, host1.PublicId, a)
 			require.NoError(t, err)
@@ -137,10 +137,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 		require.NoError(t, w.CreateItems(ctx, ipAddresses))
 	}
 
-	var dnsNames []any
+	var dnsNames []*host.DnsName
 	if len(host1.GetDnsNames()) > 0 {
 		sort.Strings(host1.DnsNames)
-		dnsNames = make([]any, 0, len(host1.GetDnsNames()))
+		dnsNames = make([]*host.DnsName, 0, len(host1.GetDnsNames()))
 		for _, n := range host1.GetDnsNames() {
 			obj, err := host.NewDnsName(ctx, host1.PublicId, n)
 			require.NoError(t, err)
@@ -165,7 +165,8 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 		externalId, err := base62.Random(10)
 		require.NoError(err)
 
-		ipStr := testGetIpAddress(t)
+		ipv4Str := testGetIpv4Address(t)
+		ipv6Str := testGetIpv6Address(t)
 		dnsName := testGetDnsName(t)
 
 		rh := &plgpb.ListHostsResponseHost{
@@ -173,7 +174,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 			Name:        base62.MustRandom(10),
 			Description: base62.MustRandom(10),
 			SetIds:      setIds[0 : i+1],
-			IpAddresses: []string{ipStr},
+			IpAddresses: []string{ipv4Str, ipv6Str},
 			DnsNames:    []string{dnsName},
 		}
 		retRH = append(retRH, rh)
@@ -190,7 +191,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,
-				IpAddresses: []string{ipStr},
+				IpAddresses: []string{ipv4Str, ipv6Str},
 				DnsNames:    []string{dnsName},
 				Version:     1,
 			},
@@ -208,7 +209,7 @@ func TestRunSetSync(t testing.TB, conn *db.DB, kmsCache *kms.Kms, plgm map[strin
 
 	j, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
 	require.NoError(t, err)
-	require.NoError(t, j.Run(ctx))
+	require.NoError(t, j.Run(ctx, 0))
 }
 
 func testGetDnsName(t testing.TB) string {
@@ -217,7 +218,7 @@ func testGetDnsName(t testing.TB) string {
 	return fmt.Sprintf("%s.example.com", dnsName)
 }
 
-func testGetIpAddress(t testing.TB) string {
+func testGetIpv4Address(t testing.TB) string {
 	ipBytes := make([]byte, 4)
 	for {
 		lr := io.LimitReader(rand.Reader, 4)
@@ -228,6 +229,21 @@ func testGetIpAddress(t testing.TB) string {
 		v4 := ip.To4()
 		if v4 != nil {
 			return v4.String()
+		}
+	}
+}
+
+func testGetIpv6Address(t testing.TB) string {
+	ipBytes := make([]byte, 16)
+	for {
+		lr := io.LimitReader(rand.Reader, 16)
+		n, err := lr.Read(ipBytes)
+		require.NoError(t, err)
+		require.Equal(t, n, 16)
+		ip := net.IP(ipBytes)
+		v6 := ip.To16()
+		if v6 != nil {
+			return v6.String()
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_with_worker_test
@@ -6,10 +6,14 @@ package base_with_worker_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
+	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -31,7 +35,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -45,8 +49,9 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
 		)
@@ -58,6 +63,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
 		)
@@ -65,11 +71,11 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	})
 
 	// Create credential in vault
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -81,7 +87,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			fmt.Sprintf("-policy=%s", boundaryPolicyName),
-			fmt.Sprintf("-policy=%s", kvPolicyName),
+			fmt.Sprintf("-policy=%s", privateKeyPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -126,8 +132,10 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		ctx,
 		projectId,
 		c.TargetPort,
-		target.WithAddress("openssh-server"),
-		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+		[]target.Option{
+			target.WithAddress("openssh-server"),
+			target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+		},
 	)
 	require.NoError(t, err)
 
@@ -202,4 +210,254 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err, "Unexpectedly created a target with an ingress worker filter")
+
+	// Add an API tag and use that tag in the worker filter
+	t.Log("Adding API tag to worker...")
+	workerList, err := boundary.GetWorkersByTagCli(t, ctx, "type", "egress")
+	require.NoError(t, err)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "add-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "k=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", "k=v",
+			),
+		)
+	})
+	// Update target to use new tag
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", `"v" in "/tags/k"`,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	t.Log("Successfully connected to target with new filter")
+
+	// Update worker to have a different tag. This should result in a failed connection
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "set-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "a=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", "a=v",
+			),
+		)
+	})
+
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.Error(t, output.Err)
+	require.Equal(t, 1, output.ExitCode)
+	t.Log("Successfully failed to connect to target with wrong filter")
+
+	// Update target to use new tag
+	t.Log("Changing API tag on worker...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", `"v" in "/tags/a"`,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	t.Log("Successfully connected to target with new filter")
+
+	// Remove API tags
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "remove-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "a=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "read",
+			"-id", workerList[0].Id,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var workerReadResult workers.WorkerReadResult
+	err = json.Unmarshal(output.Stdout, &workerReadResult)
+	require.NoError(t, err)
+	require.NotContains(t, workerReadResult.Item.CanonicalTags["k"], "v")
+	require.NotContains(t, workerReadResult.Item.CanonicalTags["a"], "v")
+
+	// Add an API tag that's the same as a config tag
+	t.Log("Adding API tag that's the same as a config tag...")
+	require.NoError(t, err)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "add-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+			),
+		)
+	})
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	t.Log("Successfully connected to target")
+
+	// Remove API tag
+	t.Log("Removing API tag...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "remove-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	t.Log("Successfully connected to target")
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package dev
@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"runtime"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
@@ -76,9 +76,9 @@ type Command struct {
 	flagIdSuffix                                       string
 	flagSecondaryIdSuffix                              string
 	flagHostAddress                                    string
-	flagTargetDefaultPort                              int
-	flagTargetSessionMaxSeconds                        int
-	flagTargetSessionConnectionLimit                   int
+	flagTargetDefaultPort                              uint16
+	flagTargetSessionMaxSeconds                        int64
+	flagTargetSessionConnectionLimit                   int64
 	flagControllerApiListenAddr                        string
 	flagControllerClusterListenAddr                    string
 	flagControllerPublicClusterAddr                    string
@@ -113,6 +113,7 @@ type Command struct {
 	flagWorkerAuthCaCertificateLifetime                time.Duration
 	flagWorkerAuthDebuggingEnabled                     bool
 	flagWorkerRecordingStorageDir                      string
+	flagSshKnownHostsPath                              string
 	flagWorkerRecordingStorageMinimumAvailableCapacity string
 	flagBsrKey                                         string
 }
@@ -219,7 +220,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Uint16Var(&base.Uint16Var{
 		Name:    "target-default-port",
 		Default: 22,
 		Target:  &c.flagTargetDefaultPort,
@@ -227,7 +228,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Default port to use for the default target that is created.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:    "target-session-connection-limit",
 		Target:  &c.flagTargetSessionConnectionLimit,
 		Default: -1,
@@ -235,7 +236,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Maximum number of connections per session to set on the default target. -1 means unlimited.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:   "target-session-max-seconds",
 		Target: &c.flagTargetSessionMaxSeconds,
 		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS",
@@ -428,6 +429,12 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:   "worker-ssh-known-hosts-path",
+		Target: &c.flagSshKnownHostsPath,
+		Usage:  "Specifies the path of the known_hosts file to be used by the worker for SSH host key verification of an SSH target in dev mode. SSH targets and SSH credential injection are Enterprise-only features.",
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:   "worker-recording-storage-minimum-available-capacity",
 		Target: &c.flagWorkerRecordingStorageMinimumAvailableCapacity,
 		Usage:  "Specifies the minimum amount of available disk space a worker needs in the recording storage directory to process sessions with session recording enabled. Input should be a capacity string: 4kib or 3GB. Defaults to 500mib.",
@@ -496,9 +503,10 @@ func (c *Command) Run(args []string) int {
 		c.Config, err = config.DevController(
 			config.WithObservationsEnabled(true),
 			config.WithSysEventsEnabled(true),
+			config.WithRandomReader(c.SecureRandomReader),
 		)
 	default:
-		c.Config, err = config.DevCombined()
+		c.Config, err = config.DevCombined(config.WithRandomReader(c.SecureRandomReader))
 	}
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
@@ -533,6 +541,7 @@ func (c *Command) Run(args []string) int {
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 
 	if !c.flagControllerOnly {
+		c.Config.Worker.SshKnownHostsPath = c.flagSshKnownHostsPath
 		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
 		c.Config.Worker.RecordingStorageMinimumAvailableCapacity = c.flagWorkerRecordingStorageMinimumAvailableCapacity
@@ -592,13 +601,10 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	host, port, err := net.SplitHostPort(c.flagHostAddress)
-	if err != nil {
-		if !strings.Contains(err.Error(), "missing port") {
-			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
-			return base.CommandUserError
-		}
-		host = c.flagHostAddress
+	host, port, err := util.SplitHostPort(c.flagHostAddress)
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+		return base.CommandUserError
 	}
 	if port != "" {
 		c.UI.Error(`Port must not be specified as part of the dev host address`)
@@ -725,6 +731,8 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
+	base.StartPprof(c.Context)
+
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
@@ -824,7 +832,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	{
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure, base.EnabledPluginGCP)
 		if base.MinioEnabled {
 			c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
 		}
@@ -898,7 +906,7 @@ func (c *Command) Run(args []string) int {
 				Worker: &store.Worker{
 					ScopeId: scope.Global.String(),
 				},
-			}, server.WithCreateControllerLedActivationToken(true))
+			}, server.WithCreateControllerLedActivationToken(true), server.WithRandomReader(c.SecureRandomReader))
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
 				if err := c.controller.Shutdown(); err != nil {

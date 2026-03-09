@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package plugin
@@ -143,6 +143,24 @@ func TestHostCatalog_Create(t *testing.T) {
 				require.NoError(t, err)
 				return hc
 			}(),
+		},
+		{
+			name: "valid-with-worker-filter",
+			args: args{
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
+				opts: []Option{
+					WithWorkerFilter(`"test" in "/tags/type"`),
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					PluginId:     plg.GetPublicId(),
+					ProjectId:    prj.GetPublicId(),
+					Attributes:   []byte{},
+					WorkerFilter: `"test" in "/tags/type"`,
+				},
+			},
 		},
 	}
 
@@ -443,4 +461,24 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCatalogAgg(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, db.TestWrapper(t)))
+	plg := plugin.TestPlugin(t, conn, "test")
+	hc := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+
+	ca := catalogAgg{}
+	ca.PublicId = hc.GetPublicId()
+	require.NoError(t, rw.LookupByPublicId(ctx, &ca))
+
+	outHc, _ := ca.toCatalogAndPersisted()
+	require.NotNil(t, outHc)
+	require.Empty(t, cmp.Diff(hc, outHc, protocmp.Transform()))
+
+	require.NotNil(t, ca.plugin())
+	require.Empty(t, cmp.Diff(plg, ca.plugin(), protocmp.Transform()))
 }

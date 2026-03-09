@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_test
@@ -23,10 +23,11 @@ import (
 // all host catalogs in a single invocation.
 func TestCliPaginateHostCatalogs(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -117,12 +118,13 @@ func TestCliPaginateHostCatalogs(t *testing.T) {
 // all host catalogs in a single invocation.
 func TestApiPaginateHostCatalogs(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	sClient := scopes.NewClient(client)
 	hcClient := hostcatalogs.NewClient(client)
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)

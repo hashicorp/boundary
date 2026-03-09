@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oss
@@ -19,6 +19,7 @@ func ApplyMigration(t *testing.T, ctx context.Context, d *sql.DB, migrationId in
 		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": migrationId}),
 	))
 	require.NoError(t, err)
+	t.Cleanup(func() { m.Close(context.Background()) })
 	_, err = m.ApplyMigrations(ctx)
 	require.NoError(t, err)
 	state, err := m.CurrentState(ctx)

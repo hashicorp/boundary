@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package boundary
@@ -68,13 +68,14 @@ func CreateCredentialStoreVaultApi(t testing.TB, ctx context.Context, client *ap
 
 // CreateCredentialStoreVaultCli uses the cli to create a Vault credential store
 // Returns the id of the new credential store
-func CreateCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId string, vaultAddr string, vaultToken string) (string, error) {
+func CreateCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId string, vaultAddr string, vaultToken string, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"credential-stores", "create", "vault",
 			"-scope-id", projectId,
@@ -84,6 +85,11 @@ func CreateCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId 
 			"-description", "e2e",
 			"-format", "json",
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
@@ -102,13 +108,14 @@ func CreateCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId 
 
 // CreateCredentialStoreStaticCli uses the cli to create a new static credential store.
 // Returns the id of the new credential store
-func CreateCredentialStoreStaticCli(t testing.TB, ctx context.Context, projectId string) (string, error) {
+func CreateCredentialStoreStaticCli(t testing.TB, ctx context.Context, projectId string, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"credential-stores", "create", "static",
 			"-scope-id", projectId,
@@ -116,6 +123,11 @@ func CreateCredentialStoreStaticCli(t testing.TB, ctx context.Context, projectId
 			"-description", "e2e",
 			"-format", "json",
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
@@ -135,13 +147,14 @@ func CreateCredentialStoreStaticCli(t testing.TB, ctx context.Context, projectId
 // CreateVaultGenericCredentialLibraryCli creates a vault-generic credential
 // library using the cli
 // Returns the id of the credential library or an error
-func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string, credentialType string) (string, error) {
+func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string, credentialType string, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", credentialStoreId,
@@ -151,6 +164,11 @@ func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, c
 			"-description", "e2e",
 			"-format", "json",
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
@@ -202,10 +220,52 @@ func CreateStaticCredentialPrivateKeyCli(t testing.TB, ctx context.Context, cred
 	return credentialId, nil
 }
 
+// CreateStaticCredentialUsernamePasswordCli uses the cli to create a new password credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialUsernamePasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string, opt ...e2e.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	var options []e2e.Option
+	options = append(options,
+		e2e.WithArgs(
+			"credentials", "create", "username-password",
+			"-credential-store-id", credentialStoreId,
+			"-username", user,
+			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-name", fmt.Sprintf("e2e Credential %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", password),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialsResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialsResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	return credentialId, nil
+}
+
 // CreateStaticCredentialPasswordCli uses the cli to create a new password credential in the
 // provided static credential store.
 // Returns the id of the new credential
-func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string) (string, error) {
+func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, credentialStoreId string, password string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
@@ -213,9 +273,8 @@ func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, creden
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credentials", "create", "username-password",
+			"credentials", "create", "password",
 			"-credential-store-id", credentialStoreId,
-			"-username", user,
 			"-password", "env://E2E_CREDENTIALS_PASSWORD",
 			"-name", fmt.Sprintf("e2e Credential %s", name),
 			"-description", "e2e",
@@ -234,7 +293,50 @@ func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, creden
 	}
 
 	credentialId := createCredentialsResult.Item.Id
-	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	t.Logf("Created Password Credential: %s", credentialId)
+	return credentialId, nil
+}
+
+// CreateStaticCredentialUsernamePasswordDomainCli uses the cli to create a new username password domain credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialUsernamePasswordDomainCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, password string, domain string, opt ...e2e.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	var options []e2e.Option
+	options = append(options,
+		e2e.WithArgs(
+			"credentials", "create", "username-password-domain",
+			"-credential-store-id", credentialStoreId,
+			"-username", user,
+			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-domain", domain,
+			"-name", fmt.Sprintf("e2e Credential %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", password),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialsResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialsResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password/Domain Credentials: %s", credentialId)
 	return credentialId, nil
 }
 
@@ -293,5 +395,84 @@ func CreateStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client
 
 	credentialId := createCredentialsResult.Item.Id
 	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	return credentialId, nil
+}
+
+func CreateVaultLdapCredentialLibraryApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, vaultPath string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := credentiallibraries.NewClient(client).Create(ctx, "vault-ldap", credentialStoreId,
+		credentiallibraries.WithName(fmt.Sprintf("e2e vault credential library %s", name)),
+		credentiallibraries.WithVaultLdapCredentialLibraryPath(vaultPath),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return res.GetItem().Id, nil
+}
+
+func CreateVaultLdapCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string, opts ...e2e.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	var options []e2e.Option
+	options = append(options,
+		e2e.WithArgs(
+			"credential-libraries", "create", "vault-ldap",
+			"-credential-store-id", credentialStoreId,
+			"-vault-path", vaultPath,
+			"-name", fmt.Sprintf("e2e vault credential library %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+	)
+	options = append(options, opts...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialLibraryResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialLibraryId := createCredentialLibraryResult.Item.Id
+	t.Logf("Created Vault LDAP Credential Library: %s", credentialLibraryId)
+	return credentialLibraryId, nil
+}
+
+// CreateStaticCredentialPasswordDomainApi uses the API to create a new username-password-domain credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateStaticCredentialPasswordDomainApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string, domain string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	c := credentials.NewClient(client)
+	createCredentialsResult, err := c.Create(ctx, "username_password_domain", credentialStoreId,
+		credentials.WithUsernamePasswordDomainCredentialUsername(user),
+		credentials.WithUsernamePasswordDomainCredentialPassword(password),
+		credentials.WithUsernamePasswordDomainCredentialDomain(domain),
+		credentials.WithName(fmt.Sprintf("e2e Credential %s", name)),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password/domain Credentials: %s", credentialId)
 	return credentialId, nil
 }

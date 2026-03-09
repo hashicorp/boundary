@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package clientagentcmd
@@ -30,7 +30,7 @@ type UpsertTokenRequest struct {
 // The passed in cli.Ui is used to print out any errors when looking up the
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
-func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Response, *api.Error, error) {
+func addToken(ctx context.Context, apiClient *api.Client, port uint16) (*api.Response, *api.Error, error) {
 	pa := UpsertTokenRequest{
 		BoundaryAddr: apiClient.Addr(),
 	}
@@ -48,9 +48,7 @@ func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Respo
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	// TODO (ICU-13140): Until we release the client agent, do not retry attempts
-	// to connect to the client agent since it adds a noticeably long delay to
-	// the command.
+	// Explicitly setting this to 0, since this runs after every command and we don't want any delays
 	client.RetryMax = 0
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", clientAgentUrl(port, "v1/tokens"),

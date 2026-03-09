@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package ldap
@@ -68,20 +68,12 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 	}
 
 	if cv.BindCredential != nil {
-		bc, ok := cv.BindCredential.(*BindCredential)
-		if !ok {
-			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("invalid type (%T) is not a bind credential", cv.BindCredential))
-		}
-		if err := bc.encrypt(ctx, dbWrapper); err != nil {
+		if err := cv.BindCredential.encrypt(ctx, dbWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to encrypt bind credential"))
 		}
 	}
 	if cv.ClientCertificate != nil {
-		cc, ok := cv.ClientCertificate.(*ClientCertificate)
-		if !ok {
-			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("invalid type (%T) is not a client certificate", cv.ClientCertificate))
-		}
-		if err := cc.encrypt(ctx, dbWrapper); err != nil {
+		if err := cv.ClientCertificate.encrypt(ctx, dbWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to encrypt client certificate"))
 		}
 	}

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package server
@@ -215,7 +215,7 @@ func (w *WorkerCertBundle) clone() *WorkerCertBundle {
 
 // Validate is called before storing a WorkerCertBundle in the db
 func (w *WorkerCertBundle) ValidateNewWorkerCertBundle(ctx context.Context) error {
-	const op = "server.(WorkerAuth).validateNewWorkerCertBundle"
+	const op = "server.(WorkerCertBundle).validateNewWorkerCertBundle"
 	if w.RootCertificatePublicKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing CertificatePublicKey")
 	}

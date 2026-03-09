@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package targets
@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -35,13 +36,13 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
@@ -54,28 +55,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const (
-	credentialDomain = "credential"
-	hostDomain       = "host"
-)
-
-// extraWorkerFilterFunc takes in a set of workers and returns another set,
-// after any filtering it wishes to perform. When calling one of these
-// functions, the current set should be passed in and the returned set should be
-// used if there is no error; it is up to the filter writer to ensure that what
-// is returned, if no filtering is desired, is the input set.
-//
-// This is generally used to take in a set selected already from the database
-// and possible filtered via target worker filters and provide additional
-// filtering capabilities on those remaining workers.
-type extraWorkerFilterFunc func(ctx context.Context, workers []*server.Worker, host, port string) ([]*server.Worker, error)
-
 var (
-	// ExtraWorkerFilters contains any custom worker filters that should be
-	// layered in at session authorization time. These will be executed in-order
-	// with the results from one fed into the next.
-	ExtraWorkerFilters []extraWorkerFilterFunc
-
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.NewActionSet(
@@ -101,9 +81,10 @@ var (
 
 	validateCredentialSourcesFn    = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
-	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
 	SessionRecordingFn             = NoSessionRecording
 	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+	StorageBucketFilterCredIdFn    = noStorageBucket
+	ValidateLicenseFn              = noOpValidateLicense
 )
 
 func init() {
@@ -119,20 +100,20 @@ func IngressWorkerFilterUnsupported(string) error {
 type Service struct {
 	pbs.UnsafeTargetServiceServer
 
-	repoFn                  target.RepositoryFactory
-	aliasRepoFn             common.TargetAliasRepoFactory
-	iamRepoFn               common.IamRepoFactory
-	serversRepoFn           common.ServersRepoFactory
-	sessionRepoFn           session.RepositoryFactory
-	pluginHostRepoFn        common.PluginHostRepoFactory
-	staticHostRepoFn        common.StaticRepoFactory
-	vaultCredRepoFn         common.VaultCredentialRepoFactory
-	staticCredRepoFn        common.StaticCredentialRepoFactory
-	downstreams             common.Downstreamers
-	kmsCache                *kms.Kms
-	workerStatusGracePeriod *atomic.Int64
-	maxPageSize             uint
-	controllerExt           intglobals.ControllerExtension
+	repoFn               target.RepositoryFactory
+	aliasRepoFn          common.TargetAliasRepoFactory
+	iamRepoFn            common.IamRepoFactory
+	serversRepoFn        common.ServersRepoFactory
+	sessionRepoFn        session.RepositoryFactory
+	pluginHostRepoFn     common.PluginHostRepoFactory
+	staticHostRepoFn     common.StaticRepoFactory
+	vaultCredRepoFn      common.VaultCredentialRepoFactory
+	staticCredRepoFn     common.StaticCredentialRepoFactory
+	downstreams          downstream.Graph
+	kmsCache             *kms.Kms
+	workerRPCGracePeriod *atomic.Int64
+	maxPageSize          uint
+	controllerExt        intglobals.ControllerExtension
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -150,8 +131,8 @@ func NewService(
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	aliasRepoFn common.TargetAliasRepoFactory,
-	downstreams common.Downstreamers,
-	workerStatusGracePeriod *atomic.Int64,
+	downstreams downstream.Graph,
+	workerRPCGracePeriod *atomic.Int64,
 	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
@@ -182,20 +163,20 @@ func NewService(
 		maxPageSize = uint(globals.DefaultMaxPageSize)
 	}
 	return Service{
-		repoFn:                  repoFn,
-		iamRepoFn:               iamRepoFn,
-		serversRepoFn:           serversRepoFn,
-		sessionRepoFn:           sessionRepoFn,
-		pluginHostRepoFn:        pluginHostRepoFn,
-		staticHostRepoFn:        staticHostRepoFn,
-		vaultCredRepoFn:         vaultCredRepoFn,
-		staticCredRepoFn:        staticCredRepoFn,
-		aliasRepoFn:             aliasRepoFn,
-		downstreams:             downstreams,
-		kmsCache:                kmsCache,
-		workerStatusGracePeriod: workerStatusGracePeriod,
-		maxPageSize:             maxPageSize,
-		controllerExt:           controllerExt,
+		repoFn:               repoFn,
+		iamRepoFn:            iamRepoFn,
+		serversRepoFn:        serversRepoFn,
+		sessionRepoFn:        sessionRepoFn,
+		pluginHostRepoFn:     pluginHostRepoFn,
+		staticHostRepoFn:     staticHostRepoFn,
+		vaultCredRepoFn:      vaultCredRepoFn,
+		staticCredRepoFn:     staticCredRepoFn,
+		aliasRepoFn:          aliasRepoFn,
+		downstreams:          downstreams,
+		kmsCache:             kmsCache,
+		workerRPCGracePeriod: workerRPCGracePeriod,
+		maxPageSize:          maxPageSize,
+		controllerExt:        controllerExt,
 	}, nil
 }
 
@@ -206,7 +187,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -359,7 +340,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -399,7 +380,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -446,7 +427,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -486,7 +467,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -504,7 +485,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if err := validateAddHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -546,7 +527,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	if err := validateSetHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -586,7 +567,7 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	if err := validateRemoveHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -626,7 +607,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	if err := validateAddCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -667,7 +648,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	if err := validateSetCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -708,7 +689,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	if err := validateRemoveCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -742,74 +723,38 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	return &pbs.RemoveTargetCredentialSourcesResponse{Item: item}, nil
 }
 
-// If set, use the worker_filter or egress_worker_filter to filter the selected workers
-// and ensure we have workers available to service this request. The second return
-// argument is always nil.
-func AuthorizeSessionWithWorkerFilter(
-	_ context.Context,
-	t target.Target,
-	selectedWorkers server.WorkerList,
-	_ string,
-	_ intglobals.ControllerExtension,
-	_ common.Downstreamers,
-	_ ...target.Option,
-) (server.WorkerList, *server.Worker, error) {
-	if len(selectedWorkers) > 0 {
-		var eval *bexpr.Evaluator
-		var err error
-		switch {
-		case len(t.GetEgressWorkerFilter()) > 0:
-			eval, err = bexpr.CreateEvaluator(t.GetEgressWorkerFilter())
-		case len(t.GetWorkerFilter()) > 0:
-			eval, err = bexpr.CreateEvaluator(t.GetWorkerFilter())
-		default: // No filter
-			return selectedWorkers, nil, nil
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-
-		selectedWorkers, err = selectedWorkers.Filtered(eval)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	if len(selectedWorkers) == 0 {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(
-			codes.FailedPrecondition,
-			"No workers are available to handle this session, or all have been filtered.")
-	}
-
-	return selectedWorkers, nil, nil
-}
-
-func NoSessionRecording(context.Context, intglobals.ControllerExtension, *kms.Kms, target.Target, *session.Session, *server.Worker) (string, error) {
+func NoSessionRecording(context.Context, intglobals.ControllerExtension, *kms.Kms, target.Target, *session.Session, string) (string, error) {
 	return "", nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 
+	if err := ValidateLicenseFn(ctx); err != nil {
+		return nil, err
+	}
+
+	var targetAlias *talias.Alias
+	var err error
 	if ctxAlias := alias.FromContext(ctx); ctxAlias != nil {
-		a, err := s.resolveAlias(ctx, ctxAlias.PublicId)
+		targetAlias, err = s.resolveAlias(ctx, ctxAlias.PublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		if a.HostId != "" {
-			if req.GetHostId() != "" && req.GetHostId() != a.HostId {
+		if targetAlias.HostId != "" {
+			if req.GetHostId() != "" && req.GetHostId() != targetAlias.HostId {
 				return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
 					"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omitting the host id in the request.",
 				})
 			}
-			req.HostId = a.HostId
+			req.HostId = targetAlias.HostId
 		}
 	}
 
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession, false,
 		target.WithName(req.GetName()),
 		target.WithProjectId(req.GetScopeId()),
 		target.WithProjectName(req.GetScopeName()),
@@ -825,11 +770,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
-	t, ok := authResults.RoundTripValue.(target.Target)
+	roundTripTarget, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
 		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
-	if t == nil {
+	if roundTripTarget == nil {
 		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
@@ -851,7 +796,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, handlers.ForbiddenError()
 	}
 
-	if t.GetDefaultPort() == 0 {
+	if roundTripTarget.GetDefaultPort() == 0 {
 		return nil, handlers.ConflictErrorf("Target does not have default port defined.")
 	}
 
@@ -860,15 +805,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	t, err := repo.LookupTargetForSessionAuthorization(ctx, roundTripTarget.GetPublicId(), roundTripTarget.GetProjectId(), target.WithAlias(targetAlias))
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()
@@ -967,17 +912,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No host was discovered after checking target address and host sources.")
 	}
 
-	// Ensure we don't have a port from the address, which would be unexpected
-	_, _, err = net.SplitHostPort(h)
-	switch {
-	case err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr):
-		// This is what we expect
-	case err != nil:
+	// Ensure we don't have a port from the address and that any ipv6 addresses
+	// are formatted properly
+	if h, err = util.ParseAddress(ctx, h); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
-	case err == nil:
-		return nil, handlers.ApiErrorWithCodeAndMessage(
-			codes.FailedPrecondition,
-			"Address specified for use unexpectedly contains a port.")
 	}
 
 	// Generate the endpoint URL
@@ -987,20 +925,22 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	// Get workers and filter down to ones that can service this request
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
+	selectedWorkers, protoWorkerId, err := serversRepo.SelectSessionWorkers(
+		ctx,
+		time.Duration(s.workerRPCGracePeriod.Load()),
+		t,
+		h,
+		s.controllerExt,
+		StorageBucketFilterCredIdFn,
+		s.downstreams,
+	)
 	if err != nil {
 		return nil, err
 	}
-
 	if len(selectedWorkers) == 0 {
 		return nil, handlers.ApiErrorWithCodeAndMessage(
 			codes.FailedPrecondition,
 			"No workers are available to handle this session.")
-	}
-
-	selectedWorkers, protoWorker, err := AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.controllerExt, s.downstreams)
-	if err != nil {
-		return nil, err
 	}
 
 	// Randomize the workers
@@ -1044,9 +984,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
 		CorrelationId:       correlationId,
-	}
-	if protoWorker != nil {
-		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()
+		ProtocolWorkerId:    protoWorkerId,
 	}
 	sess, err := session.New(ctx, sessionComposition)
 	if err != nil {
@@ -1056,7 +994,20 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, server.WorkerList(selectedWorkers).Addresses())
+
+	workerAddresses := make([]string, 0, len(selectedWorkers))
+	for _, sw := range selectedWorkers {
+		workerAddresses = append(workerAddresses, sw.Address)
+	}
+	var proxyCert *session.ProxyCertificate
+	if t.GetProxyServerCertificate() != nil {
+		pc := t.GetProxyServerCertificate()
+		proxyCert = &session.ProxyCertificate{
+			PrivateKey:  pc.PrivateKeyPem,
+			Certificate: pc.CertificatePem,
+		}
+	}
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses, session.WithProxyCertificate(proxyCert))
 	if err != nil {
 		return nil, err
 	}
@@ -1184,6 +1135,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		hostId = t.GetPublicId()
 	}
 
+	workerInfos := make([]*pb.WorkerInfo, 0, len(selectedWorkers))
+	for _, sw := range selectedWorkers {
+		workerInfos = append(workerInfos, &pb.WorkerInfo{Address: sw.Address})
+	}
 	sad := &pb.SessionAuthorizationData{
 		SessionId:         sess.PublicId,
 		TargetId:          t.GetPublicId(),
@@ -1196,7 +1151,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		PrivateKey:        sess.CertificatePrivateKey,
 		HostId:            hostId,
 		Endpoint:          endpointUrl.String(),
-		WorkerInfo:        server.WorkerList(selectedWorkers).WorkerInfos(),
+		WorkerInfo:        workerInfos,
 		ConnectionLimit:   t.GetSessionConnectionLimit(),
 		DefaultClientPort: t.GetDefaultClientPort(),
 	}
@@ -1220,6 +1175,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		HostSetId:          hostSetId,
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
+		ConnectionLimit:    t.GetSessionConnectionLimit(),
 	}
 
 	ret.SessionRecordingId, err = SessionRecordingFn(
@@ -1228,7 +1184,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		s.kmsCache,
 		t,
 		sess,
-		protoWorker,
+		protoWorkerId,
 	)
 	if err != nil {
 		// Errors here will automatically delete the session and associated resources
@@ -1609,7 +1565,7 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	a := action.Create
-	opts := []auth.Option{auth.WithType(resource.Alias), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		res.Error = err
@@ -1625,16 +1581,16 @@ func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) aut
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, resource.Alias, opts...)
 	return ret
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
 	var t target.Target
-	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1677,7 +1633,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, resource.Target, opts...)
 	ret.RoundTripValue = t
 	return ret
 }
@@ -1871,15 +1827,13 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case errors.Is(err, util.ErrInvalidAddressLength):
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -1951,15 +1905,13 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case errors.Is(err, util.ErrInvalidAddressLength):
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -2006,7 +1958,7 @@ func validateListRequest(ctx context.Context, req *pbs.ListTargetsRequest) error
 }
 
 func newOutputOpts(ctx context.Context, item target.Target, authResults auth.VerifyResults, authzScopes map[string]*scopes.ScopeInfo) []handlers.Option {
-	pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
+	pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target, ParentScopeId: authzScopes[item.GetProjectId()].GetParentScopeId()}
 	outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -2015,6 +1967,7 @@ func newOutputOpts(ctx context.Context, item target.Target, authResults auth.Ver
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
 	}
+	pr.ParentScopeId = authzScopes[item.GetProjectId()].GetParentScopeId()
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
@@ -2103,8 +2056,11 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
+			globals.PasswordCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2115,8 +2071,10 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
@@ -2139,8 +2097,11 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
+			globals.PasswordCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2151,8 +2112,10 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
@@ -2179,8 +2142,11 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
+			globals.PasswordCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2191,8 +2157,10 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
+			globals.VaultLdapCredentialLibraryPrefix,
 			globals.UsernamePasswordCredentialPrefix,
 			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.UsernamePasswordDomainCredentialPrefix,
 			globals.SshPrivateKeyCredentialPrefix,
 			globals.JsonCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
@@ -2243,5 +2211,13 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
+	return nil
+}
+
+func noStorageBucket(_ context.Context, _ intglobals.ControllerExtension, _ string) (string, string, error) {
+	return "", "", fmt.Errorf("not supported")
+}
+
+func noOpValidateLicense(ctx context.Context) error {
 	return nil
 }

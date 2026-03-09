@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package wspb provides convenience functions for reading and writing protobuf
@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
-	"nhooyr.io/websocket"
 )
 
 var pool sync.Pool

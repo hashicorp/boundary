@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package scopes
@@ -117,6 +117,23 @@ var (
 			resource.Target:  targets.CollectionActions,
 		},
 	}
+	additionalResourceGrants = []resource.Type{
+		resource.Alias,
+		resource.AuthMethod,
+		resource.AuthToken,
+		resource.StorageBucket,
+		resource.Group,
+		resource.Role,
+		resource.Scope,
+		resource.User,
+		resource.SessionRecording,
+		resource.Policy,
+		resource.CredentialStore,
+		resource.HostCatalog,
+		resource.Worker,
+		resource.Session,
+		resource.Target,
+	}
 )
 
 func init() {
@@ -168,7 +185,10 @@ func (s *Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+
+	// Hard-coding 'isRecursive' to true because list scope returns child scopes which requires
+	// additional grants for those child-scopes (recursive) to calculate authorized_actions on the returned scope
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, true)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -314,7 +334,7 @@ func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -337,7 +357,14 @@ func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -359,7 +386,7 @@ func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) 
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -382,7 +409,14 @@ func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +438,7 @@ func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) 
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -427,7 +461,14 @@ func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -447,7 +488,7 @@ func (s *Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) 
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -466,7 +507,7 @@ func (s *Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.
 	if err := validateListKeysRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ListScopeKeys)
+	authResults := s.authResult(ctx, req.GetId(), action.ListScopeKeys, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -512,7 +553,7 @@ func (s *Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*
 	if err := validateRotateKeysRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.RotateScopeKeys)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.RotateScopeKeys, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -532,7 +573,7 @@ func (s *Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.Li
 	if err := validateListKeyVersionDestructionJobsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.ListScopeKeyVersionDestructionJobs)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ListScopeKeyVersionDestructionJobs, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -574,7 +615,7 @@ func (s *Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVers
 	if err := validateDestroyKeyVersionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.DestroyScopeKeyVersion)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.DestroyScopeKeyVersion, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -746,7 +787,7 @@ func sortKeys(keys []*pb.Key) {
 	}
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -755,7 +796,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Scope), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive), auth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
 	switch a {
 	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs, action.DestroyScopeKeyVersion:
 		parentId = id
@@ -782,7 +823,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Scope, opts...)
 }
 
 func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Scope, error) {
@@ -1117,9 +1158,10 @@ func validateDestroyKeyVersionRequest(req *pbs.DestroyKeyVersionRequest) error {
 
 func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.VerifyResults, scopeInfoMap map[string]*pb.ScopeInfo) ([]handlers.Option, bool, error) {
 	res := perms.Resource{
-		Type:    resource.Scope,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetParentId(),
+		Type:          resource.Scope,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetParentId(),
+		ParentScopeId: scopeInfoMap[item.GetParentId()].GetParentScopeId(),
 	}
 
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActionsById(item.GetPublicId()), auth.WithResource(&res)).Strings()
@@ -1137,7 +1179,14 @@ func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.Verify
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            item.GetPublicId(),
+			Type:          item.Type,
+			Name:          item.GetName(),
+			Description:   item.GetDescription(),
+			ParentScopeId: item.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], scopeInfo, "")
 		if err != nil {
 			return nil, false, err
 		}

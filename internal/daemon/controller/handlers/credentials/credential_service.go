@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package credentials
@@ -37,6 +37,7 @@ import (
 const (
 	usernameField             = "attributes.username"
 	passwordField             = "attributes.password"
+	domainField               = "attributes.domain"
 	privateKeyField           = "attributes.private_key"
 	privateKeyPassphraseField = "attributes.private_key_passphrase"
 	objectField               = "attributes.object"
@@ -44,9 +45,11 @@ const (
 )
 
 var (
+	updMaskManager  handlers.MaskManager
 	upMaskManager   handlers.MaskManager
 	spkMaskManager  handlers.MaskManager
 	jsonMaskManager handlers.MaskManager
+	pMaskmanager    handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -85,6 +88,20 @@ func init() {
 		context.Background(),
 		handlers.MaskDestination{&store.JsonCredential{}},
 		handlers.MaskSource{&pb.Credential{}, &pb.JsonAttributes{}},
+	); err != nil {
+		panic(err)
+	}
+	if updMaskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.UsernamePasswordDomainCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordDomainAttributes{}},
+	); err != nil {
+		panic(err)
+	}
+	if pMaskmanager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.PasswordCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.PasswordAttributes{}},
 	); err != nil {
 		panic(err)
 	}
@@ -130,7 +147,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List)
+	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -260,7 +277,7 @@ func (s Service) GetCredential(ctx context.Context, req *pbs.GetCredentialReques
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -298,7 +315,7 @@ func (s Service) CreateCredential(ctx context.Context, req *pbs.CreateCredential
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetCredentialStoreId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetCredentialStoreId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -345,7 +362,7 @@ func (s Service) UpdateCredential(ctx context.Context, req *pbs.UpdateCredential
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -381,7 +398,7 @@ func (s Service) DeleteCredential(ctx context.Context, req *pbs.DeleteCredential
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -421,6 +438,40 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		out, err := repo.CreateUsernamePasswordCredential(ctx, scopeId, cred)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
+		}
+		if out == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
+		}
+		return out, nil
+	case credential.UsernamePasswordDomainSubtype.String():
+		cred, err := toUsernamePasswordDomainStorageCredential(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreateUsernamePasswordDomainCredential(ctx, scopeId, cred)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
+		}
+		if out == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
+		}
+		return out, nil
+	case credential.PasswordSubtype.String():
+		cred, err := toPasswordStorageCredential(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreatePasswordCredential(ctx, scopeId, cred)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
 		}
@@ -502,7 +553,52 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
+	case credential.UsernamePasswordDomainSubtype:
+		dbMasks = append(dbMasks, updMaskManager.Translate(masks)...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
 
+		cred, err := toUsernamePasswordDomainStorageCredential(ctx, storeId, in)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to username/password/domain storage credential"))
+		}
+		cred.PublicId = id
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err := repo.UpdateUsernamePasswordDomainCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
+		}
+		return out, nil
+	case credential.PasswordSubtype:
+		dbMasks = append(dbMasks, pMaskmanager.Translate(masks)...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+
+		cred, err := toPasswordStorageCredential(ctx, storeId, in)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to password storage credential"))
+		}
+		cred.PublicId = id
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err := repo.UpdatePasswordCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
+		}
+		return out, nil
 	case credential.SshPrivateKeySubtype:
 		dbMasks = append(dbMasks, spkMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -536,7 +632,6 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
-
 	case credential.JsonSubtype:
 		dbMasks = append(dbMasks, jsonMaskManager.Translate(masks, "attributes", "object")...)
 		if len(dbMasks) == 0 {
@@ -560,7 +655,6 @@ func (s Service) updateInRepo(
 			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
 		}
 		return out, nil
-
 	default:
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, fmt.Sprintf("Unsupported credential type %q", item.GetType()))
 
@@ -584,7 +678,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	const op = "credentials.(Service).authResult"
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
@@ -594,7 +688,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Credential), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -629,8 +723,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(cs.GetProjectId()))
-
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Credential, opts...)
 }
 
 func newOutputOpts(
@@ -640,9 +733,10 @@ func newOutputOpts(
 	authResults auth.VerifyResults,
 ) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Credential,
-		Pin:     credentialStoreId,
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Credential,
+		Pin:           credentialStoreId,
 	}
 	res.Id = item.GetPublicId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
@@ -680,6 +774,10 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 		switch in.(type) {
 		case *static.UsernamePasswordCredential:
 			out.Type = credential.UsernamePasswordSubtype.String()
+		case *static.UsernamePasswordDomainCredential:
+			out.Type = credential.UsernamePasswordDomainSubtype.String()
+		case *static.PasswordCredential:
+			out.Type = credential.PasswordSubtype.String()
 		case *static.SshPrivateKeyCredential:
 			out.Type = credential.SshPrivateKeySubtype.String()
 		case *static.JsonCredential:
@@ -714,6 +812,24 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 			out.Attrs = &pb.Credential_UsernamePasswordAttributes{
 				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 					Username:     wrapperspb.String(cred.GetUsername()),
+					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
+				},
+			}
+		}
+	case *static.UsernamePasswordDomainCredential:
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.Credential_UsernamePasswordDomainAttributes{
+				UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+					Username:     wrapperspb.String(cred.GetUsername()),
+					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
+					Domain:       wrapperspb.String(cred.GetDomain()),
+				},
+			}
+		}
+	case *static.PasswordCredential:
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.Credential_PasswordAttributes{
+				PasswordAttributes: &pb.PasswordAttributes{
 					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
 				},
 			}
@@ -754,6 +870,52 @@ func toUsernamePasswordStorageCredential(ctx context.Context, storeId string, in
 	cs, err := static.NewUsernamePasswordCredential(
 		storeId,
 		attrs.GetUsername().GetValue(),
+		credential.Password(attrs.GetPassword().GetValue()),
+		opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
+	}
+
+	return cs, err
+}
+
+func toUsernamePasswordDomainStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.UsernamePasswordDomainCredential, err error) {
+	const op = "credentials.toUsernamePasswordDomainStorageCredential"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetUsernamePasswordDomainAttributes()
+	cs, err := static.NewUsernamePasswordDomainCredential(
+		storeId,
+		attrs.GetUsername().GetValue(),
+		credential.Password(attrs.GetPassword().GetValue()),
+		attrs.GetDomain().GetValue(),
+		opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
+	}
+
+	return cs, err
+}
+
+func toPasswordStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.PasswordCredential, err error) {
+	const op = "credentials.toPasswordStorageCredential"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetPasswordAttributes()
+	cs, err := static.NewPasswordCredential(
+		storeId,
 		credential.Password(attrs.GetPassword().GetValue()),
 		opts...)
 	if err != nil {
@@ -833,6 +995,8 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 		req,
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 	)
@@ -853,7 +1017,20 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			if req.Item.GetUsernamePasswordAttributes().GetPassword().GetValue() == "" {
 				badFields[passwordField] = "Field required for creating a username-password credential."
 			}
-
+		case credential.UsernamePasswordDomainSubtype.String():
+			if req.Item.GetUsernamePasswordDomainAttributes().GetUsername().GetValue() == "" {
+				badFields[usernameField] = "Field required for creating a username-password-domain credential."
+			}
+			if req.Item.GetUsernamePasswordDomainAttributes().GetPassword().GetValue() == "" {
+				badFields[passwordField] = "Field required for creating a username-password-domain credential."
+			}
+			if req.Item.GetUsernamePasswordDomainAttributes().GetDomain().GetValue() == "" {
+				badFields[domainField] = "Field required for creating a username-password-domain credential."
+			}
+		case credential.PasswordSubtype.String():
+			if req.Item.GetPasswordAttributes().GetPassword().GetValue() == "" {
+				badFields[passwordField] = "Field required for creating a password credential."
+			}
 		case credential.SshPrivateKeySubtype.String():
 			if req.Item.GetSshPrivateKeyAttributes().GetUsername().GetValue() == "" {
 				badFields[usernameField] = "Field required for creating an SSH private key credential."
@@ -882,7 +1059,6 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 					}
 				}
 			}
-
 		case credential.JsonSubtype.String():
 			object := req.GetItem().GetJsonAttributes().GetObject()
 			if object == nil || len(object.AsMap()) <= 0 {
@@ -890,7 +1066,6 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			} else if _, err := json.Marshal(object); err != nil {
 				badFields[objectField] = "Unable to parse given json value"
 			}
-
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
@@ -912,6 +1087,22 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				badFields[passwordField] = "This is a required field and cannot be set to empty."
 			}
 
+		case credential.UsernamePasswordDomainSubtype:
+			attrs := req.GetItem().GetUsernamePasswordDomainAttributes()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
+				badFields[usernameField] = "This is a required field and cannot be set to empty."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), passwordField) && attrs.GetPassword().GetValue() == "" {
+				badFields[passwordField] = "This is a required field and cannot be set to empty."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), domainField) && attrs.GetDomain().GetValue() == "" {
+				badFields[domainField] = "This is a required field and cannot be set to empty."
+			}
+		case credential.PasswordSubtype:
+			attrs := req.GetItem().GetPasswordAttributes()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), passwordField) && attrs.GetPassword().GetValue() == "" {
+				badFields[passwordField] = "This is a required field and cannot be set to empty."
+			}
 		case credential.SshPrivateKeySubtype:
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
@@ -943,7 +1134,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					}
 				}
 			}
-
 		case credential.JsonSubtype:
 			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
 				object := req.GetItem().GetJsonAttributes().GetObject()
@@ -953,7 +1143,6 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 					badFields[objectField] = "Unable to parse given json value"
 				}
 			}
-
 		default:
 			badFields[globals.IdField] = "Unknown credential type."
 		}
@@ -962,6 +1151,8 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	},
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 	)
@@ -973,6 +1164,8 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 		req,
 		globals.UsernamePasswordCredentialPrefix,
 		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.UsernamePasswordDomainCredentialPrefix,
+		globals.PasswordCredentialPrefix,
 		globals.SshPrivateKeyCredentialPrefix,
 		globals.JsonCredentialPrefix,
 	)

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package iam
@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -81,8 +80,8 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 	return nil
 }
 
-func (u *User) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Global, scope.Org}
+func (u *User) getResourceType() resource.Type {
+	return resource.User
 }
 
 // GetScope returns the scope for the User

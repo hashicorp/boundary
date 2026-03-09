@@ -1,14 +1,19 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 output "controller_ips" {
   description = "Public IPs of boundary controllers"
-  value       = aws_instance.controller.*.public_ip
+  value       = var.ip_version == "6" ? flatten(aws_instance.controller.*.ipv6_addresses) : aws_instance.controller.*.public_ip
+}
+
+output "controller_ips_private" {
+  description = "Private IPs of boundary controllers"
+  value       = var.ip_version == "6" || var.ip_version == "dual" ? flatten(aws_instance.controller.*.ipv6_addresses) : aws_instance.controller.*.private_ip
 }
 
 output "worker_ips" {
   description = "Public IPs of boundary workers"
-  value       = aws_instance.worker.*.public_ip
+  value       = var.ip_version == "6" ? flatten(aws_instance.worker.*.ipv6_addresses) : aws_instance.worker.*.public_ip
 }
 
 output "alb_hostname" {
@@ -33,7 +38,7 @@ output "rds_db_name" {
 
 output "alb_boundary_api_addr" {
   description = "The address of the boundary API"
-  value       = "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
+  value       = var.protocol == "https" ? "https://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}" : "http://${aws_alb.boundary_alb.dns_name}:${var.alb_listener_api_port}"
 }
 
 // Boundary init outputs
@@ -208,7 +213,12 @@ output "cluster_tag" {
 }
 
 output "public_controller_addresses" {
-  value = aws_instance.controller[*].public_ip
+  value = var.ip_version == "4" ? aws_instance.controller[*].public_ip : aws_instance.controller[*].ipv6_addresses[0]
+}
+
+output "boundary_sg_id" {
+  description = "A secruity group id that covers basic boundary ports and ssh"
+  value       = aws_security_group.boundary_sg.id
 }
 
 output "controller_aux_sg_id" {
@@ -231,4 +241,19 @@ output "worker_tokens" {
   value = try([
     for token in enos_remote_exec.get_worker_token : trimspace(token.stdout)
   ], null)
+}
+
+output "worker_cidr" {
+  description = "List of ipv4 subnets of all workers"
+  value       = formatlist("%s/32", aws_instance.worker.*.public_ip)
+}
+
+output "worker_ipv6_cidr" {
+  description = "List of ipv6 subnets of all workers"
+  value       = distinct([for ip in flatten(aws_instance.worker.*.ipv6_addresses) : cidrsubnet("${ip}/64", 0, 0)])
+}
+
+output "alb_cert" {
+  description = "Public cert for the alb"
+  value       = try(tls_self_signed_cert.certificate[0].cert_pem, null)
 }

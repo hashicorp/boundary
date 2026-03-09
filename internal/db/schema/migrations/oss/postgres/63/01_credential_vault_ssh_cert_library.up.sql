@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -9,6 +9,7 @@ begin;
 
   -- Add new constraint that only allows known types
   -- This replaces the constraint defined in 39/01_static_ssh_private_key_creds_up
+  -- This constraint is replaced in 98/01_credential_static_username_password_domain_credential.up.sql
   alter table credential_type_enm
     add constraint only_predefined_credential_types_allowed
       check (
@@ -92,6 +93,7 @@ begin;
     ('rsa', 3072),
     ('rsa', 4096);
 
+  -- Updated in 99/01_credential_vault_library_refactor.up.sql
   create table credential_vault_ssh_cert_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null

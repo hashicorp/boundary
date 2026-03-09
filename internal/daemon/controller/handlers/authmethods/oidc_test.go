@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package authmethods_test
@@ -455,6 +455,40 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Update Issuer IPv6",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Issuer = wrapperspb.String("https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/v1/myissuer/.well-known/openid-configuration")
+						f.DisableDiscoveredConfigValidation = true
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Issuer = wrapperspb.String("https://[2001:beef::1]:44344/v1/myissuer/")
+						f.DisableDiscoveredConfigValidation = true
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "invalid-issuer-port",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -856,6 +890,38 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Change Api Url Prefix IPv6",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.api_url_prefix"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							ApiUrlPrefix: wrapperspb.String("https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/path"),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.ApiUrlPrefix = wrapperspb.String("https://[2001:beef::1]:44344/path")
+						f.CallbackUrl = "https://[2001:beef::1]:44344/path/v1/auth-methods/oidc:authenticate:callback"
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "Change Allowed Audiences",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -1127,9 +1193,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				if got.Item.GetOidcAuthMethodsAttributes().CallbackUrl != "" {
 					exp := tc.res.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
 					gVal := got.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
-					matches, err := regexp.MatchString(exp, gVal)
-					require.NoError(err)
-					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					assert.Equal(exp, gVal, "%q doesn't match %q", exp, gVal)
 				}
 
 				assert.EqualValues(3, got.Item.Version)
@@ -1624,9 +1688,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 	s := getSetup(t)
 
 	cases := []struct {
-		name    string
-		request *pbs.AuthenticateRequest
-		wantErr error
+		name       string
+		request    *pbs.AuthenticateRequest
+		beforeTest func(t *testing.T)
+		wantErr    error
 	}{
 		{
 			name: "no command",
@@ -1656,6 +1721,57 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 				Command:      "start",
 				AuthMethodId: s.authMethod.GetPublicId(),
 			},
+		},
+		{
+			name: "auth method does not exist",
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: "amoidc_1234",
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "auth method is inactive",
+			beforeTest: func(t *testing.T) {
+				r, err := s.oidcRepoFn()
+				require.NoError(t, err)
+				_, err = r.MakeInactive(s.ctx, s.authMethod.GetPublicId(), 2)
+				require.NoError(t, err)
+
+				t.Cleanup(func() {
+					_, err = r.MakePublic(s.ctx, s.authMethod.GetPublicId(), 3)
+					require.NoError(t, err)
+				})
+			},
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.FailedPrecondition),
 		},
 		// NOTE: We can't really test bad roundtrip payload attributes because
 		// any type structpb lets us use in creation will be valid for JSON, and
@@ -1692,6 +1808,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.beforeTest != nil {
+				tc.beforeTest(t)
+			}
+
 			assert, require := assert.New(t), require.New(t)
 			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.request)
 			if tc.wantErr != nil {

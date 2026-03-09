@@ -1,11 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package password
 
 import (
 	"context"
-	"crypto/rand"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -16,6 +16,26 @@ import (
 	"golang.org/x/crypto/argon2"
 	"google.golang.org/protobuf/proto"
 )
+
+// hashingPermitPool is the global permit pool used to restrict concurrent
+// password hashing. It can be resized with SetHashingPermits.
+var hashingPermitPool *resizablePermitPool
+
+func init() {
+	hashingPermitPool = newResizablePermitPool(1)
+}
+
+// SetHashingPermits sets the number of concurrent password hashing operations permitted.
+func SetHashingPermits(n int) error {
+	const op = "password.SetHashingPermits"
+	if n <= 0 {
+		return errors.New(context.Background(), errors.InvalidParameter, op, "n must be greater than 0")
+	}
+	if err := hashingPermitPool.SetPermits(n); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Argon2Configuration is a configuration for using the argon2id key
 // derivation function. It is owned by an AuthMethod.
@@ -132,7 +152,7 @@ type Argon2Credential struct {
 	tableName string
 }
 
-func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration, randReader io.Reader) (*Argon2Credential, error) {
 	const op = "password.newArgon2Credential"
 	if accountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
@@ -158,12 +178,21 @@ func newArgon2Credential(ctx context.Context, accountId string, password string,
 		},
 	}
 
+	// Generate a random salt
 	salt := make([]byte, conf.SaltLength)
-	if _, err := rand.Read(salt); err != nil {
+	if _, err := io.ReadFull(randReader, salt); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
-	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
+
+	// Limit the number of concurrent calls to the argon2 hashing function,
+	// since each call consumes a significant amount of CPU and memory.
+	if err := hashingPermitPool.Do(ctx, func() {
+		c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
+	}); err != nil {
+		// Context was canceled while waiting for a permit
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("context canceled while waiting for hashing permit"))
+	}
 	return c, nil
 }
 

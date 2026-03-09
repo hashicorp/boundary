@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 variable "project_name" {
@@ -25,13 +25,13 @@ variable "worker_count" {
 variable "worker_instance_type" {
   description = "EC2 Instance type"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "worker_type_tags" {
   description = "Tag to set on worker for use in worker filters"
   type        = list(string)
-  default     = ["collocated", "prod", "webservers"]
+  default     = ["collocated", "prod", "webservers", "linux"]
 }
 
 variable "worker_ebs_iops" {
@@ -72,7 +72,7 @@ variable "controller_count" {
 variable "controller_instance_type" {
   description = "EC2 Instance type"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "controller_ebs_iops" {
@@ -134,12 +134,6 @@ variable "db_class" {
   description = "AWS RDS DB instance class (size/type)"
   type        = string
   default     = "db.t4g.small"
-}
-
-variable "db_version" {
-  description = "AWS RDS DBS engine version (for postgres/mysql)"
-  type        = string
-  default     = "15.6"
 }
 
 variable "db_engine" {
@@ -334,6 +328,12 @@ variable "alb_sg_additional_ips" {
   default     = []
 }
 
+variable "alb_sg_additional_ipv6_ips" {
+  description = "Additional ipv6 IPs to be allowed (ingress) on an ALB Security Group"
+  type        = list(string)
+  default     = []
+}
+
 variable "boundary_license" {
   description = "Boundary license (not needed for OSS, required for enterprise)"
   type        = string
@@ -377,4 +377,33 @@ variable "hcp_boundary_cluster_id" {
   default     = ""
   // If using HCP int, ensure that the cluster id starts with "int-"
   // Example: "int-19283a-123123-..."
+}
+
+variable "ip_version" {
+  description = "ip version used to setup boundary instance, should be 4, 6, or dual"
+  type        = string
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "ip_version must be one of: [4, 6, dual]"
+  }
+}
+
+variable "vault_address" {
+  description = "network address to a vault instance"
+  type        = string
+  default     = "localhost"
+}
+
+variable "vault_transit_token" {
+  description = "vault token used for kms transit in the boundary config"
+  type        = string
+  default     = ""
+}
+
+variable "protocol" {
+  description = "http protocol (http/https)"
+  type        = string
+  default     = "http"
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package server
@@ -17,6 +17,11 @@ import (
 )
 
 const UpsertWorkerStorageBucketJobName = "upsert_worker_storage_bucket"
+
+type WorkerStorageBucket struct {
+	WorkerId string
+	Buckets  []*storagebuckets.StorageBucket
+}
 
 type UpdateStorageBucketCredential struct {
 	PublicId                  string `gorm:"primary_key"`

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package db
@@ -112,7 +112,7 @@ type Writer interface {
 	// cycle of the writer and if an error is returned the caller must decide
 	// what to do with the transaction, which almost always should be to
 	// rollback.
-	CreateItems(ctx context.Context, createItems []any, opt ...Option) error
+	CreateItems(ctx context.Context, createItems any, opt ...Option) error
 
 	// Delete an object in the db with options: WithOplog, WithDebug.
 	// The caller is responsible for the transaction life cycle of the writer
@@ -127,7 +127,7 @@ type Writer interface {
 	// transaction life cycle of the writer and if an error is returned the
 	// caller must decide what to do with the transaction, which almost always
 	// should be to rollback. Delete returns the number of rows deleted or an error.
-	DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error)
+	DeleteItems(ctx context.Context, deleteItems any, opt ...Option) (int, error)
 
 	// Exec will execute the sql with the values as parameters. The int returned
 	// is the number of rows affected by the sql. No options are currently
@@ -311,7 +311,7 @@ func (rw *Db) Create(ctx context.Context, i any, opt ...Option) error {
 // WithDebug, WithOplog, WithOplogMsgs, WithReturnRowsAffected, OnConflict,
 // WithVersion, and WithWhere  WithOplog and WithOplogMsgs may not be used
 // together.  WithLookup is not a supported option.
-func (rw *Db) CreateItems(ctx context.Context, createItems []any, opt ...Option) error {
+func (rw *Db) CreateItems(ctx context.Context, createItems any, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -389,7 +389,7 @@ func (rw *Db) Delete(ctx context.Context, i any, opt ...Option) (int, error) {
 // DeleteItems will delete multiple items of the same type. Supported options:
 // WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
 // together.
-func (rw *Db) DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error) {
+func (rw *Db) DeleteItems(ctx context.Context, deleteItems any, opt ...Option) (int, error) {
 	const op = "db.DeleteItems"
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -471,14 +471,15 @@ func (rw *Db) IsTx(_ context.Context) bool {
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
-// must be unique. WithDebug is the only valid option, all other options are ignored.
+// must be unique. WithTable and WithDebug are the only valid options, all other
+// options are ignored.
 func (rw *Db) LookupById(ctx context.Context, resourceWithIder any, opt ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug), dbw.WithTable(opts.withTable)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -491,20 +492,21 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder any, opt ...Optio
 }
 
 // LookupByPublicId will lookup resource by its public_id, which must be unique.
-// WithDebug is supported.
+// WithTable and WithDebug are supported.
 func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	return rw.LookupById(ctx, resource, opt...)
 }
 
 // LookupWhere will lookup the first resource using a where clause with
-// parameters (it only returns the first one). WithDebug is supported.
+// parameters (it only returns the first one). WithTable and WithDebug are
+// supported.
 func (rw *Db) LookupWhere(ctx context.Context, resource any, where string, args []any, opt ...Option) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug), dbw.WithTable(opts.withTable)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress

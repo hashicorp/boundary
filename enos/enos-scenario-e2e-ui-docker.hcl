@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # For this scenario to work, add the following line to /etc/hosts
@@ -39,9 +39,10 @@ scenario "e2e_ui_docker" {
     module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
 
     variables {
-      path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
-      cli_build_path = local.build_path[matrix.builder]
-      edition        = var.boundary_edition
+      path              = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
+      cli_build_path    = local.build_path[matrix.builder]
+      edition           = var.boundary_edition
+      ui_build_override = var.ui_build_override
     }
   }
 
@@ -68,7 +69,8 @@ scenario "e2e_ui_docker" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -80,7 +82,7 @@ scenario "e2e_ui_docker" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
@@ -123,7 +125,7 @@ scenario "e2e_ui_docker" {
       step.create_boundary
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file      = "worker-config.hcl"
       container_name   = "worker"
@@ -168,8 +170,8 @@ scenario "e2e_ui_docker" {
       target_user               = "ubuntu"
       target_ca_key             = step.create_host.ca_key_private
       target_ca_key_public      = step.create_host.ca_key_public
-      vault_addr                = step.create_vault.address
-      vault_addr_internal       = step.create_vault.address_internal
+      vault_addr_public         = step.create_vault.address_public
+      vault_addr_private        = step.create_vault.address_private
       vault_root_token          = step.create_vault.token
       vault_port                = step.create_vault.port
       ldap_address              = step.create_ldap_server.address

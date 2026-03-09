@@ -1,8 +1,10 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 
 package config
 
 import (
+	"crypto/rand"
+	"io"
 	"os"
 	"testing"
 
@@ -35,7 +37,9 @@ type options struct {
 	withSysEventsEnabled       bool
 	withAuditEventsEnabled     bool
 	withObservationsEnabled    bool
+	withIPv6Enabled            bool
 	testWithErrorEventsEnabled bool
+	withRandomReader           io.Reader
 }
 
 func getDefaultOptions() (options, error) {
@@ -59,11 +63,19 @@ func getDefaultOptions() (options, error) {
 	}
 	opts.withObservationsEnabled = obs
 
+	ipv6, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_IPV6"))
+	if err != nil {
+		return opts, err
+	}
+	opts.withIPv6Enabled = ipv6
+
 	errEvents, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_ERROR_EVENTS"))
 	if err != nil {
 		return opts, err
 	}
 	opts.testWithErrorEventsEnabled = errEvents
+
+	opts.withRandomReader = rand.Reader
 
 	return opts, nil
 }
@@ -88,6 +100,22 @@ func WithAuditEventsEnabled(enable bool) Option {
 func WithObservationsEnabled(enable bool) Option {
 	return func(o *options) error {
 		o.withObservationsEnabled = enable
+		return nil
+	}
+}
+
+// WithIPv6Enabled provides an option for enabling network ipv6 addresses
+func WithIPv6Enabled(enable bool) Option {
+	return func(o *options) error {
+		o.withIPv6Enabled = enable
+		return nil
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) error {
+		o.withRandomReader = reader
 		return nil
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base
@@ -38,6 +38,7 @@ const (
 	EnabledPluginAws
 	EnabledPluginHostAzure
 	EnabledPluginMinio
+	EnabledPluginGCP
 )
 
 // MinioEnabled controls if the Minio storage plugin should be initiated or not
@@ -53,6 +54,8 @@ func (e EnabledPlugin) String() string {
 		return "Azure"
 	case EnabledPluginMinio:
 		return "MinIO"
+	case EnabledPluginGCP:
+		return "GCP"
 	default:
 		return ""
 	}
@@ -69,13 +72,14 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken           = "BOUNDARY_TOKEN"
-	EnvTokenName       = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
-	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
-	envSkipClientAgent = "BOUNDARY_SKIP_CLIENT_AGENT"
-	EnvClientAgentPort = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
+	envToken                             = "BOUNDARY_TOKEN"
+	EnvTokenName                         = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType                       = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig                    = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon                   = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipClientAgent                   = "BOUNDARY_SKIP_CLIENT_AGENT"
+	EnvClientAgentPort                   = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
+	EnvBoundaryClientAgentCliErrorOutput = "BOUNDARY_CLIENT_AGENT_CLI_ERROR_OUTPUT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -107,16 +111,17 @@ type Command struct {
 	flagTLSServerName string
 	flagTLSInsecure   bool
 
-	flagFormat           string
-	FlagToken            string
-	FlagTokenName        string
-	FlagKeyringType      string
-	FlagRecoveryConfig   string
-	FlagOutputCurlString bool
-	FlagSkipCacheDaemon  bool
-	FlagSkipClientAgent  bool
+	flagFormat                    string
+	FlagToken                     string
+	FlagTokenName                 string
+	FlagKeyringType               string
+	FlagRecoveryConfig            string
+	FlagOutputCurlString          bool
+	FlagSkipCacheDaemon           bool
+	FlagSkipClientAgent           bool
+	FlagOutputClientAgentCliError bool
 
-	FlagClientAgentPort uint
+	FlagClientAgentPort uint16
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -128,7 +133,7 @@ type Command struct {
 	FlagAuthMethodId      string
 	FlagHostCatalogId     string
 	FlagCredentialStoreId string
-	FlagVersion           int
+	FlagVersion           int64
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
@@ -345,8 +350,10 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			return nil, err
 		}
 
-		authToken := c.ReadTokenFromKeyring(keyringType, tokenName)
-		if authToken != nil {
+		authToken, err := c.ReadTokenFromKeyring(keyringType, tokenName)
+		if err != nil {
+			c.UI.Error(err.Error())
+		} else {
 			c.client.SetToken(authToken.Token)
 		}
 	}
@@ -492,6 +499,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.BoolVar(&BoolVar{
+				Name:    "output-client-agent-cli-error",
+				Target:  &c.FlagOutputClientAgentCliError,
+				Default: false,
+				EnvVar:  EnvBoundaryClientAgentCliErrorOutput,
+				Usage:   "Enables outputting CLI errors encountered for client-agent callbacks.",
+			})
+
+			f.BoolVar(&BoolVar{
 				Name:    "skip-client-agent",
 				Target:  &c.FlagSkipClientAgent,
 				Default: false,
@@ -500,7 +515,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Hidden:  true,
 			})
 
-			f.UintVar(&UintVar{
+			f.Uint16Var(&Uint16Var{
 				Name:    "client-agent-port",
 				Target:  &c.FlagClientAgentPort,
 				Default: 9300,

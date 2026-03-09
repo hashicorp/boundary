@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,6 +53,19 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	worker2 := server.TestKmsWorker(t, conn, wrapper)
 
+	updateServer := func(t *testing.T, w *server.Worker) *server.Worker {
+		t.Helper()
+		pubId := w.GetPublicId()
+		w.PublicId = ""
+		wkr, err := server.TestUpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
+		require.NoError(err)
+		err = serversRepo.UpsertSessionInfo(ctx, pubId)
+		require.NoError(err)
+		return wkr
+	}
+	worker1 = updateServer(t, worker1)
+	worker2 = updateServer(t, worker2)
+
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
 	connIdsByWorker := make(map[string][]string)
@@ -65,10 +77,9 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
 		sess, _, err = sessionRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(err)
-		c, cs, _, err := AuthorizeConnection(ctx, sessionRepo, connectionRepo, sess.GetPublicId(), serverId)
+		c, _, err := AuthorizeConnection(ctx, sessionRepo, connectionRepo, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Len(cs, 1)
-		require.Equal(StatusAuthorized, cs[0].Status)
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		connIds = append(connIds, c.GetPublicId())
 		if i%2 == 0 {
 			connIdsByWorker[worker2.PublicId] = append(connIdsByWorker[worker2.PublicId], c.GetPublicId())
@@ -81,7 +92,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	// This is just to ensure we have a spread when we test it out.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := connectionRepo.ConnectConnection(ctx, ConnectWith{
+			cc, err := connectionRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -90,24 +101,13 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Len(cs, 2)
-			var foundAuthorized, foundConnected bool
-			for _, status := range cs {
-				if status.Status == StatusAuthorized {
-					foundAuthorized = true
-				}
-				if status.Status == StatusConnected {
-					foundConnected = true
-				}
-			}
-			require.True(foundAuthorized)
-			require.True(foundConnected)
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		}
 	}
 
 	// Create the job.
 	job, err := newSessionConnectionCleanupJob(ctx, rw, gracePeriod)
-	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
+	job.workerRPCGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
@@ -115,14 +115,10 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(),
-		server.WithName(worker1.GetName()),
-		server.WithAddress(worker1.GetAddress())),
-		server.WithPublicId(worker1.GetPublicId()))
-	require.NoError(err)
+	worker1 = updateServer(t, worker1)
 
 	// Run the job.
-	require.NoError(job.Run(ctx))
+	require.NoError(job.Run(ctx, 0))
 
 	// Assert connection state on both workers.
 	assertConnections := func(workerId string, closed bool) {
@@ -130,14 +126,11 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		require.True(ok)
 		require.Len(connIds, 6)
 		for _, connId := range connIds {
-			_, states, err := connectionRepo.LookupConnection(ctx, connId)
+			conn, err := connectionRepo.LookupConnection(ctx, connId)
 			require.NoError(err)
 			var foundClosed bool
-			for _, state := range states {
-				if state.Status == StatusClosed {
-					foundClosed = true
-					break
-				}
+			if ConnectionStatusFromString(conn.Status) == StatusClosed {
+				foundClosed = true
 			}
 			assert.Equal(closed, foundClosed)
 		}
@@ -239,10 +232,9 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
 		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(err)
-		c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
+		c, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Len(cs, 1)
-		require.Equal(StatusAuthorized, cs[0].Status)
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		if i%3 == 0 {
 			worker1ConnIds = append(worker1ConnIds, c.GetPublicId())
 		} else if i%3 == 1 {
@@ -263,7 +255,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		return s
 	}() {
 		if i%3 == 0 {
-			_, cs, err := connRepo.ConnectConnection(ctx, ConnectWith{
+			cc, err := connRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -272,18 +264,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Len(cs, 2)
-			var foundAuthorized, foundConnected bool
-			for _, status := range cs {
-				if status.Status == StatusAuthorized {
-					foundAuthorized = true
-				}
-				if status.Status == StatusConnected {
-					foundConnected = true
-				}
-			}
-			require.True(foundAuthorized)
-			require.True(foundConnected)
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		} else if i%3 == 1 {
 			resp, err := connRepo.closeConnections(ctx, []CloseWith{
 				{
@@ -293,19 +274,8 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 			})
 			require.NoError(err)
 			require.Len(resp, 1)
-			cs := resp[0].ConnectionStates
-			require.Len(cs, 2)
-			var foundAuthorized, foundClosed bool
-			for _, status := range cs {
-				if status.Status == StatusAuthorized {
-					foundAuthorized = true
-				}
-				if status.Status == StatusClosed {
-					foundClosed = true
-				}
-			}
-			require.True(foundAuthorized)
-			require.True(foundClosed)
+			cs := resp[0].ConnectionState
+			require.Equal(StatusClosed, cs)
 		}
 	}
 
@@ -316,7 +286,9 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		t.Helper()
 		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, server.WithPublicId(pubId))
+		wkr, err := server.TestUpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
+		require.NoError(err)
+		err = serversRepo.UpsertSessionInfo(ctx, pubId)
 		require.NoError(err)
 		return wkr
 	}
@@ -344,9 +316,9 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 				expected = StatusAuthorized
 			}
 
-			_, states, err := connRepo.LookupConnection(ctx, connId)
+			conn, err := connRepo.LookupConnection(ctx, connId)
 			require.NoError(err)
-			require.Equal(expected, states[0].Status, "expected latest status for %q (index %d) to be %v", connId, i, expected)
+			require.Equal(expected, ConnectionStatusFromString(conn.Status), "expected latest status for %q (index %d) to be %v", connId, i, expected)
 		}
 	}
 
@@ -410,13 +382,11 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and
 		// number of connections closed. Due to how things are
-		require.Equal([]closeConnectionsForDeadWorkersResult{
-			{
-				WorkerId:                worker1.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker1.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-		}, result)
+		require.Len(result, 1)
+		require.Equal(worker1.PublicId, result[0].WorkerId)
+		require.Equal(12, result[0].NumberConnectionsClosed)
+		require.WithinDuration(timestampPbAsUTC(t, worker1.GetLastStatusTime().AsTime()), result[0].LastUpdateTime, time.Second)
+
 		// Expect all connections closed on worker1
 		requireConnectionStatus(t, worker1ConnIds, true)
 		// Expect appropriate split connection state on worker2
@@ -434,18 +404,19 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		result, err := job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and number of connections closed.
-		require.ElementsMatch([]closeConnectionsForDeadWorkersResult{
-			{
-				WorkerId:                worker2.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker2.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-			{
-				WorkerId:                worker3.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker3.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-		}, result)
+		expectedWorkers := map[string]*server.Worker{
+			worker2.PublicId: worker2,
+			worker3.PublicId: worker3,
+		}
+		require.Len(result, len(expectedWorkers))
+		for _, r := range result {
+			expectedWorker, ok := expectedWorkers[r.WorkerId]
+			require.True(ok)
+			require.Equal(expectedWorker.PublicId, r.WorkerId)
+			require.Equal(12, r.NumberConnectionsClosed)
+			require.WithinDuration(timestampPbAsUTC(t, expectedWorker.GetLastStatusTime().AsTime()), r.LastUpdateTime, time.Second)
+		}
+
 		// Expect all connections closed on worker1
 		requireConnectionStatus(t, worker1ConnIds, true)
 		// Expect all connections closed on worker2
@@ -480,10 +451,9 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(err)
 
-		conn, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), workerId)
+		conn, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), workerId)
 		require.NoError(err)
-		require.Len(cs, 1)
-		require.Equal(StatusAuthorized, cs[0].Status)
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(conn.Status))
 		return conn
 	}
 
@@ -513,21 +483,21 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	}})
 	require.NoError(err)
 
-	_, st, err := connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
+	con, err := connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, st[0].Status)
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, st[0].Status)
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, st[0].Status)
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, st[0].Status)
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
 	// Run the job
 	numClosed, err := job.closeWorkerlessConnections(ctx)
@@ -535,19 +505,19 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	assert.Equal(t, 1, numClosed)
 
 	// This is the only one that the job should have actually closed.
-	_, st, err = connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, st[0].Status)
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, st[0].Status)
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, st[0].Status)
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
-	_, st, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
+	con, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, st[0].Status)
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 }

@@ -1,11 +1,11 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "3.0.1"
+      version = "3.6.2"
     }
 
     enos = {

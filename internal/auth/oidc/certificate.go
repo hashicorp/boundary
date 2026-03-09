@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oidc
@@ -59,7 +59,7 @@ func (c *Certificate) validate(ctx context.Context, caller errors.Op) error {
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
+		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s", err.Error()), errors.WithWrap(err))
 	}
 	return nil
 }

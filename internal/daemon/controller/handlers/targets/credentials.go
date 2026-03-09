@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package targets
@@ -27,6 +27,16 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 	const op = "targets.dynamicToWorkerCredential"
 	var workerCred *serverpb.Credential
 	switch c := cred.(type) {
+	case credential.UsernamePasswordDomain:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_UsernamePasswordDomain{
+				UsernamePasswordDomain: &serverpb.UsernamePasswordDomain{
+					Username: c.Username(),
+					Password: string(c.Password()),
+					Domain:   c.Domain(),
+				},
+			},
+		}
 	case credential.UsernamePassword:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_UsernamePassword{
@@ -102,11 +112,35 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
+		case credential.UsernamePasswordDomain:
+			credData, err = handlers.ProtoToStruct(
+				ctx,
+				&pb.UsernamePasswordDomainCredential{
+					Username: c.Username(),
+					Password: string(c.Password()),
+					Domain:   c.Domain(),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
 				ctx,
 				&pb.UsernamePasswordCredential{
 					Username: c.Username(),
+					Password: string(c.Password()),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
+		case credential.PasswordOnly:
+			credData, err = handlers.ProtoToStruct(
+				ctx,
+				&pb.PasswordCredential{
 					Password: string(c.Password()),
 				},
 			)
@@ -165,6 +199,17 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 			},
 		}
 
+	case *credstatic.UsernamePasswordDomainCredential:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_UsernamePasswordDomain{
+				UsernamePasswordDomain: &serverpb.UsernamePasswordDomain{
+					Username: c.GetUsername(),
+					Password: string(c.GetPassword()),
+					Domain:   c.GetDomain(),
+				},
+			},
+		}
+
 	case *credstatic.SshPrivateKeyCredential:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{
@@ -211,7 +256,40 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for username password credential"))
 		}
-
+	case *credstatic.UsernamePasswordDomainCredential:
+		var err error
+		credType = string(globals.UsernamePasswordDomainCredentialType)
+		credData, err = handlers.ProtoToStruct(
+			ctx,
+			&pb.UsernamePasswordDomainCredential{
+				Username: c.GetUsername(),
+				Password: string(c.GetPassword()),
+				Domain:   c.GetDomain(),
+			},
+		)
+		secret = map[string]any{
+			"username": c.GetUsername(),
+			"password": string(c.GetPassword()),
+			"domain":   c.GetDomain(),
+		}
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for username password domain credential"))
+		}
+	case *credstatic.PasswordCredential:
+		var err error
+		credType = string(globals.PasswordCredentialType)
+		credData, err = handlers.ProtoToStruct(
+			ctx,
+			&pb.PasswordCredential{
+				Password: string(c.GetPassword()),
+			},
+		)
+		secret = map[string]any{
+			"password": string(c.GetPassword()),
+		}
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for password credential"))
+		}
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
 		credType = string(globals.SshPrivateKeyCredentialType)
@@ -233,7 +311,6 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))
 		}
-
 	case *credstatic.JsonCredential:
 		var err error
 		credType = string(globals.JsonCredentialType)

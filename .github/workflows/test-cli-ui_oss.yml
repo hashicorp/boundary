@@ -16,10 +16,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     name: CLI tests
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -31,12 +31,12 @@ jobs:
           cat ~/.gnupg/gpg.conf
       - name: Set up Bats CLI UI tests dependency cache
         id: dep-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          path: /tmp/bats-cli-ui-deps
+          path: /tmp/test-deps
           key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
       - name: Set up Node for Bats install
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 16
       - name: Install Bats via NPM
@@ -46,34 +46,34 @@ jobs:
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the jq version make sure to update the dep cache key
         run: |
-          mkdir -p /tmp/bats-cli-ui-deps
-          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/bats-cli-ui-deps/jq-bin
+          mkdir -p /tmp/test-deps
+          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
       - name: Install jq for Bats CLI UI tests
         run: |
-          chmod +x /tmp/bats-cli-ui-deps/jq-bin
-          sudo cp /tmp/bats-cli-ui-deps/jq-bin /usr/local/bin/jq
+          chmod +x /tmp/test-deps/jq-bin
+          sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
       - name: Download and unzip pass for Boundary keyring
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the password store version make sure to update the dep cache key
         run: |
-          mkdir -p /tmp/bats-cli-ui-deps/pass
-          wget https://git.zx2c4.com/password-store/snapshot/password-store-1.7.4.tar.xz -O /tmp/bats-cli-ui-deps/pass/pass.tar.xz
-          cd /tmp/bats-cli-ui-deps/pass
-          tar -xvf pass.tar.xz
+          mkdir -p /tmp/test-deps/pass
+          wget https://github.com/zx2c4/password-store/archive/refs/tags/1.7.4.tar.gz -O /tmp/test-deps/pass/pass.tar.gz
+          cd /tmp/test-deps/pass
+          tar -xvf pass.tar.gz
       - name: Install pass for Boundary keyring
         run: |
-          cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
+          cd /tmp/test-deps/pass/password-store-1.7.4
           sudo make install
           pass init ${{ secrets.ENOS_GPG_UID }}
       - name: Download Vault AMD64 binary for integration testing
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
-          wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/bats-cli-ui-deps/vault.zip
+          wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault
         run: |
-          unzip /tmp/bats-cli-ui-deps/vault.zip -d /usr/local/bin
+          unzip /tmp/test-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
-        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: ${{ inputs.artifact-name }}
           path: /tmp
@@ -83,8 +83,6 @@ jobs:
           rm /tmp/${{ inputs.artifact-name }}
       - name: Versions
         run: |
-          echo "go version:"
-          go version
           echo "bats version:"
           bats --version
           echo "jq version:"
@@ -112,12 +110,10 @@ jobs:
           make -C internal/tests/cli test-vault-down
       - name: Send Slack message
         if: ${{ failure() }}
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
-          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
-            {
-              "text": ":x: bats tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":x: bats tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oidc
@@ -193,7 +193,7 @@ func Callback(
 	}
 
 	// Get the set of all managed groups so we can filter
-	mgs, _, err := r.ListManagedGroups(ctx, am.GetPublicId())
+	mgs, _, err := r.ListManagedGroups(ctx, am.GetPublicId(), WithLimit(-1))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

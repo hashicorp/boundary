@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -54,35 +54,32 @@ begin;
       ('g___wb-group', 'u_____warren'),
       ('g___ws-group', 'u_____waylon');
 
-    insert into iam_role
-      (scope_id, public_id, name)
+    insert into iam_role_org
+      (scope_id, public_id, name, grant_scope, grant_this_role_scope)
     values
-            -- ('global', 'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'r_gg____shop', 'Shopper'),
-      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
-      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual', false),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual', true);
 
-    insert into iam_role_grant_scope
-      (role_id,        scope_id_or_special)
+    insert into iam_role_org_individual_grant_scope
+      (role_id, scope_id, grant_scope)
     values
-      ('r_pp_bw__bld', 'p____bwidget'),
-      ('r_pp_sw__bld', 'this'),
-      ('r_op_sw__eng', 'p____swidget'),
-      ('r_oo_____eng', 'o_____widget');
+      ('r_op_sw__eng','p____swidget','individual');
+
+    insert into iam_role_project
+      (scope_id, public_id, name, grant_this_role_scope)
+    values
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder', true),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder', true);
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
     values
-      -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-      -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
-      ('r_op_sw__eng', 'type=widget;action=clean',  'clean widget'),
-      ('r_pp_bw__bld', 'type=widget;action=build',  'build widget'),
-      ('r_pp_sw__bld', 'type=widget;action=build',  'build widget');
+      ('r_oo_____eng', 'ids=*;type=alias;actions=create,update',                                                            'ids=*;type=alias;actions=create,update'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-sources', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-source'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources',                   'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources'),
+      ('r_op_sw__eng', 'ids=*;type=host-catalog;actions=read,list',                                                         'ids=*;type=host-catalog;actions=read,list'),
+      ('r_pp_bw__bld', 'ids=*;type=credential-library;actions=create,delete',                                               'ids=*;type=credential-library;actions=create,delete'),
+      ('r_pp_sw__bld', 'ids=*;type=scope;actions=no-op,list',                                                               'ids=*;type=scope;actions=no-op,list');
 
     insert into iam_group_role
       (role_id, principal_id)
@@ -289,10 +286,10 @@ begin;
       ('plg___wb-hplg');
 
     insert into host_plugin_catalog
-      (project_id, public_id, plugin_id, name, attributes)
+      (project_id, public_id, plugin_id, name, attributes, worker_filter)
     values
-      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', ''),
-      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '');
+      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', '', '"test" in "/tags/type"'),
+      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '', null);
 
     insert into host_plugin_host
       (catalog_id, public_id, external_id)
@@ -391,61 +388,110 @@ begin;
     values
       ('vs_______wvs', 'kdkv___widget', 'current', 'hmac-value', 'token-value', now(),             now() + interval '1 hour');
 
-    insert into credential_vault_library
+    insert into credential_vault_generic_library
       (store_id,       public_id,       name,                    description, vault_path,           http_method, credential_type)
     values
-      ('vs_______wvs', 'vl______wvl1',  'widget vault library',  'None',      '/secrets',           'GET',       'unspecified'),
-      ('vs_______wvs', 'vl______wvl2',  'widget vault ssh',      'None',      '/secrets/ssh/admin', 'GET',       'unspecified'),
-      ('vs_______wvs', 'vl______wvl3',  'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl4',  'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl5',  'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl6',  'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl7',  'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl8',  'widget vault kv six',   'None',      '/secrets/kv/six',    'GET',       'ssh_private_key'),
-      ('vs_______wvs', 'vl______wvl9',  'widget vault kv seven', 'None',      '/secrets/kv/seven',  'GET',       'ssh_private_key'),
-      ('vs_______wvs', 'vl______wvl10', 'widget vault kv eight', 'None',      '/secrets/kv/eight',  'GET',       'ssh_private_key'),
-      ('vs_______wvs', 'vl______wvl11', 'widget vault kv nine',  'None',      '/secrets/kv/nine',   'GET',       'ssh_private_key'),
-      ('vs_______wvs', 'vl______wvl12', 'widget vault kv ten',   'None',      '/secrets/kv/n',      'GET',       'ssh_private_key');
+      ('vs_______wvs', 'vl______wvl1',  'widget vault library',      'None',      '/secrets',              'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl2',  'widget vault ssh',          'None',      '/secrets/ssh/admin',    'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl3',  'widget vault kv one',       'None',      '/secrets/kv/one',       'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl4',  'widget vault kv two',       'None',      '/secrets/kv/two',       'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl5',  'widget vault kv three',     'None',      '/secrets/kv/three',     'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl6',  'widget vault kv four',      'None',      '/secrets/kv/four',      'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl7',  'widget vault kv five',      'None',      '/secrets/kv/five',      'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl8',  'widget vault kv six',       'None',      '/secrets/kv/six',       'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl9',  'widget vault kv seven',     'None',      '/secrets/kv/seven',     'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl10', 'widget vault kv eight',     'None',      '/secrets/kv/eight',     'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl11', 'widget vault kv nine',      'None',      '/secrets/kv/nine',      'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl12', 'widget vault kv ten',       'None',      '/secrets/kv/n',         'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl13', 'widget vault kv eleven',    'None',      '/secrets/kv/eleven',    'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl14', 'widget vault kv twelve',    'None',      '/secrets/kv/twelve',    'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl15', 'widget vault kv thirteen',  'None',      '/secrets/kv/thirteen',  'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl16', 'widget vault kv fourteen',  'None',      '/secrets/kv/fourteen',  'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl17', 'widget vault kv fifteen',   'None',      '/secrets/kv/fifteen',   'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl18', 'widget vault kv sixteen',   'None',      '/secrets/kv/sixteen',   'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl19', 'widget vault kv seventeen', 'None',      '/secrets/kv/seventeen', 'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl20', 'widget vault kv eighteen',  'None',      '/secrets/kv/eighteen',  'GET',       'username_password_domain'),
+      ('vs_______wvs', 'vl______wvl21', 'widget vault kv nineteen',  'None',      '/secrets/kv/nineteen',  'GET',       'username_password_domain');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id)
     values
       ('vl______wvl4');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     username_attribute)
     values
       ('vl______wvl5', 'my_username');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     password_attribute)
     values
       ('vl______wvl6', 'my_password');
 
-    insert into credential_vault_library_username_password_mapping_override
+    insert into credential_vault_generic_library_username_password_mapping_ovrd
       (library_id,     username_attribute, password_attribute)
     values
       ('vl______wvl7', 'my_username',      'my_password');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id)
     values
       ('vl______wvl9');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     username_attribute)
     values
       ('vl______wvl10', 'my_username');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     private_key_attribute)
     values
       ('vl______wvl11', 'my_private_key');
 
-    insert into credential_vault_library_ssh_private_key_mapping_override
+    insert into credential_vault_generic_library_ssh_private_key_mapping_ovrd
       (library_id,     username_attribute, private_key_attribute, private_key_passphrase_attribute)
     values
       ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id)
+    values
+      ('vl______wvl13');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     username_attribute, password_attribute, domain_attribute)
+    values
+      ('vl______wvl14', 'my_username',      'my_password',       'my_domain');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     username_attribute, domain_attribute)
+    values
+      ('vl______wvl15', 'my_username',      'my_domain');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     password_attribute, domain_attribute)
+    values
+      ('vl______wvl16', 'my_password',      'my_domain');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     username_attribute, password_attribute)
+    values
+      ('vl______wvl17', 'my_username',      'my_password');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     username_attribute)
+    values
+      ('vl______wvl18', 'my_username');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     password_attribute)
+    values
+      ('vl______wvl19', 'my_password');
+
+    insert into credential_vault_generic_library_usern_pass_domain_mapping_ovrd
+      (library_id,     domain_attribute)
+    values
+      ('vl______wvl20', 'my_domain');
 
     insert into credential_vault_ssh_cert_library
       (store_id,       public_id,      name,                    description, vault_path,         username, key_type,  key_bits)

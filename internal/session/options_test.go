@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -92,6 +92,18 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithRandomReader(reader))
 		testOpts := getDefaultOptions()
 		testOpts.withRandomReader = reader
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithProxyCertificate", func(t *testing.T) {
+		assert := assert.New(t)
+		pc := &ProxyCertificate{
+			Certificate: []byte("test-cert"),
+			PrivateKey:  []byte("test-key"),
+			SessionId:   "s_1234",
+		}
+		opts := getOpts(WithProxyCertificate(pc))
+		testOpts := getDefaultOptions()
+		testOpts.withProxyCertificate = pc
 		assert.Equal(opts, testOpts)
 	})
 }

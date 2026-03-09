@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package cmd
@@ -411,6 +411,30 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "postgres",
 			}
 		}),
+		"connect mysql": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "mysql",
+			}
+		}),
+		"connect mongo": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "mongo",
+			}
+		}),
+		"connect cassandra": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "cassandra",
+			}
+		}),
+		"connect redis": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "redis",
+			}
+		}),
 		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -471,6 +495,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credential-libraries create vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultLdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credential-libraries update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -491,6 +521,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credential-libraries update vault-ssh-certificate": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-libraries update vault-ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultLdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
@@ -585,8 +621,20 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credentials create password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.PasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credentials create username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credentials create username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}
@@ -609,8 +657,20 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}
 		}),
+		"credentials update password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.PasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
 		"credentials update username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
@@ -1325,6 +1385,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"targets create rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &targetscmd.RdpCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"targets update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -1333,6 +1399,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"targets update tcp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.TcpCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"targets update rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &targetscmd.RdpCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package scopeids
@@ -150,6 +150,7 @@ func GetListingResourceInformation(
 	for _, scp := range scps {
 		scpId := scp.GetPublicId()
 		res.ScopeId = scpId
+		res.ParentScopeId = scp.GetParentId()
 		aSet := input.AuthResults.FetchActionSetForType(ctx,
 			// This is overridden by WithResource
 			resource.Unknown,

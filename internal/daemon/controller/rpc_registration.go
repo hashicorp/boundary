@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
@@ -47,7 +47,7 @@ func registerControllerServerCoordinationService(ctx context.Context, c *Control
 		c.SessionRepoFn,
 		c.ConnectionRepoFn,
 		c.downstreamWorkers,
-		c.workerStatusUpdateTimes,
+		c.workerRoutingInfoUpdateTimes,
 		c.kms,
 		c.livenessTimeToStale,
 		c.ControllerExtension,
@@ -74,7 +74,7 @@ func registerControllerSessionService(ctx context.Context, c *Controller, server
 		c.SessionRepoFn,
 		c.ConnectionRepoFn,
 		c.downstreamWorkers,
-		c.workerStatusUpdateTimes,
+		c.workerRoutingInfoUpdateTimes,
 		c.kms,
 		c.livenessTimeToStale,
 		c.ControllerExtension,

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package database_test
@@ -45,7 +45,7 @@ func TestDatabaseMigration(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	boundaryRepo := "hashicorp/boundary"
 	boundaryTag := "latest"
@@ -79,7 +79,7 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
-	pool.MaxWait = 10 * time.Second
+	pool.MaxWait = 30 * time.Second
 
 	// Set up docker network
 	network, err := pool.CreateNetwork(t.Name())
@@ -104,6 +104,7 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 			t.Logf("Could not access Vault URL: %s. Retrying...", err.Error())
 			return err
 		}
+		defer response.Body.Close()
 
 		if response.StatusCode != http.StatusOK {
 			return fmt.Errorf("Could not connect to %s. Status Code: %d", v.UriLocalhost, response.StatusCode)
@@ -165,7 +166,9 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 	// Start a Boundary server and wait until Boundary has finished loading
 	b := infra.StartBoundary(t, pool, network, boundaryRepo, boundaryTag, db.UriNetwork)
 	t.Cleanup(func() {
-		pool.Purge(b.Resource)
+		if err := pool.Purge(b.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
 
@@ -181,16 +184,17 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 
 	t.Log("Waiting for Boundary to finish loading...")
 	err = pool.Retry(func() error {
-		response, err := http.Get(b.UriLocalhost)
+		response, err := http.Get(fmt.Sprintf("%s/health", b.UriLocalhost))
 		if err != nil {
-			t.Logf("Could not access Boundary URL: %s. Retrying...", err.Error())
+			t.Logf("Could not access health endpoint: %s. Retrying...", err.Error())
 			return err
 		}
 
 		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("Could not connect to %s. Status Code: %d", b.UriLocalhost, response.StatusCode)
+			return fmt.Errorf("Health check returned an error. Status Code: %d", response.StatusCode)
 		}
 
+		response.Body.Close()
 		return nil
 	})
 	require.NoError(t, err)
@@ -223,7 +227,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222", nil) // openssh-server uses port 2222
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -234,15 +238,17 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		ctx,
 		projectId,
 		"2222",
-		target.WithName("e2e target with address"),
-		target.WithAddress(te.Target.UriNetwork),
+		[]target.Option{
+			target.WithName("e2e target with address"),
+			target.WithAddress(te.Target.UriNetwork),
+		},
 	)
 	require.NoError(t, err)
 
 	// Create AWS dynamic host catalog
-	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion, false)
 	require.NoError(t, err)
-	awsHostSetId, err := boundary.CreateAwsHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter)
+	awsHostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter, "4")
 	require.NoError(t, err)
 	boundary.WaitForHostsInHostSetCli(t, ctx, awsHostSetId)
 
@@ -267,7 +273,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// Create static credentials
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
-	_, err = boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
+	_, err = boundary.CreateStaticCredentialUsernamePasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
 	require.NoError(t, err)
 	_, err = boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, "testdata/credential.json")
 	require.NoError(t, err)
@@ -277,22 +283,38 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 
 	// Create vault credentials
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
+	boundaryPolicyName := vault.SetupForBoundaryController(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	passwordSecretName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	privateKeySecretName, privateKeyPolicyName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", privateKeyPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
+	passwordSecretName, passwordPolicyName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", passwordPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credential")
+
 	output = e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs(
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			"-policy="+privateKeyPolicyName,
+			"-policy="+passwordPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",

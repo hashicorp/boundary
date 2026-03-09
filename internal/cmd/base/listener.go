@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base
@@ -16,7 +16,9 @@ import (
 	_ "crypto/sha512"
 	"crypto/tls"
 
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
@@ -137,24 +139,22 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 		}
 	}
 
-	host, port, err := net.SplitHostPort(l.Address)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			switch purpose {
-			case "api":
-				port = "9200"
-			case "cluster":
-				port = "9201"
-			case "proxy":
-				port = "9202"
-			case "ops":
-				port = "9203"
-			default:
-				return "", nil, errors.New("no purpose provided for listener and no port discoverable")
-			}
-			host = l.Address
-		} else {
-			return "", nil, fmt.Errorf("error splitting host/port: %w", err)
+	host, port, err := util.SplitHostPort(l.Address)
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		return "", nil, fmt.Errorf("error splitting host/port: %w", err)
+	}
+	if port == "" {
+		switch purpose {
+		case "api":
+			port = "9200"
+		case "cluster":
+			port = "9201"
+		case "proxy":
+			port = "9202"
+		case "ops":
+			port = "9203"
+		default:
+			return "", nil, errors.New("no purpose provided for listener and no port discoverable")
 		}
 	}
 
@@ -174,10 +174,15 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 	}
 
 	if l.RandomPort {
-		port = ""
+		port = "0" // net.Listen will choose an available port automatically. Used for tests.
 	}
 
 	finalListenAddr := net.JoinHostPort(host, port)
+	normalizedListenAddr, err := parseutil.NormalizeAddr(finalListenAddr)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to normalize final listen addr %q: %w", finalListenAddr, err)
+	}
+	finalListenAddr = normalizedListenAddr
 
 	ln, err := net.Listen(bindProto, finalListenAddr)
 	if err != nil {

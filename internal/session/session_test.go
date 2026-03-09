@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -33,7 +33,7 @@ func TestSession_Create(t *testing.T) {
 	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
-	defaultAddresses := []string{"1.2.3.4", "a.b.c.d"}
+	defaultAddresses := []string{"1.2.3.4", "a.b.c.d", "[2001:4860:4860::8888]", "[2001:4860:4860:0:0:0:0:8888]"}
 	type args struct {
 		composedOf ComposedOf
 		addresses  []string
@@ -50,7 +50,7 @@ func TestSession_Create(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name: "valid-hostset-host",
+			name: "valid-hostset-host-ipv4",
 			args: args{
 				composedOf: composedOf,
 				opt:        []Option{WithExpirationTime(exp)},
@@ -64,6 +64,33 @@ func TestSession_Create(t *testing.T) {
 				AuthTokenId:        composedOf.AuthTokenId,
 				ProjectId:          composedOf.ProjectId,
 				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     composedOf.ExpirationTime,
+				ConnectionLimit:    composedOf.ConnectionLimit,
+				DynamicCredentials: composedOf.DynamicCredentials,
+				StaticCredentials:  composedOf.StaticCredentials,
+				CorrelationId:      composedOf.CorrelationId,
+			},
+			create: true,
+		},
+		{
+			name: "valid-hostset-host-ipv6",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.Endpoint = "tcp://[::1]:22"
+					return c
+				}(),
+				opt:       []Option{WithExpirationTime(exp)},
+				addresses: defaultAddresses,
+			},
+			want: &Session{
+				UserId:             composedOf.UserId,
+				HostId:             composedOf.HostId,
+				TargetId:           composedOf.TargetId,
+				HostSetId:          composedOf.HostSetId,
+				AuthTokenId:        composedOf.AuthTokenId,
+				ProjectId:          composedOf.ProjectId,
+				Endpoint:           "tcp://[::1]:22",
 				ExpirationTime:     composedOf.ExpirationTime,
 				ConnectionLimit:    composedOf.ConnectionLimit,
 				DynamicCredentials: composedOf.DynamicCredentials,
@@ -405,4 +432,80 @@ func Test_newCert(t *testing.T) {
 		assert.True(t, parsedCert.NotAfter.Equal(expireTime.Truncate(time.Second)), "NotAfter (%q) != expireTime (%q)", parsedCert.NotAfter.Format(time.RFC3339Nano), expireTime.Format(time.RFC3339Nano))
 		assert.Equal(t, parsedCert.PublicKey.(crypto.PublicKey), ed25519.PrivateKey(key).Public())
 	})
+}
+
+func TestProxyCertificate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	sId := "test-session-id"
+	cert := make([]byte, 20)
+	if _, err := rand.Read(cert); err != nil {
+		require.NotNil(t, err)
+	}
+	privKey := make([]byte, 20)
+	if _, err := rand.Read(privKey); err != nil {
+		require.NotNil(t, err)
+	}
+
+	tests := []struct {
+		name            string
+		sessionId       string
+		certificate     []byte
+		privKey         []byte
+		expected        *ProxyCertificate
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:        "valid-target-cert",
+			sessionId:   sId,
+			certificate: cert,
+			privKey:     privKey,
+			expected: &ProxyCertificate{
+				SessionId:   sId,
+				Certificate: cert,
+				PrivateKey:  privKey,
+			},
+		},
+		{
+			name:            "missing-session-id",
+			certificate:     cert,
+			privKey:         privKey,
+			wantErr:         true,
+			wantErrContains: "missing session id",
+		},
+		{
+			name:            "missing-cert",
+			sessionId:       sId,
+			privKey:         privKey,
+			wantErr:         true,
+			wantErrContains: "missing certificate",
+		},
+		{
+			name:            "missing-priv-key",
+			sessionId:       sId,
+			certificate:     cert,
+			wantErr:         true,
+			wantErrContains: "missing private key",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			gotCert, err := NewProxyCertificate(ctx, tt.sessionId, tt.privKey, tt.certificate)
+
+			if tt.wantErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(gotCert)
+			assert.Equal(tt.expected.SessionId, gotCert.SessionId)
+			assert.Equal(tt.expected.Certificate, gotCert.Certificate)
+		})
+	}
 }

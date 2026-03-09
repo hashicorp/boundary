@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package worker
@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/coder/websocket"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
@@ -31,16 +32,8 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"nhooyr.io/websocket"
 )
-
-var GetProtocolContext = nilProtocolContext
-
-func nilProtocolContext(context.Context, string, session.Session, string) (*anypb.Any, error) {
-	return nil, nil
-}
 
 type HandlerProperties struct {
 	ListenerConfig *listenerutil.ListenerConfig
@@ -102,7 +95,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		numPort, err := strconv.Atoi(clientPort)
+		numPort, err := strconv.ParseUint(clientPort, 10, 16)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to understand remote port"))
 			wr.WriteHeader(http.StatusInternalServerError)
@@ -110,7 +103,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		clientAddr := &net.TCPAddr{
 			IP:   net.ParseIP(clientIp),
-			Port: numPort,
+			Port: int(numPort),
 		}
 
 		userClientIp, err := common.ClientIpFromRequest(ctx, listenerCfg, r)
@@ -205,14 +198,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 
-		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
+		if w.LastRoutingInfoSuccess() == nil || w.LastRoutingInfoSuccess().WorkerId == "" {
 			event.WriteError(ctx, op, stderrors.New("worker id is empty"))
 			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
 		}
-		workerId := w.LastStatusSuccess().WorkerId
+		workerId := w.LastRoutingInfoSuccess().WorkerId
 
 		var acResp *pbs.AuthorizeConnectionResponse
 		var connsLeft int32
@@ -235,14 +228,6 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		protocolCtx := acResp.GetProtocolContext()
-		if protocolCtx == nil {
-			// TODO: Remove this if block once pre v0.12.0 controllers are no longer supported.
-			if protocolCtx, err = GetProtocolContext(ctx, workerId, sess, endpointUrl.Scheme); err != nil {
-				conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get proxy context")
-				event.WriteError(ctx, op, err)
-				return
-			}
-		}
 
 		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver, proxyHandlers.WithDnsServerAddress(w.conf.WorkerDnsServer))
 		if err != nil {
@@ -263,10 +248,24 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "error getting decryption function")
 			event.WriteError(ctx, op, err)
 		}
-		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager)
+
+		handlerOpts := []proxyHandlers.Option{proxyHandlers.WithLogger(w.logger), proxyHandlers.WithRandomReader(w.conf.SecureRandomReader)}
+		if cb := w.SshKnownHostsCallback.Load(); cb != nil {
+			handlerOpts = append(handlerOpts, proxyHandlers.WithSshHostKeyCallback(*cb))
+		}
+
+		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager, handlerOpts...)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
-			event.WriteError(ctx, op, err)
+
+			switch {
+			case errors.Match(errors.T(errors.WindowsRDPClientEarlyDisconnection), err):
+				// This is known behavior with Windows Remote Desktop clients and does not
+				// indicate a problem with the worker or the proxy.
+				// There is no need to log an error event here.
+			default:
+				event.WriteError(ctx, op, err)
+			}
 			return
 		}
 

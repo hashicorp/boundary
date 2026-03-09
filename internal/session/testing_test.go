@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -48,29 +48,6 @@ func Test_TestConnection(t *testing.T) {
 
 	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 6500, "127.0.0.1", 22, "127.0.0.1")
 	require.NotNil(c)
-}
-
-func Test_TestConnectionState(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	s := TestDefaultSession(t, conn, wrapper, iamRepo)
-	require.NotNil(s)
-	assert.NotEmpty(s.PublicId)
-
-	c := TestConnection(t, conn, s.PublicId, "0.0.0.0", 22, "0.0.0.0", 2222, "127.0.0.1")
-	require.NotNil(c)
-	assert.NotEmpty(c.PublicId)
-
-	cs := TestConnectionState(t, conn, c.PublicId, StatusClosed)
-	require.NotNil(cs)
-
-	rw := db.New(conn)
-	var initialState ConnectionState
-	err := rw.LookupWhere(context.Background(), &initialState, "connection_id = ? and state = ?", []any{cs.ConnectionId, cs.Status})
-	require.NoError(err)
-	assert.NotEmpty(initialState.StartTime)
 }
 
 func Test_TestWorker(t *testing.T) {

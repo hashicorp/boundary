@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package hosts
@@ -6,7 +6,6 @@ package hosts
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -106,7 +105,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -286,7 +285,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -328,7 +327,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -370,7 +369,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -408,7 +407,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -534,7 +533,7 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 	return rows > 0, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (host.Catalog, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (host.Catalog, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	staticRepo, err := s.staticRepoFn()
 	if err != nil {
@@ -548,7 +547,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Host), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -606,7 +605,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		cat = plcat
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
-	return cat, auth.Verify(ctx, opts...)
+	return cat, auth.Verify(ctx, resource.Host, opts...)
 }
 
 func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
@@ -622,10 +621,11 @@ func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 
 func newOutputOpts(ctx context.Context, item host.Host, plg *plugin.Plugin, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Host,
-		Pin:     item.GetCatalogId(),
-		Id:      item.GetPublicId(),
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Host,
+		Pin:           item.GetCatalogId(),
+		Id:            item.GetPublicId(),
 	}
 	res.Id = item.GetPublicId()
 	idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(res.Id).Subtype]
@@ -772,14 +772,12 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 					len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
 					badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 				} else {
-					_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
-					switch {
-					case err == nil:
-						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
-					case strings.Contains(err.Error(), globals.MissingPortErrStr):
-						// Bare hostname, which we want
-					default:
+					_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
+					if err != nil && !errors.Is(err, util.ErrMissingPort) {
 						badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+					}
+					if port != "" {
+						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
 					}
 				}
 			}
@@ -809,14 +807,12 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
 						badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 					} else {
-						_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
-						switch {
-						case err == nil:
-							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
-						case strings.Contains(err.Error(), globals.MissingPortErrStr):
-							// Bare hostname, which we want
-						default:
+						_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
+						if err != nil && !errors.Is(err, util.ErrMissingPort) {
 							badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+						}
+						if port != "" {
+							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
 						}
 					}
 				}

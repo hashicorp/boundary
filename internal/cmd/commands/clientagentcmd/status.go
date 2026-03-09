@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package clientagentcmd
@@ -54,7 +54,7 @@ func (c *StatusCommand) Flags() *base.FlagSets {
 		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 	})
 
-	f.UintVar(&base.UintVar{
+	f.Uint16Var(&base.Uint16Var{
 		Name:    "client-agent-port",
 		Target:  &c.FlagClientAgentPort,
 		Default: 9300,
@@ -118,6 +118,7 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
+	client.RetryMax = 1
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", clientAgentUrl(c.FlagClientAgentPort, "v1/status"), nil)
 	if err != nil {

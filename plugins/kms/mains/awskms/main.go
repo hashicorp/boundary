@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package main
@@ -8,7 +8,7 @@ import (
 	"os"
 
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v4"
 )
 
 func main() {

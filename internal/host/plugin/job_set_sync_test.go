@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package plugin
@@ -6,6 +6,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -155,7 +156,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
@@ -164,7 +165,8 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
-	plgServer.ListHostsFn = func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+	plgServer.ListHostsFn = func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		return &plgpb.ListHostsResponse{}, nil
 	}
 	// Start with a set with a member that should be removed
@@ -173,7 +175,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	TestSetMembers(t, conn, setToRemoveHosts.GetPublicId(), []*Host{hostToRemove})
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 
 	hsa := &hostSetAgg{PublicId: setToRemoveHosts.GetPublicId()}
@@ -188,6 +190,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	counter := new(uint32)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		assert.GreaterOrEqual(1, len(req.GetSets()))
 		var setIds []string
 		for _, s := range req.GetSets() {
@@ -198,7 +201,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
 					ExternalId:  "first",
-					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter)},
+					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter), testGetIpv6Address(t), "2001:BEEF:0000:0000:0000:0000:0000:0001"},
 					DnsNames:    []string{"foo.com"},
 					SetIds:      setIds,
 				},
@@ -214,7 +217,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Less(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
@@ -225,6 +228,14 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Len(hosts, 1)
 	for _, host := range hosts {
 		assert.Equal(uint32(1), host.Version)
+		require.Len(host.IpAddresses, 3)
+		ipv4 := net.ParseIP(host.IpAddresses[0])
+		require.NotNil(ipv4)
+		require.NotNil(ipv4.To4())
+		ipv6 := net.ParseIP(host.IpAddresses[1])
+		require.NotNil(ipv6)
+		require.NotNil(ipv6.To16())
+		require.Contains(host.IpAddresses, "2001:beef::1")
 	}
 
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
@@ -233,7 +244,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	firstSyncTime := hsa.LastSyncTime
 
 	// Run sync again with the freshly synced set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	assert.Equal(0, r.numSets)
 	assert.Equal(0, r.numProcessed)
@@ -248,7 +259,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.True(hs.NeedSync)
 
 	// Run sync again with the set needing update
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
@@ -263,7 +274,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	// Run sync with a new second set
 	_ = TestSet(t, conn, kmsCache, sched, cat, plgm)
-	require.NoError(r.Run(context.Background()))
+	require.NoError(r.Run(context.Background(), 0))
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 
@@ -388,7 +399,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			assert.Equal(1, count)
 
 			// Run job
-			err = r.Run(context.Background())
+			err = r.Run(context.Background(), 0)
 			require.NoError(err)
 
 			// Validate results

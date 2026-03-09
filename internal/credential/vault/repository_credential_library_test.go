@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -294,6 +294,76 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-password-credential-type",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+		},
+		{
+			name: "unknown-password-mapping-override-type",
+			in: &CredentialLibrary{
+				MappingOverride: unknownMapper(1),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "invalid-password-mapping-override-type",
+			in: &CredentialLibrary{
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "valid-password-credential-type-with-password-override",
+			in: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+		},
+		{
 			name: "valid-ssh-private-key-credential-type",
 			in: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -339,7 +409,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			wantErr: errors.VaultInvalidMappingOverride,
 		},
 		{
-			name: "valid-ssh-prviate-key-credential-type-with-username-override",
+			name: "valid-ssh-private-key-credential-type-with-username-override",
 			in: &CredentialLibrary{
 				MappingOverride: NewSshPrivateKeyOverride(
 					WithOverrideUsernameAttribute("utest"),
@@ -484,6 +554,15 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 					// verify it was persisted in the database
 					override := allocUsernamePasswordOverride()
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
+
+				case *PasswordOverride:
+					g, ok := got.MappingOverride.(*PasswordOverride)
+					require.True(ok)
+					assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+
+					// verify it was persisted in the database
+					override := allocPasswordOverride()
 					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
 
 				case *SshPrivateKeyOverride:
@@ -1274,6 +1353,94 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			wantErr: errors.VaultInvalidMappingOverride,
 		},
 		{
+			name: "password-attribute-change-password-attribute",
+			orig: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewPasswordOverride(
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("changed-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "no-mapping-override-change-password-attributes",
+			orig: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewPasswordOverride(
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("changed-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "password-attributes-delete-mapping-override",
+			orig: &CredentialLibrary{
+				MappingOverride: NewPasswordOverride(
+					WithOverridePasswordAttribute("orig-password"),
+					WithOverridePrivateKeyAttribute("orig-private-key"),
+					WithOverridePrivateKeyPassphraseAttribute("orig-passphrase"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			chgFn: changeMappingOverride(nil),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-password-repo",
+					CredentialType: string(globals.PasswordCredentialType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
 			name: "ssh-private-key-attributes-change-username-attribute",
 			orig: &CredentialLibrary{
 				MappingOverride: NewSshPrivateKeyOverride(
@@ -1535,6 +1702,10 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				require.True(ok)
 				assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 				assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+			case *PasswordOverride:
+				g, ok := got.MappingOverride.(*PasswordOverride)
+				require.True(ok)
+				assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
 			case *SshPrivateKeyOverride:
 				g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
 				require.True(ok)
@@ -1559,7 +1730,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-		libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
+		libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 
 		lA, lB := libs[0], libs[1]
 
@@ -1684,8 +1855,8 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 
 		csA, csB := css[0], css[1]
 
-		lA := TestCredentialLibraries(t, conn, wrapper, csA.GetPublicId(), 1)[0]
-		lB := TestCredentialLibraries(t, conn, wrapper, csB.GetPublicId(), 1)[0]
+		lA := TestCredentialLibraries(t, conn, wrapper, csA.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
+		lB := TestCredentialLibraries(t, conn, wrapper, csB.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 
 		assert.NotEqual(lA.StoreId, lB.StoreId)
 		orig := lA.clone()
@@ -1801,6 +1972,31 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 				},
 			},
 			{
+				name: "valid-password-credential-type",
+				in: &CredentialLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(globals.PasswordCredentialType),
+					},
+				},
+			},
+			{
+				name: "valid-password-credential-type-with-password-override",
+				in: &CredentialLibrary{
+					MappingOverride: NewPasswordOverride(
+						WithOverridePasswordAttribute("ptest"),
+					),
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(globals.PasswordCredentialType),
+					},
+				},
+			},
+			{
 				name: "valid-ssh-private-key-credential-type",
 				in: &CredentialLibrary{
 					CredentialLibrary: &store.CredentialLibrary{
@@ -1901,6 +2097,10 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						require.True(ok)
 						assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+					case *PasswordOverride:
+						g, ok := got.MappingOverride.(*PasswordOverride)
+						require.True(ok)
+						assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
 					case *SshPrivateKeyOverride:
 						g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
 						require.True(ok)
@@ -1960,7 +2160,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 	{
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-		l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+		l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 
 		badId, err := newCredentialLibraryId(ctx)
 		require.NoError(t, err)
@@ -2152,7 +2352,7 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	const count = 10
-	libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), count)
+	libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, count)
 
 	tests := []struct {
 		name     string
@@ -2220,7 +2420,7 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 3)
 
 	for _, cs := range css[:2] { // Leave the third store empty
-		TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
+		TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), globals.UnspecifiedCredentialType, 5)
 	}
 	repo, err := NewRepository(ctx, rw, rw, kms, sche)
 	require.NoError(err)
@@ -2275,7 +2475,7 @@ func TestRepository_ListDeletedLibraryIds(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 
 	repo, err := NewRepository(ctx, rw, rw, kms, sche)
 	require.NoError(err)
@@ -2332,7 +2532,7 @@ func TestRepository_EstimatedLibraryCount(t *testing.T) {
 	assert.Equal(0, numItems)
 
 	// Create some libraries
-	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 	// Run analyze to update postgres meta tables
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)

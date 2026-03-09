@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_test
@@ -6,6 +6,7 @@ package base_test
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/scopes"
@@ -22,10 +23,11 @@ import (
 // canceled sessions is not included.
 func TestCliPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -46,7 +48,7 @@ func TestCliPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -105,12 +107,13 @@ func TestCliPaginateSessions(t *testing.T) {
 // canceled sessions is not included.
 func TestApiPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	sClient := sessions.NewClient(client)
@@ -122,6 +125,9 @@ func TestApiPaginateSessions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
+
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
@@ -132,7 +138,7 @@ func TestApiPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)

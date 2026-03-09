@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base
@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -122,9 +121,9 @@ type Server struct {
 	DevSecondaryTargetId             string // Target using host sources.
 	DevHostAddress                   string // Host address for target using host sources.
 	DevTargetAddress                 string // Network address for target with address.
-	DevTargetDefaultPort             int
-	DevTargetSessionMaxSeconds       int
-	DevTargetSessionConnectionLimit  int
+	DevTargetDefaultPort             uint16
+	DevTargetSessionMaxSeconds       int64
+	DevTargetSessionConnectionLimit  int64
 	DevLoopbackPluginId              string
 
 	EnabledPlugins []EnabledPlugin
@@ -813,12 +812,16 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	if flagValue != "" {
 		conf.Worker.PublicAddr = flagValue
 	}
+	isUnixListener := false
 	if conf.Worker.PublicAddr == "" {
 	FindAddr:
 		for _, listener := range conf.Listeners {
 			for _, purpose := range listener.Purpose {
 				if purpose == "proxy" {
 					conf.Worker.PublicAddr = listener.Address
+					if strings.EqualFold(listener.Type, "unix") {
+						isUnixListener = true
+					}
 					break FindAddr
 				}
 			}
@@ -836,16 +839,30 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	}
 
-	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9202"
-			host = conf.Worker.PublicAddr
-		} else {
-			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+	host, port, err := util.SplitHostPort(conf.Worker.PublicAddr)
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+	}
+	if host != "" {
+		if host, err = parseutil.NormalizeAddr(host); err != nil {
+			return fmt.Errorf("Error normalizing worker address")
 		}
 	}
-	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9202"
+	}
+	conf.Worker.PublicAddr = util.JoinHostPort(host, port)
+
+	if host != "" && !isUnixListener {
+		// NormalizeAddr requires that a host be present, but that is not
+		// guaranteed in this code path. Additionally, if no host is present,
+		// there's no need to normalize.
+		conf.Worker.PublicAddr, err = parseutil.NormalizeAddr(conf.Worker.PublicAddr)
+		if err != nil {
+			return fmt.Errorf("Failed to normalize worker public adddress: %w", err)
+		}
+	}
+
 	return nil
 }
 

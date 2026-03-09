@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package targets_test
@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
@@ -27,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -336,6 +336,39 @@ func TestListWithListToken(t *testing.T) {
 	require.Empty(res.Items)
 }
 
+func TestListWithPageSize(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+	_, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("1"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+	_, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("2"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+
+	// Refresh tokens recursive listing over global scope
+	res, err := tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithPageSize(2))
+	require.NoError(err)
+	require.Len(res.Items, 4, "expected the 2 targets created above and the 2 auto created for the test controller")
+	refTok := res.ListToken
+
+	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithListToken(refTok))
+	require.NoError(err)
+	require.Empty(res.Items)
+}
+
 func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 
@@ -347,10 +380,10 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 
 	// Create target with a network address association
 	targetResp, err := tClient.Create(tc.Context(), "tcp", proj.GetPublicId(),
-		targets.WithName("test-address"), targets.WithAddress("localhost"), targets.WithTcpTargetDefaultPort(22))
+		targets.WithName("test-address"), targets.WithAddress("::1"), targets.WithTcpTargetDefaultPort(22))
 	require.NoError(t, err)
 	require.NotNil(t, targetResp)
-	require.Equal(t, "localhost", targetResp.GetItem().Address)
+	require.Equal(t, "::1", targetResp.GetItem().Address)
 
 	// Setup host catalog, host set, & host resources
 	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
@@ -359,7 +392,7 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	hs, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id)
 	require.NoError(t, err)
 	require.NotNil(t, hs)
-	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("localhost"))
+	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, h)
 	hUpdate, err := hostsets.NewClient(client).AddHosts(tc.Context(), hs.Item.Id, hs.Item.Version, []string{h.GetItem().Id})
@@ -405,7 +438,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	hs, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id)
 	require.NoError(t, err)
 	require.NotNil(t, hs)
-	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("localhost"))
+	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, h)
 	hUpdate, err := hostsets.NewClient(client).AddHosts(tc.Context(), hs.Item.Id, hs.Item.Version, []string{h.GetItem().Id})
@@ -428,7 +461,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	require.Empty(t, updateResp.GetItem().Address)
 	require.Equal(t, []string{hs.Item.Id}, updateResp.GetItem().HostSourceIds)
 	version = updateResp.GetItem().Version
-	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("localhost"))
+	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("::1"))
 	require.Error(t, err)
 	require.Nil(t, updateResp)
 	apiErr := api.AsServerError(err)
@@ -441,10 +474,10 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	require.NotNil(t, updateResp)
 	require.Empty(t, updateResp.GetItem().HostSourceIds)
 	version = updateResp.GetItem().Version
-	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("localhost"))
+	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, updateResp)
-	require.Equal(t, "localhost", updateResp.GetItem().Address)
+	require.Equal(t, "::1", updateResp.GetItem().Address)
 	require.Empty(t, updateResp.GetItem().HostSourceIds)
 }
 
@@ -458,16 +491,29 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 	tClient := targets.NewClient(client)
 
 	tests := []struct {
-		name    string
-		address string
+		name            string
+		address         string
+		expectedAddress string
 	}{
 		{
-			name:    "target-ipv4-address",
-			address: "127.0.0.1",
+			name:            "target-ipv4-address",
+			address:         "127.0.0.1",
+			expectedAddress: "127.0.0.1",
 		},
 		{
-			name:    "target-dns-address",
-			address: "null",
+			name:            "target-ipv6-address",
+			address:         "2001:BEEF:4860:0:0:0:0:8888",
+			expectedAddress: "2001:beef:4860::8888",
+		},
+		{
+			name:            "target-abbreviated-ipv6-address",
+			address:         "2001:BEEF:4860::8888",
+			expectedAddress: "2001:beef:4860::8888",
+		},
+		{
+			name:            "target-dns-address",
+			address:         "www.google.com",
+			expectedAddress: "www.google.com",
 		},
 	}
 	for _, tt := range tests {
@@ -477,14 +523,14 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 				targets.WithName(tt.name), targets.WithAddress(tt.address), targets.WithTcpTargetDefaultPort(22))
 			require.NoError(err)
 			require.NotNil(createResp)
-			assert.Equal(tt.address, createResp.GetItem().Address)
+			assert.Equal(tt.expectedAddress, createResp.GetItem().Address)
 
 			targetId := createResp.GetItem().Id
 			version := createResp.GetItem().Version
 			readResp, err := tClient.Read(tc.Context(), targetId)
 			require.NoError(err)
 			require.NotNil(readResp)
-			assert.Equal(tt.address, readResp.GetItem().Address)
+			assert.Equal(tt.expectedAddress, readResp.GetItem().Address)
 
 			updateResp, err := tClient.Update(tc.Context(), targetId, version, targets.DefaultAddress())
 			require.NoError(err)
@@ -685,12 +731,12 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 	})
 
-	t.Run("deleting unknown alias is unauthorized", func(t *testing.T) {
+	t.Run("deleting unknown alias is not found", func(t *testing.T) {
 		_, err = tarClient.Delete(tc.Context(), al.GetValue())
 		assert.Error(err)
 		apiErr := api.AsServerError(err)
 		assert.NotNil(apiErr)
-		assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 	})
 }
 
@@ -750,7 +796,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// reading by alias with no destination id should fail
 	rw := db.New(tc.DbConn())
@@ -759,8 +805,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
-	noAliasApiErrReponse := apiErr.Response()
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	client.SetToken("at_1234567890_madeupinvalidtoken")
 	tarClient = targets.NewClient(client)
@@ -768,9 +813,6 @@ func TestSet_Errors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
-	// We should not be able to tell the difference between an unauthorized request
-	// and a request that tries to resolve an alias that points to nothing.
-	assert.EqualValues(noAliasApiErrReponse.Body, apiErr.Response().Body)
 }
 
 func TestCreateTarget_WhitespaceInAddress(t *testing.T) {
@@ -820,10 +862,12 @@ func TestCreateTarget_SlashesInName(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 
 	tw, _ := worker.NewAuthorizedPkiTestWorker(t, tc.ServersRepo(), "test", tc.ClusterAddrs())
-	require.NotNil(t, tw)
+	require.NotNil(tw)
 
-	// Wait for worker to become ready
-	time.Sleep(10 * time.Second)
+	helper.ExpectWorkers(t, tc, tw)
+	// Wait for an extra routing info update for good measure
+	// TODO(https://hashicorp.atlassian.net/browse/ICU-16124): why is this necessary?
+	require.NoError(tw.Worker().WaitForNextSuccessfulRoutingInfoUpdate())
 
 	client := tc.Client()
 	token := tc.Token()

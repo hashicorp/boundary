@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -8,7 +8,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
@@ -20,10 +19,13 @@ import (
 	"strings"
 	"time"
 
+	ldapv3 "github.com/go-ldap/ldap/v3"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/password"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassworddomain"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -62,6 +64,10 @@ func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 		return baseToUsrPass(ctx, bc)
 	case globals.SshPrivateKeyCredentialType:
 		return baseToSshPriKey(ctx, bc)
+	case globals.UsernamePasswordDomainCredentialType:
+		return baseToUsrPassDomain(ctx, bc)
+	case globals.PasswordCredentialType:
+		return baseToPass(ctx, bc)
 	}
 	return bc, nil
 }
@@ -107,6 +113,96 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 	return &usrPassCred{
 		baseCred: bc,
 		username: username,
+		password: credential.Password(password),
+	}, nil
+}
+
+var _ credential.UsernamePasswordDomain = (*usrPassDomainCred)(nil)
+
+type usrPassDomainCred struct {
+	*baseCred
+	username string
+	password credential.Password
+	domain   string
+}
+
+func (c *usrPassDomainCred) Username() string              { return c.username }
+func (c *usrPassDomainCred) Password() credential.Password { return c.password }
+func (c *usrPassDomainCred) Domain() string                { return c.domain }
+
+func baseToUsrPassDomain(ctx context.Context, bc *baseCred) (*usrPassDomainCred, error) {
+	switch {
+	case bc == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
+	case bc.lib == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
+	case bc.Library().CredentialType() != globals.UsernamePasswordDomainCredentialType:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
+	}
+
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	uAttr, pAttr, dAttr := lib.UsernameAttribute, lib.PasswordAttribute, lib.DomainAttribute
+	if uAttr == "" {
+		uAttr = "username"
+	}
+	if pAttr == "" {
+		pAttr = "password"
+	}
+	if dAttr == "" {
+		dAttr = "domain"
+	}
+	username, password, domain := usernamepassworddomain.Extract(bc.secretData, uAttr, pAttr, dAttr)
+	if username == "" || password == "" || domain == "" {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
+	}
+
+	return &usrPassDomainCred{
+		baseCred: bc,
+		username: username,
+		password: credential.Password(password),
+		domain:   domain,
+	}, nil
+}
+
+var _ credential.PasswordOnly = (*passCred)(nil)
+
+type passCred struct {
+	*baseCred
+	password credential.Password
+}
+
+func (c *passCred) Password() credential.Password { return c.password }
+
+func baseToPass(ctx context.Context, bc *baseCred) (*passCred, error) {
+	switch {
+	case bc == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
+	case bc.lib == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
+	case bc.Library().CredentialType() != globals.PasswordCredentialType:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
+	}
+
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	pAttr := lib.PasswordAttribute
+	if pAttr == "" {
+		pAttr = "password"
+	}
+	password := password.Extract(bc.secretData, pAttr)
+	if password == "" {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
+	}
+
+	return &passCred{
+		baseCred: bc,
 		password: credential.Password(password),
 	}, nil
 }
@@ -177,8 +273,10 @@ type issuingCredentialLibrary interface {
 	retrieveCredential(context.Context, errors.Op, ...credential.Option) (dynamicCred, error)
 }
 
-// A genericIssuingCredentialLibrary contains all the values needed to connect to Vault and
-// retrieve credentials.
+// genericIssuingCredentialLibrary is a subtype of
+// privateCredentialLibraryAllTypes specifically for Vault generic credential
+// libraries. It contains all the values needed to connect to Vault and retrieve
+// credentials.
 type genericIssuingCredentialLibrary struct {
 	PublicId                      string
 	StoreId                       string
@@ -208,6 +306,7 @@ type genericIssuingCredentialLibrary struct {
 	ClientKeyId                   string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose
@@ -223,6 +322,7 @@ func (pl *genericIssuingCredentialLibrary) clone() *genericIssuingCredentialLibr
 		CredType:                      pl.CredType,
 		UsernameAttribute:             pl.UsernameAttribute,
 		PasswordAttribute:             pl.PasswordAttribute,
+		DomainAttribute:               pl.DomainAttribute,
 		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 		Name:                          pl.Name,
@@ -390,11 +490,6 @@ func (pl *genericIssuingCredentialLibrary) retrieveCredential(ctx context.Contex
 	return convert(ctx, dCred)
 }
 
-// TableName returns the table name for gorm.
-func (pl *genericIssuingCredentialLibrary) TableName() string {
-	return "credential_vault_library_issue_credentials"
-}
-
 func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]issuingCredentialLibrary, error) {
 	const op = "vault.(Repository).getIssueCredLibraries"
 
@@ -458,8 +553,9 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	return decryptedLibs, nil
 }
 
-// privateCredentialLibraryAllTypes is a clone of genericIssuingCredentialLibrary. Contains
-// all the values needed to connect to Vault and retrieve credentials.
+// privateCredentialLibraryAllTypes is a type that interfaces with the database.
+// It contains all the values needed to connect to Vault and retrieve
+// credentials.
 type privateCredentialLibraryAllTypes struct {
 	PublicId                      string `gorm:"primary_key"`
 	StoreId                       string
@@ -489,6 +585,7 @@ type privateCredentialLibraryAllTypes struct {
 	ClientKeyId                   string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose `gorm:"-"`
@@ -552,6 +649,7 @@ func (pl *privateCredentialLibraryAllTypes) clone() *privateCredentialLibraryAll
 		CredType:                      pl.CredType,
 		UsernameAttribute:             pl.UsernameAttribute,
 		PasswordAttribute:             pl.PasswordAttribute,
+		DomainAttribute:               pl.DomainAttribute,
 		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 		Name:                          pl.Name,
@@ -628,6 +726,42 @@ func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() is
 			Extensions:                pl.Extensions,
 			AdditionalValidPrincipals: pl.AdditionalValidPrincipals,
 		}
+	case "ldap":
+		return &ldapIssuingCredentialLibrary{
+			PublicId:                  pl.PublicId,
+			StoreId:                   pl.StoreId,
+			CredType:                  pl.CredType,
+			Username:                  pl.Username,
+			Name:                      pl.Name,
+			Description:               pl.Description,
+			CreateTime:                pl.CreateTime,
+			UpdateTime:                pl.UpdateTime,
+			Version:                   pl.Version,
+			ProjectId:                 pl.ProjectId,
+			VaultPath:                 pl.VaultPath,
+			VaultAddress:              pl.VaultAddress,
+			Namespace:                 pl.Namespace,
+			CaCert:                    pl.CaCert,
+			TlsServerName:             pl.TlsServerName,
+			TlsSkipVerify:             pl.TlsSkipVerify,
+			WorkerFilter:              pl.WorkerFilter,
+			TokenHmac:                 pl.TokenHmac,
+			Token:                     pl.Token,
+			CtToken:                   pl.CtToken,
+			TokenKeyId:                pl.TokenKeyId,
+			ClientCert:                pl.ClientCert,
+			ClientKey:                 pl.ClientKey,
+			CtClientKey:               pl.CtClientKey,
+			ClientKeyId:               pl.ClientKeyId,
+			Purpose:                   pl.Purpose,
+			KeyType:                   pl.KeyType,
+			KeyBits:                   pl.KeyBits,
+			Ttl:                       pl.Ttl,
+			KeyId:                     pl.KeyId,
+			CriticalOptions:           pl.CriticalOptions,
+			Extensions:                pl.Extensions,
+			AdditionalValidPrincipals: pl.AdditionalValidPrincipals,
+		}
 	default:
 		return &genericIssuingCredentialLibrary{
 			PublicId:                      pl.PublicId,
@@ -635,6 +769,7 @@ func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() is
 			CredType:                      pl.CredType,
 			UsernameAttribute:             pl.UsernameAttribute,
 			PasswordAttribute:             pl.PasswordAttribute,
+			DomainAttribute:               pl.DomainAttribute,
 			PrivateKeyAttribute:           pl.PrivateKeyAttribute,
 			PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
 			Name:                          pl.Name,
@@ -709,6 +844,10 @@ func (m *requestMap) get(libraryId string) []credential.Purpose {
 	return m.ids[libraryId]
 }
 
+// sshCertIssuingCredentialLibrary is a subtype of
+// privateCredentialLibraryAllTypes specifically for Vault SSH Certificate
+// credential libraries. It contains all the values needed to connect to Vault
+// and retrieve credentials.
 type sshCertIssuingCredentialLibrary struct {
 	PublicId                  string
 	StoreId                   string
@@ -796,16 +935,21 @@ func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultCl
 	return client, nil
 }
 
-func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int) (string, []byte, error) {
+func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int, opt ...credential.Option) (string, []byte, error) {
 	const op = "vault.generatePublicPrivateKeys"
 	pemBlock := pem.Block{}
 	var sshKey ssh.PublicKey
+
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return "", nil, errors.Wrap(ctx, err, op)
+	}
 
 	switch keyType {
 	case KeyTypeRsa:
 		pemBlock.Type = "RSA PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		key, err := rsa.GenerateKey(rand.Reader, keyBits)
+		key, err := rsa.GenerateKey(opts.WithRandomReader, keyBits)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -818,7 +962,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int)
 	case KeyTypeEd25519:
 		pemBlock.Type = "OPENSSH PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
 
-		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+		pubKey, privKey, err := ed25519.GenerateKey(opts.WithRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -845,7 +989,7 @@ func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int)
 			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "invalid KeyBits. when KeyType=ecdsa, KeyBits must be one of: 256, 384, or 521")
 		}
 
-		key, err := ecdsa.GenerateKey(curve, rand.Reader)
+		key, err := ecdsa.GenerateKey(curve, opts.WithRandomReader)
 		if err != nil {
 			return "", nil, errors.Wrap(ctx, err, op)
 		}
@@ -969,7 +1113,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 	// by definition, if match exists, then match[1] == "sign" or "issue"
 	switch match[1] {
 	case "sign":
-		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits)
+		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits, credential.WithRandomReader(opts.WithRandomReader))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -1048,4 +1192,233 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 		},
 		certificate: []byte(cert),
 	}, nil
+}
+
+type ldapIssuingCredentialLibrary struct {
+	PublicId                  string
+	StoreId                   string
+	Name                      string
+	Description               string
+	CreateTime                *timestamp.Timestamp
+	UpdateTime                *timestamp.Timestamp
+	Version                   uint32
+	VaultPath                 string
+	CredType                  string
+	ProjectId                 string
+	VaultAddress              string
+	Namespace                 string
+	CaCert                    []byte
+	TlsServerName             string
+	TlsSkipVerify             bool
+	WorkerFilter              string
+	Token                     TokenSecret
+	CtToken                   []byte
+	TokenHmac                 []byte
+	TokenKeyId                string
+	ClientCert                []byte
+	ClientKey                 KeySecret
+	CtClientKey               []byte
+	ClientKeyId               string
+	Username                  string
+	KeyType                   string
+	KeyBits                   int
+	KeyId                     string
+	Ttl                       string
+	CriticalOptions           []byte
+	Extensions                []byte
+	Purpose                   credential.Purpose
+	AdditionalValidPrincipals string
+}
+
+// GetPublicId returns the credential library's id.
+func (lib *ldapIssuingCredentialLibrary) GetPublicId() string { return lib.PublicId }
+
+// GetStoreId returns the credential library's credential store id.
+func (lib *ldapIssuingCredentialLibrary) GetStoreId() string { return lib.StoreId }
+
+// GetName returns the credential library's name.
+func (lib *ldapIssuingCredentialLibrary) GetName() string { return lib.Name }
+
+// GetDescription returns the credential library's description.
+func (lib *ldapIssuingCredentialLibrary) GetDescription() string { return lib.Description }
+
+// GetVersion returns the credential library's version.
+func (lib *ldapIssuingCredentialLibrary) GetVersion() uint32 { return lib.Version }
+
+// GetPurpose returns the credential library's purpose.
+func (lib *ldapIssuingCredentialLibrary) GetPurpose() credential.Purpose { return lib.Purpose }
+
+// GetCreateTime returns the credential library's create time.
+func (lib *ldapIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp { return lib.CreateTime }
+
+// GetUpdateTime returns the credential library's update time.
+func (lib *ldapIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return lib.UpdateTime }
+
+// CredentialType returns the credential library's issuing credential type.
+func (lib *ldapIssuingCredentialLibrary) CredentialType() globals.CredentialType {
+	switch ct := lib.CredType; ct {
+	case "":
+		return globals.UnspecifiedCredentialType
+	default:
+		return globals.CredentialType(ct)
+	}
+}
+
+// GetResourceType returns the credential library's resource type.
+func (lib *ldapIssuingCredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
+
+// client produces a Vault API client using this credential library's data.
+func (lib *ldapIssuingCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
+	const op = "vault.(genericIssuingCredentialLibrary).client"
+	clientConfig := &clientConfig{
+		Addr:          lib.VaultAddress,
+		Token:         lib.Token,
+		CaCert:        lib.CaCert,
+		TlsServerName: lib.TlsServerName,
+		TlsSkipVerify: lib.TlsSkipVerify,
+		Namespace:     lib.Namespace,
+	}
+
+	if lib.ClientKey != nil {
+		clientConfig.ClientCert = lib.ClientCert
+		clientConfig.ClientKey = lib.ClientKey
+	}
+
+	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(lib.WorkerFilter))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
+	}
+	return client, nil
+}
+
+var vaultLdapPathRegexp = regexp.MustCompile(`^.+\/(static-cred|creds).+$`)
+
+// retrieveCredential retrieves a dynamic LDAP credential from Vault for a
+// specific session and connection.
+func (lib *ldapIssuingCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, _ ...credential.Option) (dynamicCred, error) {
+	credId, err := newCredentialId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	client, err := lib.client(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var secret *vault.Secret
+
+	secret, err = client.get(ctx, lib.VaultPath)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if secret == nil {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+	}
+
+	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
+	cred, err := newCredential(ctx, lib.GetPublicId(), secret.LeaseID, lib.TokenHmac, leaseDuration)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	cred.PublicId = credId
+	cred.IsRenewable = secret.Renewable
+
+	upd := &usrPassDomainCred{
+		baseCred: &baseCred{
+			Credential: cred,
+			lib:        lib,
+			secretData: secret.Data,
+		},
+	}
+
+	username, ok := secret.Data["username"].(string)
+	if !ok {
+		return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain a username or response was not in the expected format")
+	}
+	upd.username = username
+
+	pwData, ok := secret.Data["password"].(string)
+	if !ok {
+		return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain a password or response was not in the expected format")
+	}
+	upd.password = credential.Password(pwData)
+
+	matches := vaultLdapPathRegexp.FindStringSubmatch(lib.VaultPath)
+	if len(matches) < 2 { // [0] is the vault path, [1] is static-cred or creds, if it exists.
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "vault path was not in an expected format. expected path containing \"static-cred\" or \"creds\"")
+	}
+	switch matches[1] {
+	case "static-cred":
+		dn, ok := secret.Data["dn"].(string)
+		if !ok {
+			return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain a dn or response was not in the expected format")
+		}
+		domain, err := extractDomainFromDn(dn)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		upd.domain = domain
+	case "creds":
+		var dns []string
+		dis, ok := secret.Data["distinguished_names"].([]any)
+		if ok {
+			for _, value := range dis {
+				if v, ok := value.(string); ok {
+					dns = append(dns, v)
+				} else {
+					return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret returned distinguished_names with non-string member")
+				}
+			}
+		} else {
+			return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain distinguished_names or response was not in the expected format")
+		}
+		if len(dns) == 0 {
+			return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret returned empty distinguished_names")
+		}
+
+		// In the Vault LDAP secrets engine, no deduplication occurs and order
+		// is maintained from the LDIF statements, so the assumption here is
+		// that the first DN should correspond to the user's creation in the
+		// creation LDIF, which should correspond to the correct domain.
+		// https://developer.hashicorp.com/vault/docs/secrets/ldap#dynamic-credentials
+		domain, err := extractDomainFromDn(dns[0])
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		upd.domain = domain
+	}
+
+	return upd, nil
+}
+
+// extractDomainFromDn composes a domain name from all the "dc" attributes in an
+// LDAP DN.
+func extractDomainFromDn(dnStr string) (string, error) {
+	if dnStr == "" {
+		return "", fmt.Errorf("empty DN")
+	}
+
+	dn, err := ldapv3.ParseDN(dnStr)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse DN: %w", err)
+	}
+
+	var dcs []string
+	for _, rdn := range dn.RDNs {
+		for _, attr := range rdn.Attributes {
+			// "0.9.2342.19200300.100.1.25" is the OID for the "dc" attribute
+			// and it is a valid representation in a DN string.
+			// (https://docs.ldap.com/specs/rfc4519.txt)
+			if strings.EqualFold(attr.Type, "dc") || strings.EqualFold(attr.Type, "0.9.2342.19200300.100.1.25") {
+				dcs = append(dcs, attr.Value)
+			}
+		}
+	}
+	if len(dcs) == 0 {
+		return "", fmt.Errorf("no domain component (dc) attribute found in dn")
+	}
+
+	return strings.Join(dcs, "."), nil
 }

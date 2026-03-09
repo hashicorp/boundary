@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package boundary provides methods for commonly used boundary actions that are used in end-to-end tests.
@@ -6,12 +6,14 @@ package boundary
 
 import (
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/targets"
 )
 
 // ConnectCliOutput parses the json response from running `boundary connect`
 type ConnectCliOutput struct {
-	Port    int    `json:"port"`
-	Address string `json:"address"`
+	Port        int                          `json:"port"`
+	Address     string                       `json:"address"`
+	Credentials []*targets.SessionCredential `json:"credentials"`
 }
 
 // AuthenticateCliOutput parses the json response from running `boundary authenticate`

@@ -1,9 +1,13 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 resource "aws_db_subnet_group" "boundary" {
   name       = "boundary-db-subnet-${random_string.cluster_id.result}"
   subnet_ids = data.aws_subnets.infra.ids
+}
+
+data "aws_rds_engine_version" "default" {
+  engine = var.db_engine
 }
 
 resource "aws_db_instance" "boundary" {
@@ -12,13 +16,15 @@ resource "aws_db_instance" "boundary" {
   allocated_storage   = var.db_storage
   storage_type        = var.db_storage_type
   iops                = var.db_storage_iops
-  engine              = var.db_engine
-  engine_version      = var.db_engine == "aurora-postgres" ? null : var.db_version
+  engine              = data.aws_rds_engine_version.default.engine
+  engine_version      = data.aws_rds_engine_version.default.version
   instance_class      = var.db_class
   monitoring_interval = var.db_monitoring_interval
   monitoring_role_arn = var.db_monitoring_role_arn
-  publicly_accessible = true
+  publicly_accessible = false
   db_name             = local.db_name
+
+  network_type = var.ip_version == "4" ? "IPV4" : "DUAL"
 
   // username and password must not be provided when restoring from a snapshot
   username                     = local.is_restored_db ? null : var.db_user

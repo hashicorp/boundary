@@ -1,10 +1,12 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
 import (
 	"context"
+	"crypto/rand"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -22,6 +24,7 @@ func TestRepository_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	testReader := strings.NewReader("notrandom")
 
 	type args struct {
 		r         db.Reader
@@ -51,6 +54,7 @@ func TestRepository_New(t *testing.T) {
 				kms:          kmsCache,
 				scheduler:    sche,
 				defaultLimit: db.DefaultLimit,
+				randomReader: rand.Reader,
 			},
 		},
 		{
@@ -60,7 +64,10 @@ func TestRepository_New(t *testing.T) {
 				w:         rw,
 				kms:       kmsCache,
 				scheduler: sche,
-				opts:      []Option{WithLimit(5)},
+				opts: []Option{
+					WithLimit(5),
+					WithRandomReader(testReader),
+				},
 			},
 			want: &Repository{
 				reader:       rw,
@@ -68,6 +75,7 @@ func TestRepository_New(t *testing.T) {
 				kms:          kmsCache,
 				scheduler:    sche,
 				defaultLimit: 5,
+				randomReader: testReader,
 			},
 		},
 		{

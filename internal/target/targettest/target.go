@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package targettest provides a test target subtype for use by the target
@@ -36,6 +36,7 @@ type Target struct {
 	HostSource        []target.HostSource       `gorm:"-"`
 	CredentialSources []target.CredentialSource `gorm:"-"`
 	Aliases           []*talias.Alias           `gorm:"-"`
+	ServerCert        *target.ServerCertificate `gorm:"-"`
 }
 
 var (
@@ -161,6 +162,10 @@ func (t *Target) GetStorageBucketId() string {
 	return ""
 }
 
+func (t *Target) GetProxyServerCertificate() *target.ServerCertificate {
+	return t.ServerCert
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -252,6 +257,10 @@ func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
 func (t *Target) SetEnableSessionRecording(_ bool) {}
 
 func (t *Target) SetStorageBucketId(_ string) {}
+
+func (t *Target) SetProxyServerCertificate(sc *target.ServerCertificate) {
+	t.ServerCert = sc
+}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{
@@ -360,7 +369,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]any, 0, len(opts.WithHostSources))
+		newHostSets := make([]*target.TargetHostSet, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
 			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
 			require.NoError(err)
@@ -370,7 +379,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]any, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]*target.CredentialLibrary, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)

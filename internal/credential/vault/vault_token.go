@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -152,7 +152,7 @@ func (t *Token) insertQuery() (query string, queryValues []any) {
 		sql.Named("6", "now()"),
 		sql.Named("7", exp),
 	}
-	return
+	return query, queryValues
 }
 
 func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []any) {
@@ -162,7 +162,7 @@ func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues
 		status,
 		t.TokenHmac,
 	}
-	return
+	return query, queryValues
 }
 
 func (t *Token) updateExpirationQuery() (query string, queryValues []any) {
@@ -173,7 +173,7 @@ func (t *Token) updateExpirationQuery() (query string, queryValues []any) {
 		exp,
 		t.TokenHmac,
 	}
-	return
+	return query, queryValues
 }
 
 func (t *Token) oplogMessage(opType db.OpType) *oplog.Message {

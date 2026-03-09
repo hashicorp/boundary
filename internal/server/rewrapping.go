@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package server
@@ -141,9 +141,6 @@ func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVers
 	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
-	}
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
 	}
 	for _, token := range tokens {
 		if err := token.decrypt(ctx, wrapper); err != nil {

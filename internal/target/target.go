@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target
@@ -17,6 +17,12 @@ import (
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
+
+// ServerCertificate holds the PEM encoded certificate and key for a target
+type ServerCertificate struct {
+	CertificatePem []byte
+	PrivateKeyPem  []byte
+}
 
 // Target is a commmon interface for all target subtypes
 type Target interface {
@@ -42,6 +48,7 @@ type Target interface {
 	GetCredentialSources() []CredentialSource
 	GetStorageBucketId() string
 	GetEnableSessionRecording() bool
+	GetProxyServerCertificate() *ServerCertificate
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -64,6 +71,7 @@ type Target interface {
 	SetStorageBucketId(string)
 	SetEnableSessionRecording(bool)
 	Oplog(op oplog.OpType) oplog.Metadata
+	SetProxyServerCertificate(*ServerCertificate)
 }
 
 const (

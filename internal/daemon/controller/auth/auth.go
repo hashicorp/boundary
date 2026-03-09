@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package auth
@@ -54,6 +54,12 @@ const (
 	// It's of recovery type
 	AuthTokenTypeRecoveryKms
 )
+
+// CallbackAction represents the action type for
+// callback operations in a request's URL path.
+// This is currently only used during auth method
+// authentication.
+const CallbackAction = "callback"
 
 type key int
 
@@ -167,7 +173,7 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
+func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret VerifyResults) {
 	const op = "auth.Verify"
 	ret.Error = handlers.ForbiddenError()
 	v, ok := ctx.Value(verifierKey).(*verifier)
@@ -231,17 +237,17 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			iamRepo, err := v.iamRepoFn()
 			if err != nil {
 				ret.Error = errors.Wrap(ctx, err, op, errors.WithMsg("failed to get iam repo"))
-				return
+				return ret
 			}
 
 			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
 			if err != nil {
 				ret.Error = errors.Wrap(ctx, err, op)
-				return
+				return ret
 			}
 			if scp == nil {
 				ret.Error = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("non-existent scope %q", ret.Scope.Id))
-				return
+				return ret
 			}
 			ret.Scope = &scopes.ScopeInfo{
 				Id:            scp.GetPublicId(),
@@ -258,7 +264,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 		ea.UserInfo = &event.UserInfo{UserId: ret.UserId}
 		ret.Error = nil
-		return
+		return ret
 	}
 
 	v.act = opts.withAction
@@ -266,10 +272,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		ScopeId: opts.withScopeId,
 		Id:      opts.withId,
 		Pin:     opts.withPin,
-		Type:    opts.withType,
+		Type:    resourceType,
+		// Parent Scope ID will be filled in via performAuthCheck
 	}
 	// Global scope has no parent ID; account for this
-	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
+	if opts.withId == scope.Global.String() && resourceType == resource.Scope {
 		v.res.ScopeId = scope.Global.String()
 	}
 
@@ -277,13 +284,15 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		v.decryptToken(ctx)
 	}
 
+	resourcesToFetchGrants := append([]resource.Type{resourceType}, opts.withFetchAdditionalResourceGrants...)
+
 	var authResults perms.ACLResults
 	var userData template.Data
 	var err error
-	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx)
+	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourcesToFetchGrants, opts.withRecursive)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
-		return
+		return ret
 	}
 
 	if ret.UserData.User.Id != nil {
@@ -321,7 +330,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			ea.UserInfo = &event.UserInfo{
 				UserId: ret.UserId,
 			}
-			return
+			return ret
 		}
 	}
 
@@ -330,7 +339,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		grants = append(grants, event.Grant{
 			Grant:   g.Grant,
 			RoleId:  g.RoleId,
-			ScopeId: g.ScopeId,
+			ScopeId: g.GrantScopeId,
 		})
 	}
 	ea.UserInfo = &event.UserInfo{
@@ -355,7 +364,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	ret.Error = nil
-	return
+	return ret
 }
 
 func (v *verifier) decryptToken(ctx context.Context) {
@@ -484,7 +493,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 	}
 }
 
-func (v verifier) performAuthCheck(ctx context.Context) (
+func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.Type, isRecursiveRequest bool) (
 	aclResults perms.ACLResults,
 	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,
@@ -521,7 +530,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op)
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
@@ -544,13 +553,13 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to get iam repo"))
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 
 	u, _, err := iamRepo.LookupUser(ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup user"))
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 	userData.User.Name = util.Pointer(u.Name)
 	userData.User.Email = util.Pointer(u.Email)
@@ -565,34 +574,34 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get password auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		case oidc.Subtype:
 			repo, repoErr := v.oidcAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		case ldap.Subtype:
 			repo, repoErr := v.ldapAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get ldap auth repo"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		default:
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("unrecognized account id type"))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		if err != nil {
 			if errors.IsNotFoundError(err) {
 				retErr = errors.Wrap(ctx, err, op, errors.WithMsg("account doesn't exist"))
-				return
+				return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 			}
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("error looking up account"))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		userData.Account.Name = util.Pointer(acct.GetName())
 		userData.Account.Email = util.Pointer(acct.GetEmail())
@@ -616,11 +625,11 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op)
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		if scp == nil {
 			retErr = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", v.res.ScopeId))
-			return
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		scopeInfo = &scopes.ScopeInfo{
 			Id:            scp.GetPublicId(),
@@ -630,29 +639,31 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			ParentScopeId: scp.GetParentId(),
 		}
 	}
+	v.res.ParentScopeId = scopeInfo.ParentScopeId
 
 	// At this point we don't need to look up grants since it's automatically allowed
 	if v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms) {
 		aclResults.AuthenticationFinished = true
 		aclResults.Authorized = true
 		retErr = nil
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 
 	var parsedGrants []perms.Grant
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
+	iamOpt := []iam.Option{iam.WithRecursive(isRecursiveRequest)}
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id, iamOpt...)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
-		return
+		return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
 	// Note: Below, we always skip validation so that we don't error on formats
 	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
 	// will simply not have an effect.
-	for _, pair := range grantTuples {
+	for _, tuple := range grantTuples {
 		permsOpts := []perms.Option{
 			perms.WithUserId(*userData.User.Id),
 			perms.WithSkipFinalValidation(true),
@@ -662,12 +673,11 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		}
 		parsed, err := perms.Parse(
 			ctx,
-			pair.ScopeId,
-			pair.Grant,
+			tuple,
 			permsOpts...)
 		if err != nil {
-			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
-			return
+			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", tuple.Grant)))
+			return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 		}
 		parsedGrants = append(parsedGrants, parsed)
 	}
@@ -680,7 +690,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// grants successfully loaded.
 	aclResults.AuthenticationFinished = true
 	retErr = nil
-	return
+	return aclResults, userData, scopeInfo, retAcl, grantTuples, retErr
 }
 
 // FetchActionSetForId returns the allowed actions for a given ID using the
@@ -861,7 +871,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 		aSet := r.FetchActionSetForType(ctx,
 			resource.Unknown, // This is overridden by `WithResource` option.
 			action.NewActionSet(action.List),
-			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId}),
+			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId, ParentScopeId: scp.GetParentId()}),
 		)
 
 		// We only expect the action set to be nothing, or list. In case
@@ -944,4 +954,14 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 // GrantsHash returns a stable hash of all the grants in the verify results.
 func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
 	return r.grants.GrantHash(ctx)
+}
+
+// GetRequestInfo extracts the request info stored in the context, if it exists.
+// This returns nil, false if the request info could not be found.
+func GetRequestInfo(ctx context.Context) (*authpb.RequestInfo, bool) {
+	v, ok := ctx.Value(verifierKey).(*verifier)
+	if !ok {
+		return nil, false
+	}
+	return v.requestInfo, true
 }

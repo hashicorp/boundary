@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oss_test
@@ -222,7 +222,7 @@ values
 			require.NoError(err)
 
 			// Add items to insert
-			var items []any
+			var items []*host.PreferredEndpoint
 			for _, cond := range tt.conditions {
 				ep := host.AllocPreferredEndpoint()
 				ep.HostSetId = tt.hostSetId

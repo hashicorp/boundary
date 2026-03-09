@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package password
@@ -84,7 +84,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		if cc.MinPasswordLength > len(opts.password) {
 			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be longer than %v", cc.MinPasswordLength))
 		}
-		if cred, err = newArgon2Credential(ctx, a.PublicId, opts.password, cc.argon2()); err != nil {
+		if cred, err = newArgon2Credential(ctx, a.PublicId, opts.password, cc.argon2(), r.randomReader); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
@@ -119,7 +119,6 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q or loginName %q already exists",
@@ -277,7 +276,6 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(withPublicId))
 	}
@@ -391,7 +389,6 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,

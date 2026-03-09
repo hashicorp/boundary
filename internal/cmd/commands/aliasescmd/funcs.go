@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package aliasescmd
@@ -11,10 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
-
-type extraCmdVars struct {
-	flagMembers []string
-}
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string

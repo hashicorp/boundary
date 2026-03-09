@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package loopback
@@ -69,6 +69,10 @@ type WrappingPluginStorageClient struct {
 
 func NewWrappingPluginStorageClient(s plgpb.StoragePluginServiceServer) *WrappingPluginStorageClient {
 	return &WrappingPluginStorageClient{Server: s}
+}
+
+func (tpc *WrappingPluginStorageClient) NormalizeStorageBucketData(ctx context.Context, req *plgpb.NormalizeStorageBucketDataRequest, opts ...grpc.CallOption) (*plgpb.NormalizeStorageBucketDataResponse, error) {
+	return tpc.Server.NormalizeStorageBucketData(ctx, req)
 }
 
 func (tpc *WrappingPluginStorageClient) OnCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest, opts ...grpc.CallOption) (*plgpb.OnCreateStorageBucketResponse, error) {

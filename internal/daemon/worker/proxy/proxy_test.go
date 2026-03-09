@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package proxy
@@ -16,7 +16,7 @@ import (
 func TestRegisterHandler(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	fn := func(context.Context, context.Context, DecryptFn, *ProxyDialer, string, *anypb.Any, RecordingManager) (ProxyConnFn, error) {
+	fn := func(context.Context, context.Context, DecryptFn, *ProxyDialer, string, *anypb.Any, RecordingManager, ...Option) (ProxyConnFn, error) {
 		return nil, nil
 	}
 	oldHandler := handlers
@@ -39,7 +39,7 @@ func TestRegisterHandler(t *testing.T) {
 
 func TestAlwaysTcpGetHandler(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	fn := func(context.Context, context.Context, DecryptFn, *ProxyDialer, string, *anypb.Any, RecordingManager) (ProxyConnFn, error) {
+	fn := func(context.Context, context.Context, DecryptFn, *ProxyDialer, string, *anypb.Any, RecordingManager, ...Option) (ProxyConnFn, error) {
 		return nil, nil
 	}
 	oldHandler := handlers

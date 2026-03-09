@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target_test
@@ -155,16 +155,16 @@ func TestRepository_ListTargets(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj1.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj2.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}),
 	)
@@ -327,16 +327,16 @@ func TestRepository_ListTargets_Multiple_Scopes(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj1.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj2.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}),
 	)
@@ -371,10 +371,10 @@ func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}))
 	require.NoError(t, err)
@@ -405,7 +405,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 
 	storeVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 2)
+	credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
@@ -415,7 +415,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	cred2 := credsStatic[1]
 
 	setupFn := func(tar target.Target) ([]target.CredentialSource, target.CredentialSources) {
-		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 5)
+		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), globals.UnspecifiedCredentialType, 5)
 		var ids target.CredentialSources
 		for _, cl := range credLibs {
 			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cl.GetPublicId())

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package handlers
@@ -77,11 +77,14 @@ func ApiErrorWithCode(c codes.Code) error {
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
 func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...any) error {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
 	return &ApiError{
 		Status: int32(runtime.HTTPStatusFromCode(c)),
 		Inner: &pb.Error{
 			Kind:    c.String(),
-			Message: fmt.Sprintf(msg, args...),
+			Message: msg,
 		},
 	}
 }

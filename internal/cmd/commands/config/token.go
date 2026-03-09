@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package config
@@ -136,7 +136,11 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
-		authToken = c.ReadTokenFromKeyring(keyringType, tokenName)
+		authToken, err = c.ReadTokenFromKeyring(keyringType, tokenName)
+		if err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
 	} else {
 		// Fallback to env/CLI but we can only get just the token value this way, at
 		// least for now

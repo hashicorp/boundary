@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 repository {
@@ -15,7 +15,7 @@ repository {
   plugin "semgrep" {
     use_git_ignore = true
     exclude = ["*_test.go", "website/*", "testing/*"]
-    config = ["p/gosec"]
+    config = ["p/gosec", ".semgrep/"]
   }
   
   plugin "codeql" {

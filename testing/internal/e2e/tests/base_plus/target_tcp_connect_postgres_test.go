@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package base_plus_test
@@ -25,7 +25,7 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -41,13 +41,13 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 		t,
 		ctx,
 		projectId,
-		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
+		c.PostgresPort,
+		[]target.Option{target.WithAddress(c.PostgresAddress)},
 	)
 	require.NoError(t, err)
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
-	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
+	credentialId, err := boundary.CreateStaticCredentialUsernamePasswordCli(
 		t,
 		ctx,
 		storeId,
@@ -58,8 +58,7 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
 	require.NoError(t, err)
 
-	var cmd *exec.Cmd
-	cmd = exec.CommandContext(ctx,
+	cmd := exec.CommandContext(ctx,
 		"boundary",
 		"connect", "postgres",
 		"-target-id", targetId,

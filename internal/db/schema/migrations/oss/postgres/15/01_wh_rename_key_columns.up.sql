@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -397,6 +397,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create trigger wh_insert_session_state after insert on session_state
     for each row execute function wh_insert_session_state();
 
@@ -404,6 +405,7 @@ begin;
   drop trigger wh_insert_session_connection_state on session_connection_state;
   drop function wh_insert_session_connection_state;
 
+-- Updated in 90/01_remove_session_connection_state.up.sql
   create function wh_insert_session_connection_state() returns trigger
   as $$
   declare

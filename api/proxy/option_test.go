@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package proxy
@@ -107,5 +107,14 @@ func Test_GetOpts(t *testing.T) {
 		opts, err = getOpts(WithApiClient(client))
 		require.NoError(t, err)
 		assert.Equal(client, opts.withApiClient)
+	})
+	t.Run("WithInactivityTimeout", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts()
+		require.NoError(t, err)
+		assert.Empty(opts.withInactivityTimeout)
+		opts, err = getOpts(WithInactivityTimeout(3 * time.Millisecond))
+		require.NoError(t, err)
+		assert.Equal(3*time.Millisecond, opts.withInactivityTimeout)
 	})
 }

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package job provides a Job and a Run struct suitable for persisting to
@@ -45,5 +45,5 @@
 //	nextJobRun = time.Now().Add(time.Hour)
 //
 //	repo, _ = job.NewRepository(db, db, wrapper)
-//	run, _ = repo.CompleteRun(ctx, run.PrivateId, job.Completed, nextJobRun)
+//	_ = repo.CompleteRun(ctx, run.PrivateId nextJobRun)
 package job

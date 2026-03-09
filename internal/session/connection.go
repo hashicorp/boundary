@@ -1,10 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	defaultConnectionTableName = "session_connection"
+	defaultConnectionTableName = "session_connection_with_status_view" // "session_connection"
 )
 
 // Connection contains information about session's connection to a target
@@ -44,6 +45,8 @@ type Connection struct {
 	UpdateTime *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// Version of the connection
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
+	// Status is a field derived from connected_time_range
+	Status string `json:"status,omitempty" gorm:"default:null"`
 
 	tableName string `gorm:"-"`
 }
@@ -94,6 +97,7 @@ func (c *Connection) Clone() any {
 		BytesDown:          c.BytesDown,
 		ClosedReason:       c.ClosedReason,
 		Version:            c.Version,
+		Status:             c.Status,
 	}
 	if c.CreateTime != nil {
 		clone.CreateTime = &timestamp.Timestamp{
@@ -181,6 +185,15 @@ func (c *Connection) validateNewConnection(ctx context.Context) error {
 	}
 	if c.UserClientIp == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing user client ip")
+	}
+	if ip := net.ParseIP(c.ClientTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given client tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.EndpointTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given endpoint tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.UserClientIp); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given user client ip is not an ip address")
 	}
 	return nil
 }

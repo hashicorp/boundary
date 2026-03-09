@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -106,7 +106,6 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, projectId stri
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s: name %s already exists", l.StoreId, l.Name)))
@@ -318,7 +317,6 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId stri
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,
@@ -365,6 +363,7 @@ type listLookupLibrary struct {
 	CredentialType                string
 	UsernameAttribute             string
 	PasswordAttribute             string
+	DomainAttribute               string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 }
@@ -397,6 +396,24 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 			up.sanitize()
 			cl.MappingOverride = up
 		}
+	case string(globals.UsernamePasswordDomainCredentialType):
+		if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" || pl.DomainAttribute != "" {
+			upd := allocUsernamePasswordDomainOverride()
+			upd.LibraryId = pl.PublicId
+			upd.UsernameAttribute = pl.UsernameAttribute
+			upd.PasswordAttribute = pl.PasswordAttribute
+			upd.DomainAttribute = pl.DomainAttribute
+			upd.sanitize()
+			cl.MappingOverride = upd
+		}
+	case string(globals.PasswordCredentialType):
+		if pl.PasswordAttribute != "" {
+			p := allocPasswordOverride()
+			p.LibraryId = pl.PublicId
+			p.PasswordAttribute = pl.PasswordAttribute
+			p.sanitize()
+			cl.MappingOverride = p
+		}
 	case string(globals.SshPrivateKeyCredentialType):
 		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" || pl.PrivateKeyPassphraseAttribute != "" {
 			pk := allocSshPrivateKeyOverride()
@@ -412,7 +429,7 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 }
 
 // TableName returns the table name for gorm.
-func (*listLookupLibrary) TableName() string { return "credential_vault_library_list_lookup" }
+func (*listLookupLibrary) TableName() string { return "credential_vault_generic_library_list_lookup" }
 
 // GetPublicId returns the public id.
 func (pl *listLookupLibrary) GetPublicId() string { return pl.PublicId }
@@ -448,7 +465,6 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 			return err
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", l.PublicId)))
 	}

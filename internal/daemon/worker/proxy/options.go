@@ -1,12 +1,16 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package proxy
 
 import (
+	"crypto/rand"
+	"io"
 	"net"
 
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/go-hclog"
+	"golang.org/x/crypto/ssh"
 )
 
 // Option - how Options are passed as arguments.
@@ -26,12 +30,19 @@ type Options struct {
 	WithInjectedApplicationCredentials []*serverpb.Credential
 	WithPostConnectionHook             func(net.Conn)
 	WithDnsServerAddress               string
+	WithTestKdcAddress                 string
+	WithTestKerberosServerHostname     string
+	WithLogger                         hclog.Logger
+	WithSshHostKeyCallback             ssh.HostKeyCallback
+	WithRandomReader                   io.Reader
 }
 
 func getDefaultOptions() Options {
 	return Options{
 		WithInjectedApplicationCredentials: nil,
 		WithPostConnectionHook:             nil,
+		WithLogger:                         hclog.NewNullLogger(),
+		WithRandomReader:                   rand.Reader,
 	}
 }
 
@@ -59,5 +70,41 @@ func WithPostConnectionHook(fn func(net.Conn)) Option {
 func WithDnsServerAddress(with string) Option {
 	return func(o *Options) {
 		o.WithDnsServerAddress = with
+	}
+}
+
+// WithTestKdcAddress allows specifying a test KDC address to use for testing
+func WithTestKdcAddress(with string) Option {
+	return func(o *Options) {
+		o.WithTestKdcAddress = with
+	}
+}
+
+// WithTestKerberosServerHostname allows specifying a test Kerberos server
+func WithTestKerberosServerHostname(with string) Option {
+	return func(o *Options) {
+		o.WithTestKerberosServerHostname = with
+	}
+}
+
+// WithLogger allows specifying a logger to be used during session proxy
+func WithLogger(l hclog.Logger) Option {
+	return func(o *Options) {
+		o.WithLogger = l
+	}
+}
+
+// WithSshHostKeyCallback allows specifying a ssh.HostKeyCallback function
+// to be used for host key verification.
+func WithSshHostKeyCallback(with ssh.HostKeyCallback) Option {
+	return func(o *Options) {
+		o.WithSshHostKeyCallback = with
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *Options) {
+		o.WithRandomReader = reader
 	}
 }

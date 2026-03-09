@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oidc
@@ -107,7 +107,6 @@ func Test_convertToProvider(t *testing.T) {
 	testAm.ApiUrl = allowedRedirect
 	testAm.Certificates = []string{tp.CACert()}
 
-	type args struct{}
 	tests := []struct {
 		name        string
 		am          *AuthMethod

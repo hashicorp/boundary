@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package credentialscmd
@@ -15,6 +15,7 @@ import (
 const (
 	usernameFlagName             = "username"
 	passwordFlagName             = "password"
+	domainFlagName               = "domain"
 	privateKeyFlagName           = "private-key"
 	privateKeyPassphraseFlagName = "private-key-passphrase"
 	secretFlagName               = "secret"
@@ -184,6 +185,7 @@ func printItemTable(item *credentials.Credential, resp *api.Response) string {
 var keySubstMap = map[string]string{
 	"username":                    "Username",
 	"password_hmac":               "Password HMAC",
+	"domain":                      "Domain",
 	"private_key_hmac":            "Private Key HMAC",
 	"private_key_passphrase_hmac": "Private Key Passphrase HMAC",
 }

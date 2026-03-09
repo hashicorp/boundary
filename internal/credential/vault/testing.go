@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -18,9 +18,11 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -115,7 +117,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 // libraries in the provided DB with the provided store id. If any errors
 // are encountered during the creation of the credential libraries, the
 // test will fail.
-func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, credType globals.CredentialType, count int) []*CredentialLibrary {
 	t.Helper()
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
@@ -123,7 +125,11 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 	var libs []*CredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), WithMethod(MethodGet))
+		opts := []Option{WithMethod(MethodGet)}
+		if credType != "" {
+			opts = append(opts, WithCredentialType(credType))
+		}
+		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), opts...)
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newCredentialLibraryId(ctx)
@@ -172,6 +178,44 @@ func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping
 		require.NoError(err2)
 		libs = append(libs, lib)
 	}
+	return libs
+}
+
+// TestLdapCredentialLibraries creates `count` number of Vault LDAP credential
+// libraries in the provided db with the provided credential store. If any
+// errors are encountered, the test will fail.
+func TestLdapCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*LdapCredentialLibrary {
+	t.Helper()
+	w := db.New(conn)
+
+	var libs []*LdapCredentialLibrary
+	for i := range count {
+		var staticOrDynamic string
+		switch mrand.Intn(2) {
+		case 0:
+			staticOrDynamic = "static-cred"
+		case 1:
+			staticOrDynamic = "creds"
+		}
+
+		lib, err := NewLdapCredentialLibrary(storeId, fmt.Sprintf("ldap/%s/role-%d", staticOrDynamic, i))
+		require.NoError(t, err)
+		require.NotNil(t, lib)
+
+		libId, err := newLdapCredentialLibraryId(t.Context())
+		require.NoError(t, err)
+		require.NotEmpty(t, libId)
+
+		lib.PublicId = libId
+		_, err = w.DoTx(t.Context(), db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, w db.Writer) error {
+				return w.Create(t.Context(), lib)
+			},
+		)
+		require.NoError(t, err)
+		libs = append(libs, lib)
+	}
+
 	return libs
 }
 
@@ -527,6 +571,10 @@ type testOptions struct {
 	clientKey           *ecdsa.PrivateKey
 	vaultVersion        string
 	serverCertHostNames []string
+	bindDn              string
+	bindPass            string
+	ldapUrl             string
+	ldapRootDomain      string
 }
 
 func getDefaultTestOptions(t testing.TB) testOptions {
@@ -548,7 +596,7 @@ func getDefaultTestOptions(t testing.TB) testOptions {
 		vaultTLS:            TestNoTLS,
 		dockerNetwork:       false,
 		tokenPeriod:         defaultPeriod,
-		serverCertHostNames: []string{"localhost"},
+		serverCertHostNames: []string{"localhost", "127.0.0.1", "::1"},
 	}
 }
 
@@ -658,6 +706,40 @@ func WithAllowedExtension(e string) TestOption {
 	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.allowedExtensions = append(o.allowedExtensions, e)
+	}
+}
+
+// WithBindDn sets the distinguished name to be used by the Vault LDAP secrets
+// engine.
+func WithBindDn(dn string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.bindDn = dn
+	}
+}
+
+// WithBindPass sets the password to be used by the Vault LDAP secrets engine.
+// It is also used to set the admin user password in the LDAP server.
+func WithBindPass(p string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.bindPass = p
+	}
+}
+
+// WithLdapUrl sets the URL to be used by the Vault LDAP secrets engine.
+func WithLdapUrl(u string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.ldapUrl = u
+	}
+}
+
+// WithLdapRootDomain controls the LDAP server's root domain.
+func WithLdapRootDomain(d string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.ldapRootDomain = d
 	}
 }
 
@@ -911,6 +993,81 @@ func (v *TestVaultServer) MountSSH(t testing.TB, opt ...TestOption) *vault.Secre
 	return s
 }
 
+// MountLdap mounts the Vault LDAP secrets engine on a Vault instance and
+// initializes it.
+//
+// Supported options include:
+//   - WithTestMountPath: Sets the mount path. Defaults to "ldap".
+//   - WithBindDn: Sets the BindDN to be used by the Vault LDAP secrets engine.
+//     Defaults to "cn=admin,dc=example,dc=org".
+//   - WithBindPass: Sets the password to be used by the Vault LDAP secrets
+//     engine. Defaults to "admin".
+//   - WithLdapUrl: Sets the URL of the LDAP server to be used by the Vault LDAP
+//     secrets engine. Defaults to "ldap://ldap".
+//
+// MountLdap also adds a Vault policy named 'ldap' to the standard set of
+// policies attached to tokens created with v.CreateToken. The policy is defined
+// as:
+//
+//	path "<ldapMountPath>/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
+func (v *TestVaultServer) MountLdap(t testing.TB, opt ...TestOption) {
+	require := require.New(t)
+	opts := getTestOpts(t, opt...)
+	vc := v.client(t).cl
+
+	maxTTL := 24 * time.Hour
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			maxTTL = time.Until(deadline) * 2
+		}
+	}
+
+	defaultTTL := maxTTL / 2
+	mountInput := &vault.MountInput{
+		Type:        "ldap",
+		Description: t.Name(),
+		Config: vault.MountConfigInput{
+			DefaultLeaseTTL: defaultTTL.String(),
+			MaxLeaseTTL:     maxTTL.String(),
+		},
+	}
+	mountPath := opts.mountPath
+	if mountPath == "" {
+		mountPath = "ldap/"
+	}
+	require.True(mountPath[len(mountPath)-1] == '/', "mount path must end with a slash")
+	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "ldap", pc)
+
+	// Create and write LDAP server config
+	bindDn := opts.bindDn
+	if bindDn == "" {
+		bindDn = "cn=admin,dc=example,dc=org"
+	}
+	bindPass := opts.bindPass
+	if bindPass == "" {
+		bindPass = "admin"
+	}
+	url := opts.ldapUrl
+	if url == "" {
+		url = "ldap://ldap"
+	}
+	ldapConfig := map[string]any{
+		"binddn":   bindDn,
+		"bindpass": bindPass,
+		"url":      url,
+	}
+	_, err := vc.Logical().Write(path.Join(mountPath, "config"), ldapConfig)
+	require.NoError(err)
+}
+
 // MountPKI mounts the Vault PKI secret engine and initializes it by
 // generating a root certificate authority and creating a default role on
 // the mount. The root CA is returned.
@@ -1033,10 +1190,16 @@ type TestVaultServer struct {
 	serverCertBundle *testCertBundle
 	clientCertBundle *testCertBundle
 
+	// Use any here instead of *dockertest.[Pool|Network|Resource] to avoid
+	// problems with dockertest not building for some netbsd architectures.
 	pool              any
-	vaultContainer    any
 	network           any
+	vaultContainer    any
+	ldapContainer     any
 	postgresContainer any
+
+	stopped  atomic.Bool
+	Shutdown func(t *testing.T)
 }
 
 // NewTestVaultServer creates and returns a TestVaultServer. Some Vault
@@ -1109,4 +1272,40 @@ func (d *TestDatabase) ValidateCredential(t testing.TB, s *vault.Secret) error {
 		return err
 	}
 	return nil
+}
+
+// TestLdapServer is returned from MountLdapServer and contains information
+// about how an LDAP server was setup. It is primarily used to test
+// Boundary <> Vault <> LDAP Server interactions.
+type TestLdapServer struct {
+	BindDomain string
+	BindPass   string
+	BindDn     string
+	Url        string
+}
+
+// MountLdapServer creates an LDAP server as a Docker container, within a
+// running Vault's Docker network. Additionally, it mounts and configures the
+// LDAP secrets engine in the passed in Vault instance.
+//
+// Supported options:
+//   - WithBindPass. Controls the LDAP server's admin password. Defaults to
+//     "admin".
+//   - WithLdapRootDomain. Controls the LDAP server's root domain. Defaults to
+//     "example.org".
+//
+// Some roles are added to the LDAP server as well as configured within Vault:
+//   - scientists: A group of unique members: cn=scientists,dc=example,dc=org
+//   - einstein: A user belonging to the scientists group: cn=einstein,dc=example,dc=org
+//   - newton: Another user beloging to the scientists group: cn=newton,dc=example,dc=org
+//
+// Note that the domain components (dc) will change accordingly if WithDomain is
+// passed in.
+//
+// Dynamic roles are also setup using LDIF templates. These roles trigger Vault
+// to create users on-demand and manage their lifecycle. All dynamic users are
+// added to the "scientists" group.
+func MountLdapServer(t testing.TB, v *TestVaultServer, opt ...TestOption) *TestLdapServer {
+	t.Helper()
+	return mountLdapServer(t, v, opt...)
 }

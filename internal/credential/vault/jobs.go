@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
@@ -130,7 +130,7 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for tokens that need to be renewed, it then creates
 // a vault client and renews each token.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *TokenRenewalJob) Run(ctx context.Context) error {
+func (r *TokenRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(TokenRenewalJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -169,6 +169,12 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	return nil
 }
 
+func isForbiddenError(err error) bool {
+	var respErr *vault.ResponseError
+	ok := errors.As(err, &respErr)
+	return ok && respErr.StatusCode == http.StatusForbidden
+}
+
 func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error {
 	const op = "vault.(TokenRenewalJob).renewToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
@@ -190,33 +196,34 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		return errors.Wrap(ctx, err, op)
 	}
 
-	var respErr *vault.ResponseError
 	renewedToken, err := vc.renewToken(ctx)
-	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
+	if err != nil {
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be
 		// cleaned up.
-		query, values := token.updateStatusQuery(ExpiredToken)
-		numRows, err := r.writer.Exec(ctx, query, values)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if numRows != 1 {
-			return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
-		}
-		if s.TokenStatus == string(CurrentToken) {
-			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.PublicId)
-		}
+		// Also, check if the token has already expired based on time to avoid attempting
+		// to renew the expired token against an Vault server that may no longer exist.
+		if isForbiddenError(err) || time.Now().After(token.ExpirationTime.AsTime()) {
+			query, values := token.updateStatusQuery(ExpiredToken)
+			numRows, err := r.writer.Exec(ctx, query, values)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if numRows != 1 {
+				return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
+			}
+			if s.TokenStatus == string(CurrentToken) {
+				event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.PublicId)
+			}
 
-		// Set credentials associated with this token to expired as Vault will already cascade delete them
-		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{ExpiredCredential, token.TokenHmac})
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			// Set credentials associated with this token to expired as Vault will already cascade delete them
+			_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{ExpiredCredential, token.TokenHmac})
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			}
+			// exit early as we mark the token as expired
+			return nil
 		}
-
-		return nil
-	}
-	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
 
@@ -356,7 +363,7 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for tokens that need to be revoked, it then creates
 // a vault client and revokes each token.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *TokenRevocationJob) Run(ctx context.Context) error {
+func (r *TokenRevocationJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(TokenRevocationJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -521,7 +528,7 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for credentials that need to be renewed, it then creates
 // a vault client and renews each credential.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *CredentialRenewalJob) Run(ctx context.Context) error {
+func (r *CredentialRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialRenewalJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -603,6 +610,9 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
+	}
+	if renewedCred == nil {
+		return errors.New(ctx, errors.Unknown, op, "vault returned empty credential")
 	}
 
 	cred.expiration = time.Duration(renewedCred.LeaseDuration) * time.Second
@@ -693,7 +703,7 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for credentials that need to be revoked, it then creates
 // a vault client and revokes each credential.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *CredentialRevocationJob) Run(ctx context.Context) error {
+func (r *CredentialRevocationJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialRevocationJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -844,7 +854,7 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 // Run deletes all vault credential stores in the repo that have been soft deleted.
 // Can not be run in parallel, if Run is invoked while already running an error with code
 // JobAlreadyRunning will be returned.
-func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
+func (r *CredentialStoreCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -944,7 +954,7 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 // Run deletes all Vault credential in the repo that have a null session_id and are not active.
 // Can not be run in parallel, if Run is invoked while already running an error with code
 // JobAlreadyRunning will be returned.
-func (r *CredentialCleanupJob) Run(ctx context.Context) error {
+func (r *CredentialCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialCleanupJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")

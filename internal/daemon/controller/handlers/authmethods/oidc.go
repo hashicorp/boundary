@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package authmethods
@@ -19,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"google.golang.org/grpc/codes"
 )
 
@@ -178,7 +179,14 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
-	if err != nil {
+	switch {
+	case errors.Match(errors.T(errors.AuthMethodInactive), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Cannot start authentication against an inactive OIDC auth method")
+	case errors.Match(errors.T(errors.RecordNotFound), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "Auth method %s was not found", req.GetAuthMethodId())
+	case errors.Match(errors.T(errors.InvalidParameter), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+	case err != nil:
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
@@ -325,7 +333,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
 
-func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateOidcRequest(_ context.Context, req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
 	switch req.GetCommand() {
@@ -412,6 +420,10 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		// Strip off everything after and including ".well-known/openid-configuration"
 		// but leave the "/" attached to the end.
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
+		iss, err := parseutil.NormalizeAddr(iss)
+		if err != nil {
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot normalize issuer"), errors.WithCode(errors.InvalidParameter))
+		}
 		issuer, err := url.Parse(iss)
 		if err != nil {
 			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
@@ -419,6 +431,10 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
+		apiUrl, err := parseutil.NormalizeAddr(apiUrl)
+		if err != nil {
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot normalize api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+		}
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
 			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))

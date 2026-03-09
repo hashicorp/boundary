@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package session
@@ -472,13 +472,9 @@ func newCert(ctx context.Context, jobId string, addresses []string, exp time.Tim
 
 	for _, addr := range addresses {
 		// First ensure we aren't looking at ports, regardless of IP or not
-		host, _, err := net.SplitHostPort(addr)
-		if err != nil {
-			if strings.Contains(err.Error(), "missing port") {
-				host = addr
-			} else {
-				return nil, nil, errors.Wrap(ctx, err, op)
-			}
+		host, _, err := util.SplitHostPort(addr)
+		if err != nil && !errors.Is(err, util.ErrMissingPort) {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		// Now figure out if it's an IP address or not. If ParseIP likes it, add
 		// to IP SANs. Otherwise DNS SANs.
@@ -575,34 +571,27 @@ func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 }
 
 type sessionListView struct {
-	// Session fields
-	PublicId                string               `json:"public_id,omitempty" gorm:"primary_key"`
-	UserId                  string               `json:"user_id,omitempty" gorm:"default:null"`
-	HostId                  string               `json:"host_id,omitempty" gorm:"default:null"`
-	TargetId                string               `json:"target_id,omitempty" gorm:"default:null"`
-	HostSetId               string               `json:"host_set_id,omitempty" gorm:"default:null"`
-	AuthTokenId             string               `json:"auth_token_id,omitempty" gorm:"default:null"`
-	ProjectId               string               `json:"project_id,omitempty" gorm:"default:null"`
-	Certificate             []byte               `json:"certificate,omitempty" gorm:"default:null"`
-	CtCertificatePrivateKey []byte               `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
-	CertificatePrivateKey   []byte               `json:"certificate_private_key,omitempty" gorm:"-"  wrapping:"pt,certificate_private_key"`
-	ExpirationTime          *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
-	CtTofuToken             []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
-	TofuToken               []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
-	TerminationReason       string               `json:"termination_reason,omitempty" gorm:"default:null"`
-	CreateTime              *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	UpdateTime              *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Version                 uint32               `json:"version,omitempty" gorm:"default:null"`
-	Endpoint                string               `json:"-" gorm:"default:null"`
-	ConnectionLimit         int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId                   string               `json:"key_id,omitempty" gorm:"default:null"`
-	ProtocolWorkerId        string               `json:"protocol_worker_id,omitempty" gorm:"default:null"`
+	// Session fields, we omit some fields that are not included when listing sessions.
+	PublicId          string               `gorm:"primary_key"`
+	UserId            string               `gorm:"default:null"`
+	HostId            string               `gorm:"default:null"`
+	HostSetId         string               `gorm:"default:null"`
+	TargetId          string               `gorm:"default:null"`
+	AuthTokenId       string               `gorm:"default:null"`
+	ProjectId         string               `gorm:"default:null"`
+	Certificate       []byte               `gorm:"default:null"`
+	ExpirationTime    *timestamp.Timestamp `gorm:"default:null"`
+	TerminationReason string               `gorm:"default:null"`
+	CreateTime        *timestamp.Timestamp `gorm:"default:current_timestamp"`
+	UpdateTime        *timestamp.Timestamp `gorm:"default:current_timestamp"`
+	Version           uint32               `gorm:"default:null"`
+	Endpoint          string               `gorm:"default:null"`
+	ConnectionLimit   int32                `gorm:"default:null"`
 
 	// State fields
-	Status          string               `json:"state,omitempty" gorm:"column:state"`
-	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
-	StartTime       *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
-	EndTime         *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
+	Status    string               `gorm:"column:state"`
+	StartTime *timestamp.Timestamp `gorm:"column:start_time"`
+	EndTime   *timestamp.Timestamp `gorm:"column:end_time"`
 }
 
 // TableName returns the tablename to override the default gorm table name
@@ -618,4 +607,111 @@ type deletedSession struct {
 // TableName returns the tablename to override the default gorm table name
 func (s *deletedSession) TableName() string {
 	return "session_deleted"
+}
+
+// ProxyCertificate represents a session id to proxy certificate mapping
+// It's stored during session authorization and used at connection authorization
+// time to lookup the proxy certificate, if applicable
+type ProxyCertificate struct {
+	SessionId           string `gorm:"primary_key"`
+	Certificate         []byte `gorm:"not_null"`
+	PrivateKey          []byte `gorm:"-" wrapping:"pt,private_key"`
+	PrivateKeyEncrypted []byte `gorm:"not_null" wrapping:"ct,private_key"`
+	KeyId               string `gorm:"not_null"`
+}
+
+// NewProxyCertificate creates a new in memory ProxyCertificate
+func NewProxyCertificate(ctx context.Context, sessionId string, privateKey, certificate []byte) (*ProxyCertificate, error) {
+	const op = "session.NewProxyCertificate"
+	switch {
+	case sessionId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+	case len(certificate) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	case len(privateKey) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private key")
+	}
+
+	return &ProxyCertificate{
+		SessionId:   sessionId,
+		Certificate: certificate,
+		PrivateKey:  privateKey,
+	}, nil
+}
+
+func allocProxyCertificate() *ProxyCertificate {
+	return &ProxyCertificate{}
+}
+
+// Clone creates a clone of the ProxyCertificate
+func (t *ProxyCertificate) Clone() *ProxyCertificate {
+	spc := &ProxyCertificate{
+		SessionId: t.SessionId,
+		KeyId:     t.KeyId,
+	}
+	if t.Certificate != nil {
+		spc.Certificate = make([]byte, len(t.Certificate))
+		copy(spc.Certificate, t.Certificate)
+	}
+	if t.PrivateKey != nil {
+		spc.PrivateKey = make([]byte, len(t.PrivateKey))
+		copy(spc.PrivateKey, t.PrivateKey)
+	}
+	if t.PrivateKeyEncrypted != nil {
+		spc.PrivateKeyEncrypted = make([]byte, len(t.PrivateKeyEncrypted))
+		copy(spc.PrivateKeyEncrypted, t.PrivateKeyEncrypted)
+	}
+
+	return spc
+}
+
+// VetForWrite implements db.VetForWrite() interface and validates the session proxy certificate
+func (t *ProxyCertificate) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "session.(ProxyCertificate).VetForWrite"
+	switch {
+	case t.SessionId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+	case len(t.Certificate) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	case len(t.PrivateKeyEncrypted) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted private key")
+	case t.KeyId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing key id")
+	}
+
+	return nil
+}
+
+// Encrypt the proxy cert before writing it to the db
+func (t *ProxyCertificate) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "session.(ProxyCertificate).Encrypt"
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, t, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to read cipher key id"))
+	}
+	t.KeyId = keyId
+	return nil
+}
+
+// Decrypt the proxy cert after reading it from the db
+func (t *ProxyCertificate) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "session.(ProxyCertificate).Decrypt"
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	if err := structwrapping.UnwrapStruct(ctx, cipher, t, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
+	return nil
+}
+
+// TableName returns the table name.
+func (t *ProxyCertificate) TableName() string {
+	return "session_proxy_certificate"
 }

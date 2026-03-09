@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 load _authorized_actions
@@ -17,6 +17,17 @@ function create_vault_generic_library() {
   boundary credential-libraries \
     create vault-generic $@
 }
+
+function create_vault_ldap_library() {
+  boundary credential-libraries \
+    create vault-ldap $@
+}
+
+function update_vault_ldap_library() {
+  boundary credential-libraries \
+    update vault-ldap $@
+}
+
 
 function create_vault_library() {
   boundary credential-libraries \

@@ -1,7 +1,10 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
+
+  -- Constraints wt_alias_too_short, wt_alias_no_suround_spaces, and wt_target_alias_too_long
+  -- have been updated in migration 96/01
 
   -- wt_alias defines a type for alias values
   create domain wt_alias as citext

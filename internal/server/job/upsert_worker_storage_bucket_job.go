@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package servers
@@ -35,7 +35,7 @@ func (usb *upsertWorkerStorageBucketJob) Status() scheduler.JobStatus { return s
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (usb *upsertWorkerStorageBucketJob) Run(_ context.Context) error { return nil }
+func (usb *upsertWorkerStorageBucketJob) Run(ctx context.Context, _ time.Duration) error { return nil }
 
 // NextRunIn returns the duration until the next job run should be scheduled.
 // Upsert Worker Storage Bucket will run every 24 hours unless we know there are

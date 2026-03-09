@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_ui_aws" {
@@ -10,7 +10,8 @@ scenario "e2e_ui_aws" {
   ]
 
   matrix {
-    builder = ["local", "crt"]
+    builder  = ["local", "crt"]
+    protocol = ["http", "https"]
   }
 
   locals {
@@ -35,8 +36,9 @@ scenario "e2e_ui_aws" {
 
     variables {
       instance_type = [
+        var.controller_instance_type,
         var.worker_instance_type,
-        var.controller_instance_type
+        var.target_instance_type
       ]
     }
   }
@@ -46,7 +48,8 @@ scenario "e2e_ui_aws" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -104,6 +107,7 @@ scenario "e2e_ui_aws" {
       worker_instance_type     = var.worker_instance_type
       worker_type_tags         = [local.egress_tag]
       aws_region               = var.aws_region
+      protocol                 = matrix.protocol
     }
   }
 
@@ -114,6 +118,7 @@ scenario "e2e_ui_aws" {
     ]
 
     variables {
+      deploy            = true
       ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       instance_type     = var.vault_instance_type
       instance_count    = 1
@@ -200,7 +205,8 @@ scenario "e2e_ui_aws" {
       target_address            = step.create_targets_with_tag.target_private_ips[0]
       target_user               = "ubuntu"
       target_port               = "22"
-      vault_addr                = step.create_vault_cluster.instance_public_ips[0]
+      vault_addr_public         = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_private        = step.create_vault_cluster.instance_addresses_private[0]
       vault_root_token          = step.create_vault_cluster.vault_root_token
       aws_access_key_id         = step.iam_setup.access_key_id
       aws_secret_access_key     = step.iam_setup.secret_access_key
@@ -208,10 +214,15 @@ scenario "e2e_ui_aws" {
       aws_host_set_ips          = step.create_targets_with_tag.target_private_ips
       worker_tag_egress         = local.egress_tag
       aws_region                = var.aws_region
+      alb_cert                  = matrix.protocol == "https" ? step.create_boundary_cluster.alb_cert : ""
     }
   }
 
-  output "test_results" {
-    value = step.run_e2e_test.test_results
+  output "controller_ips" {
+    value = step.create_boundary_cluster.controller_ips
+  }
+
+  output "worker_ips" {
+    value = step.create_boundary_cluster.worker_ips
   }
 }

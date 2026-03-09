@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -36,6 +36,7 @@ alter table server_worker
       on update cascade;
 
 drop view server_worker_aggregate;
+-- Removed in 94/01_split_worker_tag_tables.up.sql
 -- Replaces view created in 52/01_worker_operational_state.up.sql to add the worker local storage state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (

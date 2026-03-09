@@ -1,13 +1,15 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
@@ -91,4 +93,56 @@ func Test_correlationIdAnnotator(t *testing.T) {
 	corIds = md.Get(globals.CorrelationIdKey)
 	require.Len(t, corIds, 1)
 	assert.Equal(t, corId, corIds[0])
+}
+
+func Test_clientAgentHeadersAnnotator(t *testing.T) {
+	t.Parallel()
+	t.Run("returns metadata with user-agent", func(t *testing.T) {
+		t.Parallel()
+		req := &http.Request{
+			Header: map[string][]string{
+				"User-Agent": {"Boundary-client-agent/0.1.4"},
+			},
+		}
+		md := userAgentHeadersAnnotator(context.Background(), req)
+		require.NotNil(t, md)
+		assert.Equal(t, []string{"Boundary-client-agent/0.1.4"}, md.Get("userAgents"))
+	})
+
+	t.Run("returns empty metadata if no user-agent header", func(t *testing.T) {
+		t.Parallel()
+		req := &http.Request{Header: map[string][]string{}}
+		md := userAgentHeadersAnnotator(context.Background(), req)
+		assert.Empty(t, md)
+	})
+}
+
+func Test_WithDisablePathLengthFallback(t *testing.T) {
+	ctx := context.Background()
+	reqPath := "/v1/example"
+	mux := newGrpcGatewayMux()
+
+	assert.NotNil(t, mux)
+
+	err := mux.HandlePath("GET", reqPath, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		_, _ = fmt.Fprintf(w, "%s", r.Method)
+	})
+	assert.NoError(t, err)
+
+	err = mux.HandlePath("POST", reqPath, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		_, _ = fmt.Fprintf(w, "%s", r.Method)
+	})
+	assert.NoError(t, err)
+
+	r, err := http.NewRequestWithContext(ctx, "POST", reqPath, bytes.NewReader(nil))
+	assert.NoError(t, err)
+
+	r.Header.Set("X-HTTP-Method-Override", "GET")
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	body := w.Body.String()
+	assert.Equal(t, "POST", body)
 }

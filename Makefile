@@ -27,7 +27,6 @@ tools: golangci-lint
 	go generate -tags tools tools/tools.go
 	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
 	go install github.com/mfridman/tparse@v0.13.1
-	go install github.com/hashicorp/copywrite@v0.16.6
 
 # golangci-lint recommends installing the binary directly, instead of using go get
 # See the note: https://golangci-lint.run/usage/install/#install-from-source
@@ -37,7 +36,7 @@ golangci-lint:
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
 		curl -sSfL \
-			https://raw.githubusercontent.com/golangci/golangci-lint/9a8a056e9fe49c0e9ed2287aedce1022c79a115b/install.sh | sh -s -- -b $(GO_PATH)/bin v1.55.2; \
+			https://raw.githubusercontent.com/golangci/golangci-lint/3f6f9043a8d0048ec075d2ace970b256cdf37a96/install.sh | sh -s -- -b $(GO_PATH)/bin v2.4.0; \
 	fi;
 
 .PHONY: cleangen
@@ -58,6 +57,11 @@ build: build-ui-ifne
 	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
+.PHONY: build-no-ui
+build-no-ui:
+	@echo "==> Building Boundary without UI features"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
@@ -65,6 +69,13 @@ install: build
 .PHONY: install-no-plugins
 install-no-plugins: export SKIP_PLUGIN_BUILD=1
 install-no-plugins: install
+
+.PHONY: build-pprof
+build-pprof: BUILD_TAGS+=pprof
+build-pprof: BUILD_TAGS+=ui
+build-pprof:
+	@echo "==> Building Boundary with memory pprof enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
@@ -122,7 +133,7 @@ clean-ui:
 
 .PHONY: build-ui-ifne
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
+ifeq (,$(wildcard internal/ui/.tmp/boundary-ui/ui/admin/dist))
 	@echo "==> No UI assets found, building..."
 	@$(MAKE) build-ui
 else
@@ -134,7 +145,7 @@ perms-table:
 	@go run internal/website/permstable/permstable.go
 
 .PHONY: gen
-gen: cleangen proto api cli perms-table fmt copywrite
+gen: cleangen proto api cli perms-table fmt #copywrite - Removing copywrite; we will need to switch to IBM's tooling, when available
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -155,6 +166,12 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_org_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_project_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_org_individual_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_org.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_project.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant_scope.pb.go
@@ -273,15 +290,16 @@ protolint:
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
 		--config buf.breaking.wire.yaml
 
-.PHONY: copywrite
-copywrite:
-	copywrite headers
+# Removing copywrite; we will need to switch to IBM's tooling, when available
+#.PHONY: copywrite
+#copywrite:
+#	copywrite headers
 	# In the protobuf API directories, remove the BUSL headers
 	# and rerun copywrite with the directory specific configuration.
-	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
-	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
-	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
-	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
+#	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
+#	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
+#	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
+#	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed

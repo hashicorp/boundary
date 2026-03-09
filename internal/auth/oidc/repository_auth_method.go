@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oidc
@@ -179,7 +179,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			var rowCnt int
 			for rows.Next() {
 				rowCnt += 1
-				err = r.reader.ScanRows(ctx, rows, &result)
+				err = reader.ScanRows(ctx, rows, &result)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for account"))
 				}

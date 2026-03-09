@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package sessions
@@ -84,7 +84,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -102,9 +102,10 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 			return nil, handlers.ForbiddenError()
 		}
 		outputFields = authResults.FetchOutputFields(perms.Resource{
-			Id:      ses.GetPublicId(),
-			ScopeId: ses.ProjectId,
-			Type:    resource.Session,
+			Id:            ses.GetPublicId(),
+			ScopeId:       ses.ProjectId,
+			Type:          resource.Session,
+			ParentScopeId: authResults.Scope.ParentScopeId,
 		}, action.Read).SelfOrDefaults(authResults.UserId)
 	} else {
 		var ok bool
@@ -139,7 +140,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -290,7 +291,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	// Ignore decryption failures to ensure the user can always cancel a session.
-	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf, true)
+	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf, true, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -322,9 +323,10 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 			return nil, handlers.ForbiddenError()
 		}
 		outputFields = authResults.FetchOutputFields(perms.Resource{
-			Id:      ses.GetPublicId(),
-			ScopeId: ses.ProjectId,
-			Type:    resource.Session,
+			Id:            ses.GetPublicId(),
+			ScopeId:       ses.ProjectId,
+			Type:          resource.Session,
+			ParentScopeId: authResults.Scope.ParentScopeId,
 		}, action.Cancel).SelfOrDefaults(authResults.UserId)
 	} else {
 		var ok bool
@@ -384,11 +386,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, ignoreSessionDecryptionFailure bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, ignoreSessionDecryptionFailure, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Session), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List:
 		parentId = id
@@ -428,7 +430,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, ignor
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Session, opts...)
 }
 
 func toProto(ctx context.Context, in *session.Session, opt ...handlers.Option) (*pb.Session, error) {
@@ -575,9 +577,10 @@ func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 
 func newOutputOpts(ctx context.Context, item *session.Session, scopeIds map[string]*scopes.ScopeInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		Type:    resource.Session,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetProjectId(),
+		Type:          resource.Session,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetProjectId(),
+		ParentScopeId: scopeIds[item.ProjectId].ParentScopeId,
 	}
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {

@@ -1,9 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target
 
 import (
+	"crypto/rand"
+	"io"
 	"net"
 	"time"
 
@@ -55,7 +57,10 @@ type options struct {
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
 	WithStartPageAfterItem     pagination.Item
+	WithAlias                  *talias.Alias
 	withAliases                []*talias.Alias
+	withTargetId               string
+	withRandomReader           io.Reader
 }
 
 func getDefaultOptions() options {
@@ -83,6 +88,8 @@ func getDefaultOptions() options {
 		WithIngressWorkerFilter:    "",
 		WithAddress:                "",
 		WithNetResolver:            net.DefaultResolver,
+		withTargetId:               "",
+		withRandomReader:           rand.Reader,
 	}
 }
 
@@ -282,5 +289,26 @@ func WithStartPageAfterItem(item pagination.Item) Option {
 func WithAliases(in []*talias.Alias) Option {
 	return func(o *options) {
 		o.withAliases = in
+	}
+}
+
+// WithAlias provides an option to provide a single alias.
+func WithAlias(in *talias.Alias) Option {
+	return func(o *options) {
+		o.WithAlias = in
+	}
+}
+
+// WithTargetId provides an option to provide a target ID.
+func WithTargetId(in string) Option {
+	return func(o *options) {
+		o.withTargetId = in
+	}
+}
+
+// WithRandomReader provides an option to specify a random reader.
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = reader
 	}
 }

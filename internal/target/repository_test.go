@@ -1,10 +1,12 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package target
 
 import (
 	"context"
+	"crypto/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +24,8 @@ func TestNewRepository(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
+	testReader := strings.NewReader("notrandom")
+
 	type args struct {
 		r    db.Reader
 		w    db.Writer
@@ -47,6 +51,7 @@ func TestNewRepository(t *testing.T) {
 				writer:       rw,
 				kms:          testKms,
 				defaultLimit: db.DefaultLimit,
+				randomReader: rand.Reader,
 			},
 			wantErr: false,
 		},
@@ -78,6 +83,9 @@ func TestNewRepository(t *testing.T) {
 				r:   nil,
 				w:   rw,
 				kms: testKms,
+				opts: []Option{
+					WithRandomReader(testReader),
+				},
 			},
 			want:          nil,
 			wantErr:       true,
@@ -91,9 +99,10 @@ func TestNewRepository(t *testing.T) {
 				kms: testKms,
 				opts: []Option{
 					WithPermissions([]perms.Permission{
-						{ScopeId: "test1", Resource: resource.Target},
-						{ScopeId: "test2", Resource: resource.Target},
+						{GrantScopeId: "test1", Resource: resource.Target},
+						{GrantScopeId: "test2", Resource: resource.Target},
 					}),
+					WithRandomReader(testReader),
 				},
 			},
 			want: &Repository{
@@ -102,9 +111,10 @@ func TestNewRepository(t *testing.T) {
 				kms:          testKms,
 				defaultLimit: db.DefaultLimit,
 				permissions: []perms.Permission{
-					{ScopeId: "test1", Resource: resource.Target},
-					{ScopeId: "test2", Resource: resource.Target},
+					{GrantScopeId: "test1", Resource: resource.Target},
+					{GrantScopeId: "test2", Resource: resource.Target},
 				},
+				randomReader: testReader,
 			},
 			wantErr: false,
 		},
@@ -116,8 +126,8 @@ func TestNewRepository(t *testing.T) {
 				kms: testKms,
 				opts: []Option{
 					WithPermissions([]perms.Permission{
-						{ScopeId: "test1", Resource: resource.Target},
-						{ScopeId: "test2", Resource: resource.Host},
+						{GrantScopeId: "test1", Resource: resource.Target},
+						{GrantScopeId: "test2", Resource: resource.Host},
 					}),
 				},
 			},

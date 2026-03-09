@@ -1,14 +1,17 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -26,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-version"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -44,7 +48,15 @@ const (
 	// apiErrHeader defines an http header for encoded api errors from the
 	// grpc server.
 	apiErrHeader = "x-api-err"
+
+	// boundaryClientAgentProduct defines the product name used to identify the
+	// Boundary client agent in user-agent parsing and validation logic.
+	boundaryClientAgentProduct = "Boundary-client-agent"
 )
+
+// Regular expression to parse user-agent product, version, and comments
+// Follows the structure defined in RFC 9110: https://datatracker.ietf.org/doc/html/rfc9110#name-user-agent
+var userAgentRegex = regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
 
 // customContextServerStream wraps the grpc.ServerStream interface and lets us
 // set a custom context
@@ -242,7 +254,7 @@ func sharedRequestInterceptorLogic(
 	switch {
 	case requestInfo.Ticket == "":
 		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (missing ticket)")
-	case requestInfo.Ticket != ticket:
+	case subtle.ConstantTimeCompare([]byte(requestInfo.Ticket), []byte(ticket)) != 1:
 		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (bad ticket)")
 	}
 
@@ -393,16 +405,10 @@ func aliasResolutionInterceptor(
 		}
 		interceptorCtx, err = alias.ResolveRequestIds(interceptorCtx, reqMsg, r)
 		if err != nil {
-			// Since this is intercepted prior to checking that the requester
-			// is authorized to make the request, returning a 404 here and a 401
-			// when the request is checked in the handler would expose which
-			// aliases exist. Instead, we return a unauthenticated error here so there
-			// is no way to distinguish between a missing alias and an existing
-			// alias that points to a destination the requester is not allowed
-			// to perform an action on.
-			// handlers.UnauthenticatedError() turns into an http 401 status
-			// code "Unauthorized".
-			return nil, handlers.UnauthenticatedError()
+			// At this point, the request is unauthorized, therefore return a
+			// static error rather than exposing what the result of
+			// `ResolveRequestIds` was.
+			return nil, handlers.NotFoundError()
 		}
 		return handler(interceptorCtx, req)
 	}
@@ -453,20 +459,77 @@ func eventsRequestInterceptor(
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (any, error,
 	) {
+		var userAgents []*event.UserAgent
+		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
+			if values := md.Get(userAgentsKey); len(values) > 0 {
+				userAgents = parseUserAgents(values[0])
+			}
+		}
 		if msg, ok := req.(proto.Message); ok {
 			// Clone the request before writing it to the audit log,
 			// in case downstream interceptors modify it.
 			clonedMsg := proto.Clone(msg)
+			request := &event.Request{
+				Details:    clonedMsg,
+				UserAgents: userAgents,
+			}
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
-			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
+			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(request)); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg observation: %s", err)
 			}
 		}
 
 		return handler(interceptorCtx, req)
 	}
+}
+
+// parseUserAgents extracts structured UserAgent data from a raw User-Agent header string.
+// Version validation is applied only to Boundary-client-agent entries, which are excluded
+// if the version starts with 'v' or is not a valid semantic version.
+// Comments are split and normalized into a slice of strings.
+func parseUserAgents(rawUserAgent string) []*event.UserAgent {
+	var userAgents []*event.UserAgent
+	matches := userAgentRegex.FindAllStringSubmatch(rawUserAgent, -1)
+
+	for _, match := range matches {
+		product := strings.TrimSpace(match[1])
+		agentVersion := strings.TrimSpace(match[2])
+
+		// Only apply version validation for Boundary-client-agent
+		if product == boundaryClientAgentProduct {
+			if strings.HasPrefix(agentVersion, "v") {
+				// Invalid version format (starting with 'v')
+				continue
+			}
+			if _, err := version.NewSemver(agentVersion); err != nil {
+				// Invalid version
+				continue
+			}
+		}
+
+		agentData := &event.UserAgent{
+			Product:        product,
+			ProductVersion: agentVersion,
+		}
+
+		if len(match) > 3 && match[3] != "" {
+			// Clean up and split comments
+			commentsRaw := strings.Split(match[3], ";")
+			var comments []string
+			for _, c := range commentsRaw {
+				if trimmed := strings.TrimSpace(c); trimmed != "" {
+					comments = append(comments, trimmed)
+				}
+			}
+			if len(comments) > 0 {
+				agentData.Comments = comments
+			}
+		}
+		userAgents = append(userAgents, agentData)
+	}
+	return userAgents
 }
 
 func eventsResponseInterceptor(

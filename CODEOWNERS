@@ -1,12 +1,16 @@
 # These owners will be the default owners for everything in
 # the repo, unless a later match takes precedence.
-@hashicorp/boundary
+* @hashicorp/boundary
 
-# release configuration
+# engineering and web presence get notified of, and can approve changes to, web tooling, but not content.
 
-/.release/                               @hashicorp/github-secure-boundary
-/.github/workflows/build.yml             @hashicorp/github-secure-boundary
+/website/ @hashicorp/web-presence @hashicorp/boundary
+/website/data/
+/website/public/
+/website/content/
 
-# education
+# education and engineering get notified of, and can approve changes to web content.
 
-/website/content/                        @hashicorp/boundary-education-approvers
+/website/data/		    @hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/public/		@hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/content/	    @hashicorp/boundary-education-approvers @hashicorp/boundary

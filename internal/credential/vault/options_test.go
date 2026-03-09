@@ -1,10 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -130,5 +131,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withMappingOverride = unknownMapper(1)
 		assert.Equal(t, opts, testOpts)
+	})
+
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts := getOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
+		assert.Equal(opts, testOpts)
 	})
 }

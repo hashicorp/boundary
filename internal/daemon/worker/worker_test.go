@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package worker
@@ -9,16 +9,21 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/worker/servers/services"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
@@ -31,11 +36,34 @@ import (
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestWorkerNew(t *testing.T) {
+	knownHostsPath := t.TempDir() + "/known_hosts"
+	nonexistantKnownHostsPath := t.TempDir() + "/does_not_exist"
+	corruptedKnownHostsPath := t.TempDir() + "/corrupted_known_hosts"
+
+	file, err := os.Create(knownHostsPath)
+	require.NoError(t, err)
+	defer file.Close()
+
+	signer, err := ssh.NewSignerFromKey(ed25519.NewKeyFromSeed([]byte("foobfoobfoobfoobfoobfoobfoobfoob")))
+	require.NoError(t, err)
+	line := fmt.Sprintf("::1 %s", string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
+	_, err = file.WriteString(line)
+
+	require.NoError(t, err)
+
+	corruptFile, err := os.Create(corruptedKnownHostsPath)
+	require.NoError(t, err)
+	defer corruptFile.Close()
+
+	_, err = corruptFile.WriteString("this is not valid known hosts content")
+	require.NoError(t, err)
+
 	tests := []struct {
 		name       string
 		in         *Config
@@ -170,6 +198,105 @@ func TestWorkerNew(t *testing.T) {
 				assert.Equal(t, w.localStorageState.Load().(server.LocalStorageState).String(), server.UnknownLocalStorageState.String())
 			},
 		},
+		{
+			name: "worker host service server is the unimplemented one by default",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker:       &config.Worker{},
+					SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Equal(t, wpbs.UnimplementedHostServiceServer{}, w.HostServiceServer)
+			},
+		},
+		{
+			name: "valid with no known hosts path",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Nil(t, w.SshKnownHostsCallback.Load())
+			},
+		},
+		{
+			name: "valid known hosts path",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker: &config.Worker{
+						SshKnownHostsPath: knownHostsPath,
+					},
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.NotNil(t, w.SshKnownHostsCallback.Load())
+			},
+		},
+		{
+			name: "invalid known hosts path",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker: &config.Worker{
+						SshKnownHostsPath: nonexistantKnownHostsPath,
+					},
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr:    true,
+			expErrMsg: "no such file or directory",
+		},
+		{
+			name: "corrupted known hosts file",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker: &config.Worker{
+						SshKnownHostsPath: corruptedKnownHostsPath,
+					},
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr:    true,
+			expErrMsg: "illegal base64 data at input byte",
+		},
 	}
 
 	for _, tt := range tests {
@@ -181,13 +308,17 @@ func TestWorkerNew(t *testing.T) {
 			}
 			if util.IsNil(tt.in.Eventer) {
 				require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
-				defer event.TestResetSystEventer(t)
+				t.Cleanup(func() { event.TestResetSystEventer(t) })
 				tt.in.Eventer = event.SysEventer()
 			}
 
+			currentHostServiceFactory := hostServiceServerFactory
+			hostServiceServerFactory = nil
+			t.Cleanup(func() { hostServiceServerFactory = currentHostServiceFactory })
+
 			w, err := New(context.Background(), tt.in)
 			if tt.expErr {
-				require.EqualError(t, err, tt.expErrMsg)
+				require.ErrorContains(t, err, tt.expErrMsg)
 				require.Nil(t, w)
 				return
 			}
@@ -198,6 +329,201 @@ func TestWorkerNew(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkerReload(t *testing.T) {
+	knownHostsPath := t.TempDir() + "/known_hosts"
+	file, err := os.Create(knownHostsPath)
+	require.NoError(t, err)
+	defer file.Close()
+
+	signer, err := ssh.NewSignerFromKey(ed25519.NewKeyFromSeed([]byte("foobfoobfoobfoobfoobfoobfoobfoob")))
+	require.NoError(t, err)
+
+	dummyAddr := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 22}
+	line := fmt.Sprintf("github.com %s", string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
+	_, err = file.WriteString(line)
+	require.NoError(t, err)
+
+	t.Run("default config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker:       &config.Worker{},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+		assert.Nil(w.SshKnownHostsCallback.Load())
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+		assert.Nil(w.SshKnownHostsCallback.Load())
+	})
+
+	t.Run("new config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker: &config.Worker{
+					SuccessfulControllerRPCGracePeriodDuration: 5 * time.Second,
+					ControllerRPCCallTimeoutDuration:           10 * time.Second,
+					GetDownstreamWorkersTimeoutDuration:        20 * time.Second,
+					SshKnownHostsPath:                          knownHostsPath,
+				},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+		cb := w.SshKnownHostsCallback.Load()
+		require.NotNil(cb)
+		err = (*cb)("github.com:22", dummyAddr, signer.PublicKey())
+		assert.NoError(err)
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+		cb = w.SshKnownHostsCallback.Load()
+		require.NotNil(cb)
+		err = (*cb)("github.com:22", dummyAddr, signer.PublicKey())
+		assert.NoError(err)
+	})
+
+	t.Run("new config is different", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker: &config.Worker{
+					SuccessfulControllerRPCGracePeriodDuration: 5 * time.Second,
+					ControllerRPCCallTimeoutDuration:           10 * time.Second,
+					GetDownstreamWorkersTimeoutDuration:        20 * time.Second,
+					SshKnownHostsPath:                          knownHostsPath,
+				},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+		cb := w.SshKnownHostsCallback.Load()
+		require.NotNil(cb)
+		err = (*cb)("github.com:22", dummyAddr, signer.PublicKey())
+		assert.NoError(err)
+
+		// Update the config with new values
+		newKnownHostsFile := t.TempDir() + "/new_known_hosts"
+		newFile, err := os.Create(newKnownHostsFile)
+		require.NoError(err)
+		defer newFile.Close()
+
+		newSigner, err := ssh.NewSignerFromKey(ed25519.NewKeyFromSeed([]byte("noobnoobnoobnoobnoobnoobnoobnoob")))
+		require.NoError(err)
+
+		line := fmt.Sprintf("github.com %s", string(ssh.MarshalAuthorizedKey(newSigner.PublicKey())))
+		_, err = newFile.WriteString(line)
+		require.NoError(err)
+
+		cfg.RawConfig.Worker.SuccessfulControllerRPCGracePeriodDuration = 30 * time.Second
+		cfg.RawConfig.Worker.ControllerRPCCallTimeoutDuration = 35 * time.Second
+		cfg.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration = 40 * time.Second
+		cfg.RawConfig.Worker.SshKnownHostsPath = newKnownHostsFile
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(30*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(30*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(35*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(35*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(35*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(40*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+		cb = w.SshKnownHostsCallback.Load()
+		require.NotNil(cb)
+
+		// Old signer should fail
+		err = (*cb)("github.com:22", dummyAddr, signer.PublicKey())
+		assert.Error(err)
+		// New signer should work
+		err = (*cb)("github.com:22", dummyAddr, newSigner.PublicKey())
+		assert.NoError(err)
+	})
 }
 
 func TestSetupWorkerAuthStorage(t *testing.T) {
@@ -332,7 +658,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 
 func Test_Worker_getSessionTls(t *testing.T) {
 	require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
-	defer event.TestResetSystEventer(t)
+	t.Cleanup(func() { event.TestResetSystEventer(t) })
 
 	conf := &Config{
 		Server: &base.Server{
@@ -348,7 +674,7 @@ func Test_Worker_getSessionTls(t *testing.T) {
 	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
 	w, err := New(context.Background(), conf)
 	require.NoError(t, err)
-	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now(), LastCalculatedUpstreams: nil})
+	w.lastRoutingInfoSuccess.Store(&LastRoutingInfo{RoutingInfoResponse: &services.RoutingInfoResponse{}, RoutingInfoTime: time.Now(), LastCalculatedUpstreams: nil})
 	w.baseContext = context.Background()
 
 	t.Run("success", func(t *testing.T) {

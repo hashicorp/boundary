@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 # For this scenario to work, add the following line to /etc/hosts
@@ -17,7 +17,6 @@ scenario "e2e_docker_base_plus" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
@@ -68,7 +67,8 @@ scenario "e2e_docker_base_plus" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
@@ -80,7 +80,7 @@ scenario "e2e_docker_base_plus" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
@@ -98,6 +98,18 @@ scenario "e2e_docker_base_plus" {
     variables {
       image_name   = "${var.docker_mirror}/osixia/openldap:latest"
       network_name = [local.network_cluster]
+    }
+  }
+
+  step "create_host" {
+    module = module.docker_openssh_server
+    depends_on = [
+      step.create_docker_network
+    ]
+    variables {
+      image_name            = "${var.docker_mirror}/linuxserver/openssh-server:latest"
+      network_name          = [local.network_cluster]
+      private_key_file_path = local.aws_ssh_private_key_path
     }
   }
 
@@ -120,12 +132,14 @@ scenario "e2e_docker_base_plus" {
       local_boundary_dir        = step.build_boundary_docker_image.cli_zip_path
       local_boundary_src_dir    = local.local_boundary_src_dir
       aws_ssh_private_key_path  = local.aws_ssh_private_key_path
-      target_address            = step.create_boundary_database.container_name
-      target_port               = step.create_boundary_database.port
+      target_address            = step.create_host.address
+      target_port               = step.create_host.port
       target_user               = "ubuntu"
       postgres_user             = step.create_boundary_database.user
       postgres_password         = step.create_boundary_database.password
       postgres_database_name    = step.create_boundary_database.database_name
+      postgres_address          = step.create_boundary_database.container_name
+      postgres_port             = step.create_boundary_database.port
       ldap_address              = step.create_ldap_server.address
       ldap_domain_dn            = step.create_ldap_server.domain_dn
       ldap_admin_dn             = step.create_ldap_server.admin_dn

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package credential defines interfaces shared by other packages that
@@ -132,6 +132,21 @@ type JsonObject struct {
 type UsernamePassword interface {
 	Credential
 	Username() string
+	Password() Password
+}
+
+// UsernamePasswordDomain is a credential containing a username, a password, and a domain.
+type UsernamePasswordDomain interface {
+	Credential
+	Username() string
+	Password() Password
+	Domain() string
+}
+
+// PasswordOnly is a credential containing a password.
+// Does not follow naming convention to avoid conflict with existing Password type.
+type PasswordOnly interface {
+	Credential
 	Password() Password
 }
 

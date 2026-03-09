@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 set -e
@@ -62,3 +62,11 @@ done
 psql -v "ON_ERROR_STOP=1" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB"   -q <<EOSQL
 update pg_database set datistemplate = true, datallowconn = false where datname = 'boundary_template';
 EOSQL
+
+# Create database from template
+if [ -n "$TEST_DATABASE_UP_WITH_OP" ]; then
+    psql -v "ON_ERROR_STOP=1" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -q <<EOSQL
+    create database op template boundary_template owner ${POSTGRES_USER};
+EOSQL
+    echo "Created operational database 'op' based on boundary_template"
+fi

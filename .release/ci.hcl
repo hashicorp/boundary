@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 schema = "1"
@@ -7,7 +7,7 @@ project "boundary" {
   team = "#proj-boundary-release-engineering"
 
   slack {
-    notification_channel = "C01BWLSMJ03"
+    notification_channel = "C09LCN8EY0H"
   }
 
   github {

@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2020, 2025
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
@@ -7,6 +7,7 @@ begin;
 drop trigger wh_insert_session_connection on session_connection;
 drop function wh_insert_session_connection();
 
+-- Updated in 90/01_remove_session_connection_state
 create function wh_insert_session_connection() returns trigger
 as $$
 declare

@@ -1,9 +1,10 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package credential
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -118,5 +119,15 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 		assert.Equal(opts.WithStartPageAfterItem.GetCreateTime(), timestamp.New(createTime))
+	})
+
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts, err := GetOpts(WithRandomReader(reader))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.WithRandomReader = reader
+		assert.Equal(opts, testOpts)
 	})
 }

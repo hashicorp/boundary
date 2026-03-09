@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package credentiallibrariescmd
@@ -151,6 +151,8 @@ func printItemTable(item *credentiallibraries.CredentialLibrary, resp *api.Respo
 		keySubstMap = genericKeySubstMap
 	case "vault-ssh-certificate":
 		keySubstMap = sshCertKeySubstMap
+	case "vault-ldap":
+		keySubstMap = ldapKeySubstMap
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
@@ -217,4 +219,8 @@ var sshCertKeySubstMap = map[string]string{
 	"key_id":           "Key ID",
 	"critical_options": "Critical Options",
 	"extensions":       "Extensions",
+}
+
+var ldapKeySubstMap = map[string]string{
+	"path": "Path",
 }

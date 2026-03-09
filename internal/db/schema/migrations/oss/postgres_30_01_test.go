@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2020, 2025
 // SPDX-License-Identifier: BUSL-1.1
 
 package oss_test
@@ -474,6 +474,7 @@ type dek struct {
 	CreateTime time.Time
 	Purpose    string
 }
+
 type dekVersion struct {
 	PrivateId        string
 	DataKeyId        string

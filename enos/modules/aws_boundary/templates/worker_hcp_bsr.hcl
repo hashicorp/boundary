@@ -1,23 +1,23 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
 listener "tcp" {
-  purpose = "proxy"
+  purpose     = "proxy"
   tls_disable = true
-  address = "0.0.0.0"
+  address     = "${listener_address}"
 }
 
 hcp_boundary_cluster_id = "${hcp_boundary_cluster_id}"
 
 worker {
-  public_addr = "${public_addr}"
+  public_addr = "${public_address}"
 
   tags {
     type   = ${type}
     region = ["${region}"]
   }
 
-  auth_storage_path = "/tmp/boundary/worker"
+  auth_storage_path = "${auth_storage_path}/worker"
   recording_storage_path = "${recording_storage_path}"
 }
 
