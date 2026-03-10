@@ -115,8 +115,8 @@ variable "worker_type_tags" {
   default     = ["prod", "webservers"]
 }
 
-variable "controller_addresses" {
-  description = "A list of addresses that will be used as initial_upstreams in the worker's configuration"
+variable "upstream_ips" {
+  description = "The network address of the upstream entity for a downstream worker to connect to"
   type        = list(string)
 }
 
@@ -157,6 +157,12 @@ variable "vpc_cidr_ipv6" {
   default     = null
 }
 
+variable "subnet_ids" {
+  description = "List of subnet ids to use with instances"
+  type        = list(string)
+  default     = []
+}
+
 variable "ip_version" {
   description = "ip version used to setup boundary instance, should be 4, 6, or dual"
   type        = string
@@ -178,4 +184,10 @@ variable "vault_transit_token" {
   description = "vault token used for kms transit in the boundary config"
   type        = string
   default     = ""
+}
+
+variable "create_subnet" {
+  description = "Whether or not to create a separate subnet for the worker in order to isolate it from other resources. If false, subnet_ids must be provided."
+  type        = bool
+  default     = false
 }

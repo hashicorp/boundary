@@ -209,8 +209,9 @@ scenario "e2e_aws" {
       boundary_install_dir = local.boundary_install_dir
       name_prefix          = step.create_boundary_cluster.name_prefix
       cluster_tag          = step.create_boundary_cluster.cluster_tag
-      controller_addresses = step.create_boundary_cluster.public_controller_addresses
+      upstream_ips         = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id     = step.create_boundary_cluster.controller_aux_sg_id
+      create_subnet        = true
       worker_type_tags     = [local.isolated_tag]
       ip_version           = matrix.ip_version
       config_file_path     = "templates/worker.hcl"

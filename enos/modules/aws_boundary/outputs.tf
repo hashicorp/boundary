@@ -16,6 +16,11 @@ output "worker_ips" {
   value       = var.ip_version == "6" ? flatten(aws_instance.worker.*.ipv6_addresses) : aws_instance.worker.*.public_ip
 }
 
+output "worker_ips_private" {
+  description = "Private IPs of boundary workers"
+  value       = var.ip_version == "6" || var.ip_version == "dual" ? flatten(aws_instance.worker.*.ipv6_addresses) : aws_instance.worker.*.private_ip
+}
+
 output "alb_hostname" {
   description = "Public hostname of Controller ALB"
   value       = aws_alb.boundary_alb.dns_name
@@ -256,4 +261,14 @@ output "worker_ipv6_cidr" {
 output "alb_cert" {
   description = "Public cert for the alb"
   value       = try(tls_self_signed_cert.certificate[0].cert_pem, null)
+}
+
+output "controller_upstream_ips" {
+  description = "List of ips that workers can use to reach controllers"
+  value       = var.ip_version == "4" ? [for ip in aws_instance.controller.*.private_ip : "${ip}:${var.listener_cluster_port}"] : [for ip in flatten(aws_instance.controller.*.ipv6_addresses) : "[${ip}]:${var.listener_cluster_port}"]
+}
+
+output "worker_upstream_ips" {
+  description = "List of ips that workers can use to reach upstream workers"
+  value       = var.ip_version == "4" ? [for ip in aws_instance.worker.*.private_ip : "${ip}:${var.listener_proxy_port}"] : [for ip in flatten(aws_instance.worker.*.ipv6_addresses) : "[${ip}]:${var.listener_proxy_port}"]
 }

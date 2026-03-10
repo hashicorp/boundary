@@ -4,7 +4,7 @@
 listener "tcp" {
   purpose     = "proxy"
   tls_disable = true
-  address     = "${listener_address}:9202"
+  address     = "${listener_address}:${listener_proxy_port}"
 }
 
 worker {
@@ -28,6 +28,16 @@ worker {
 # must be same key as used on controller config
 kms "transit" {
   purpose            = "worker-auth"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-worker-auth"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
+}
+
+kms "transit" {
+  purpose            = "downstream-worker-auth"
   address            = "http://${vault_address}:8200"
   token              = "${vault_transit_token}"
   disable_renewal    = "false"

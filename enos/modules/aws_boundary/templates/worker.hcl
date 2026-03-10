@@ -4,7 +4,7 @@
 listener "tcp" {
   purpose     = "proxy"
   tls_disable = true
-  address     = "${listener_address}"
+  address     = "${listener_address}:${listener_proxy_port}"
 }
 
 worker {
@@ -26,6 +26,12 @@ worker {
 # must be same key as used on controller config
 kms "awskms" {
   purpose    = "worker-auth"
+  region     = "${region}"
+  kms_key_id = "${kms_key_id}"
+}
+
+kms "awskms" {
+  purpose    = "downstream-worker-auth"
   region     = "${region}"
   kms_key_id = "${kms_key_id}"
 }

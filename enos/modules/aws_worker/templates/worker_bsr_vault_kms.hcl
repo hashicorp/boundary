@@ -12,8 +12,7 @@ worker {
   name = "demo-worker-${id}"
   description = "Enos Boundary worker ${id}"
 
-  # Workers must be able to reach controllers on :9201
-  initial_upstreams = ${controller_ips}
+  initial_upstreams = ${upstream_ips}
 
   public_addr = "${public_address}"
 
@@ -28,6 +27,16 @@ worker {
 # must be same key as used on controller config
 kms "transit" {
   purpose            = "worker-auth"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-worker-auth"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
+}
+
+kms "transit" {
+  purpose            = "downstream-worker-auth"
   address            = "http://${vault_address}:8200"
   token              = "${vault_transit_token}"
   disable_renewal    = "false"
