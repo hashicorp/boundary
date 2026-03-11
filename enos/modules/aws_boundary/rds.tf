@@ -15,6 +15,7 @@ resource "aws_db_instance" "boundary" {
   identifier          = "boundary-db-${random_string.cluster_id.result}"
   allocated_storage   = var.db_storage
   storage_type        = var.db_storage_type
+  storage_encrypted   = true
   iops                = var.db_storage_iops
   engine              = data.aws_rds_engine_version.default.engine
   engine_version      = data.aws_rds_engine_version.default.version
