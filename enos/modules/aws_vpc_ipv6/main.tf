@@ -107,10 +107,14 @@ data "aws_ami" "ubuntu" {
   most_recent = true
   count       = length(local.architecture_filters)
 
-  # Currently latest LTS-1
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-*-server-*"]
+    values = ["hc-base-ubuntu-2204-*"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
   }
 
   filter {
@@ -123,8 +127,9 @@ data "aws_ami" "ubuntu" {
     values = [local.architecture_filters[count.index]]
   }
 
-  owners = ["099720109477"] # Canonical
+  owners = ["888995627335"] # ami-prod account
 }
+
 
 data "aws_ami" "rhel" {
   most_recent = true
