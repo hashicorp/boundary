@@ -44,6 +44,10 @@ data "aws_kms_key" "kms_key" {
   key_id = var.kms_key_arn
 }
 
+data "aws_vpc" "vpc" {
+  id = var.vpc_id
+}
+
 resource "random_integer" "az" {
   min = 0
   max = length(data.aws_availability_zones.available.names) - 1
@@ -56,6 +60,7 @@ resource "random_integer" "az" {
 
 # Create a subnet so that the worker doesn't share one with a controller
 resource "aws_subnet" "default" {
+  count           = var.create_subnet ? 1 : 0
   vpc_id          = var.vpc_id
   cidr_block      = "10.13.9.0/24"
   ipv6_cidr_block = var.ip_version != "4" ? cidrsubnet(var.vpc_cidr_ipv6, 8, 0) : null
@@ -69,6 +74,11 @@ resource "aws_subnet" "default" {
       "Name" = "${var.vpc_id}_worker_${random_pet.worker.id}_subnet"
     },
   )
+}
+resource "aws_route_table_association" "worker_rta" {
+  count          = var.create_subnet ? 1 : 0
+  subnet_id      = aws_subnet.default[0].id
+  route_table_id = data.aws_vpc.vpc.main_route_table_id
 }
 
 # The worker instance is a part of this security group, not to be confused with the next rule below
@@ -96,6 +106,15 @@ resource "aws_security_group" "default" {
     protocol         = "tcp"
     cidr_blocks      = var.ip_version == "6" ? [] : ["0.0.0.0/0"]
     ipv6_cidr_blocks = var.ip_version == "4" ? [] : ["::/0"]
+  }
+
+  ingress {
+    description      = "Communication from worker to worker"
+    from_port        = 9202
+    to_port          = 9202
+    protocol         = "tcp"
+    cidr_blocks      = var.ip_version == "6" ? [] : data.aws_vpc.vpc.cidr_block_associations.*.cidr_block
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : [data.aws_vpc.vpc.ipv6_cidr_block]
   }
 
   egress {
@@ -126,20 +145,11 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   ip_protocol       = "tcp"
 }
 
-data "aws_vpc" "vpc" {
-  id = var.vpc_id
-}
-
-resource "aws_route_table_association" "worker_rta" {
-  subnet_id      = aws_subnet.default.id
-  route_table_id = data.aws_vpc.vpc.main_route_table_id
-}
-
 resource "aws_instance" "worker" {
   ami                    = var.ubuntu_ami_id
   instance_type          = var.worker_instance_type
   vpc_security_group_ids = [aws_security_group.default.id]
-  subnet_id              = aws_subnet.default.id
+  subnet_id              = var.create_subnet ? aws_subnet.default[0].id : var.subnet_ids[0]
   key_name               = var.ssh_aws_keypair
   iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
@@ -211,7 +221,7 @@ resource "enos_file" "worker_config" {
   content = templatefile("${path.module}/${var.config_file_path}", {
     id                     = random_pet.worker.id
     kms_key_id             = data.aws_kms_key.kms_key.id
-    controller_ips         = var.ip_version == "4" ? jsonencode(var.controller_addresses) : jsonencode(formatlist("[%s]:9201", var.controller_addresses))
+    upstream_ips           = jsonencode(var.upstream_ips)
     listener_address       = var.ip_version == "4" ? "0.0.0.0" : "[::]"
     public_address         = var.ip_version == "6" ? format("[%s]", aws_instance.worker.ipv6_addresses[0]) : aws_instance.worker.public_ip
     type                   = jsonencode(var.worker_type_tags)

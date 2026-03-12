@@ -242,6 +242,7 @@ resource "enos_file" "worker_config" {
     kms_key_id              = data.aws_kms_key.kms_key.id,
     controller_ips          = var.ip_version == "4" ? jsonencode(aws_instance.controller.*.private_ip) : jsonencode(formatlist("[%s]:9201", flatten(aws_instance.controller.*.ipv6_addresses)))
     listener_address        = var.ip_version == "4" ? "0.0.0.0" : "[::]"
+    listener_proxy_port     = var.listener_proxy_port
     public_address          = var.ip_version == "6" ? format("[%s]", aws_instance.worker[tonumber(each.value)].ipv6_addresses[0]) : aws_instance.worker[tonumber(each.value)].public_ip
     region                  = var.aws_region
     type                    = jsonencode(var.worker_type_tags)

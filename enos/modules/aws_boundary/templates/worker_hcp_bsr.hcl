@@ -4,7 +4,7 @@
 listener "tcp" {
   purpose     = "proxy"
   tls_disable = true
-  address     = "${listener_address}"
+  address     = "${listener_address}:${listener_proxy_port}"
 }
 
 hcp_boundary_cluster_id = "${hcp_boundary_cluster_id}"
@@ -19,6 +19,12 @@ worker {
 
   auth_storage_path = "${auth_storage_path}/worker"
   recording_storage_path = "${recording_storage_path}"
+}
+
+kms "awskms" {
+  purpose    = "downstream-worker-auth"
+  region     = "${region}"
+  kms_key_id = "${kms_key_id}"
 }
 
 events {
