@@ -12,9 +12,14 @@ type config struct {
 	TargetPort       string `envconfig:"E2E_TARGET_PORT" required:"true"`    // e.g. 22
 	// Note: Key is base64 encoded
 	TargetCaKey string `envconfig:"E2E_SSH_CA_KEY" required:"true"`
-	// VaultAddr is the address that the Boundary server uses to interact with the running Vault instance
-	VaultAddr        string `envconfig:"E2E_VAULT_ADDR_PUBLIC" required:"true"`  // e.g. "http://127.0.0.1:8200"
+	// VaultAddr is the address that the Vault CLI can use to interact with the Vault instance
+	VaultAddr string `envconfig:"E2E_VAULT_ADDR_PUBLIC" required:"true"` // e.g. "http://127.0.0.1:8200"
+	// VaultAddrPrivate is the address that the Boundary controller can reach Vault
 	VaultAddrPrivate string `envconfig:"E2E_VAULT_ADDR_PRIVATE" required:"true"` // e.g. "http://10.10.10.10:8200"
+	// VaultAddrUnified is an address that can be used by both the local machine
+	// and the Boundary controller to interact with Vault. This is used for
+	// testing OIDC authentication where the Boundary controller needs to communicate with Vault using the same address as the CLI.
+	VaultAddrUnified string `envconfig:"E2E_VAULT_ADDR_UNIFIED" required:"true"` // e.g. "http://vault:8200"
 	VaultSecretPath  string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
 	VaultLdapPath    string `envconfig:"E2E_VAULT_LDAP_PATH" default:"e2e_ldap"`
 	MaxPageSize      int    `envconfig:"E2E_MAX_PAGE_SIZE" default:"1000"`

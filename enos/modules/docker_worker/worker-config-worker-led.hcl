@@ -16,7 +16,7 @@ listener "tcp" {
 }
 
 worker {
-  public_addr = "${worker_name}:${port}"
+  public_addr = "127.0.0.1:${port}"
   initial_upstreams = ["${initial_upstream}"]
 
   tags {

@@ -106,7 +106,7 @@ func TestCliTcpTargetVaultGenericConnectTargetWithAuthzToken(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddrPrivate, credStoreToken)
 	require.NoError(t, err)
 
 	// Create a credential library

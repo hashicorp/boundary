@@ -1,9 +1,6 @@
 # Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
-# For this scenario to work, add the following line to /etc/hosts
-# 127.0.0.1 localhost boundary
-
 scenario "e2e_ui_docker" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
@@ -162,7 +159,7 @@ scenario "e2e_ui_docker" {
       auth_method_id            = step.create_boundary.auth_method_id
       auth_login_name           = step.create_boundary.login_name
       auth_password             = step.create_boundary.password
-      local_boundary_dir        = step.build_boundary_docker_image.cli_zip_path
+      local_boundary_dir        = local.local_boundary_dir
       local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
       aws_ssh_private_key_path  = local.aws_ssh_private_key_path
       target_address            = step.create_host.address
@@ -172,6 +169,7 @@ scenario "e2e_ui_docker" {
       target_ca_key_public      = step.create_host.ca_key_public
       vault_addr_public         = step.create_vault.address_public
       vault_addr_private        = step.create_vault.address_private
+      vault_addr_unified        = step.create_vault.address_unified
       vault_root_token          = step.create_vault.token
       vault_port                = step.create_vault.port
       ldap_address              = step.create_ldap_server.address

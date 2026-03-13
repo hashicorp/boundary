@@ -128,7 +128,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddrPrivate, credStoreToken)
 	require.NoError(t, err)
 
 	// Create a credential library for the private key
@@ -331,7 +331,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
 	newCredentialStoreResult, err := csClient.Create(ctx, "vault", projectId,
-		credentialstores.WithVaultCredentialStoreAddress(c.VaultAddr),
+		credentialstores.WithVaultCredentialStoreAddress(c.VaultAddrPrivate),
 		credentialstores.WithVaultCredentialStoreToken(credStoreToken),
 	)
 	require.NoError(t, err)
