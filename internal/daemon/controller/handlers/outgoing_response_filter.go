@@ -112,14 +112,16 @@ func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.
 				delete(m.GetAttributes().GetFields(), "token")
 				half := len(tok) / 2
 				jsTok := http.Cookie{
-					Name:  JsVisibleCookieName,
-					Value: tok[:half],
-					Path:  "/",
+					Name:   JsVisibleCookieName,
+					Value:  tok[:half],
+					Secure: true,
+					Path:   "/",
 				}
 				httpTok := http.Cookie{
 					Name:     HttpOnlyCookieName,
 					Value:    tok[half:],
 					HttpOnly: true,
+					Secure:   true,
 					Path:     "/",
 				}
 				http.SetCookie(w, &jsTok)
