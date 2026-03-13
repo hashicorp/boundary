@@ -26,7 +26,7 @@ resource "aws_servicequotas_service_quota" "vpcs_per_region_us_east_2" {
   provider     = aws.us_east_2
   quota_code   = local.subnets_per_vpc
   service_code = "vpc"
-  value        = 50
+  value        = 100
 }
 
 resource "aws_servicequotas_service_quota" "rds_subnet_groups_us_east_2" {

@@ -66,6 +66,8 @@ following lines
 127.0.0.1       localhost       worker
 127.0.0.1       localhost       vault
 ```
+### AWS Credentials
+Copy the AWS Account credentials from doormat and set it in the terminal, where the enos commands are run.
 
 ## Executing Scenarios
 From the `enos` directory:
