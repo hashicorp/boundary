@@ -12,8 +12,7 @@ worker {
   name = "worker-${id}"
   description = "Enos Boundary worker ${id}"
 
-  # Workers must be able to reach controllers on :9201
-  initial_upstreams = ${controller_ips}
+  initial_upstreams = ${upstream_ips}
 
   public_addr = "${public_address}"
 
@@ -26,6 +25,12 @@ worker {
 # must be same key as used on controller config
 kms "awskms" {
   purpose    = "worker-auth"
+  region     = "${region}"
+  kms_key_id = "${kms_key_id}"
+}
+
+kms "awskms" {
+  purpose    = "downstream-worker-auth"
   region     = "${region}"
   kms_key_id = "${kms_key_id}"
 }
