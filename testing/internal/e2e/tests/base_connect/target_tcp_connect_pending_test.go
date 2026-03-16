@@ -5,10 +5,14 @@ package base_connect_test
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
@@ -33,22 +37,12 @@ func TestCliTcpTargetConnectPending(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
-	require.NoError(t, err)
-	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
-	require.NoError(t, err)
-	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	require.NoError(t, err)
-	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
-	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, nil)
-	require.NoError(t, err)
-	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, []target.Option{target.WithAddress(c.TargetAddress)})
 	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
-	port := "12345"
+	port := fmt.Sprint(10000 + rand.Intn(90000))
 	cmdChan := make(chan *e2e.CommandResult)
 	go func() {
 		t.Log("Starting session...")
@@ -63,7 +57,8 @@ func TestCliTcpTargetConnectPending(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, projectId, nil)
+	s := boundary.WaitForSessionCli(t, ctx, projectId, nil)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
 
 	t.Log("Waiting 10 seconds to ensure session is still active...")
 	time.Sleep(10 * time.Second)
@@ -73,6 +68,7 @@ func TestCliTcpTargetConnectPending(t *testing.T) {
 		t.Fatalf("boundary connect exited early: stdout=%s stderr=%s", output.Stdout, output.Stderr)
 	default:
 	}
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
 
 	output := e2e.RunCommand(ctx, "ssh",
 		e2e.WithArgs(
