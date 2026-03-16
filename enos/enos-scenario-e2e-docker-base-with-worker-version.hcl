@@ -1,10 +1,6 @@
 # Copyright IBM Corp. 2020, 2025
 # SPDX-License-Identifier: BUSL-1.1
 
-# For this scenario to work, add the following line to /etc/hosts
-# 127.0.0.1 localhost boundary
-# 127.0.0.1 localhost worker
-
 scenario "e2e_docker_base_with_worker_version" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
@@ -18,6 +14,7 @@ scenario "e2e_docker_base_with_worker_version" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
+    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
@@ -176,7 +173,7 @@ scenario "e2e_docker_base_with_worker_version" {
       auth_method_id           = step.create_boundary.auth_method_id
       auth_login_name          = step.create_boundary.login_name
       auth_password            = step.create_boundary.password
-      local_boundary_dir       = step.build_boundary_docker_image.cli_zip_path
+      local_boundary_dir       = local.local_boundary_dir
       local_boundary_src_dir   = local.local_boundary_src_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_address           = step.create_host.address

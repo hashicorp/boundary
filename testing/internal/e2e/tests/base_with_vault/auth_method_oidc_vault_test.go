@@ -249,7 +249,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 			fmt.Sprintf("identity/oidc/provider/%s", providerName),
 			fmt.Sprintf("allowed_client_ids=%s", clientId),
 			"scopes_supported=groups,user",
-			fmt.Sprintf("issuer=%s", c.VaultAddr),
+			fmt.Sprintf("issuer=%s", c.VaultAddrUnified),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -258,7 +258,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	output = e2e.RunCommand(ctx, "curl",
 		e2e.WithArgs(
 			"-s",
-			fmt.Sprintf("%s/v1/identity/oidc/provider/%s/.well-known/openid-configuration", c.VaultAddr, providerName),
+			fmt.Sprintf("%s/v1/identity/oidc/provider/%s/.well-known/openid-configuration", c.VaultAddrUnified, providerName),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -381,7 +381,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 
 	// Vault: Authenticate to get a client token
 	res, err = http.Post(
-		fmt.Sprintf("%s/v1/auth/userpass/login/%s", c.VaultAddr, userName),
+		fmt.Sprintf("%s/v1/auth/userpass/login/%s", c.VaultAddrUnified, userName),
 		"application/json",
 		strings.NewReader(
 			fmt.Sprintf(`{"password": %q}`, userPassword),
@@ -407,7 +407,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 		http.MethodGet,
 		fmt.Sprintf(
 			"%s/v1/identity/oidc/provider/%s/authorize?scope=%s&response_type=%s&client_id=%s&redirect_uri=%s&state=%s&nonce=%s&max_age=20",
-			c.VaultAddr,
+			c.VaultAddrUnified,
 			providerName,
 			"openid+groups+user",
 			"code",

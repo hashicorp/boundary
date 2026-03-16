@@ -233,6 +233,21 @@ jobs:
         if: contains(matrix.filter, 'e2e_docker')
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
+      - name: Install other test dependencies
+        if: contains(matrix.filter, 'e2e_docker_base_plus')
+        run: |
+          # mongosh
+          wget -q https://github.com/mongodb-js/mongosh/releases/download/v2.7.0/mongosh-2.7.0-linux-x64.tgz -O /tmp/mongosh.tgz
+          tar -xzf /tmp/mongosh.tgz -C "$HOME"
+          echo "$HOME/mongosh-2.7.0-linux-x64/bin" >> "$GITHUB_PATH"
+
+          # cqlsh (cassandra CLI)
+          wget -q https://downloads.apache.org/cassandra/4.1.10/apache-cassandra-4.1.10-bin.tar.gz -O /tmp/cassandra.tar.gz
+          tar -xzf /tmp/cassandra.tar.gz -C "$HOME"
+          echo "$HOME/apache-cassandra-4.1.10/bin" >> "$GITHUB_PATH"
+
+          # redis
+          sudo apt update && sudo apt install -y redis-tools mysql-client
       - name: Output Terraform version info
         run: |
           mkdir -p ./enos/terraform-plugin-cache

@@ -4,7 +4,8 @@
 disable_mlock = true
 
 controller {
-  name        = "docker-controller"
+  name                = "docker-controller"
+  public_cluster_addr = "boundary:9201"
 
   max_page_size = ${max_page_size}
 
@@ -16,7 +17,6 @@ controller {
 worker {
   name        = "boundary-collocated-worker"
   description = "A worker that runs alongside the controller in the same process"
-  address     = "boundary:9202"
 
   tags {
     type = ["${worker_type_tag}"]
@@ -24,25 +24,25 @@ worker {
 }
 
 listener "tcp" {
-  address     = "boundary:9200"
+  address     = "0.0.0.0:9200"
   purpose     = "api"
   tls_disable = true
 }
 
 listener "tcp" {
-  address     = "boundary:9201"
+  address     = "0.0.0.0:9201"
   purpose     = "cluster"
   tls_disable = true
 }
 
 listener "tcp" {
-  address     = "boundary:9202"
+  address     = "0.0.0.0:9202"
   purpose     = "proxy"
   tls_disable = true
 }
 
 listener "tcp" {
-  address     = "boundary:9203"
+  address     = "0.0.0.0:9203"
   purpose     = "ops"
   tls_disable = true
 }

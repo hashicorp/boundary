@@ -77,11 +77,12 @@ resource "enos_local_exec" "init_database" {
 }
 
 locals {
-  db_init_info   = jsondecode(enos_local_exec.init_database.stdout)
-  auth_method_id = local.db_init_info["auth_method"]["auth_method_id"]
-  login_name     = local.db_init_info["auth_method"]["login_name"]
-  password       = local.db_init_info["auth_method"]["password"]
-  address        = "http://${var.container_name}:9200"
+  db_init_info      = jsondecode(enos_local_exec.init_database.stdout)
+  auth_method_id    = local.db_init_info["auth_method"]["auth_method_id"]
+  login_name        = local.db_init_info["auth_method"]["login_name"]
+  password          = local.db_init_info["auth_method"]["password"]
+  address           = "http://127.0.0.1:9200"
+  container_address = "http://${var.container_name}:9200"
 }
 
 resource "docker_container" "boundary" {
@@ -125,7 +126,7 @@ resource "docker_container" "boundary" {
     file = "/boundary/boundary-config.hcl"
   }
   healthcheck {
-    test     = ["CMD", "wget", "--quiet", "-O", "/dev/null", "http://boundary:9203/health"]
+    test     = ["CMD", "wget", "--quiet", "-O", "/dev/null", "http://127.0.0.1:9203/health"]
     interval = "3s"
     timeout  = "5s"
     retries  = 5
@@ -146,7 +147,7 @@ resource "enos_local_exec" "check_address" {
     docker_container.boundary
   ]
 
-  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:9200; do sleep 2; done'"]
+  inline = ["timeout 10s bash -c 'until curl http://127.0.0.1:9200; do sleep 2; done'"]
 }
 
 resource "enos_local_exec" "check_health" {
@@ -154,11 +155,15 @@ resource "enos_local_exec" "check_health" {
     enos_local_exec.check_address
   ]
 
-  inline = ["timeout 10s bash -c 'until curl -i http://0.0.0.0:9203/health; do sleep 2; done'"]
+  inline = ["timeout 10s bash -c 'until curl -i http://127.0.0.1:9203/health; do sleep 2; done'"]
 }
 
 output "address" {
   value = local.address
+}
+
+output "container_address" {
+  value = local.container_address
 }
 
 output "upstream_address" {

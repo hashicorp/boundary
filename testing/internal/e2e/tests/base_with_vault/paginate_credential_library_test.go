@@ -93,7 +93,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddrPrivate, credStoreToken)
 	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.
@@ -248,7 +248,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	storeId, err := boundary.CreateCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddrPrivate, credStoreToken)
 	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.

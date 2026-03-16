@@ -110,6 +110,11 @@ variable "vault_addr_private" {
   type        = string
   default     = ""
 }
+variable "vault_addr_unified" {
+  description = "Unified address to a vault instance that can be used for both internal and external communication"
+  type        = string
+  default     = ""
+}
 variable "vault_root_token" {
   description = "Root token for vault instance"
   type        = string
@@ -336,6 +341,7 @@ resource "enos_local_exec" "run_e2e_test" {
     VAULT_TOKEN                   = var.vault_root_token
     E2E_VAULT_ADDR_PUBLIC         = var.vault_addr_public
     E2E_VAULT_ADDR_PRIVATE        = var.vault_addr_private
+    E2E_VAULT_ADDR_UNIFIED        = var.vault_addr_unified
     E2E_BUCKET_NAME               = var.bucket_name
     E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
     E2E_BUCKET_USER_ID            = var.bucket_user_id
@@ -375,6 +381,6 @@ resource "enos_local_exec" "run_e2e_test" {
   }
 
   inline = var.debug_no_run ? [""] : [
-    "bash ./${path.module}/test_runner.sh"
+    "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -timeout ${var.test_timeout} | tee ${path.module}/../../test-e2e-${local.package_name}.log"
   ]
 }

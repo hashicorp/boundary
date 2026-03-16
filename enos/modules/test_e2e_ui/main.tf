@@ -84,6 +84,11 @@ variable "vault_addr_private" {
   type        = string
   default     = ""
 }
+variable "vault_addr_unified" {
+  description = "Unified address to a vault instance that can be used for both internal and external communication"
+  type        = string
+  default     = ""
+}
 variable "vault_root_token" {
   description = "Root token for vault instance"
   type        = string
@@ -221,6 +226,7 @@ resource "enos_local_exec" "run_e2e_test" {
     VAULT_TOKEN                   = var.vault_root_token
     E2E_VAULT_ADDR_PUBLIC         = var.vault_addr_public
     E2E_VAULT_ADDR_PRIVATE        = var.vault_addr_private
+    E2E_VAULT_ADDR_UNIFIED        = var.vault_addr_unified
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
     E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
     E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter

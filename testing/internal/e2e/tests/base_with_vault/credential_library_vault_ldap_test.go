@@ -114,7 +114,7 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 
 	// Create two Vault LDAP credential libraries: One with static, one with
 	// dynamic creds.
-	storeId, err := boundary.CreateCredentialStoreVaultApi(t, t.Context(), client, projectId, c.VaultAddr, vaultToken)
+	storeId, err := boundary.CreateCredentialStoreVaultApi(t, t.Context(), client, projectId, c.VaultAddrPrivate, vaultToken)
 	require.NoError(t, err)
 	staticCredVclId, err := boundary.CreateVaultLdapCredentialLibraryApi(t, t.Context(), client, storeId, fmt.Sprintf("%s/static-cred/%s", c.VaultLdapPath, c.LdapUserName))
 	require.NoError(t, err)
@@ -288,7 +288,7 @@ func TestCliVaultLdapCredentialLibrary(t *testing.T) {
 
 	// Create two Vault LDAP credential libraries: One with static, one with
 	// dynamic creds.
-	storeId, err := boundary.CreateCredentialStoreVaultCli(t, t.Context(), projectId, c.VaultAddr, vaultToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, t.Context(), projectId, c.VaultAddrPrivate, vaultToken)
 	require.NoError(t, err)
 	staticCredVclId, err := boundary.CreateVaultLdapCredentialLibraryCli(t, t.Context(), storeId, fmt.Sprintf("%s/static-cred/%s", c.VaultLdapPath, c.LdapUserName))
 	require.NoError(t, err)

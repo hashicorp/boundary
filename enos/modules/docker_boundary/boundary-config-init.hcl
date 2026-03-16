@@ -5,6 +5,7 @@ disable_mlock = true
 
 controller {
   name        = "docker-controller"
+  public_cluster_addr = "boundary:9201"
 
   database {
     url = "env://BOUNDARY_POSTGRES_URL"
