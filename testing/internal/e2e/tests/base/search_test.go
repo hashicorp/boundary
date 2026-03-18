@@ -40,7 +40,7 @@ func TestCliSearch(t *testing.T) {
 		t.Log("Stopping cache...")
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
-		_, err := waitForCacheToStop(t, ctx)
+		err := waitForCacheToStop(t, ctx)
 		require.NoError(t, err)
 	}
 	output = e2e.RunCommand(ctx, "boundary",
@@ -55,7 +55,7 @@ func TestCliSearch(t *testing.T) {
 		t.Log("CLEANUP: Stopping cache...")
 		output := e2e.RunCommand(context.Background(), "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
-		_, err := waitForCacheToStop(t, context.Background())
+		err := waitForCacheToStop(t, context.Background())
 		require.NoError(t, err)
 	})
 
@@ -63,7 +63,7 @@ func TestCliSearch(t *testing.T) {
 	statusResult, err := waitForCacheToStart(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
-	require.Equal(t, statusResult.StatusCode, 200)
+	require.Equal(t, 200, statusResult.StatusCode)
 
 	// Confirm cache version matches CLI version
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
@@ -354,7 +354,7 @@ func TestCliSearch(t *testing.T) {
 	t.Log("Stopping cache...")
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 	require.NoError(t, output.Err, string(output.Stderr))
-	_, err = waitForCacheToStop(t, ctx)
+	err = waitForCacheToStop(t, ctx)
 	require.NoError(t, err)
 	t.Log("Starting cache...")
 	output = e2e.RunCommand(ctx, "boundary",
@@ -368,7 +368,7 @@ func TestCliSearch(t *testing.T) {
 	statusResult, err = waitForCacheToStart(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
-	require.Equal(t, statusResult.StatusCode, 200)
+	require.Equal(t, 200, statusResult.StatusCode)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"search",
@@ -385,10 +385,11 @@ func TestCliSearch(t *testing.T) {
 
 	// Log out and restart cache. Log in and confirm search works
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
+	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Stopping cache...")
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 	require.NoError(t, output.Err, string(output.Stderr))
-	_, err = waitForCacheToStop(t, ctx)
+	err = waitForCacheToStop(t, ctx)
 	require.NoError(t, err)
 	t.Log("Starting cache...")
 	output = e2e.RunCommand(ctx, "boundary",
@@ -402,7 +403,7 @@ func TestCliSearch(t *testing.T) {
 	statusResult, err = waitForCacheToStart(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
-	require.Equal(t, statusResult.StatusCode, 200)
+	require.Equal(t, 200, statusResult.StatusCode)
 	boundary.AuthenticateAdminCli(t, ctx)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -431,6 +432,7 @@ func waitForCacheToStart(t *testing.T, ctx context.Context) (clientcache.StatusR
 				return errors.New(strings.TrimSpace(string(output.Stderr)))
 			}
 
+			statusResult = clientcache.StatusResult{}
 			err := json.Unmarshal(output.Stdout, &statusResult)
 			if err != nil {
 				return backoff.Permanent(err)
@@ -447,23 +449,26 @@ func waitForCacheToStart(t *testing.T, ctx context.Context) (clientcache.StatusR
 	return statusResult, err
 }
 
-func waitForCacheToStop(t *testing.T, ctx context.Context) (clientcache.StatusResult, error) {
+func waitForCacheToStop(t *testing.T, ctx context.Context) error {
 	t.Helper()
 	t.Log("Waiting for cache to stop...")
 
-	var statusResult clientcache.StatusResult
 	err := backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
-
+			// When the cache is not running, `boundary cache status` exits non-zero
+			// and prints "The cache process is not running." to stderr. Treat that
+			// condition as success, even if output.Err is non-nil.
 			if strings.Contains(string(output.Stderr), "The cache process is not running.") {
 				return nil
 			}
 
+			// For other non-zero exits, surface the error and retry.
 			if output.Err != nil {
 				return errors.New(strings.TrimSpace(string(output.Stderr)))
 			}
 
+			// Cache is still running; keep retrying until it stops.
 			return fmt.Errorf("waiting for cache to stop: %s", strings.TrimSpace(string(output.Stdout)))
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
@@ -472,10 +477,12 @@ func waitForCacheToStop(t *testing.T, ctx context.Context) (clientcache.StatusRe
 		},
 	)
 
-	// Add a small delay to ensure the cache process is fully terminated
-	// before attempting to start it again. This prevents race conditions
-	// where the process might still be shutting down.
-	time.Sleep(500 * time.Millisecond)
+	if err == nil {
+		// Add a small delay to ensure the cache process is fully terminated
+		// before attempting to start it again. This prevents race conditions
+		// where the process might still be shutting down.
+		time.Sleep(500 * time.Millisecond)
+	}
 
-	return statusResult, err
+	return err
 }
