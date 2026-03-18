@@ -472,5 +472,10 @@ func waitForCacheToStop(t *testing.T, ctx context.Context) (clientcache.StatusRe
 		},
 	)
 
+	// Add a small delay to ensure the cache process is fully terminated
+	// before attempting to start it again. This prevents race conditions
+	// where the process might still be shutting down.
+	time.Sleep(500 * time.Millisecond)
+
 	return statusResult, err
 }
