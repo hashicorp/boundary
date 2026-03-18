@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/ui"
 )
 
@@ -19,6 +21,19 @@ func init() {
 
 // serveMetadata provides controller metadata to the UI for licensed versions of Boundary.
 var serveMetadata = func(ctx context.Context, w http.ResponseWriter) {}
+
+// serveGrantSchema provides the grant schema to the UI for autocomplete and linting support.
+var serveGrantSchema = func(ctx context.Context, w http.ResponseWriter) {
+	const op = "controller.serveGrantSchema"
+	data, err := perms.BuildGrantSchemaJSON(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		event.WriteError(ctx, op, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
 
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
@@ -45,6 +60,9 @@ func handleUiWithAssets(c *Controller) http.Handler {
 			case "/", "/favicon.png", "/assets/styles.css":
 			case "/metadata.json":
 				serveMetadata(c.baseContext, w)
+				return
+			case "/grants-schema.json":
+				serveGrantSchema(c.baseContext, w)
 				return
 			default:
 				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
