@@ -67,11 +67,15 @@ export NEW_HOST="host_for_alias_test"
 
 @test "boundary/alias: admin user can connect to target using an alias" {
   run connect_alias $ALIAS_VALUE
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/alias: admin user can connect passing in a host id" {
   run connect_alias_with_host_id $ALIAS_VALUE $DEFAULT_HOST
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -95,11 +99,15 @@ export NEW_HOST="host_for_alias_test"
 
 @test "boundary/alias: admin user can connect using an alias configured with host id" {
   run connect_alias $ALIAS_VALUE
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/alias: admin user can connect using an alias configured with host id passing in same host id" {
   run connect_alias_with_host_id $ALIAS_VALUE $DEFAULT_HOST
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -124,7 +132,7 @@ export NEW_HOST="host_for_alias_test"
 
 @test "boundary/host: admin can delete new host" {
   local new_host_id=$(host_id $NEW_HOST $DEFAULT_HOST_CATALOG)
-  run delete_host $new_host_id 
+  run delete_host $new_host_id
   [ "$status" -eq 0 ]
 }
 
@@ -168,3 +176,4 @@ export NEW_HOST="host_for_alias_test"
   echo $output
   [ "$status" -eq 1 ]
 }
+
