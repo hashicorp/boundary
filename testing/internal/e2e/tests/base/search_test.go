@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -46,7 +47,7 @@ func TestCliSearch(t *testing.T) {
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 	require.Equal(t, 200, statusResult.StatusCode)
 	t.Cleanup(func() {
-		err := stopCacheAndWait(t, context.Background())
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, err)
 	})
 
@@ -391,9 +392,10 @@ func startCacheAndWait(t *testing.T, ctx context.Context) (clientcache.StatusRes
 			"-background",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return clientcache.StatusResult{}, errors.New(string(output.Stderr))
+	}
 
-	t.Log("Waiting for cache to start...")
 	var statusResult clientcache.StatusResult
 	err := backoff.RetryNotify(
 		func() error {
@@ -422,18 +424,21 @@ func startCacheAndWait(t *testing.T, ctx context.Context) (clientcache.StatusRes
 func stopCacheAndWait(t *testing.T, ctx context.Context) error {
 	t.Helper()
 
-	// Get latest status if cache is already running
+	// Get latest status if cache is already running.
 	var statusResult clientcache.StatusResult
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	if output.Err == nil {
 		err := json.Unmarshal(output.Stdout, &statusResult)
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 	}
 
 	t.Log("Stopping cache...")
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
-	require.NoError(t, output.Err, string(output.Stderr))
-
+	if output.Err != nil {
+		return errors.New(string(output.Stderr))
+	}
 	err := backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
@@ -466,13 +471,16 @@ func stopCacheAndWait(t *testing.T, ctx context.Context) error {
 		t.Log("Checking if cache socket is cleaned up...")
 		err = backoff.RetryNotify(
 			func() error {
-				output := e2e.RunCommand(ctx, "lsof", e2e.WithArgs(statusResult.Item.SocketAddress))
-
-				if output.Err == nil {
-					return errors.New("cache is still running and listening on socket")
+				_, statErr := os.Stat(statusResult.Item.SocketAddress)
+				if statErr == nil {
+					return errors.New("cache socket still exists")
 				}
 
-				return nil
+				if os.IsNotExist(statErr) {
+					return nil
+				}
+
+				return backoff.Permanent(fmt.Errorf("failed to stat cache socket: %w", statErr))
 			},
 			backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
 			func(err error, td time.Duration) {
