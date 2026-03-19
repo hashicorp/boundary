@@ -37,33 +37,18 @@ func TestCliSearch(t *testing.T) {
 	// shorter refresh interval
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	if output.Err == nil {
-		t.Log("Stopping cache...")
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
-		require.NoError(t, output.Err, string(output.Stderr))
-		err := waitForCacheToStop(t, ctx)
+		err := stopCacheAndWait(t, ctx)
 		require.NoError(t, err)
 	}
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"cache", "start",
-			"-refresh-interval", "5s",
-			"-background",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Cleanup(func() {
-		t.Log("CLEANUP: Stopping cache...")
-		output := e2e.RunCommand(context.Background(), "boundary", e2e.WithArgs("cache", "stop"))
-		require.NoError(t, output.Err, string(output.Stderr))
-		err := waitForCacheToStop(t, context.Background())
-		require.NoError(t, err)
-	})
-
 	// Wait for cache to be up and running
-	statusResult, err := waitForCacheToStart(t, ctx)
+	statusResult, err := startCacheAndWait(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 	require.Equal(t, 200, statusResult.StatusCode)
+	t.Cleanup(func() {
+		err := stopCacheAndWait(t, context.Background())
+		require.NoError(t, err)
+	})
 
 	// Confirm cache version matches CLI version
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
@@ -351,21 +336,9 @@ func TestCliSearch(t *testing.T) {
 	)
 
 	// Restart cache and confirm search works
-	t.Log("Stopping cache...")
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
-	require.NoError(t, output.Err, string(output.Stderr))
-	err = waitForCacheToStop(t, ctx)
+	err = stopCacheAndWait(t, ctx)
 	require.NoError(t, err)
-	t.Log("Starting cache...")
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"cache", "start",
-			"-refresh-interval", "5s",
-			"-background",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	statusResult, err = waitForCacheToStart(t, ctx)
+	statusResult, err = startCacheAndWait(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 	require.Equal(t, 200, statusResult.StatusCode)
@@ -386,21 +359,9 @@ func TestCliSearch(t *testing.T) {
 	// Log out and restart cache. Log in and confirm search works
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Log("Stopping cache...")
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
-	require.NoError(t, output.Err, string(output.Stderr))
-	err = waitForCacheToStop(t, ctx)
+	err = stopCacheAndWait(t, ctx)
 	require.NoError(t, err)
-	t.Log("Starting cache...")
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"cache", "start",
-			"-refresh-interval", "5s",
-			"-background",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	statusResult, err = waitForCacheToStart(t, ctx)
+	statusResult, err = startCacheAndWait(t, ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 	require.Equal(t, 200, statusResult.StatusCode)
@@ -420,10 +381,19 @@ func TestCliSearch(t *testing.T) {
 	require.Len(t, searchResult.Item.Targets, len(targetIds))
 }
 
-func waitForCacheToStart(t *testing.T, ctx context.Context) (clientcache.StatusResult, error) {
+func startCacheAndWait(t *testing.T, ctx context.Context) (clientcache.StatusResult, error) {
 	t.Helper()
-	t.Log("Waiting for cache to start...")
+	t.Log("Starting cache...")
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"cache", "start",
+			"-refresh-interval", "5s",
+			"-background",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 
+	t.Log("Waiting for cache to start...")
 	var statusResult clientcache.StatusResult
 	err := backoff.RetryNotify(
 		func() error {
@@ -449,9 +419,20 @@ func waitForCacheToStart(t *testing.T, ctx context.Context) (clientcache.StatusR
 	return statusResult, err
 }
 
-func waitForCacheToStop(t *testing.T, ctx context.Context) error {
+func stopCacheAndWait(t *testing.T, ctx context.Context) error {
 	t.Helper()
-	t.Log("Waiting for cache to stop...")
+
+	// Get latest status if cache is already running
+	var statusResult clientcache.StatusResult
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+	if output.Err == nil {
+		err := json.Unmarshal(output.Stdout, &statusResult)
+		require.NoError(t, err)
+	}
+
+	t.Log("Stopping cache...")
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
+	require.NoError(t, output.Err, string(output.Stderr))
 
 	err := backoff.RetryNotify(
 		func() error {
@@ -476,12 +457,28 @@ func waitForCacheToStop(t *testing.T, ctx context.Context) error {
 			t.Logf("%s. Retrying...", err.Error())
 		},
 	)
+	if err != nil {
+		return err
+	}
 
-	if err == nil {
-		// Add a small delay to ensure the cache process is fully terminated
-		// before attempting to start it again. This prevents race conditions
-		// where the process might still be shutting down.
-		time.Sleep(500 * time.Millisecond)
+	// check domain socket
+	if statusResult.Item.SocketAddress != "" {
+		t.Log("Checking if cache socket is cleaned up...")
+		err = backoff.RetryNotify(
+			func() error {
+				output := e2e.RunCommand(ctx, "lsof", e2e.WithArgs(statusResult.Item.SocketAddress))
+
+				if output.Err == nil {
+					return errors.New("cache is still running and listening on socket")
+				}
+
+				return nil
+			},
+			backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+			func(err error, td time.Duration) {
+				t.Logf("%s. Retrying...", err.Error())
+			},
+		)
 	}
 
 	return err
