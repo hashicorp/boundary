@@ -1207,12 +1207,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 		}
 		return nil, nil, nil, err
 	}
-	hs := u.GetHostSources()
-	cl := u.GetCredentialSources()
-
 	if u == nil {
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
+	hs := u.GetHostSources()
+	cl := u.GetCredentialSources()
+
 	return u, hs, cl, nil
 }
 
