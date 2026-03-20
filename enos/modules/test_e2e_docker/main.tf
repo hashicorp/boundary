@@ -14,21 +14,12 @@ terraform {
   }
 }
 
-variable "docker_mirror" {
-  description = "URL to the docker repository"
-  type        = string
-}
 variable "network_name" {
   description = "Name of Docker Network"
   type        = string
 }
 variable "controller_container_name" {
   description = "Name of Docker Container running the Boundary controller"
-  type        = string
-  default     = ""
-}
-variable "go_version" {
-  description = "Version of Golang used by the application under test"
   type        = string
   default     = ""
 }
@@ -301,29 +292,15 @@ variable "gcp_host_set_ips" {
   default     = [""]
 }
 
-resource "enos_local_exec" "get_go_version" {
-  count  = var.go_version == "" ? 1 : 0
-  inline = ["cat $(echo $(git rev-parse --show-toplevel))/.go-version | xargs"]
-}
-
 locals {
-  go_version               = var.go_version == "" ? enos_local_exec.get_go_version[0].stdout : var.go_version
-  image_name               = trimspace("${var.docker_mirror}/library/golang:${local.go_version}")
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   package_name             = reverse(split("/", var.test_package))[0]
 }
 
-resource "docker_image" "go" {
-  name         = local.image_name
-  keep_locally = true
-}
-
 resource "enos_local_exec" "run_e2e_test" {
-  depends_on = [docker_image.go]
   environment = {
     TEST_PACKAGE                  = var.test_package
     TEST_TIMEOUT                  = var.test_timeout
-    TEST_RUNNER_IMAGE             = docker_image.go.image_id
     TEST_NETWORK_NAME             = var.network_name
     E2E_TESTS                     = "true"
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr

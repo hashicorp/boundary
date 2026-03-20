@@ -12,9 +12,6 @@ on:
       edition:
         required: true
         type: string
-      go-version:
-        required: true
-        type: string
       docker-image-file:
         required: false
         type: string
@@ -29,10 +26,17 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: '0'
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: ${{ inputs.go-version }}
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
@@ -89,7 +93,6 @@ jobs:
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
-      ENOS_VAR_go_version: ${{ inputs.go-version }}
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
       ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
       ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
@@ -97,10 +100,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: ${{ inputs.go-version }}
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
         id: go-mod-cache
