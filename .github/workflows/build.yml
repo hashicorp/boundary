@@ -414,6 +414,30 @@ jobs:
       edition: ${{ needs.product-metadata.outputs.product-edition }}
       docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
+
+  e2e-admin-ui:
+    name: e2e-admin-ui
+    # Only run this workflow on pull requests that have been originated from
+    # the hashicorp/boundary repository. As Enos scenarios require access to
+    # Github Actions secrets, it only makes sense to run this workflow when those
+    # secrets are available. Any pull requests from forks will not trigger the
+    # workflow.
+    if: |
+      github.event.pull_request.head.repo.fork != 'true' && (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+        (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/'))
+      )
+    needs:
+      - set-product-version
+      - product-metadata
+      - build-docker
+    uses: ./.github/workflows/enos-run-admin-ui.yml
+    with:
+      artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
+      edition: ${{ needs.product-metadata.outputs.product-edition }}
+      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
+    secrets: inherit
+
   bats:
     uses: ./.github/workflows/test-cli-ui_oss.yml
     if: github.event.pull_request.head.repo.fork != 'true'
