@@ -15,9 +15,6 @@ on:
       go-version:
         required: true
         type: string
-      docker-image-name:
-        required: false
-        type: string
       docker-image-file:
         required: false
         type: string
@@ -96,7 +93,6 @@ jobs:
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
-      ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
@@ -112,6 +108,7 @@ jobs:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
+        id: go-mod-cache
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
@@ -122,6 +119,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go
           fail-on-cache-miss: false
+      - name: Downloads Go modules if cache miss
+        if: steps.go-mod-cache.outputs.cache-hit != 'true'
+        run: |
+          go mod download
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:

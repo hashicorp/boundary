@@ -99,7 +99,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.build_boundary_docker_image
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster, local.network_database]
       database_network = local.network_database
       postgres_address = step.create_boundary_database.address
@@ -113,7 +113,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
     depends_on = [step.create_boundary]
     variables {
       address      = step.create_boundary.address
-      image_name   = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name   = step.build_boundary_docker_image.image_name
       network_name = local.network_cluster
       login_name   = step.create_boundary.login_name
       password     = step.create_boundary.password
@@ -157,7 +157,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.create_boundary
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      image_name       = step.build_boundary_docker_image.image_name
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file      = "worker-config-controller-led.hcl"
       container_name   = "worker"
