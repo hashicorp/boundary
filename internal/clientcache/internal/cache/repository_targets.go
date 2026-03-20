@@ -373,8 +373,29 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 		searchArgs = append(searchArgs, opts.withUserId)
 	}
 
+	dbOpts := []db.Option{db.WithLimit(opts.withMaxResultSetSize + 1)}
+	if opts.withSortBy != "" {
+		sd := opts.withSortDirection
+		if sd != Ascending && sd != Descending {
+			sd = Ascending
+		}
+
+		// Sorting by name requires doing case insensitive, then tie-breaking with case sensitive to put names which were
+		// originally capitalized first. To avoid weird behavior when adding new columns, break sort by name's case
+		// out separately.
+		orderClause := ""
+		switch opts.withSortBy {
+		case "name":
+			orderClause = fmt.Sprintf("%s collate nocase %s, %s %s", opts.withSortBy, sd, opts.withSortBy, sd)
+		default:
+			orderClause = fmt.Sprintf("%s %s", opts.withSortBy, sd)
+		}
+
+		dbOpts = append(dbOpts, db.WithOrder(orderClause))
+	}
+
 	var cachedTargets []*Target
-	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, searchArgs, dbOpts...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
