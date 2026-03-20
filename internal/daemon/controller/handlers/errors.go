@@ -5,7 +5,6 @@ package handlers
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -199,22 +198,13 @@ func backendErrorToApiError(inErr error) *ApiError {
 	stErr := status.Convert(inErr)
 
 	switch {
-	case stderrors.Is(inErr, context.DeadlineExceeded):
+	case errors.Is(inErr, context.DeadlineExceeded):
 		// Context deadline exceeded (timeout) should return HTTP 504 Gateway Timeout
 		return &ApiError{
 			Status: http.StatusGatewayTimeout,
 			Inner: &pb.Error{
 				Kind:    codes.DeadlineExceeded.String(),
-				Message: "Request timeout: the identity provider took too long to respond",
-			},
-		}
-	case stderrors.Is(inErr, context.Canceled):
-		// Context canceled should also map to timeout in this context
-		return &ApiError{
-			Status: http.StatusGatewayTimeout,
-			Inner: &pb.Error{
-				Kind:    codes.DeadlineExceeded.String(),
-				Message: "Request timeout: the identity provider took too long to respond",
+				Message: http.StatusText(http.StatusGatewayTimeout),
 			},
 		}
 	case errors.Is(inErr, runtime.ErrNotMatch):

@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	stderrors "errors"
-
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -271,9 +269,9 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		attrs.GetState(),
 		attrs.GetCode())
 	if err != nil {
-		// Check if the error is due to context timeout or cancellation
+		// Check if the error is due to context timeout.
 		// This typically happens when the OIDC provider takes too long to respond
-		if stderrors.Is(err, context.DeadlineExceeded) || stderrors.Is(err, context.Canceled) {
+		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.DeadlineExceeded, "The identity provider took too long to respond. Please try again.")
 		}
 		return errResponse(errors.New(ctx, errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err)))
