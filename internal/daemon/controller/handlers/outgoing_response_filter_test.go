@@ -25,10 +25,27 @@ func TestOutgoingSplitCookie(t *testing.T) {
 	attrs, err := ProtoToStruct(context.Background(), &pba.AuthToken{Token: "t_abc_1234567890"})
 	require.NoError(t, err)
 	require.NoError(t, OutgoingResponseFilter(context.Background(), rec, &pbs.AuthenticateResponse{Attrs: &pbs.AuthenticateResponse_Attributes{Attributes: attrs}, Type: "cookie"}))
-	assert.ElementsMatch(t, rec.Result().Cookies(), []*http.Cookie{
-		{Name: HttpOnlyCookieName, Value: "34567890", HttpOnly: true, Path: "/", Raw: "wt-http-token-cookie=34567890; Path=/; HttpOnly"},
-		{Name: JsVisibleCookieName, Value: "t_abc_12", Path: "/", Raw: "wt-js-token-cookie=t_abc_12; Path=/"},
-	})
+	cookies := rec.Result().Cookies()
+	require.Len(t, cookies, 2)
+
+	byName := make(map[string]*http.Cookie, len(cookies))
+	for _, c := range cookies {
+		byName[c.Name] = c
+	}
+
+	httpOnlyCookie, ok := byName[HttpOnlyCookieName]
+	require.True(t, ok)
+	assert.Equal(t, "34567890", httpOnlyCookie.Value)
+	assert.Equal(t, "/", httpOnlyCookie.Path)
+	assert.True(t, httpOnlyCookie.HttpOnly)
+	assert.True(t, httpOnlyCookie.Secure)
+
+	jsVisibleCookie, ok := byName[JsVisibleCookieName]
+	require.True(t, ok)
+	assert.Equal(t, "t_abc_12", jsVisibleCookie.Value)
+	assert.Equal(t, "/", jsVisibleCookie.Path)
+	assert.False(t, jsVisibleCookie.HttpOnly)
+	assert.True(t, jsVisibleCookie.Secure)
 }
 
 func TestOutgoingResponseFilter_StatusCode(t *testing.T) {
