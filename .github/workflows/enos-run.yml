@@ -291,6 +291,18 @@ jobs:
           name: test-${{ steps.split.outputs.fragment }}
           path: enos/*.log
           retention-days: 5
+      - name: Get logs from controller container
+        # Retrieve logs from the worker container on a failed
+        # run to help diagnose a deadlock issue
+        if: contains(matrix.filter, 'e2e_docker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs boundary
+      - name: Get logs from worker container
+        # Retrieve logs from the worker container on a failed
+        # run to help diagnose a deadlock issue
+        if: contains(matrix.filter, 'e2e_docker') && contains(matrix.filter, 'worker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs worker
       - name: Get logs from postgres container
         # Retrieve logs from the postgres container on a failed
         # run to help diagnose a deadlock issue
