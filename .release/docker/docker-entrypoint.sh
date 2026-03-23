@@ -42,7 +42,7 @@ if [ "$1" = 'boundary' ]; then
                 chown -R boundary:boundary /boundary || echo "Could not chown /boundary (may not have appropriate permissions)"
             fi
         else
-            echo "SKIP_CHOWN not set but running non-root; skipping chown /boundary"
+            >&2 echo "SKIP_CHOWN not set but running non-root; skipping chown /boundary"
         fi
     fi
 
@@ -57,7 +57,7 @@ if [ "$1" = 'boundary' ]; then
                 setcap cap_ipc_lock=-ep $(readlink -f $(which boundary))
             fi
         else
-            echo "SKIP_SETCAP not set but running non-root; skipping setcap"
+            >&2 echo "SKIP_SETCAP not set but running non-root; skipping setcap"
         fi
     fi
 
