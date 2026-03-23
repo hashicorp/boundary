@@ -23,7 +23,6 @@ jobs:
     strategy:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
-        # !! ENT SPECIFIC SCENARIOS
         include:
           - filter: 'e2e_ui_aws builder:crt protocol:http'
             infra: 'aws'
@@ -79,11 +78,7 @@ jobs:
       - name: Install Vault CLI
         run: |
           wget https://releases.hashicorp.com/vault/1.17.6/vault_1.17.6_linux_amd64.zip -O /tmp/vault.zip
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            unzip -o -q /tmp/vault.zip -d "/usr/local/bin"
-          elif [[ "${{ github.repository }}" == "hashicorp/boundary-enterprise" ]]; then
-            unzip -o -q /tmp/vault.zip -d "$HOME/bin"
-          fi
+          unzip -o -q /tmp/vault.zip -d "/usr/local/bin"
 
       - name: Download Boundary Linux AMD64 bundle
         id: download
@@ -94,12 +89,7 @@ jobs:
 
       - name: Unzip and rename Boundary bundle
         run: |
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            unzip -o -q ${{steps.download.outputs.download-path}}/*.zip -d "/usr/local/bin"
-          elif [[ "${{ github.repository }}" == "hashicorp/boundary-enterprise" ]]; then
-            unzip -o -q ${{steps.download.outputs.download-path}}/*.zip -d "$HOME/bin"
-          fi
-
+          unzip -o -q ${{steps.download.outputs.download-path}}/*.zip -d "/usr/local/bin"
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
 
       - name: Download Boundary Linux AMD64 docker image
@@ -184,15 +174,9 @@ jobs:
       - name: Get SHA of UI version
         id: get-ui-version
         run: |
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            echo "Using UI Version $(cat ./internal/ui/VERSION)"
-            echo "sha=$(head -n 1 ./internal/ui/VERSION)" >> "$GITHUB_OUTPUT"
-            echo "repo=boundary-ui" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.repository }}" == "hashicorp/boundary-enterprise" ]]; then
-            echo "Using UI Version $(cat ./internal/ui/VERSION_ent)"
-            echo "sha=$(head -n 1 ./internal/ui/VERSION_ent)" >> "$GITHUB_OUTPUT"
-            echo "repo=boundary-ui-enterprise" >> "$GITHUB_OUTPUT"
-          fi
+          echo "Using UI Version $(cat ./internal/ui/VERSION)"
+          echo "sha=$(head -n 1 ./internal/ui/VERSION)" >> "$GITHUB_OUTPUT"
+          echo "repo=boundary-ui" >> "$GITHUB_OUTPUT"
 
       - name: Checkout UI repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -214,22 +198,14 @@ jobs:
           pnpm install --frozen-lockfile
 
           cd e2e-tests
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            pnpm playwright install --with-deps
-          elif [[ "${{ github.repository }}" == "hashicorp/boundary-enterprise" ]]; then
-            # playwright dependencies can't be installed on a self-hosted runner
-            # due to permission issues
-            pnpm playwright install
-          fi
+          pnpm playwright install --with-deps
 
       - name: GH fix for localhost resolution
         run: |
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            cat /etc/hosts && echo "-----------"
-            sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
-            cat /etc/hosts
-            ssh -V
-          fi
+          cat /etc/hosts && echo "-----------"
+          sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
+          cat /etc/hosts
+          ssh -V
 
       - name: Run Tests
         id: run-tests
@@ -238,13 +214,7 @@ jobs:
           source <(bash ./enos/scripts/test_e2e_env.sh)
 
           cd ./support/src/ui/e2e-tests
-          if [[ "${{ github.repository }}" == "hashicorp/boundary" ]]; then
-            pnpm run admin:ce:${{matrix.infra}} --reporter=html
-          elif [[ "${{ github.repository }}" == "hashicorp/boundary-enterprise" ]]; then
-            # only run tests on chromium because playwright dependencies can't
-            # be installed to support other browsers
-            pnpm run admin:ent:${{matrix.infra}} --project=chromium --reporter=html
-          fi
+          pnpm run admin:ce:${{matrix.infra}} --reporter=html
 
       - name: Split scenario name
         if: ${{ failure() && steps.run-tests.outcome == 'failure' }}
@@ -276,14 +246,3 @@ jobs:
           payload: |
             channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
             text: ":x: admin ui tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
-
-      # # ENTERPRISE
-      # - name: Send Slack message on failure
-      #   uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
-      #   if: failure() && github.repository == 'hashicorp/boundary'
-      #   with:
-      #     method: chat.postMessage
-      #     token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-      #     payload: |
-      #       channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-      #       text: ":x: admin ui tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
