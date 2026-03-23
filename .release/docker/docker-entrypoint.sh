@@ -30,25 +30,38 @@ fi
 
 # If we are running Boundary, make sure it executes as the proper user.
 if [ "$1" = 'boundary' ]; then
+	is_root=0
+	if [ "$(id -u)" = '0' ]; then
+		is_root=1
+	fi
+
     if [ -z "$SKIP_CHOWN" ]; then
-        # If the config dir is bind mounted then chown it
-        if [ "$(stat -c %u /boundary)" != "$(id -u boundary)" ]; then
-            chown -R boundary:boundary /boundary || echo "Could not chown /boundary (may not have appropriate permissions)"
+        if [ "$is_root" = '1' ]; then
+            # If the config dir is bind mounted then chown it
+            if [ "$(stat -c %u /boundary)" != "$(id -u boundary)" ]; then
+                chown -R boundary:boundary /boundary || echo "Could not chown /boundary (may not have appropriate permissions)"
+            fi
+        else
+            echo "SKIP_CHOWN not set but running non-root; skipping chown /boundary"
         fi
     fi
 
     if [ -z "$SKIP_SETCAP" ]; then
-        # Allow mlock to avoid swapping Boundary memory to disk
-        setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
+        if [ "$is_root" = '1' ]; then
+            # Allow mlock to avoid swapping Boundary memory to disk
+            setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
 
-        # In the case Boundary has been started in a container without IPC_LOCK privileges
-        if ! boundary -version 1>/dev/null 2>/dev/null; then
-            >&2 echo "Couldn't start Boundary with IPC_LOCK. Disabling IPC_LOCK, please use --privileged or --cap-add IPC_LOCK"
-            setcap cap_ipc_lock=-ep $(readlink -f $(which boundary))
+            # In the case Boundary has been started in a container without IPC_LOCK privileges
+            if ! boundary -version 1>/dev/null 2>/dev/null; then
+                >&2 echo "Couldn't start Boundary with IPC_LOCK. Disabling IPC_LOCK, please use --privileged or --cap-add IPC_LOCK"
+                setcap cap_ipc_lock=-ep $(readlink -f $(which boundary))
+            fi
+        else
+            echo "SKIP_SETCAP not set but running non-root; skipping setcap"
         fi
     fi
 
-    if [ "$(id -u)" = '0' ]; then
+    if [ "$is_root" = '1' ]; then
       set -- su-exec boundary "$@"
     fi
 fi
