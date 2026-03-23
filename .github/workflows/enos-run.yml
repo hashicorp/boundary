@@ -242,7 +242,7 @@ jobs:
           echo "$HOME/mongosh-2.7.0-linux-x64/bin" >> "$GITHUB_PATH"
 
           # cqlsh (cassandra CLI)
-          wget -q https://downloads.apache.org/cassandra/4.1.10/apache-cassandra-4.1.10-bin.tar.gz -O /tmp/cassandra.tar.gz
+          wget -q https://archive.apache.org/dist/cassandra/4.1.10/apache-cassandra-4.1.10-bin.tar.gz -O /tmp/cassandra.tar.gz
           tar -xzf /tmp/cassandra.tar.gz -C "$HOME"
           echo "$HOME/apache-cassandra-4.1.10/bin" >> "$GITHUB_PATH"
 
