@@ -340,9 +340,11 @@ func TestRepository_ListTargets(t *testing.T) {
 	})
 
 	ts := []*targets.Target{
-		target("1"),
-		target("2"),
-		target("3"),
+		target("TARGET 1"),
+		target("Target 1"),
+		target("TaRgEt 2"),
+		target("Target 2"),
+		target("Target 3"),
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
@@ -357,6 +359,40 @@ func TestRepository_ListTargets(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, l.Targets, len(ts))
 		assert.ElementsMatch(t, l.Targets, ts)
+	})
+
+	t.Run("withSortBy sorts targets", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Descending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[4].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[3].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[3].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[4].Name)
+	})
+
+	t.Run("withSortBy Ascending sorts targets ascending order", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, Ascending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+
+		assert.Equal(t, ts[4].Name, l.Targets[4].Name)
+		assert.Equal(t, ts[3].Name, l.Targets[3].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
+	})
+
+	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
+		_, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
+		assert.Error(t, err)
+	})
+
+	t.Run("withSortBy bad SortDirection defaults to Ascending", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId, WithSort(SortByName, "Something else", []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
+		assert.Equal(t, ts[2].Name, l.Targets[2].Name)
 	})
 }
 
@@ -524,6 +560,25 @@ func TestRepository_QueryTargets(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, l.Targets, 2)
 		assert.ElementsMatch(t, l.Targets, ts[0:2])
+	})
+
+	t.Run("withSortBy sorts targets", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByName, Descending, []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[1].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[0].Name, l.Targets[1].Name)
+	})
+
+	t.Run("withSortBy bad SortBy errors", func(t *testing.T) {
+		_, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByCreatedTime, Descending, []SortBy{SortByName}))
+		assert.Error(t, err)
+	})
+
+	t.Run("withSortBy bad SortDirection defaults to Ascending", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query, WithSort(SortByName, "Something else", []SortBy{SortByName}))
+		assert.NoError(t, err)
+		assert.Equal(t, ts[0].Name, l.Targets[0].Name)
+		assert.Equal(t, ts[1].Name, l.Targets[1].Name)
 	})
 }
 
