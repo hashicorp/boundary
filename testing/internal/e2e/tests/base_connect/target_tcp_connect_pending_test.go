@@ -5,8 +5,6 @@ package base_connect_test
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +40,7 @@ func TestCliTcpTargetConnectPending(t *testing.T) {
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
-	port := fmt.Sprint(10000 + rand.Intn(90000))
+	port := "12345"
 	cmdChan := make(chan *e2e.CommandResult)
 	go func() {
 		t.Log("Starting session...")
