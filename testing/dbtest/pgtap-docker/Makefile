@@ -1,6 +1,6 @@
 REGISTRY_NAME ?= docker.io/hashicorpboundary
 TEST_IMAGE_NAME = pgtap
-PG_VERSION ?= 13
+PG_VERSION ?= 15
 
 # Before running this target a builder instance needs to be setup, ie:
 #  docker buildx create --driver docker-container --use

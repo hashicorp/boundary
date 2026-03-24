@@ -3,9 +3,9 @@ all: test
 CWD := $(shell pwd)
 
 # Version of postgres docker image for test database
-PG_DOCKER_TAG ?= 13-alpine
+PG_DOCKER_TAG ?= 15-alpine
 # Version of pg_tap docker image
-PG_TAP_DOCKER_TAG ?= 13
+PG_TAP_DOCKER_TAG ?= 15
 SQL_TEST_DB_PORT ?=
 DOCKER_ARGS ?=
 ifneq ($(strip $(SQL_TEST_DB_PORT)),)

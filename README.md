@@ -58,7 +58,7 @@ Boundary has two external dependencies:
 The database contains Boundary's configuration and session information. The
 controller nodes must be able to access the database.
 
-Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
+Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 15 and above.
 
 Boundary uses only common extensions and both hosted and self-managed instances are supported. In most instances, all that you need is a database endpoint and the appropriate credentials.
 
