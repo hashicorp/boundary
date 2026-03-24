@@ -22,6 +22,7 @@ RUN set -eux && \
     apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 ADD bin/boundary /bin/boundary
+RUN setcap cap_ipc_lock=+ep /bin/boundary
 
 RUN mkdir /boundary/
 ADD .release/docker/config.hcl /boundary/config.hcl
@@ -36,6 +37,7 @@ LABEL org.opencontainers.image.licenses="BUSL-1.1"
 COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY bin/LICENSE.txt /usr/share/doc/boundary/LICENSE.txt
 
+USER boundary
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
 
@@ -75,6 +77,7 @@ RUN set -eux && \
     grep boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip boundary_${PRODUCT_VERSION}_SHA256SUMS | sha256sum -c && \
     unzip -d /bin boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip && \
     rm boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip boundary_${PRODUCT_VERSION}_SHA256SUMS boundary_${PRODUCT_VERSION}_SHA256SUMS.sig && \
+    setcap cap_ipc_lock=+ep /bin/boundary && \
     cp /bin/LICENSE.txt /usr/share/doc/boundary/LICENSE.txt && \
     mkdir /boundary
 
@@ -88,6 +91,7 @@ VOLUME /boundary/
 
 COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
+USER boundary
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
 
@@ -126,6 +130,7 @@ COPY .release/docker/config.hcl /boundary/config.hcl
 
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 COPY dist/$TARGETOS/$TARGETARCH/LICENSE.txt /usr/share/doc/boundary/LICENSE.txt
+RUN setcap cap_ipc_lock=+ep /bin/$BIN_NAME
 
 RUN chown -R ${NAME}:${NAME} /boundary
 RUN chmod -R 640 /boundary/*
@@ -135,5 +140,6 @@ VOLUME /boundary/
 
 COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
+USER ${NAME}
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
