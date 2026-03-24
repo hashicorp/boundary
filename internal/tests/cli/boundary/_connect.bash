@@ -4,18 +4,18 @@
 function connect_nc() {
   local id=$1
   # Note: When this command returns, the session immediately goes into a "canceling" state
-  echo "foo" | boundary connect -exec nc -target-id $id -- {{boundary.ip}} {{boundary.port}}
+  boundary connect -exec nc -target-id $id -- -w 5 -v {{boundary.ip}} {{boundary.port}} < /dev/null
 }
 
 function connect_alias() {
   local alias=$1
   # Note: When this command returns, the session immediately goes into a "canceling" state
-  echo "foo" | boundary connect $alias -exec nc -- {{boundary.ip}} {{boundary.port}}
+  boundary connect $alias -exec nc -- -w 5 -v {{boundary.ip}} {{boundary.port}} < /dev/null
 }
 
 function connect_alias_with_host_id() {
   local alias=$1
   local hostid=$2
   # Note: When this command returns, the session immediately goes into a "canceling" state
-  echo "foo" | boundary connect $alias -host-id $hostid -exec nc -- {{boundary.ip}} {{boundary.port}}
+  boundary connect $alias -host-id $hostid -exec nc -- -w 5 -v {{boundary.ip}} {{boundary.port}} < /dev/null
 }
