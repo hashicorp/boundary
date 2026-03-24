@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/kms/mains/gcpckms
 go 1.25.7
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.8
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.9
 	github.com/hashicorp/go-kms-wrapping/wrappers/gcpckms/v2 v2.0.13
 )
 
@@ -58,7 +58,7 @@ require (
 	google.golang.org/genproto v0.0.0-20250519155744-55703ea1f237 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/grpc v1.79.1 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
