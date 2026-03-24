@@ -47,6 +47,7 @@ func TestCliSearch(t *testing.T) {
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 	require.Equal(t, 200, statusResult.StatusCode)
 	t.Cleanup(func() {
+		ctx := context.Background()
 		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, err)
 	})
