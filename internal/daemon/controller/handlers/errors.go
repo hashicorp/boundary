@@ -198,6 +198,15 @@ func backendErrorToApiError(inErr error) *ApiError {
 	stErr := status.Convert(inErr)
 
 	switch {
+	case errors.Is(inErr, context.DeadlineExceeded):
+		// Context deadline exceeded (timeout) should return HTTP 504 Gateway Timeout
+		return &ApiError{
+			Status: http.StatusGatewayTimeout,
+			Inner: &pb.Error{
+				Kind:    codes.DeadlineExceeded.String(),
+				Message: http.StatusText(http.StatusGatewayTimeout),
+			},
+		}
 	case errors.Is(inErr, runtime.ErrNotMatch):
 		// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
 		// Overwrite the error to match our expected behavior.

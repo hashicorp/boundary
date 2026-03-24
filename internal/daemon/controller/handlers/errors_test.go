@@ -86,6 +86,17 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "Context Deadline Exceeded",
+			err:  context.DeadlineExceeded,
+			expected: ApiError{
+				Status: http.StatusGatewayTimeout,
+				Inner: &pb.Error{
+					Kind:    "DeadlineExceeded",
+					Message: http.StatusText(http.StatusGatewayTimeout),
+				},
+			},
+		},
+		{
 			name: "Unimplemented error",
 			err:  status.Error(codes.Unimplemented, "Test"),
 			expected: ApiError{

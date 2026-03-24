@@ -11,7 +11,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"runtime/debug"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -2047,4 +2049,46 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 			assert.Contains(t, u.RawQuery, tc.errorSubStr)
 		})
 	}
+}
+
+func TestAuthenticate_OIDC_Callback_DeadlineExceeded(t *testing.T) {
+	s := getSetup(t)
+
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		if strings.Contains(string(debug.Stack()), "internal/auth/oidc.Callback") {
+			return nil, context.DeadlineExceeded
+		}
+
+		return s.oidcRepoFn()
+	}
+
+	tested, err := authmethods.NewService(
+		s.ctx,
+		s.kmsCache,
+		s.pwRepoFn,
+		oidcRepoFn,
+		s.iamRepoFn,
+		s.atRepoFn,
+		s.ldapRepoFn,
+		s.authMethodRepoFn,
+		uint(s.maxPageSize),
+	)
+	require.NoError(t, err)
+
+	_, err = tested.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()),
+		&pbs.AuthenticateRequest{
+			AuthMethodId: s.authMethod.GetPublicId(),
+			Command:      "callback",
+			Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+				OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+					Code:  "code",
+					State: "state",
+				},
+			},
+		},
+	)
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, handlers.ApiErrorWithCode(codes.DeadlineExceeded)))
+	assert.Equal(t, "The identity provider took too long to respond. Please try again.", handlers.ToApiError(err).GetMessage())
 }
