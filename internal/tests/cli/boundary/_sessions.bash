@@ -4,7 +4,7 @@
 load _authorized_actions
 
 function list_sessions_include_terminated() {
-  boundary sessions list -scope-id $1 -include-terminated -format json
+  run_with_cli_timeout boundary sessions list -scope-id $1 -include-terminated -format json
 }
 
 function count_sessions_include_terminated() {
@@ -12,9 +12,9 @@ function count_sessions_include_terminated() {
 }
 
 function cancel_session() {
-  boundary sessions cancel -id $1
+  run_with_cli_timeout boundary sessions cancel -id $1
 }
 
 function read_session() {
-  boundary sessions read -id $1
+  run_with_cli_timeout boundary sessions read -id $1
 }

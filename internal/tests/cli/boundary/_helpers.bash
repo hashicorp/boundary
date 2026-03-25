@@ -16,6 +16,7 @@ export DEFAULT_HOST="${DEFAULT_HOST:-hst_1234567890}"
 export DEFAULT_USER="${DEFAULT_USER:-u_1234567890}"
 export DEFAULT_UNPRIVILEGED_USER="${DEFAULT_UNPRIVILEGED_USER:-u_0987654321}"
 export DEFAULT_AMLDAP="${DEFAULT_AMLDAP:-amldap_1234567890}"
+export BOUNDARY_CLI_TEST_TIMEOUT_SECONDS="${BOUNDARY_CLI_TEST_TIMEOUT_SECONDS:-30}"
 
 
 function strip() {
@@ -43,4 +44,27 @@ function field_eq() {
     local expected=$3
     echo "checking $field == $expected in $json"
     echo "$json" | jq -e "$field == $expected"
+}
+
+function run_with_cli_timeout() {
+  local timeout_seconds="${BOUNDARY_CLI_TEST_TIMEOUT_SECONDS}"
+
+  diag "running: $*"
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --preserve-status "$timeout_seconds" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout --preserve-status "$timeout_seconds" "$@"
+  else
+    "$@"
+  fi
+  local status=$?
+
+  if [ "$status" -eq 124 ]; then
+    diag "timed out after ${timeout_seconds}s: $*"
+  else
+    diag "exit=${status}: $*"
+  fi
+
+  return "$status"
 }
