@@ -190,9 +190,7 @@ scenario "e2e_docker_worker_registration_worker_led" {
     ]
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_worker"
-      docker_mirror            = var.docker_mirror
       network_name             = step.create_docker_network_cluster.network_name
-      go_version               = var.go_version
       debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary.address
       auth_method_id           = step.create_boundary.auth_method_id
