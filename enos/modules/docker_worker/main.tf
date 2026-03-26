@@ -70,6 +70,11 @@ variable "is_downstream_worker" {
   type        = bool
   default     = false
 }
+variable "ssh_ca_public_key" {
+  description = "SSH CA public key used to write worker known_hosts for host certificate validation."
+  type        = string
+  default     = ""
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -79,12 +84,13 @@ resource "docker_image" "boundary" {
 locals {
   recording_storage_path = "/boundary/recordings"
   port_ops               = var.port + 1
+  config_file_path       = "/boundary/worker-config.hcl"
 }
 
 resource "docker_container" "worker" {
   image   = docker_image.boundary.image_id
   name    = var.container_name
-  command = ["boundary", "server", "-config", "/boundary/worker-config.hcl"]
+  command = ["boundary", "server", "-config", local.config_file_path]
   env = [
     "BOUNDARY_LICENSE=${var.boundary_license}",
     "HOSTNAME=boundary",
@@ -114,8 +120,13 @@ resource "docker_container" "worker" {
       port                   = var.port
       port_ops               = local.port_ops
       token                  = var.token
+      ssh_known_hosts_path   = var.ssh_ca_public_key != "" ? "/etc/ssh/known_hosts" : ""
     })
-    file = "/boundary/worker-config.hcl"
+    file = local.config_file_path
+  }
+  upload {
+    content = var.ssh_ca_public_key != "" ? "@cert-authority [*]:2222 ${trimspace(var.ssh_ca_public_key)}\n" : "#"
+    file    = "/etc/ssh/known_hosts"
   }
   healthcheck {
     test     = ["CMD", "grep", "-i", "worker has successfully authenticated", "/boundary/logs/events.log"]
@@ -158,4 +169,8 @@ output "upstream_address" {
 
 output "worker_led_token" {
   value = var.worker_led_registration ? trimspace(enos_local_exec.get_worker_led_token[0].stdout) : ""
+}
+
+output "config_location" {
+  value = local.config_file_path
 }

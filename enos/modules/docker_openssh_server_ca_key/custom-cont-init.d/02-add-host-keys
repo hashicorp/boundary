@@ -1,0 +1,15 @@
+#!/usr/bin/with-contenv bash
+# Copyright IBM Corp. 2020, 2025
+# SPDX-License-Identifier: BUSL-1.1
+
+chown 1000:1000 /etc/ssh/host-key
+chmod 400 /etc/ssh/host-key
+
+if ! grep -qE '^HostKey[[:space:]]+/etc/ssh/host-key$' /config/sshd/sshd_config 2>/dev/null; then
+  echo HostKey /etc/ssh/host-key >> /config/sshd/sshd_config
+fi
+
+if ! grep -qE '^HostCertificate[[:space:]]+/etc/ssh/host-key-cert.pub$' /config/sshd/sshd_config 2>/dev/null; then
+  echo HostCertificate /etc/ssh/host-key-cert.pub >> /config/sshd/sshd_config
+fi
+

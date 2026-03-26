@@ -12,9 +12,7 @@ listener "tcp" {
 }
 
 listener "tcp" {
-  # setting to 127.0.0.1 so that it won't be accessible by the local machine
-  # outside of the container, which is a more realistic configuration for a downstream worker
-  address = "127.0.0.1:${port_ops}"
+  address = "0.0.0.0:${port_ops}"
   purpose = "ops"
   tls_disable = true
 }
