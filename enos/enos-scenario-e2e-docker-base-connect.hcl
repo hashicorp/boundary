@@ -106,9 +106,7 @@ scenario "e2e_docker_base_connect" {
     ]
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_connect"
-      docker_mirror            = var.docker_mirror
       network_name             = step.create_docker_network.network_name
-      go_version               = var.go_version
       debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary.address
       auth_method_id           = step.create_boundary.auth_method_id

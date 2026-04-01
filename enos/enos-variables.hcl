@@ -199,12 +199,6 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "go_version" {
-  description = "Version of Golang used by the application under test"
-  type        = string
-  default     = ""
-}
-
 variable "hcp_boundary_cluster_id" {
   description = "ID of the Boundary cluster in HCP"
   type        = string
