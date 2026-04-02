@@ -13,7 +13,7 @@ on:
         required: true
         type: string
       docker-image-file:
-        required: false
+        required: true
         type: string
 
 jobs:
@@ -90,7 +90,7 @@ jobs:
 
       - name: Download Boundary Linux AMD64 docker image
         if: contains(matrix.filter, 'docker')
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.1
         id: download-docker
         with:
           name: ${{ inputs.docker-image-file }}
@@ -197,6 +197,7 @@ jobs:
           pnpm playwright install --with-deps
 
       - name: GH fix for localhost resolution
+        if: contains(matrix.filter, 'docker')
         run: |
           cat /etc/hosts && echo "-----------"
           sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
@@ -216,7 +217,7 @@ jobs:
         if: ${{ failure() && steps.run-tests.outcome == 'failure' }}
         id: split
         run: |
-          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed 's/:/_/g')
+          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed -e 's/:/_/g' | sed -e 's/ /_/g')
           echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
 
       - name: Upload Playwright report
@@ -235,7 +236,7 @@ jobs:
 
       - name: Send Slack message on failure
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
-        if: failure() && github.repository == 'hashicorp/boundary'
+        if: failure()
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
