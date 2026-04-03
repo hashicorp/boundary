@@ -6,7 +6,7 @@ THIS_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
-TEST_PACKAGE ?= ./...
+TEST_PACKAGE ?= $(shell go list ./... | grep -v '/e2e')
 TEST_TIMEOUT ?= 30m
 
 CGO_ENABLED?=0
@@ -326,7 +326,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
+	go test $(TEST_PACKAGE) -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
