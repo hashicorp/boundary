@@ -5,5 +5,10 @@ project {
   copyright_year = 2024
   ignore_year1 = true # required to preserve existing start years
 
-  header_ignore = []
+  # Ignore all auto-generated protobuf and go-generate files
+  header_ignore = [
+    "**/*.gen.go",
+    "**/*.pb.go",
+    "**/*.pb.gw.go"
+  ]
 }
