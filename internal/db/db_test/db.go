@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2020, 2025
+// Copyright IBM Corp. 2020, 2026
 // SPDX-License-Identifier: BUSL-1.1
 
 // Package db_test provides some helper funcs for testing db integrations

@@ -1,4 +1,4 @@
--- Copyright IBM Corp. 2020, 2025
+-- Copyright IBM Corp. 2020, 2026
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- session_multiple_sessions_differnt_auth tests the wh_user_dimesion when

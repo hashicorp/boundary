@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright IBM Corp. 2020, 2025
+# Copyright IBM Corp. 2020, 2026
 # SPDX-License-Identifier: BUSL-1.1
 
 # This script initializes a postgres database to work with Boundary by spinning up a temporary
