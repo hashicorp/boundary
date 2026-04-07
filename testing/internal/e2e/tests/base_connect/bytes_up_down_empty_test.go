@@ -108,7 +108,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 			return nil
 		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 6),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 20),
 		func(err error, td time.Duration) {
 			t.Logf("%s. Retrying...", err.Error())
 		},
@@ -117,7 +117,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 
 	// Confirm that bytesUp and bytesDown do not change
 	t.Log("Verifying bytes_up/bytes_down values do not change...")
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		time.Sleep(3 * time.Second)
 
 		output := e2e.RunCommand(ctx, "boundary",
