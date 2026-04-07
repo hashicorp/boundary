@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-# Copyright IBM Corp. 2020, 2025
+# Copyright IBM Corp. 2020, 2026
 # SPDX-License-Identifier: BUSL-1.1
 
 cp /ca/ca-key.pub /config/sshd/ca-key.pub

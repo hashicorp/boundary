@@ -1,4 +1,4 @@
--- Copyright IBM Corp. 2020, 2025
+-- Copyright IBM Corp. 2020, 2026
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- source tests the whx_credential_dimension_source view.

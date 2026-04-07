@@ -1,4 +1,4 @@
--- Copyright IBM Corp. 2020, 2025
+-- Copyright IBM Corp. 2020, 2026
 -- SPDX-License-Identifier: BUSL-1.1
 
 -- ldap_auth_new_session tests the wh_user_dimesion when

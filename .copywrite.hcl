@@ -3,6 +3,7 @@ schema_version = 1
 project {
   license        = "BUSL-1.1"
   copyright_year = 2024
+  ignore_year1 = true # required to preserve existing start years
 
   header_ignore = [
     ".github/**",
