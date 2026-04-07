@@ -4,7 +4,7 @@
 function connect_nc() {
   local id=$1
   # Note: When this command returns, the session immediately goes into a "canceling" state
-  boundary connect -exec nc -target-id $id -- -w 5 -v {{boundary.ip}} {{boundary.port}} < /dev/null
+  boundary connect -exec nc -target-id $id -- -w 5 -v {{boundary.ip}} 12345 < /dev/null
 }
 
 function connect_alias() {
