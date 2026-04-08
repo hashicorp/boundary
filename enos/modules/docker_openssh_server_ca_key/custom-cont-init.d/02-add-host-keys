@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-# Copyright IBM Corp. 2020, 2025
+# Copyright IBM Corp. 2020, 2026
 # SPDX-License-Identifier: BUSL-1.1
 
 chown 1000:1000 /etc/ssh/host-key
