@@ -14,6 +14,8 @@ load _target_host_sources
 
 @test "boundary/target/connect: admin user can connect to default target" {
   run connect_nc $DEFAULT_TARGET
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -29,7 +31,7 @@ load _target_host_sources
 
 @test "boundary/target/connect: unpriv user can connect to default target" {
   run connect_nc $DEFAULT_TARGET
-  echo "connecting to $id: $output"
+  echo "connecting: $output"
   echo "status: $status"
   [ "$status" -eq 0 ]
 }
@@ -88,7 +90,7 @@ load _target_host_sources
 @test "boundary/target/connect: default user can connect to created target" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
   run connect_nc $id
-  echo "connecting to $id: $output"
+  echo "connecting: $output"
   echo "status: $status"
   [ "$status" -eq 0 ]
 }
