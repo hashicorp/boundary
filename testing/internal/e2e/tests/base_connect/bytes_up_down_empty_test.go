@@ -95,8 +95,18 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 				return fmt.Errorf("no connections found in session")
 			}
 
-			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+			conn := newSessionReadResult.Item.Connections[0]
+			bytesUp = int(conn.BytesUp)
+			bytesDown = int(conn.BytesDown)
+
+			// Log connection details for debugging rare failures
+			t.Logf("Connection - bytes_up: %d, bytes_down: %d, closed_reason: %q, client: %s:%d, endpoint: %s:%d, session status: %s",
+				bytesUp, bytesDown, conn.ClosedReason,
+				conn.ClientTcpAddress, conn.ClientTcpPort,
+				conn.EndpointTcpAddress, conn.EndpointTcpPort,
+				newSessionReadResult.Item.Status,
+			)
+
 			if bytesUp <= 0 || bytesDown <= 0 {
 				return fmt.Errorf(
 					"bytes_up: %d, bytes_down: %d, bytes_up or bytes_down is not greater than 0",
