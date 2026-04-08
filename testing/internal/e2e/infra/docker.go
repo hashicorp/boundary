@@ -35,6 +35,14 @@ type cassandraConfig struct {
 	NetworkAlias string
 }
 
+type DockerInspectResult []struct {
+	State struct {
+		Health *struct {
+			Status string `json:"Status"`
+		} `json:"Health"`
+	} `json:"State"`
+}
+
 // StartBoundaryDatabase spins up a postgres database in a docker container.
 // Returns information about the container
 func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
