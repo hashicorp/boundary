@@ -119,6 +119,8 @@ export NEW_HOST="host_for_alias_test"
 @test "boundary/alias: admin user cannot connect using an alias configured with host id passing in different host id" {
   local new_host_id=$(host_id NEW_HOST $DEFAULT_HOST_CATALOG)
   run connect_alias_with_host_id $ALIAS_VALUE $new_host_id
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 1 ]
 }
 

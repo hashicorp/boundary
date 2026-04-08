@@ -23,6 +23,8 @@ export ALIAS_TGT_NAME='test-alias-target'
 
 @test "boundary/alias/target: admin user can connect to default target using alias" {
   run connect_alias $ALIAS_VALUE
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -38,6 +40,8 @@ export ALIAS_TGT_NAME='test-alias-target'
 
 @test "boundary/alias/target: unpriv user can connect to default target" {
   run connect_alias $ALIAS_VALUE
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -85,7 +89,8 @@ export ALIAS_TGT_NAME='test-alias-target'
 
 @test "boundary/alias/target: default user can connect to created target using alias" {
   run connect_alias $ALIAS_VALUE
-  echo "connecting to $ALIAS_VALUE: $output"
+  echo "connecting: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
