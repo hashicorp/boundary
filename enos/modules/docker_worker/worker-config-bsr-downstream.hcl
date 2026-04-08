@@ -25,6 +25,10 @@ worker {
   }
 
   recording_storage_path = "${recording_storage_path}"
+
+%{ if ssh_known_hosts_path != "" ~}
+  # ssh_known_hosts_path = "${ssh_known_hosts_path}"
+%{ endif ~}
 }
 
 # This key_id needs to match the corresponding upstream worker's
