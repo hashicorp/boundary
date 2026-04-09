@@ -113,6 +113,7 @@ load _target_host_sources
 @test "boundary/target: default user can delete target" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
   run delete_target $id
+  echo "output: $output"
   run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
