@@ -99,8 +99,34 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 				return fmt.Errorf("no connections found in session")
 			}
 
-			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+			conn := newSessionReadResult.Item.Connections[0]
+			bytesUp = int(conn.BytesUp)
+			bytesDown = int(conn.BytesDown)
+
+			// Log connection details for debugging rare failures
+			t.Logf("Connection - bytes_up: %d, bytes_down: %d, closed_reason: %q, client: %s:%d, endpoint: %s:%d, session status: %s",
+				bytesUp, bytesDown, conn.ClosedReason,
+				conn.ClientTcpAddress, conn.ClientTcpPort,
+				conn.EndpointTcpAddress, conn.EndpointTcpPort,
+				newSessionReadResult.Item.Status,
+			)
+
+			// Check if the SSH command failed early
+			select {
+			case result := <-errChan:
+				if result.Err != nil {
+					return backoff.Permanent(fmt.Errorf("SSH command failed, stdout: %s, stderr: %s", string(result.Stdout), string(result.Stderr)))
+				}
+				return backoff.Permanent(fmt.Errorf("SSH command completed unexpectedly early, stdout: %s, stderr: %s", string(result.Stdout), string(result.Stderr)))
+			default:
+				// Command still running, continue checking bytes
+			}
+
+			// Check if connection was closed prematurely
+			if conn.ClosedReason != "" {
+				return backoff.Permanent(fmt.Errorf("connection closed before data transmission: %s", conn.ClosedReason))
+			}
+
 			if bytesUp <= 0 || bytesDown <= 0 {
 				return fmt.Errorf(
 					"bytes_up: %d, bytes_down: %d, bytes_up or bytes_down is not greater than 0",
@@ -109,7 +135,6 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 				)
 			}
 
-			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 20),
