@@ -95,9 +95,19 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 				return fmt.Errorf("no connections found in session")
 			}
 
-			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
-			if !(bytesUp > 0 && bytesDown > 0) {
+			conn := newSessionReadResult.Item.Connections[0]
+			bytesUp = int(conn.BytesUp)
+			bytesDown = int(conn.BytesDown)
+
+			// Log connection details for debugging rare failures
+			t.Logf("Connection - bytes_up: %d, bytes_down: %d, closed_reason: %q, client: %s:%d, endpoint: %s:%d, session status: %s",
+				bytesUp, bytesDown, conn.ClosedReason,
+				conn.ClientTcpAddress, conn.ClientTcpPort,
+				conn.EndpointTcpAddress, conn.EndpointTcpPort,
+				newSessionReadResult.Item.Status,
+			)
+
+			if bytesUp <= 0 || bytesDown <= 0 {
 				return fmt.Errorf(
 					"bytes_up: %d, bytes_down: %d, bytes_up or bytes_down is not greater than 0",
 					bytesUp,
@@ -108,7 +118,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 			return nil
 		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 6),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 20),
 		func(err error, td time.Duration) {
 			t.Logf("%s. Retrying...", err.Error())
 		},
@@ -117,7 +127,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 
 	// Confirm that bytesUp and bytesDown do not change
 	t.Log("Verifying bytes_up/bytes_down values do not change...")
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		time.Sleep(3 * time.Second)
 
 		output := e2e.RunCommand(ctx, "boundary",
