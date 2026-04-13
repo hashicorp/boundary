@@ -6,6 +6,7 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"strings"
@@ -33,6 +34,24 @@ var serveGrantSchema = func(ctx context.Context, w http.ResponseWriter) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+const cspPlaceholder = "__BOUNDARY_CSP_NONCE__"
+
+// cspWriter wraps an http.ResponseWriter to replace the CSP nonce placeholder
+// in index.html with the actual Content-Security-Policy value.
+type cspWriter struct {
+	http.ResponseWriter
+	csp  string
+	done bool
+}
+
+func (w *cspWriter) Write(b []byte) (int, error) {
+	if !w.done {
+		w.done = true
+		b = bytes.Replace(b, []byte(cspPlaceholder), []byte(w.csp), 1)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 func handleUiWithAssets(c *Controller) http.Handler {
@@ -80,7 +99,13 @@ func handleUiWithAssets(c *Controller) http.Handler {
 			}
 		}
 
-		// Fall through to the next handler
+		// For document requests, replace the CSP placeholder inside <head>.
+		if r.URL.Path == "/" {
+			if csp := w.Header().Get("Content-Security-Policy"); csp != "" {
+				nextHandler.ServeHTTP(&cspWriter{ResponseWriter: w, csp: csp}, r)
+				return
+			}
+		}
 		nextHandler.ServeHTTP(w, r)
 	})
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/googleapis/api/httpbody"
@@ -464,6 +466,81 @@ func TestGetActions(t *testing.T) {
 			actions := getActions(tc.url)
 			fmt.Println("actions", len(actions))
 			require.Equal(tc.expected, actions)
+		})
+	}
+}
+
+func TestWrapHandlerWithCsp(t *testing.T) {
+	defaultCsp := "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
+
+	newProps := func() HandlerProperties {
+		headers := http.Header{}
+		headers.Set("Content-Security-Policy", defaultCsp)
+		return HandlerProperties{
+			ListenerConfig: &listenerutil.ListenerConfig{
+				CustomUiResponseHeaders: map[int]http.Header{
+					0: headers,
+				},
+			},
+		}
+	}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	testCases := []struct {
+		name           string
+		path           string
+		isUi           bool
+		wantNonce      bool
+		wantDefaultCsp bool
+	}{
+		{
+			name:      "document request gets nonce",
+			path:      "/",
+			isUi:      true,
+			wantNonce: true,
+		},
+		{
+			name:           "static asset gets default CSP without nonce",
+			path:           "/assets/app.js",
+			isUi:           true,
+			wantDefaultCsp: true,
+			wantNonce:      false,
+		},
+		{
+			name:      "non UI request gets no CSP header",
+			path:      "/",
+			isUi:      false,
+			wantNonce: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			assert := assert.New(t)
+
+			isUiFunc := func(*http.Request) bool { return tc.isUi }
+			handler := wrapHandlerWithCsp(inner, newProps(), isUiFunc)
+			req := httptest.NewRequest("GET", tc.path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			csp := rec.Header().Get("Content-Security-Policy")
+
+			switch {
+			case tc.wantNonce:
+				require.NotEmpty(csp)
+				assert.Contains(csp, "'nonce-")
+			case tc.wantDefaultCsp:
+				require.NotEmpty(csp)
+				assert.NotContains(csp, "'nonce-")
+				require.Equal(defaultCsp, csp)
+			default:
+				require.Empty(csp)
+			}
 		})
 	}
 }
