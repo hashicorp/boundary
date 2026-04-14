@@ -253,6 +253,10 @@ func (c Configs) Limits(ctx context.Context) ([]rate.Limit, error) {
 					a, ok := validActionMap[aStr]
 					if !ok {
 						if wildcardResources {
+							// When using wildcard resources (*), skip actions that aren't valid for
+							// the current resource type rather than returning an error. This allows
+							// specifying rate limits like "read,list" for all resources, even though
+							// not all resources support both actions (e.g., sessions don't support "read").
 							continue
 						}
 						return nil, errors.New(ctx, errors.InvalidConfiguration, op, "", errors.WithMsg("action %s not valid for resource %s", aStr, res.String()))
