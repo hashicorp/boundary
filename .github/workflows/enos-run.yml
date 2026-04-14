@@ -25,7 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          fetch-depth: '0'
+          fetch-depth: '1'
+          fet-tags: true
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -271,7 +272,6 @@ jobs:
         if: contains(matrix.filter, 'e2e_docker_base_with_worker_version')
         run: |
           current_version_raw=$(./enos/support/boundary/boundary version | awk '/Version Number/ {print $3}')
-          current_version="${current_version_raw#v}"
           current_version="${current_version%%[-+]*}"
 
           if ! [[ "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -281,17 +281,16 @@ jobs:
 
           IFS='.' read -r current_major current_minor current_patch <<< "$current_version"
 
-          all_semver_tags=$(git tag -l | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$')
+          all_semver_tags=$(git tag -l | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true)
 
           previous_version=""
           if [ "$current_minor" -gt 0 ]; then
             target_minor=$((current_minor - 1))
-            previous_version=$(echo "$all_semver_tags" | grep -E "^${current_major}\.${target_minor}\.[0-9]+$" | sort -V | tail -n1)
+            previous_version=$(echo "$all_semver_tags" | grep -E "^${current_major}\.${target_minor}\.[0-9]+$" | sort -V | tail -n1 || true)
           fi
-
           if [ -z "$previous_version" ] && [ "$current_major" -gt 0 ]; then
             target_major=$((current_major - 1))
-            previous_version=$(echo "$all_semver_tags" | grep -E "^${target_major}\.[0-9]+\.[0-9]+$" | sort -V | tail -n1)
+            previous_version=$(echo "$all_semver_tags" | grep -E "^${target_major}\.[0-9]+\.[0-9]+$" | sort -V | tail -n1 || true)
           fi
 
           if [ -z "$previous_version" ]; then
