@@ -18,6 +18,8 @@ variable "local_key_path" {
   default     = null
 }
 
+resource "random_pet" "default" {}
+
 resource "tls_private_key" "ssh" {
   count     = var.local_key_path == null ? 1 : 0
   algorithm = "RSA"
@@ -27,7 +29,7 @@ resource "tls_private_key" "ssh" {
 resource "local_sensitive_file" "private_key" {
   count           = var.local_key_path == null ? 1 : 0
   content         = tls_private_key.ssh[0].private_key_pem
-  filename        = "${path.root}/.terraform/tmp/ssh-key-enos"
+  filename        = "${path.root}/.terraform/tmp/ssh-key-enos-${random_pet.default.id}"
   file_permission = "0400"
 }
 

@@ -34,6 +34,15 @@ check "local_key_path_requires_local_aws_keypair_name" {
   }
 }
 
+check "local_aws_keypair_name_requires_local_key_path" {
+  assert {
+    condition     = var.local_aws_keypair_name == null || var.local_key_path != null
+    error_message = "local_key_path must be provided when local_aws_keypair_name is set."
+  }
+}
+
+resource "random_pet" "default" {}
+
 resource "tls_private_key" "ssh" {
   count     = var.local_key_path == null ? 1 : 0
   algorithm = "RSA"
@@ -42,7 +51,7 @@ resource "tls_private_key" "ssh" {
 
 resource "aws_key_pair" "generated" {
   count      = var.local_key_path == null ? 1 : 0
-  key_name   = "ssh-key-enos-aws"
+  key_name   = "ssh-key-enos-aws-${random_pet.default.id}"
   public_key = tls_private_key.ssh[0].public_key_openssh
 }
 
