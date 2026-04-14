@@ -87,16 +87,14 @@ jobs:
       ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
       ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
       ENOS_VAR_local_boundary_dir: ./support/boundary
-      ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
-      ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-      ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
       ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
       ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
       ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
+      ENOS_VAR_is_ci: true
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -261,12 +259,6 @@ jobs:
 
           # redis
           sudo apt update && sudo apt install -y redis-tools mysql-client
-      - name: Output Terraform version info
-        run: |
-          mkdir -p ./enos/terraform-plugin-cache
-          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario check --chdir ./enos ${{ matrix.filter }} && \
-          enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
       - name: Determine boundary version to test against previous worker version
         # Resolve the worker version from the previous release line.
         if: contains(matrix.filter, 'e2e_docker_base_with_worker_version')
@@ -299,6 +291,12 @@ jobs:
           fi
 
           echo "ENOS_VAR_worker_version=$previous_version" >> "$GITHUB_ENV"
+      - name: Output Terraform version info
+        run: |
+          mkdir -p ./enos/terraform-plugin-cache
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario check --chdir ./enos ${{ matrix.filter }} && \
+          enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
       - name: Run Enos scenario
         id: run
         # Continue once and retry

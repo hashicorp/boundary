@@ -14,6 +14,11 @@ terraform {
   }
 }
 
+variable "is_ci" {
+  description = "Run tests automatically if in CI"
+  type        = bool
+  default     = false
+}
 variable "network_name" {
   description = "Name of Docker Network"
   type        = string
@@ -22,11 +27,6 @@ variable "controller_container_name" {
   description = "Name of Docker Container running the Boundary controller"
   type        = string
   default     = ""
-}
-variable "debug_no_run" {
-  description = "If set, this module will not execute the tests so that you can still access environment variables"
-  type        = bool
-  default     = false
 }
 variable "test_package" {
   description = "Name of Go test package to run"
@@ -55,10 +55,7 @@ variable "auth_password" {
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
   type        = string
-}
-variable "local_boundary_src_dir" {
-  description = "Local Path to boundary src code directory"
-  type        = string
+  default     = ""
 }
 variable "target_user" {
   description = "SSH username for target"
@@ -352,12 +349,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_GCP_HOST_SET_IPS          = jsonencode(var.gcp_host_set_ips)
     E2E_MAX_PAGE_SIZE             = var.max_page_size
     E2E_CONTROLLER_CONTAINER_NAME = var.controller_container_name
-    BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
-    BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
-    MODULE_DIR                    = abspath(path.module)
   }
 
-  inline = var.debug_no_run ? [""] : [
+  inline = var.is_ci ? [
     "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -timeout ${var.test_timeout} | tee ${path.module}/../../test-e2e-${local.package_name}.log"
-  ]
+  ] : [""]
 }

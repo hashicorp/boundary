@@ -94,18 +94,6 @@ variable "local_boundary_dir" {
   default     = null
 }
 
-variable "local_boundary_src_dir" {
-  description = "Path to local boundary source code directory"
-  type        = string
-  default     = null
-}
-
-variable "local_boundary_ui_src_dir" {
-  description = "Path to local boundary-ui source code directory"
-  type        = string
-  default     = null
-}
-
 variable "crt_bundle_path" {
   description = "Path to CRT generated boundary bundle"
   type        = string
@@ -148,12 +136,6 @@ variable "local_build_target" {
   default     = "build-ui build"
 }
 
-variable "e2e_debug_no_run" {
-  description = "If set, this will prevent test suites from running"
-  type        = bool
-  default     = false
-}
-
 variable "docker_mirror" {
   description = "URL to the docker repository"
   type        = string
@@ -164,12 +146,6 @@ variable "boundary_binary_name" {
   description = "Boundary binary name"
   type        = string
   default     = "boundary"
-}
-
-variable "boundary_edition" {
-  description = "Edition of boundary build"
-  type        = string
-  default     = "oss"
 }
 
 variable "boundary_license_path" {
@@ -285,4 +261,10 @@ variable "worker_version" {
   description = "Manually set worker version to test different worker/controller version combinations"
   type        = string
   default     = null
+}
+
+variable "is_ci" {
+  description = "Whether the tests are running in CI"
+  type        = bool
+  default     = false
 }

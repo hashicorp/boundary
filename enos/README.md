@@ -17,29 +17,23 @@ for further information regarding installation, execution, or composing Enos sce
 * Doormat
 ```shell
 brew tap hashicorp/tap
-brew install hashicorp/tap/vault
 brew install hashicorp/tap/terraform
-brew install hashicorp/tap/enos
-brew install coreutils
+brew install hashicorp/tap/vault
+brew install enos coreutils jq
 
-# Install doormat cli
+# (Optional)
+export ENOS_VAR_boundary_license=${license_key}
+
+# Install doormat cli for AWS access
 brew tap hashicorp/security git@github.com:hashicorp/homebrew-security.git
 brew install hashicorp/security/doormat-cli
+
+
+#
+
 ```
 
 * AWS access. HashiCorp Boundary developers should use Doormat.
-* An SSH keypair in the AWS region you wish to run the scenario. You can use
-  doormat to login to the AWS console to create or upload an existing keypair.
-```shell
-# Create a SSH Key Pair
-ssh-keygen -t ed25519 -C "your_email@example.com"
-
-# <https://doormat.hashicorp.services/>
-# Go to the console for the corresponding AWS account
-# Select the desired AWS region on the top-right
-# Go to EC2 -> Key Pairs -> Actions -> Import Key Pair -> Import public key file (.pub)
-# Note the name of the key pair
-```
 * Boundary CLI installed locally
 
 ### Enos Variables
@@ -57,15 +51,6 @@ See [enos.vars.hcl](./enos.vars.hcl) for complete descriptions of each variable.
 You can either modify `enos.vars.hcl` directly or create your own copy at
 `enos-local.vars.hcl` which gets ignored by git.
 
-### System File Modifications
-
-For docker-based scenarios, you will need to modify `/etc/hosts` to include the
-following lines
-```
-127.0.0.1       localhost       boundary
-127.0.0.1       localhost       worker
-127.0.0.1       localhost       vault
-```
 ### AWS Credentials
 Copy the AWS Account credentials from doormat and set it in the terminal, where the enos commands are run.
 

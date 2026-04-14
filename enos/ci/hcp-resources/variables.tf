@@ -25,11 +25,13 @@ variable "boundary_license_path" {
 variable "aws_ssh_keypair_name" {
   description = "Name of the AWS EC2 keypair to use for SSH access"
   type        = string
+  default     = null
 }
 
 variable "aws_ssh_private_key_path" {
   description = "Path to the private key file for the AWS EC2 keypair"
   type        = string
+  default     = null
 }
 
 variable "worker_count" {

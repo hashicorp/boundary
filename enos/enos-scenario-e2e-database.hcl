@@ -20,13 +20,26 @@ scenario "e2e_database" {
     }, var.tags)
   }
 
+  step "get_boundary_binary" {
+    skip_step = local.local_boundary_dir != null ? true : false
+    module    = module.get_binary_path
+
+    variables {
+      name = "boundary"
+    }
+  }
+
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
+  }
+
   step "read_license" {
-    skip_step = var.boundary_edition == "oss"
-    module    = module.read_license
+    module = module.read_license
 
     variables {
       license_path = local.license_path
       license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -127,10 +140,10 @@ scenario "e2e_database" {
     ]
 
     variables {
+      is_ci                    = var.is_ci
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
-      debug_no_run             = var.e2e_debug_no_run
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : ""
-      local_boundary_dir       = local.local_boundary_dir
+      boundary_license         = step.read_license.license
+      local_boundary_dir       = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
       target_user              = "ubuntu"
       aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       aws_access_key_id        = step.iam_setup.access_key_id

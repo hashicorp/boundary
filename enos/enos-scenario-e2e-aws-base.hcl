@@ -28,6 +28,19 @@ scenario "e2e_aws_base" {
     }, var.tags)
   }
 
+  step "get_boundary_binary" {
+    skip_step = local.local_boundary_dir != null ? true : false
+    module    = module.get_binary_path
+
+    variables {
+      name = "boundary"
+    }
+  }
+
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
+  }
+
   step "find_azs" {
     module = module.aws_az_finder
 
@@ -41,12 +54,12 @@ scenario "e2e_aws_base" {
   }
 
   step "read_license" {
-    skip_step = var.boundary_edition == "oss"
-    module    = module.read_license
+    module = module.read_license
 
     variables {
       license_path = local.license_path
       license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -59,7 +72,7 @@ scenario "e2e_aws_base" {
 
     variables {
       path    = local.build_path[matrix.builder]
-      edition = var.boundary_edition
+      edition = step.get_boundary_edition.edition
     }
   }
 
@@ -96,7 +109,7 @@ scenario "e2e_aws_base" {
     variables {
       boundary_binary_name     = var.boundary_binary_name
       boundary_install_dir     = local.boundary_install_dir
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
+      boundary_license         = step.read_license.license
       common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count
@@ -142,13 +155,13 @@ scenario "e2e_aws_base" {
     ]
 
     variables {
+      is_ci                    = var.is_ci
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base"
-      debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
-      local_boundary_dir       = local.local_boundary_dir
+      local_boundary_dir       = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
       aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       target_address           = step.create_target.target_private_ips[0]
       target_user              = "ubuntu"
