@@ -101,8 +101,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          fetch-depth: ${{ matrix.scenario == 'e2e_docker_base_with_worker_version' && '0' || '1' }}
-          fetch-tags: ${{ matrix.scenario == 'e2e_docker_base_with_worker_version' && 'true' || 'false' }}
+          fetch-depth: ${{ contains(matrix.filter, 'e2e_docker_base_with_worker_version') && '0' || '1' }}
+          fetch-tags: ${{ contains(matrix.filter, 'e2e_docker_base_with_worker_version') && 'true' || 'false' }}
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
