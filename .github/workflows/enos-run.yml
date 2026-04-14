@@ -279,7 +279,7 @@ jobs:
             exit 1
           fi
 
-          IFS='.' read -r current_major current_minor current_patch <<< "$current_version"
+          IFS='.' read -r current_major current_minor _ <<< "$current_version"
 
           all_semver_tags=$(git tag -l | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true)
 
