@@ -25,8 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          fetch-depth: '1'
-          fet-tags: true
+          fetch-depth: '0'
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -102,7 +101,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          fetch-depth: '0'
+          fetch-depth: ${{ matrix.scenario == 'e2e_docker_base_with_worker_version' && '0' || '1' }}
+          fetch-tags: ${{ matrix.scenario == 'e2e_docker_base_with_worker_version' && 'true' || 'false' }}
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -272,7 +272,7 @@ jobs:
         if: contains(matrix.filter, 'e2e_docker_base_with_worker_version')
         run: |
           current_version_raw=$(./enos/support/boundary/boundary version | awk '/Version Number/ {print $3}')
-          current_version="${current_version%%[-+]*}"
+          current_version="${current_version_raw%%[-+]*}"
 
           if ! [[ "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Unable to parse Boundary version: $current_version_raw" >&2
