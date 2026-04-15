@@ -129,6 +129,7 @@ scenario "e2e_database" {
       aws_host_set_filter1     = step.create_tag_inputs.tag_string
       max_page_size            = 10
       aws_region               = var.aws_region
+      vault_version            = var.vault_version
     }
   }
 
