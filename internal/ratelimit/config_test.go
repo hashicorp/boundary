@@ -859,6 +859,34 @@ func TestConfigsLimits(t *testing.T) {
 			nil,
 			fmt.Errorf("ratelimit.(Configs).Limits: action foo not valid for resource session: configuration issue: error #5000"),
 		},
+		{
+			"invalid-action-with-wildcard-resource",
+			Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"foo"},
+					Per:       "total",
+					Limit:     10,
+					Period:    time.Minute,
+				},
+			},
+			nil,
+			fmt.Errorf("ratelimit.(Configs).Limits: action foo not valid for resource *: configuration issue: error #5000"),
+		},
+		{
+			"typo-in-action-with-wildcard-resource",
+			Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"reaad"}, // typo: should be "read"
+					Per:       "total",
+					Limit:     10,
+					Period:    time.Minute,
+				},
+			},
+			nil,
+			fmt.Errorf("ratelimit.(Configs).Limits: action reaad not valid for resource *: configuration issue: error #5000"),
+		},
 	}
 
 	for _, tc := range cases {
