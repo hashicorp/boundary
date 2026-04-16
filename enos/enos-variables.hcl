@@ -5,11 +5,13 @@
 variable "aws_ssh_keypair_name" {
   description = "Name of the AWS keypair Enos will use to connect"
   type        = string
+  default     = null
 }
 
 variable "aws_ssh_private_key_path" {
   description = "Path to the SSH key Enos will use to connect"
   type        = string
+  default     = null
 }
 
 # Tagging
@@ -20,8 +22,9 @@ variable "environment" {
 }
 
 variable "enos_user" {
-  description = "The user running the tests, this is by default your OS user or Github User"
+  description = "The user running the tests, used for tagging purposes"
   type        = string
+  default     = "enos"
 }
 
 # Test configs

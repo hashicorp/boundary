@@ -51,11 +51,12 @@ variable "target_user" {
   type        = string
   default     = ""
 }
+
 variable "aws_ssh_private_key_path" {
-  description = "Local Path to key used to SSH onto created hosts"
+  description = "Path to the private key used to SSH into AWS instances"
   type        = string
-  default     = ""
 }
+
 variable "target_address" {
   description = "Address of target"
   type        = string

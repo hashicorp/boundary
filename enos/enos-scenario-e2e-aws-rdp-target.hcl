@@ -8,7 +8,6 @@ scenario "e2e_aws_rdp_target" {
   terraform     = terraform.default
   providers = [
     provider.aws.default,
-    provider.enos.default
   ]
 
   matrix {

@@ -4,16 +4,13 @@
 scenario "e2e_docker_base_connect" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
-  providers = [
-    provider.enos.default
-  ]
 
   matrix {
     builder = ["local", "crt"]
   }
 
   locals {
-    aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
+    aws_ssh_private_key_path   = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
     local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
@@ -39,6 +36,14 @@ scenario "e2e_docker_base_connect" {
       path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
       cli_build_path = local.build_path[matrix.builder]
       edition        = var.boundary_edition
+    }
+  }
+
+  step "generate_ssh_key" {
+    module = module.ssh_keypair
+
+    variables {
+      local_key_path = local.aws_ssh_private_key_path
     }
   }
 
@@ -94,7 +99,7 @@ scenario "e2e_docker_base_connect" {
     variables {
       image_name            = "${var.docker_mirror}/linuxserver/openssh-server:latest"
       network_name          = [local.network_cluster]
-      private_key_file_path = local.aws_ssh_private_key_path
+      private_key_file_path = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -114,7 +119,7 @@ scenario "e2e_docker_base_connect" {
       auth_password            = step.create_boundary.password
       local_boundary_dir       = local.local_boundary_dir
       local_boundary_src_dir   = local.local_boundary_src_dir
-      aws_ssh_private_key_path = local.aws_ssh_private_key_path
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"

@@ -10,7 +10,6 @@ scenario "e2e_aws_rdp_base" {
   terraform     = terraform.default
   providers = [
     provider.aws.default,
-    provider.enos.default
   ]
 
   matrix {
@@ -24,7 +23,7 @@ scenario "e2e_aws_rdp_base" {
   }
 
   locals {
-    aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
+    aws_ssh_private_key_path = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
@@ -71,6 +70,15 @@ scenario "e2e_aws_rdp_base" {
     variables {
       availability_zones = step.find_azs.availability_zones
       common_tags        = local.tags
+    }
+  }
+
+  step "generate_ssh_key" {
+    module = module.aws_ssh_keypair
+
+    variables {
+      local_key_path         = local.aws_ssh_private_key_path
+      local_aws_keypair_name = var.aws_ssh_keypair_name != null ? var.aws_ssh_keypair_name : null
     }
   }
 
@@ -131,6 +139,7 @@ scenario "e2e_aws_rdp_base" {
     module = module.vault
     depends_on = [
       step.create_base_infra,
+      step.generate_ssh_key
     ]
 
     variables {
@@ -146,7 +155,9 @@ scenario "e2e_aws_rdp_base" {
         version = var.vault_version
         edition = "oss"
       }
-      vpc_id = step.create_base_infra.vpc_id
+      vpc_id                   = step.create_base_infra.vpc_id
+      aws_ssh_keypair_name     = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -175,7 +186,8 @@ scenario "e2e_aws_rdp_base" {
       step.build_boundary_linux,
       step.create_windows_client,
       step.create_vault_cluster,
-      step.read_boundary_license
+      step.read_boundary_license,
+      step.generate_ssh_key
     ]
 
     variables {
@@ -200,6 +212,8 @@ scenario "e2e_aws_rdp_base" {
       ip_version                  = local.ip_version
       recording_storage_path      = "/recording"
       alb_sg_additional_ips       = step.create_windows_client.public_ip_list
+      aws_ssh_keypair_name        = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key_path    = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -302,7 +316,7 @@ scenario "e2e_aws_rdp_base" {
       auth_login_name                          = step.create_boundary_cluster.auth_login_name
       auth_password                            = step.create_boundary_cluster.auth_password
       local_boundary_dir                       = local.local_boundary_dir
-      aws_ssh_private_key_path                 = local.aws_ssh_private_key_path
+      aws_ssh_private_key_path                 = step.generate_ssh_key.private_key_path
       target_user                              = "ubuntu"
       target_port                              = "22"
       aws_bucket_name                          = step.create_bucket.bucket_name
@@ -432,5 +446,9 @@ scenario "e2e_aws_rdp_base" {
 
   output "vault_root_token" {
     value = step.create_vault_cluster.vault_root_token
+  }
+
+  output "aws_ssh_key_path" {
+    value = step.generate_ssh_key.private_key_path
   }
 }

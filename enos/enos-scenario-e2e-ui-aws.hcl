@@ -6,7 +6,6 @@ scenario "e2e_ui_aws" {
   terraform     = terraform.default
   providers = [
     provider.aws.default,
-    provider.enos.default
   ]
 
   matrix {
@@ -15,7 +14,7 @@ scenario "e2e_ui_aws" {
   }
 
   locals {
-    aws_ssh_private_key_path  = abspath(var.aws_ssh_private_key_path)
+    aws_ssh_private_key_path  = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
     boundary_install_dir      = abspath(var.boundary_install_dir)
     license_path              = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
@@ -78,6 +77,15 @@ scenario "e2e_ui_aws" {
     }
   }
 
+  step "generate_ssh_key" {
+    module = module.aws_ssh_keypair
+
+    variables {
+      local_key_path         = local.aws_ssh_private_key_path
+      local_aws_keypair_name = var.aws_ssh_keypair_name != null ? var.aws_ssh_keypair_name : null
+    }
+  }
+
   locals {
     egress_tag = "egress"
   }
@@ -108,6 +116,8 @@ scenario "e2e_ui_aws" {
       worker_type_tags         = [local.egress_tag]
       aws_region               = var.aws_region
       protocol                 = matrix.protocol
+      aws_ssh_keypair_name     = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -130,7 +140,9 @@ scenario "e2e_ui_aws" {
         version = var.vault_version
         edition = "oss"
       }
-      vpc_id = step.create_base_infra.vpc_id
+      vpc_id                   = step.create_base_infra.vpc_id
+      aws_ssh_keypair_name     = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -153,14 +165,15 @@ scenario "e2e_ui_aws" {
     depends_on = [step.create_base_infra]
 
     variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      aws_ssh_keypair_name = var.aws_ssh_keypair_name
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-      target_count         = var.target_count <= 1 ? 2 : var.target_count
-      additional_tags      = step.create_tag_inputs.tag_map
-      subnet_ids           = step.create_boundary_cluster.subnet_ids
+      ami_id                   = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      enos_user                = var.enos_user
+      instance_type            = var.target_instance_type
+      vpc_id                   = step.create_base_infra.vpc_id
+      target_count             = var.target_count <= 1 ? 2 : var.target_count
+      additional_tags          = step.create_tag_inputs.tag_map
+      subnet_ids               = step.create_boundary_cluster.subnet_ids
+      aws_ssh_keypair_name     = step.generate_ssh_key.key_pair_name
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
     }
   }
 
@@ -201,7 +214,7 @@ scenario "e2e_ui_aws" {
       auth_password             = step.create_boundary_cluster.auth_password
       local_boundary_dir        = local.local_boundary_dir
       local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
-      aws_ssh_private_key_path  = local.aws_ssh_private_key_path
+      aws_ssh_private_key_path  = step.generate_ssh_key.private_key_path
       target_address            = step.create_targets_with_tag.target_private_ips[0]
       target_user               = "ubuntu"
       target_port               = "22"
@@ -224,5 +237,9 @@ scenario "e2e_ui_aws" {
 
   output "worker_ips" {
     value = step.create_boundary_cluster.worker_ips
+  }
+
+  output "aws_ssh_key_path" {
+    value = step.generate_ssh_key.private_key_path
   }
 }

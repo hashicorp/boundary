@@ -104,14 +104,13 @@ variable "controller_monitoring" {
   default     = false
 }
 
-variable "ssh_user" {
-  description = "SSH user to authenticate as"
+variable "aws_ssh_keypair_name" {
+  description = "SSH keypair used to connect to EC2 instances"
   type        = string
-  default     = "ubuntu"
 }
 
-variable "ssh_aws_keypair" {
-  description = "SSH keypair used to connect to EC2 instances"
+variable "aws_ssh_private_key_path" {
+  description = "SSH private key path for connecting to instances"
   type        = string
 }
 
