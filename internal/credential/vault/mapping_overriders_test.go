@@ -112,7 +112,6 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("%T-%s", tt.m, tt.ct), func(t *testing.T) {
 			got := validMappingOverride(tt.m, tt.ct)
 			assert.Equal(t, tt.want, got)

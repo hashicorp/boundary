@@ -71,7 +71,6 @@ func TestSession_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
@@ -153,7 +152,6 @@ select session_id,
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			assert, require := assert.New(t), require.New(t)
@@ -218,7 +216,6 @@ func TestConnection_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()

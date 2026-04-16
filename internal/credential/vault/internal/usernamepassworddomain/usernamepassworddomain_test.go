@@ -313,7 +313,6 @@ func TestBaseToUsrPassDomain(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			user, pass, domain := Extract(tt.given.s, tt.given.uAttr, tt.given.pAttr, tt.given.dAttr)

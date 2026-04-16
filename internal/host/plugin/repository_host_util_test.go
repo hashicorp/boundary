@@ -247,7 +247,6 @@ func TestUtilFunctions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			var hi *hostInfo

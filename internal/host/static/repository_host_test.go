@@ -236,7 +236,6 @@ func TestRepository_CreateHost(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -752,7 +751,6 @@ func TestRepository_UpdateHost(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -949,7 +947,6 @@ func TestRepository_LookupHost(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -1015,7 +1012,6 @@ func TestRepository_LookupHost_HostSets(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -1073,7 +1069,6 @@ func TestRepository_ListHosts(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -1150,7 +1145,6 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -1224,7 +1218,6 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
@@ -1437,7 +1430,6 @@ func TestRepository_DeleteHost(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)

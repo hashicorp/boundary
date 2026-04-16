@@ -72,7 +72,6 @@ func TestWorkerTags_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			err := rw.Create(context.Background(), tt.want)
 			if tt.wantCreateErr {
@@ -245,7 +244,6 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := repo.AddWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.tags)
 			if tt.wantErrContains != "" {
@@ -401,7 +399,6 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := repo.SetWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.tags)
 			if tt.wantErrContains != "" {
@@ -555,7 +552,6 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := repo.DeleteWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.tags)
 			if tt.wantErrContains != "" {

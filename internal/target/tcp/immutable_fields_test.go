@@ -66,7 +66,6 @@ func TestTarget_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
@@ -136,7 +135,6 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
@@ -219,7 +217,6 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()

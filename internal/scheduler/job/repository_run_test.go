@@ -306,7 +306,6 @@ func TestRepository_UpdateProgress(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -442,7 +441,6 @@ func TestRepository_CompleteRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -590,7 +588,6 @@ func TestRepository_FailRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -701,7 +698,6 @@ func TestRepository_InterruptRuns(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -832,7 +828,6 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			require.NoError(err)
@@ -941,7 +936,6 @@ func TestRepository_LookupJobRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -1004,7 +998,6 @@ func TestRepository_deleteJobRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)

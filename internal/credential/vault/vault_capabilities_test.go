@@ -204,7 +204,6 @@ func TestPathCapabilities_has(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got := newPathCapabilities(tt.given)
@@ -288,7 +287,6 @@ func TestPathCapabilities_get(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			pc := newPathCapabilities(tt.given)
@@ -369,7 +367,6 @@ path "two" {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.given.vaultPolicy()
 			t.Log(got)
@@ -455,7 +452,6 @@ func TestPathCapabilities_union(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// test the union method is commutative
 			check(t, tt.x, tt.y, tt.z)
@@ -518,7 +514,6 @@ func TestPathCapabilities_missing(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got := tt.have.missing(tt.require)
@@ -563,7 +558,6 @@ func TestPathCapabilities_String(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got := tt.pc.String()
@@ -604,7 +598,6 @@ func TestCapabilities_missing(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		name := fmt.Sprintf("{%s} - {%s} = {%s}", tt.require, tt.have, tt.want)
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
@@ -625,7 +618,6 @@ func TestCapabilities_String(t *testing.T) {
 		{"two", createCapability | updateCapability, `["create", "update"]`},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.given.String()
 			if got != tt.want {

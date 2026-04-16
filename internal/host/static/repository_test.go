@@ -106,7 +106,6 @@ func TestRepository_New(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)

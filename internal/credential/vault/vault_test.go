@@ -77,7 +77,6 @@ func Test_newClient(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			client, err := newClient(tt.ctx, tt.clientConfig)
@@ -276,7 +275,6 @@ func TestClient_capabilities(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		if tt.name == "" {
 			tt.name = fmt.Sprintf("%v", tt.polices)
 		}

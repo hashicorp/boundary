@@ -84,7 +84,6 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewHostCatalog(ctx, tt.args.projectId, tt.args.opts...)

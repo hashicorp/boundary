@@ -219,7 +219,6 @@ func TestValidateCreateRequest(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			req := &pbs.CreateAccountRequest{Item: tc.item}
@@ -283,7 +282,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := validateUpdateRequest(context.Background(), tc.req)

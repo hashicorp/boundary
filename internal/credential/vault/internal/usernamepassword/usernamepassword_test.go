@@ -234,7 +234,6 @@ func TestBaseToUsrPass(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			user, pass := Extract(tt.given.s, tt.given.uAttr, tt.given.pAttr)

@@ -172,7 +172,6 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -298,7 +297,6 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -737,7 +735,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -1085,7 +1082,6 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -1223,7 +1219,6 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -1502,7 +1497,6 @@ group by store_id, status;
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			assert, require := assert.New(t), require.New(t)

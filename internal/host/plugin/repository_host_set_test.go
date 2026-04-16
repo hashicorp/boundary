@@ -277,7 +277,6 @@ func TestRepository_CreateSet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var origPluginAttrs, pluginReceivedAttrs *structpb.Struct
@@ -1198,7 +1197,6 @@ func TestRepository_UpdateSet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
@@ -1403,7 +1401,6 @@ func TestRepository_LookupSet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
@@ -1520,7 +1517,6 @@ func TestRepository_Endpoints(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
@@ -1608,7 +1604,6 @@ func TestRepository_listSets(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
@@ -1691,7 +1686,6 @@ func TestRepository_listSets_Limits(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm, tt.repoOpts...)
@@ -1961,7 +1955,6 @@ func TestRepository_DeleteSet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)

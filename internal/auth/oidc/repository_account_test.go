@@ -200,7 +200,6 @@ func TestRepository_CreateAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -526,7 +525,6 @@ func TestRepository_LookupAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -602,7 +600,6 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -691,7 +688,6 @@ func TestRepository_ListAccounts(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -787,7 +783,6 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
@@ -1137,7 +1132,6 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)

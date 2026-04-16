@@ -165,7 +165,6 @@ func TestRepository_CreateAlias(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			repo, err := target.NewRepository(ctx, rw, rw, kmsCache)
@@ -683,7 +682,6 @@ func TestRepository_UpdateAlias(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.orig.ScopeId = "global"
 			orig, err := repo.CreateAlias(ctx, tt.orig)
@@ -806,7 +804,6 @@ func TestRepository_LookupAlias(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -875,7 +872,6 @@ func TestRepository_DeleteAlias(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := repo.DeleteAlias(ctx, tt.id)

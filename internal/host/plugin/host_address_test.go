@@ -114,7 +114,6 @@ func TestHostDnsName_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			var got *host.DnsName
@@ -311,7 +310,6 @@ func TestHostIpAddress_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			var got *host.IpAddress
@@ -386,7 +384,6 @@ func TestHostDnsName_Delete(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := &host.DnsName{
 				DnsName: &store.DnsName{
@@ -453,7 +450,6 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := &host.IpAddress{
 				IpAddress: &store.IpAddress{

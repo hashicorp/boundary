@@ -78,7 +78,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -437,7 +436,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -610,7 +608,6 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -673,7 +670,6 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)

@@ -186,7 +186,6 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -265,7 +264,6 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -341,7 +339,6 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -458,7 +455,6 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, ttime, err := repo.ListManagedGroups(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
@@ -575,7 +571,6 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
@@ -1081,7 +1076,6 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)

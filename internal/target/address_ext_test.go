@@ -190,7 +190,6 @@ func TestAddress_New(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := target.NewAddress(context.Background(), tt.args.targetId, tt.args.address)

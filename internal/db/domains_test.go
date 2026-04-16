@@ -634,7 +634,6 @@ set id = null;
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			_, err = db.Exec(tt.stmt)
@@ -970,7 +969,6 @@ returning id;
 		{"empty string", "", true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			t.Logf("insert value: %q", tt.value)
@@ -1014,7 +1012,6 @@ select wt_is_sentinel($1);
 		{"empty string", "", false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			t.Logf("query value: %q", tt.value)
@@ -1088,7 +1085,6 @@ insert on test_not_null_columns
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 

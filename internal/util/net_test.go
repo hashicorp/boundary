@@ -170,7 +170,6 @@ func Test_JoinHostPort(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			actualAddress := JoinHostPort(tt.host, tt.port)
@@ -267,7 +266,6 @@ func Test_SplitHostPort(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			actualHost, actualPort, err := SplitHostPort(tt.hostport)
 			if tt.expectedErr != nil {
@@ -370,7 +368,6 @@ func Test_ParseAddress(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			actualAddress, err := ParseAddress(context.Background(), tt.address)

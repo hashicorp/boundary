@@ -101,7 +101,6 @@ func Test_NewPaginationToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := listtoken.NewPagination(context.Background(), tt.createdTime, tt.typ, tt.grantsHash, tt.lastItemId, tt.lastItemCreateTime)
@@ -199,7 +198,6 @@ func Test_NewStartRefreshToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := listtoken.NewStartRefresh(context.Background(), tt.createdTime, tt.typ, tt.grantsHash, tt.previousDeletedIdsTime, tt.previousPhaseUpperBound)
@@ -349,7 +347,6 @@ func Test_NewRefreshToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := listtoken.NewRefresh(
@@ -453,7 +450,6 @@ func Test_ValidateListToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.token.Validate(context.Background(), tt.resourceType, tt.grantsHash)
@@ -526,7 +522,6 @@ func Test_ValidatePaginationToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.token.Validate(context.Background(), tt.resourceType, tt.grantsHash)
@@ -599,7 +594,6 @@ func Test_ValidateStartRefreshToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.token.Validate(context.Background(), tt.resourceType, tt.grantsHash)
@@ -738,7 +732,6 @@ func Test_ValidateRefreshToken(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.token.Validate(context.Background(), tt.resourceType, tt.grantsHash)
@@ -828,7 +821,6 @@ func TestToken_LastItem(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			item, err := tt.token.LastItem(context.Background())

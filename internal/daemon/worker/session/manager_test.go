@@ -450,7 +450,6 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
 			manager := &manager{sessionMap: new(sync.Map)}

@@ -47,7 +47,6 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -584,7 +583,6 @@ func TestRequestMap(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			mapper, err := newMapper(ctx, tt.args.requests)
@@ -948,7 +946,6 @@ func TestBaseToUsrPass(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToUsrPass(context.Background(), tt.given)
@@ -1440,7 +1437,6 @@ func TestBaseToUsrPassDomain(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToUsrPassDomain(context.Background(), tt.given)
@@ -2100,7 +2096,6 @@ func TestBaseToSshPriKey(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToSshPriKey(context.Background(), tt.given)
@@ -2397,7 +2392,6 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			// create ssh library
