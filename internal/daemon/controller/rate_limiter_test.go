@@ -138,6 +138,25 @@ func TestController_initializeRateLimiter(t *testing.T) {
 			nil,
 		},
 		{
+			"wildcardReadList",
+			&config.Config{
+				Controller: &config.Controller{
+					ApiRateLimits: ratelimit.Configs{
+						{
+							Resources: []string{"*"},
+							Actions:   []string{"read", "list"},
+							Per:       "total",
+							Limit:     100,
+							Period:    time.Minute,
+						},
+					},
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
+				},
+			},
+			false,
+			nil,
+		},
+		{
 			"invalid",
 			&config.Config{
 				Controller: &config.Controller{

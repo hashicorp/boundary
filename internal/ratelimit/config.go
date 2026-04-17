@@ -196,8 +196,9 @@ func (c Configs) Limits(ctx context.Context) ([]rate.Limit, error) {
 
 	for _, cc := range c {
 		var resourceSet []resource.Type
+		wildcardResources := len(cc.Resources) == 1 && cc.Resources[0] == resource.All.String()
 		switch {
-		case len(cc.Resources) == 1 && cc.Resources[0] == resource.All.String():
+		case wildcardResources:
 			resourceSet = allResources
 		default:
 			for _, r := range cc.Resources {
@@ -251,6 +252,18 @@ func (c Configs) Limits(ctx context.Context) ([]rate.Limit, error) {
 				for _, aStr := range cc.Actions {
 					a, ok := validActionMap[aStr]
 					if !ok {
+						if wildcardResources {
+							// For wildcard resources, verify the action exists in the action system
+							// before skipping. If it doesn't exist at all, return an error.
+							if _, exists := action.Map[aStr]; !exists {
+								return nil, errors.New(ctx, errors.InvalidConfiguration, op, "", errors.WithMsg("action %s not valid for resource %s", aStr, resource.All.String()))
+							}
+							// When using wildcard resources (*), skip actions that aren't valid for
+							// the current resource type rather than returning an error. This allows
+							// specifying rate limits like "read,list" for all resources, even though
+							// not all resources support both actions (e.g., sessions don't support "read").
+							continue
+						}
 						return nil, errors.New(ctx, errors.InvalidConfiguration, op, "", errors.WithMsg("action %s not valid for resource %s", aStr, res.String()))
 					}
 					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPer(cc.Per))

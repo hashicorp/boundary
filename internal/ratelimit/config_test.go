@@ -573,6 +573,101 @@ func TestConfigsLimits(t *testing.T) {
 			nil,
 		},
 		{
+			"all-resources-multiple-actions",
+			Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list", "read"},
+					Per:       "total",
+					Limit:     10,
+					Period:    time.Minute,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list", "read"},
+					Per:       "ip-address",
+					Limit:     5,
+					Period:    time.Minute,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list", "read"},
+					Per:       "auth-token",
+					Limit:     1,
+					Period:    time.Minute,
+				},
+			},
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
+				for _, res := range resource.Map {
+					switch res {
+					case resource.Unknown, resource.All, resource.Controller:
+						continue
+					}
+					validActions, err := action.ActionSetForResource(res)
+					require.NoError(t, err)
+					for a := range validActions {
+						switch a {
+						case action.Unknown, action.All:
+							continue
+						case action.List, action.Read:
+							limits = append(
+								limits,
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerTotal,
+									MaxRequests: 10,
+									Period:      time.Minute,
+								},
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerIPAddress,
+									MaxRequests: 5,
+									Period:      time.Minute,
+								},
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerAuthToken,
+									MaxRequests: 1,
+									Period:      time.Minute,
+								},
+							)
+						default:
+							limits = append(
+								limits,
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerTotal,
+									MaxRequests: DefaultInTotalRequestLimit,
+									Period:      DefaultPeriod,
+								},
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerIPAddress,
+									MaxRequests: DefaultIpAddressRequestLimit,
+									Period:      DefaultPeriod,
+								},
+								&rate.Limited{
+									Resource:    res.String(),
+									Action:      a.String(),
+									Per:         rate.LimitPerAuthToken,
+									MaxRequests: DefaultAuthTokenRequestLimit,
+									Period:      DefaultPeriod,
+								},
+							)
+						}
+					}
+				}
+				return limits
+			}(),
+			nil,
+		},
+		{
 			"order-matters",
 			Configs{
 				// This one is overridden by the second config that is more broad.
@@ -763,6 +858,34 @@ func TestConfigsLimits(t *testing.T) {
 			},
 			nil,
 			fmt.Errorf("ratelimit.(Configs).Limits: action foo not valid for resource session: configuration issue: error #5000"),
+		},
+		{
+			"invalid-action-with-wildcard-resource",
+			Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"foo"},
+					Per:       "total",
+					Limit:     10,
+					Period:    time.Minute,
+				},
+			},
+			nil,
+			fmt.Errorf("ratelimit.(Configs).Limits: action foo not valid for resource *: configuration issue: error #5000"),
+		},
+		{
+			"typo-in-action-with-wildcard-resource",
+			Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"reaad"}, // typo: should be "read"
+					Per:       "total",
+					Limit:     10,
+					Period:    time.Minute,
+				},
+			},
+			nil,
+			fmt.Errorf("ratelimit.(Configs).Limits: action reaad not valid for resource *: configuration issue: error #5000"),
 		},
 	}
 
