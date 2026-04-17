@@ -89,7 +89,7 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 	})
 
 	// Start Vault
-	v, vaultToken := infra.StartVault(t, pool, network, "hashicorp/vault", "latest")
+	v, vaultToken := infra.StartVault(t, pool, network, "hashicorp/vault", c.VaultVersion)
 	t.Cleanup(func() {
 		if err := pool.Purge(v.Resource); err != nil {
 			t.Logf("error purging pool: %v", err)
