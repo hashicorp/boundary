@@ -58,7 +58,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/hashicorp/mql v0.1.5
-	github.com/hashicorp/nodeenrollment v0.2.14
+	github.com/hashicorp/nodeenrollment v0.2.15
 	github.com/hashicorp/vault/api v1.22.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v5 v5.8.0
