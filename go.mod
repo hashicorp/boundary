@@ -34,7 +34,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20241126174344-f3b1a41a15fd
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.18
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.19
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -56,7 +56,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/hashicorp/mql v0.1.5
-	github.com/hashicorp/nodeenrollment v0.2.14
+	github.com/hashicorp/nodeenrollment v0.2.15
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v5 v5.8.0
@@ -97,7 +97,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217
 	google.golang.org/grpc v1.79.3
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.25.12 // indirect
