@@ -39,17 +39,25 @@ var serveGrantSchema = func(ctx context.Context, w http.ResponseWriter) {
 const cspPlaceholder = "__BOUNDARY_CSP_NONCE__"
 
 // cspWriter wraps an http.ResponseWriter to replace the CSP nonce placeholder
-// in index.html with the actual Content-Security-Policy value.
+// in index.html with the actual nonce value.
 type cspWriter struct {
 	http.ResponseWriter
-	csp  string
-	done bool
+	nonce string
+	done  bool
+}
+
+// WriteHeader removes the stale Content-Length since the body replacement
+// changes the size.
+func (w *cspWriter) WriteHeader(statusCode int) {
+	//We need to force recalculation to avoid content length mismatch
+	w.ResponseWriter.Header().Del("Content-Length")
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (w *cspWriter) Write(b []byte) (int, error) {
 	if !w.done {
 		w.done = true
-		b = bytes.Replace(b, []byte(cspPlaceholder), []byte(w.csp), 1)
+		b = bytes.Replace(b, []byte(cspPlaceholder), []byte(w.nonce), 1)
 	}
 	return w.ResponseWriter.Write(b)
 }
@@ -64,6 +72,8 @@ func handleUiWithAssets(c *Controller) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
+			//Lets remove nonce in case we return here
+			w.Header().Del("X-Boundary-Csp-Nonce")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
@@ -101,11 +111,16 @@ func handleUiWithAssets(c *Controller) http.Handler {
 
 		// For document requests, replace the CSP placeholder inside <head>.
 		if r.URL.Path == "/" {
-			if csp := w.Header().Get("Content-Security-Policy"); csp != "" {
-				nextHandler.ServeHTTP(&cspWriter{ResponseWriter: w, csp: csp}, r)
+			if nonce := w.Header().Get("X-Boundary-Csp-Nonce"); nonce != "" {
+				// Remove nonce once we have injected it in the Write() call
+				w.Header().Del("X-Boundary-Csp-Nonce")
+				nextHandler.ServeHTTP(&cspWriter{ResponseWriter: w, nonce: nonce}, r)
 				return
 			}
 		}
+
+		// Strip internal nonce header for non document requests
+		w.Header().Del("X-Boundary-Csp-Nonce")
 		nextHandler.ServeHTTP(w, r)
 	})
 }

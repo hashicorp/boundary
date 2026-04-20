@@ -798,10 +798,12 @@ func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest fun
 		nonce := base64.StdEncoding.EncodeToString(b)
 
 		// Inject nonce
-		nonceToken := "'nonce-" + nonce + "'"
-		csp := strings.Replace(defaultCsp, "style-src 'self'", "style-src "+nonceToken+" 'self'", 1)
+		nonceToken := fmt.Sprintf("'nonce-%s'", nonce)
+		csp := strings.Replace(defaultCsp, "style-src 'self'", fmt.Sprintf("style-src %s 'self'", nonceToken), 1)
 
 		w.Header().Set(cspKey, csp)
+		// Creating a custom key so we can pull it when serving UI page
+		w.Header().Set("X-Boundary-Csp-Nonce", nonce)
 		h.ServeHTTP(w, req)
 	})
 }
