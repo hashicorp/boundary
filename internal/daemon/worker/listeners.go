@@ -199,9 +199,10 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
-			Context:      w.baseContext,
-			Storage:      w.WorkerAuthStorage,
-			BaseListener: ln.ProxyListener,
+			Context:             w.baseContext,
+			Storage:             w.WorkerAuthStorage,
+			BaseListener:        ln.ProxyListener,
+			TlsHandshakeTimeout: 15 * time.Second,
 			BaseTlsConfiguration: &tls.Config{
 				GetConfigForClient: w.getSessionTls(sessionManager),
 			},
