@@ -797,9 +797,22 @@ func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest fun
 		}
 		nonce := base64.StdEncoding.EncodeToString(b)
 
-		// Inject nonce
+		// Inject nonce into the style-src directive of the CSP.
 		nonceToken := fmt.Sprintf("'nonce-%s'", nonce)
-		csp := strings.Replace(defaultCsp, "style-src 'self'", fmt.Sprintf("style-src %s 'self'", nonceToken), 1)
+
+		csp := defaultCsp
+		switch {
+		// In the case there is style-src present in the csp then we will inject nonce
+		case strings.Contains(csp, "style-src "):
+			csp = strings.Replace(csp, "style-src ", fmt.Sprintf("style-src %s ", nonceToken), 1)
+		default:
+			// If default-src exists, append a style-src directive
+			// using the same source list.
+			if _, after, ok := strings.Cut(csp, "default-src "); ok {
+				sources, _, _ := strings.Cut(after, ";")
+				csp = fmt.Sprintf("%s; style-src %s %s", csp, nonceToken, strings.TrimSpace(sources))
+			}
+		}
 
 		w.Header().Set(cspKey, csp)
 		// Creating a custom key so we can pull it when serving UI page

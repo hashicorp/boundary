@@ -49,7 +49,7 @@ type cspWriter struct {
 // WriteHeader removes the stale Content-Length since the body replacement
 // changes the size.
 func (w *cspWriter) WriteHeader(statusCode int) {
-	//We need to force recalculation to avoid content length mismatch
+	// We need to force recalculation to avoid content length mismatch
 	w.ResponseWriter.Header().Del("Content-Length")
 	w.ResponseWriter.WriteHeader(statusCode)
 }
@@ -72,7 +72,7 @@ func handleUiWithAssets(c *Controller) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			//Lets remove nonce in case we return here
+			// Lets remove nonce in case we return here
 			w.Header().Del("X-Boundary-Csp-Nonce")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
