@@ -337,7 +337,7 @@ variable "boundary_license" {
   description = "Boundary license (not needed for OSS, required for enterprise)"
   type        = string
   sensitive   = true
-  default     = null
+  default     = ""
 }
 
 variable "controller_config_file_path" {

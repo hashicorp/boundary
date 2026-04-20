@@ -327,7 +327,6 @@ scenario "e2e_aws_rdp_base" {
     ]
 
     variables {
-      is_ci                                    = var.is_ci
       test_package                             = ""
       alb_boundary_api_addr                    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id                           = step.create_boundary_cluster.auth_method_id
