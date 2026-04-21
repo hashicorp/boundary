@@ -801,17 +801,11 @@ func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest fun
 		nonceToken := fmt.Sprintf("'nonce-%s'", nonce)
 
 		csp := defaultCsp
-		switch {
-		// In the case there is style-src present in the csp then we will inject nonce
-		case strings.Contains(csp, "style-src "):
+
+		if strings.Contains(csp, "style-src ") {
 			csp = strings.Replace(csp, "style-src ", fmt.Sprintf("style-src %s ", nonceToken), 1)
-		default:
-			// If default-src exists, append a style-src directive
-			// using the same source list.
-			if _, after, ok := strings.Cut(csp, "default-src "); ok {
-				sources, _, _ := strings.Cut(after, ";")
-				csp = fmt.Sprintf("%s; style-src %s %s", csp, nonceToken, strings.TrimSpace(sources))
-			}
+		} else {
+			csp = fmt.Sprintf("%s; style-src %s 'self'", csp, nonceToken)
 		}
 
 		w.Header().Set(cspKey, csp)
