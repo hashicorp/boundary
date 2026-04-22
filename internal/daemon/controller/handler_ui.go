@@ -55,11 +55,20 @@ func (w *cspWriter) WriteHeader(statusCode int) {
 }
 
 func (w *cspWriter) Write(b []byte) (int, error) {
+	originalLen := len(b)
 	if !w.done {
 		w.done = true
 		b = bytes.Replace(b, []byte(cspPlaceholder), []byte(w.nonce), 1)
 	}
-	return w.ResponseWriter.Write(b)
+	_, err := w.ResponseWriter.Write(b)
+	if err != nil {
+		return 0, err
+	}
+	// We return the original length to maintain the io.Writer contract.
+	// Per io.Writer: "Write must return a non-nil error if it returns n < len(p)."
+	// Since we successfully consumed all input bytes, we must return len(p) with nil error.
+	// Returning the modified length would violate this and break the caller's buffer tracking.
+	return originalLen, nil
 }
 
 func handleUiWithAssets(c *Controller) http.Handler {
