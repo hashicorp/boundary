@@ -59,7 +59,7 @@ require (
 	github.com/hashicorp/nodeenrollment v0.2.15
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.0
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/jimlambrt/gldap v0.1.14
 	github.com/kelseyhightower/envconfig v1.4.0
