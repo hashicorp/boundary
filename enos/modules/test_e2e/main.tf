@@ -9,8 +9,8 @@ terraform {
   }
 }
 
-variable "debug_no_run" {
-  description = "If set, this module will not execute the tests so that you can still access environment variables"
+variable "is_ci" {
+  description = "Run tests automatically if in CI"
   type        = bool
   default     = false
 }
@@ -45,6 +45,7 @@ variable "max_page_size" {
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
   type        = string
+  default     = null
 }
 variable "target_user" {
   description = "SSH username for target"
@@ -323,9 +324,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_CLIENT_SSH_KEY                           = var.client_ssh_key
   }
 
-  inline = var.debug_no_run ? [""] : [
+  inline = var.is_ci ? [
     "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -timeout ${var.test_timeout} | tee ${path.module}/../../test-e2e-${local.package_name}.log"
-  ]
+  ] : [""]
 }
 
 output "test_results" {

@@ -14,11 +14,9 @@ scenario "e2e_ui_aws" {
   }
 
   locals {
-    aws_ssh_private_key_path  = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
-    boundary_install_dir      = abspath(var.boundary_install_dir)
-    license_path              = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_ui_src_dir = var.local_boundary_ui_src_dir != null ? abspath(var.local_boundary_ui_src_dir) : null
+    aws_ssh_private_key_path = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
+    boundary_install_dir     = abspath(var.boundary_install_dir)
+    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -28,6 +26,10 @@ scenario "e2e_ui_aws" {
       "Project" : "Enos",
       "Environment" : "ci"
     }, var.tags)
+  }
+
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
   }
 
   step "find_azs" {
@@ -43,12 +45,12 @@ scenario "e2e_ui_aws" {
   }
 
   step "read_license" {
-    skip_step = var.boundary_edition == "oss"
-    module    = module.read_license
+    module = module.read_license
 
     variables {
       license_path = local.license_path
       license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -61,7 +63,7 @@ scenario "e2e_ui_aws" {
 
     variables {
       path    = local.build_path[matrix.builder]
-      edition = var.boundary_edition
+      edition = step.get_boundary_edition.edition
     }
   }
 
@@ -101,7 +103,7 @@ scenario "e2e_ui_aws" {
     variables {
       boundary_binary_name     = var.boundary_binary_name
       boundary_install_dir     = local.boundary_install_dir
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
+      boundary_license         = step.read_license.license
       common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count
@@ -207,27 +209,24 @@ scenario "e2e_ui_aws" {
     ]
 
     variables {
-      debug_no_run              = var.e2e_debug_no_run
-      alb_boundary_api_addr     = step.create_boundary_cluster.alb_boundary_api_addr
-      auth_method_id            = step.create_boundary_cluster.auth_method_id
-      auth_login_name           = step.create_boundary_cluster.auth_login_name
-      auth_password             = step.create_boundary_cluster.auth_password
-      local_boundary_dir        = local.local_boundary_dir
-      local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
-      aws_ssh_private_key_path  = step.generate_ssh_key.private_key_path
-      target_address            = step.create_targets_with_tag.target_private_ips[0]
-      target_user               = "ubuntu"
-      target_port               = "22"
-      vault_addr_public         = step.create_vault_cluster.instance_addresses[0]
-      vault_addr_private        = step.create_vault_cluster.instance_addresses_private[0]
-      vault_root_token          = step.create_vault_cluster.vault_root_token
-      aws_access_key_id         = step.iam_setup.access_key_id
-      aws_secret_access_key     = step.iam_setup.secret_access_key
-      aws_host_set_filter       = step.create_tag_inputs.tag_string
-      aws_host_set_ips          = step.create_targets_with_tag.target_private_ips
-      worker_tag_egress         = local.egress_tag
-      aws_region                = var.aws_region
-      alb_cert                  = matrix.protocol == "https" ? step.create_boundary_cluster.alb_cert : ""
+      alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
+      auth_method_id           = step.create_boundary_cluster.auth_method_id
+      auth_login_name          = step.create_boundary_cluster.auth_login_name
+      auth_password            = step.create_boundary_cluster.auth_password
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
+      target_address           = step.create_targets_with_tag.target_private_ips[0]
+      target_user              = "ubuntu"
+      target_port              = "22"
+      vault_addr_public        = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_private       = step.create_vault_cluster.instance_addresses_private[0]
+      vault_root_token         = step.create_vault_cluster.vault_root_token
+      aws_access_key_id        = step.iam_setup.access_key_id
+      aws_secret_access_key    = step.iam_setup.secret_access_key
+      aws_host_set_filter      = step.create_tag_inputs.tag_string
+      aws_host_set_ips         = step.create_targets_with_tag.target_private_ips
+      worker_tag_egress        = local.egress_tag
+      aws_region               = var.aws_region
+      alb_cert                 = matrix.protocol == "https" ? step.create_boundary_cluster.alb_cert : ""
     }
   }
 

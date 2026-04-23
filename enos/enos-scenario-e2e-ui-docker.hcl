@@ -11,8 +11,6 @@ scenario "e2e_ui_docker" {
 
   locals {
     aws_ssh_private_key_path   = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
-    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_ui_src_dir  = var.local_boundary_ui_src_dir != null ? abspath(var.local_boundary_ui_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
@@ -29,13 +27,17 @@ scenario "e2e_ui_docker" {
     }, var.tags)
   }
 
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
+  }
+
   step "build_boundary_docker_image" {
     module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
 
     variables {
       path              = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
       cli_build_path    = local.build_path[matrix.builder]
-      edition           = var.boundary_edition
+      edition           = step.get_boundary_edition.edition
       ui_build_override = var.ui_build_override
     }
   }
@@ -67,12 +69,12 @@ scenario "e2e_ui_docker" {
   }
 
   step "read_license" {
-    skip_step = var.boundary_edition == "oss"
-    module    = module.read_license
+    module = module.read_license
 
     variables {
       license_path = local.license_path
       license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -88,7 +90,7 @@ scenario "e2e_ui_docker" {
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = step.read_license.license
     }
   }
 
@@ -128,7 +130,7 @@ scenario "e2e_ui_docker" {
     ]
     variables {
       image_name       = step.build_boundary_docker_image.image_name
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = step.read_license.license
       config_file      = "worker-config.hcl"
       container_name   = "worker"
       initial_upstream = step.create_boundary.upstream_address
@@ -159,32 +161,29 @@ scenario "e2e_ui_docker" {
       step.create_ldap_server,
     ]
     variables {
-      debug_no_run              = var.e2e_debug_no_run
-      alb_boundary_api_addr     = step.create_boundary.address
-      auth_method_id            = step.create_boundary.auth_method_id
-      auth_login_name           = step.create_boundary.login_name
-      auth_password             = step.create_boundary.password
-      local_boundary_dir        = local.local_boundary_dir
-      local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
-      aws_ssh_private_key_path  = step.generate_ssh_key.private_key_path
-      target_address            = step.create_host.address
-      target_port               = step.create_host.port
-      target_user               = "ubuntu"
-      target_ca_key             = step.create_host.ca_key_private
-      target_ca_key_public      = step.create_host.ca_key_public
-      vault_addr_public         = step.create_vault.address_public
-      vault_addr_private        = step.create_vault.address_private
-      vault_addr_unified        = step.create_vault.address_unified
-      vault_root_token          = step.create_vault.token
-      vault_port                = step.create_vault.port
-      ldap_address              = step.create_ldap_server.address
-      ldap_domain_dn            = step.create_ldap_server.domain_dn
-      ldap_admin_dn             = step.create_ldap_server.admin_dn
-      ldap_admin_password       = step.create_ldap_server.admin_password
-      ldap_user_name            = step.create_ldap_server.user_name
-      ldap_user_password        = step.create_ldap_server.user_password
-      ldap_group_name           = step.create_ldap_server.group_name
-      worker_tag_egress         = local.egress_tag
+      alb_boundary_api_addr    = step.create_boundary.address
+      auth_method_id           = step.create_boundary.auth_method_id
+      auth_login_name          = step.create_boundary.login_name
+      auth_password            = step.create_boundary.password
+      aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
+      target_address           = step.create_host.address
+      target_port              = step.create_host.port
+      target_user              = "ubuntu"
+      target_ca_key            = step.create_host.ca_key_private
+      target_ca_key_public     = step.create_host.ca_key_public
+      vault_addr_public        = step.create_vault.address_public
+      vault_addr_private       = step.create_vault.address_private
+      vault_addr_unified       = step.create_vault.address_unified
+      vault_root_token         = step.create_vault.token
+      vault_port               = step.create_vault.port
+      ldap_address             = step.create_ldap_server.address
+      ldap_domain_dn           = step.create_ldap_server.domain_dn
+      ldap_admin_dn            = step.create_ldap_server.admin_dn
+      ldap_admin_password      = step.create_ldap_server.admin_password
+      ldap_user_name           = step.create_ldap_server.user_name
+      ldap_user_password       = step.create_ldap_server.user_password
+      ldap_group_name          = step.create_ldap_server.group_name
+      worker_tag_egress        = local.egress_tag
     }
   }
 }

@@ -26,7 +26,6 @@ scenario "e2e_aws_rdp_base" {
     aws_ssh_private_key_path = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_src_dir   = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     ip_version               = "4"
 
@@ -47,6 +46,23 @@ scenario "e2e_aws_rdp_base" {
     }, var.tags)
 
     collocated_tag = "collocated"
+  }
+
+  step "get_repo_root" {
+    module = module.get_repo_root
+  }
+
+  step "get_boundary_binary" {
+    skip_step = local.local_boundary_dir != null ? true : false
+    module    = module.get_binary_path
+
+    variables {
+      name = "boundary"
+    }
+  }
+
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
   }
 
   step "find_azs" {
@@ -87,7 +103,7 @@ scenario "e2e_aws_rdp_base" {
 
     variables {
       path    = local.build_path_linux[matrix.builder]
-      edition = var.boundary_edition
+      edition = step.get_boundary_edition.edition
     }
   }
 
@@ -100,7 +116,7 @@ scenario "e2e_aws_rdp_base" {
 
     variables {
       path          = local.build_path_windows[matrix.builder]
-      edition       = var.boundary_edition
+      edition       = step.get_boundary_edition.edition
       goos          = "windows"
       build_target  = "build"
       artifact_name = "boundary_windows"
@@ -120,7 +136,7 @@ scenario "e2e_aws_rdp_base" {
       vpc_id                = step.create_base_infra.vpc_id
       client_version        = matrix.client
       boundary_cli_zip_path = step.build_boundary_windows.artifact_path
-      boundary_src_path     = local.local_boundary_src_dir
+      boundary_src_path     = step.get_repo_root.path
       github_token          = var.github_token
       ip_version            = local.ip_version
       vault_version         = var.vault_version
@@ -132,6 +148,8 @@ scenario "e2e_aws_rdp_base" {
 
     variables {
       license_path = local.boundary_license_path
+      license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -193,7 +211,7 @@ scenario "e2e_aws_rdp_base" {
     variables {
       boundary_binary_name        = var.boundary_binary_name
       boundary_install_dir        = local.boundary_install_dir
-      boundary_license            = var.boundary_edition != "oss" ? step.read_boundary_license.license : null
+      boundary_license            = step.read_boundary_license.license
       common_tags                 = local.tags
       controller_instance_type    = var.controller_instance_type
       controller_count            = var.controller_count
@@ -310,12 +328,11 @@ scenario "e2e_aws_rdp_base" {
 
     variables {
       test_package                             = ""
-      debug_no_run                             = true
       alb_boundary_api_addr                    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id                           = step.create_boundary_cluster.auth_method_id
       auth_login_name                          = step.create_boundary_cluster.auth_login_name
       auth_password                            = step.create_boundary_cluster.auth_password
-      local_boundary_dir                       = local.local_boundary_dir
+      local_boundary_dir                       = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
       aws_ssh_private_key_path                 = step.generate_ssh_key.private_key_path
       target_user                              = "ubuntu"
       target_port                              = "22"

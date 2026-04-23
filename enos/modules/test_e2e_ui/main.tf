@@ -9,11 +9,6 @@ terraform {
   }
 }
 
-variable "debug_no_run" {
-  description = "If set, this module will not execute the tests so that you can still access environment variables"
-  type        = bool
-  default     = true
-}
 variable "alb_boundary_api_addr" {
   description = "URL of the Boundary instance"
   type        = string
@@ -34,15 +29,6 @@ variable "auth_password" {
   type        = string
   default     = ""
 }
-variable "local_boundary_dir" {
-  description = "Local Path to boundary executable"
-  type        = string
-}
-variable "local_boundary_ui_src_dir" {
-  description = "Local Path to boundary-ui directory"
-  type        = string
-}
-
 variable "aws_ssh_private_key_path" {
   description = "Local Path to key used to SSH onto created hosts"
   type        = string
@@ -250,7 +236,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_ALB_CERT                  = var.alb_cert
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" pnpm --cwd ${var.local_boundary_ui_src_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
+  inline = [""]
 }
 
 output "test_results" {

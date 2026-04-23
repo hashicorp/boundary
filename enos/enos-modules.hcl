@@ -71,6 +71,10 @@ module "generate_aws_host_tag_vars" {
   source = "./modules/generate_aws_host_tag_vars"
 }
 
+module "generate_docker_image_name" {
+  source = "./modules/generate_docker_image_name"
+}
+
 module "aws_iam_setup" {
   source = "./modules/aws_iam_setup"
 }
@@ -220,4 +224,16 @@ module "gcp_target" {
   target_count = var.target_count
   environment  = var.environment
   enos_user    = var.enos_user
+}
+
+module "get_repo_root" {
+  source = "./modules/get_repo_root"
+}
+
+module "get_binary_path" {
+  source = "./modules/get_binary_path"
+}
+
+module "get_boundary_edition" {
+  source = "./modules/get_boundary_edition"
 }

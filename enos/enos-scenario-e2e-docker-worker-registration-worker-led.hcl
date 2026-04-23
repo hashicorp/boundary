@@ -12,7 +12,6 @@ scenario "e2e_docker_worker_registration_worker_led" {
   locals {
     aws_ssh_private_key_path   = var.aws_ssh_private_key_path != null ? abspath(var.aws_ssh_private_key_path) : null
     local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
@@ -31,13 +30,27 @@ scenario "e2e_docker_worker_registration_worker_led" {
     }, var.tags)
   }
 
+  step "get_boundary_binary" {
+    skip_step = local.local_boundary_dir != null ? true : false
+    module    = module.get_binary_path
+
+    variables {
+      name = "boundary"
+    }
+  }
+
+  step "get_boundary_edition" {
+    module = module.get_boundary_edition
+  }
+
+
   step "build_boundary_docker_image" {
     module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
 
     variables {
       path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
       cli_build_path = local.build_path[matrix.builder]
-      edition        = var.boundary_edition
+      edition        = step.get_boundary_edition.edition
     }
   }
 
@@ -48,7 +61,6 @@ scenario "e2e_docker_worker_registration_worker_led" {
       local_key_path = local.aws_ssh_private_key_path
     }
   }
-
 
   step "create_docker_network_database" {
     module = module.docker_network
@@ -83,12 +95,12 @@ scenario "e2e_docker_worker_registration_worker_led" {
   }
 
   step "read_license" {
-    skip_step = var.boundary_edition == "oss"
-    module    = module.read_license
+    module = module.read_license
 
     variables {
       license_path = local.license_path
       license      = var.boundary_license
+      edition      = step.get_boundary_edition.edition
     }
   }
 
@@ -105,7 +117,7 @@ scenario "e2e_docker_worker_registration_worker_led" {
       network_name     = [local.network_cluster, local.network_database]
       database_network = local.network_database
       postgres_address = step.create_boundary_database.address
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = step.read_license.license
       config_file      = "boundary-config.hcl"
     }
   }
@@ -147,7 +159,7 @@ scenario "e2e_docker_worker_registration_worker_led" {
     ]
     variables {
       image_name              = step.build_boundary_docker_image.image_name
-      boundary_license        = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license        = step.read_license.license
       config_file             = "worker-config-worker-led.hcl"
       container_name          = "worker"
       initial_upstream        = step.create_boundary.upstream_address
@@ -195,15 +207,14 @@ scenario "e2e_docker_worker_registration_worker_led" {
       step.check_worker_health,
     ]
     variables {
+      is_ci                    = var.is_ci
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_worker"
       network_name             = step.create_docker_network_cluster.network_name
-      debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary.address
       auth_method_id           = step.create_boundary.auth_method_id
       auth_login_name          = step.create_boundary.login_name
       auth_password            = step.create_boundary.password
-      local_boundary_dir       = local.local_boundary_dir
-      local_boundary_src_dir   = local.local_boundary_src_dir
+      local_boundary_dir       = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
       aws_ssh_private_key_path = step.generate_ssh_key.private_key_path
       target_address           = step.create_host.address
       target_port              = step.create_host.port
