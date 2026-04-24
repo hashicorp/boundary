@@ -2,6 +2,13 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.21.3 (2026/04/27)
+
+### New and Improved
+
+* Added support for IBM Passport Advantage Online licensing. You can now use PAO to enable Boundary Enterprise.
+* Updated internal dependencies.
+
 ## 0.21.2 (2026/04/06)
 
 ### New and Improved
