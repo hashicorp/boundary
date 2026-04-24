@@ -146,6 +146,14 @@ type Server struct {
 	Database *db.DB
 }
 
+type kmsInfoEntry struct {
+	kmsType        string
+	key            string
+	value          string
+	purpose        string
+	purposeOrdinal uint
+}
+
 // NewServer creates a new Server.
 func NewServer(cmd *Command) *Server {
 	return &Server{
@@ -562,6 +570,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	var err error
 	var previousRootKms wrapping.Wrapper
 	purposeCount := map[string]uint{}
+	kmsInfoEntries := make([]kmsInfoEntry, 0, len(sharedConfig.Seals)*3)
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
@@ -594,12 +603,14 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			// This can be modified by configutil so store the original value
 			origPurpose := kms.Purpose
 			kms.Purpose = []string{purpose}
+			kmsInfoKeys := make([]string, 0, 4)
+			kmsInfo := make(map[string]string)
 
 			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
 				ctx,
 				kms,
-				&b.InfoKeys,
-				&b.Info,
+				&kmsInfoKeys,
+				&kmsInfo,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
@@ -614,6 +625,15 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			if wrapper == nil {
 				return fmt.Errorf(
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
+			}
+			for _, key := range kmsInfoKeys {
+				kmsInfoEntries = append(kmsInfoEntries, kmsInfoEntry{
+					kmsType:        kms.Type,
+					key:            key,
+					value:          kmsInfo[key],
+					purpose:        purpose,
+					purposeOrdinal: purposeCount[purpose],
+				})
 			}
 			if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
 				if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
@@ -689,6 +709,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			}
 		}
 	}
+	mergeKmsInfoEntries(&b.InfoKeys, b.Info, kmsInfoEntries, purposeCount)
 
 	// Handle previous root KMS
 	if previousRootKms != nil {
@@ -881,4 +902,29 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
+}
+
+// modifying the displayKey to include purpose information.
+func mergeKmsInfoEntries(infoKeys *[]string, info map[string]string, entries []kmsInfoEntry, purposeTotals map[string]uint) {
+	if infoKeys == nil || info == nil {
+		return
+	}
+
+	for _, entry := range entries {
+		displayKey := entry.key
+		// Skipping KMS "aead" type as its purpose is already represented in the display key.
+		if entry.kmsType != wrapping.WrapperTypeAead.String() {
+			displayKey = fmt.Sprintf("[%s] %s", formatKmsInfoPurpose(entry.purpose, entry.purposeOrdinal, purposeTotals), entry.key)
+		}
+		*infoKeys = append(*infoKeys, displayKey)
+		info[displayKey] = entry.value
+	}
+}
+
+// If there are multiple KMSes with the same purpose (like downstream-worker-auth), it appends an ordinal to differentiate them.
+func formatKmsInfoPurpose(purpose string, ordinal uint, purposeTotals map[string]uint) string {
+	if purposeTotals[purpose] > 1 {
+		return fmt.Sprintf("%s %d", purpose, ordinal)
+	}
+	return purpose
 }
