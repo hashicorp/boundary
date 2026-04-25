@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"time"
 
@@ -39,7 +40,7 @@ type opsBundle struct {
 
 // NewServer iterates through all the listeners and sets up HTTP Servers for each, along with individual handlers.
 // If Controller is set-up, NewServer will set-up a health endpoint for it.
-func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
+func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w *worker.Worker, enableDebug bool, listeners ...*base.ServerListener) (*Server, error) {
 	const op = "ops.NewServer()"
 	if l == nil {
 		return nil, fmt.Errorf("%s: missing logger", op)
@@ -57,7 +58,7 @@ func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w 
 			return nil, fmt.Errorf("%s: missing ops listener", op)
 		}
 
-		h, err := createOpsHandler(ctx, ln.Config, c, w)
+		h, err := createOpsHandler(ctx, ln.Config, c, w, enableDebug)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +132,7 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 	<-time.After(d)
 }
 
-func createOpsHandler(ctx context.Context, lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
+func createOpsHandler(_ context.Context, lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker, enableDebug bool) (http.Handler, error) {
 	mux := http.NewServeMux()
 	var h http.Handler
 	var err error
@@ -156,6 +157,20 @@ func createOpsHandler(ctx context.Context, lncfg *listenerutil.ListenerConfig, c
 		mux.Handle("/health", h)
 	}
 	mux.Handle("/metrics", promhttp.Handler())
+	if enableDebug {
+		// Turn on pprof endpoints if debug is enabled.
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		mux.Handle("/debug/pprof/block", pprof.Handler("block"))
+		mux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+		mux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+		mux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+		mux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+		mux.Handle("/debug/pprof/allocs", pprof.Handler("allocs"))
+	}
 	return cleanhttp.PrintablePathCheckHandler(mux, nil), nil
 }
 
