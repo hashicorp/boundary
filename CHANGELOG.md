@@ -6,7 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.20.3 (2026/04/24)
 
-### New and  Improved 
+### New and Improved 
 * Added support for new `debug` flag to expose pprof endpoints for debugging purposes. ([PR](https://github.com/hashicorp/boundary/pull/6644))
 
 ### Security
