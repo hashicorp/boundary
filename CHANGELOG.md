@@ -10,6 +10,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Updated jackc/pgx/v5 dependency to v5.9.2 to address GHSA-j88v-2chj-qfwx, GO-2026-4771, GO-2026-4772, and GHSA-9jj7-4m8r-rfcm ([PR](https://github.com/hashicorp/boundary/pull/6607), [PR](https://github.com/hashicorp/boundary/pull/6617))
 * Updated Azure/go-ntlmssp dependency to v0.1.1 to address GHSA-pjcq-xvwq-hhpj ([PR](https://github.com/hashicorp/boundary/pull/6625))
+* Added support for new `debug` flag to expose pprof endpoints for debugging purposes. ([PR](https://github.com/hashicorp/boundary/pull/6644))
 
 ## 0.20.2 (2026/02/10)
 
