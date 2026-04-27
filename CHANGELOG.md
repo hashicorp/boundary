@@ -8,6 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Added support for IBM Passport Advantage Online licensing. You can now use PAO to enable Boundary Enterprise.
 * Updated internal dependencies.
+* Added support for new `debug` flag to expose pprof endpoints for debugging purposes. ([PR](https://github.com/hashicorp/boundary/pull/6644))
 
 ## 0.21.2 (2026/04/06)
 
