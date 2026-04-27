@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,6 +18,41 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCspWriter_Write(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		nonce    string
+		wantBody string
+	}{
+		{
+			name:     "replaces placeholder with nonce",
+			input:    "foo __BOUNDARY_CSP_NONCE__ bar",
+			nonce:    "'nonce-abc123'",
+			wantBody: "foo 'nonce-abc123' bar",
+		},
+		{
+			name:     "no placeholder returns original unchanged",
+			input:    "no placeholder here",
+			nonce:    "'nonce-abc123'",
+			wantBody: "no placeholder here",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			w := &cspWriter{
+				ResponseWriter: rec,
+				nonce:          tc.nonce,
+			}
+			n, err := w.Write([]byte(tc.input))
+			require.NoError(t, err)
+			assert.Equal(t, len(tc.input), n, "must return original input length to conform to the io.Writer contract")
+			assert.Equal(t, tc.wantBody, rec.Body.String())
+		})
+	}
+}
 
 func TestUiRouting(t *testing.T) {
 	// Create a temporary directory

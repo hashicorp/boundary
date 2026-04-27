@@ -6,6 +6,7 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"strings"
@@ -35,6 +36,41 @@ var serveGrantSchema = func(ctx context.Context, w http.ResponseWriter) {
 	w.Write(data)
 }
 
+const cspPlaceholder = "__BOUNDARY_CSP_NONCE__"
+
+// cspWriter wraps an http.ResponseWriter to replace the CSP nonce placeholder
+// in index.html with the actual nonce value.
+type cspWriter struct {
+	http.ResponseWriter
+	nonce string
+	done  bool
+}
+
+// WriteHeader removes the stale Content-Length since the body replacement
+// changes the size.
+func (w *cspWriter) WriteHeader(statusCode int) {
+	// We need to force recalculation to avoid content length mismatch
+	w.ResponseWriter.Header().Del("Content-Length")
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *cspWriter) Write(b []byte) (int, error) {
+	originalLen := len(b)
+	if !w.done {
+		w.done = true
+		b = bytes.Replace(b, []byte(cspPlaceholder), []byte(w.nonce), 1)
+	}
+	_, err := w.ResponseWriter.Write(b)
+	if err != nil {
+		return 0, err
+	}
+	// We return the original length to maintain the io.Writer contract.
+	// Per io.Writer: "Write must return a non-nil error if it returns n < len(p)."
+	// Since we successfully consumed all input bytes, we must return len(p) with nil error.
+	// Returning the modified length would violate this and break the caller's buffer tracking.
+	return originalLen, nil
+}
+
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
 	if c.conf.RawConfig.DevUiPassthroughDir != "" {
@@ -45,6 +81,8 @@ func handleUiWithAssets(c *Controller) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
+			// Lets remove nonce in case we return here
+			w.Header().Del("X-Boundary-Csp-Nonce")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
@@ -80,7 +118,18 @@ func handleUiWithAssets(c *Controller) http.Handler {
 			}
 		}
 
-		// Fall through to the next handler
+		// For document requests, replace the CSP placeholder inside <head>.
+		if r.URL.Path == "/" {
+			if nonce := w.Header().Get("X-Boundary-Csp-Nonce"); nonce != "" {
+				// Remove nonce once we have injected it in the Write() call
+				w.Header().Del("X-Boundary-Csp-Nonce")
+				nextHandler.ServeHTTP(&cspWriter{ResponseWriter: w, nonce: nonce}, r)
+				return
+			}
+		}
+
+		// Strip internal nonce header for non document requests
+		w.Header().Del("X-Boundary-Csp-Nonce")
 		nextHandler.ServeHTTP(w, r)
 	})
 }

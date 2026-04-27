@@ -6,6 +6,8 @@ package controller
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,7 +100,8 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	corsWrappedHandler := wrapHandlerWithCors(mux, props)
+	cspWrappedHandler := wrapHandlerWithCsp(mux, props, isUiRequest)
+	corsWrappedHandler := wrapHandlerWithCors(cspWrappedHandler, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
@@ -758,4 +761,56 @@ func getActions(urlPath string) []string {
 
 	// Split the rest on ":", returning all actions and sub-actions
 	return strings.Split(rest, ":")
+}
+
+func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest func(*http.Request) bool) http.Handler {
+	cspKey := "Content-Security-Policy"
+	defaultCsp := ""
+	if headers, ok := props.ListenerConfig.CustomUiResponseHeaders[0]; ok {
+		if vals := headers[cspKey]; len(vals) > 0 {
+			defaultCsp = vals[0]
+		}
+		// Remove CSP from the map so WrapCustomHeadersHandler does not
+		// overwrite the nonce injected value.
+		delete(headers, cspKey)
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if defaultCsp == "" || !isUiRequest(req) {
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		// Static assets get the default CSP without a nonce.
+		if strings.LastIndex(req.URL.Path, ".") != -1 {
+			w.Header().Set(cspKey, defaultCsp)
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		// Generate nonce.
+		b := make([]byte, 16)
+		if _, err := rand.Read(b); err != nil {
+			w.Header().Set(cspKey, defaultCsp)
+			h.ServeHTTP(w, req)
+			return
+		}
+		nonce := base64.StdEncoding.EncodeToString(b)
+
+		// Inject nonce into the style-src directive of the CSP.
+		nonceToken := fmt.Sprintf("'nonce-%s'", nonce)
+
+		csp := defaultCsp
+
+		if strings.Contains(csp, "style-src ") {
+			csp = strings.Replace(csp, "style-src ", fmt.Sprintf("style-src %s ", nonceToken), 1)
+		} else {
+			csp = fmt.Sprintf("%s; style-src %s 'self'", csp, nonceToken)
+		}
+
+		w.Header().Set(cspKey, csp)
+		// Creating a custom key so we can pull it when serving UI page
+		w.Header().Set("X-Boundary-Csp-Nonce", nonce)
+		h.ServeHTTP(w, req)
+	})
 }
