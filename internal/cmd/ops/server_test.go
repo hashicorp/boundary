@@ -106,7 +106,7 @@ func TestNewServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewServer(context.Background(), tt.logger, tt.c, tt.w, tt.listeners...)
+			s, err := NewServer(context.Background(), tt.logger, tt.c, tt.w, false, tt.listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -297,7 +297,7 @@ func TestNewServerIntegration(t *testing.T) {
 			err := bs.SetupListeners(nil, &configutil.SharedConfig{Listeners: tt.listeners}, []string{"ops"})
 			require.NoError(t, err)
 
-			s, err := NewServer(context.Background(), hclog.Default(), nil, nil, bs.Listeners...)
+			s, err := NewServer(context.Background(), hclog.Default(), nil, nil, false, bs.Listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -597,7 +597,7 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// Controller has started and is set onto our Command object, start ops.
-	opsServer, err := NewServer(tc.Context(), hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
+	opsServer, err := NewServer(tc.Context(), hclog.Default(), tc.Controller(), nil, false, tc.Config().Listeners...)
 	require.NoError(t, err)
 	opsServer.Start()
 
@@ -692,6 +692,7 @@ func TestCreateOpsHandler(t *testing.T) {
 		name            string
 		setupController bool
 		setupWorker     bool
+		enableDebug     bool
 		lncfg           *listenerutil.ListenerConfig
 		expErr          bool
 		expErrMsg       string
@@ -800,6 +801,28 @@ func TestCreateOpsHandler(t *testing.T) {
 			expErr:          true,
 			expErrMsg:       "controller.(Controller).GetHealthHandler: received nil listener config",
 		},
+		{
+			name:        "pprof disabled by debug flag",
+			enableDebug: false,
+			lncfg:       &listenerutil.ListenerConfig{},
+			assertions: func(t *testing.T, addr string) {
+				rsp, err := http.Get("http://" + addr + "/debug/pprof/")
+				require.NoError(t, err)
+				require.Equal(t, http.StatusNotFound, rsp.StatusCode)
+				require.NoError(t, rsp.Body.Close())
+			},
+		},
+		{
+			name:        "pprof enabled by debug flag",
+			enableDebug: true,
+			lncfg:       &listenerutil.ListenerConfig{},
+			assertions: func(t *testing.T, addr string) {
+				rsp, err := http.Get("http://" + addr + "/debug/pprof/")
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, rsp.StatusCode)
+				require.NoError(t, rsp.Body.Close())
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -816,7 +839,7 @@ func TestCreateOpsHandler(t *testing.T) {
 				w = tc.Worker()
 			}
 
-			h, err := createOpsHandler(ctx, tt.lncfg, c, w)
+			h, err := createOpsHandler(ctx, tt.lncfg, c, w, tt.enableDebug)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, h)
