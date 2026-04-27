@@ -904,7 +904,8 @@ func MakeSighupCh() chan struct{} {
 	return resultCh
 }
 
-// modifying the displayKey to include purpose information.
+// mergeKmsInfoEntries builds display keys for each KMS info entry, qualifying them with purpose when needed,
+// and merges them into the provided infoKeys slice and info map.
 func mergeKmsInfoEntries(infoKeys *[]string, info map[string]string, entries []kmsInfoEntry, purposeTotals map[string]uint) {
 	if infoKeys == nil || info == nil {
 		return
@@ -923,7 +924,7 @@ func mergeKmsInfoEntries(infoKeys *[]string, info map[string]string, entries []k
 
 // If there are multiple KMSes with the same purpose (like downstream-worker-auth), it appends an ordinal to differentiate them.
 func formatKmsInfoPurpose(purpose string, ordinal uint, purposeTotals map[string]uint) string {
-	if purposeTotals[purpose] > 1 {
+	if purposeTotals != nil && purposeTotals[purpose] > 1 {
 		return fmt.Sprintf("%s %d", purpose, ordinal)
 	}
 	return purpose
