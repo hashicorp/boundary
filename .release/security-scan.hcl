@@ -40,7 +40,7 @@ container {
 				# 
 				# Boundary currently uses this indirectly via the alpine base image for docker. 
 				# Currently there is no base image fix available. 
-				"CVE-2026-41989",
+				"CVE-2026-41989"
 			]
 		}
 	}
