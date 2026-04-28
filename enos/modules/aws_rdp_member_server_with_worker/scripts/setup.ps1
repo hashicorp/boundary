@@ -32,6 +32,18 @@ $Task = Get-ScheduledTask -TaskName "boundary"
 $Task.Settings.ExecutionTimeLimit = "PT0H" # zero hours
 Set-ScheduledTask $Task
 
+# Install chocolatey (package manager)
+powershell -c "irm https://community.chocolatey.org/install.ps1|iex"
+
+# Refreshes env to get choco on path
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+$env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
+refreshenv
+
+# Install ffmpeg for session recording
+choco install ffmpeg -y
+
 # Restart the computer to apply changes
 # Needed for adding the computer to the domain from the user_data script
 shutdown -r -t 10
