@@ -884,9 +884,8 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 	}
 }
 
-func TestMergeKmsInfoEntries(t *testing.T) {
+func TestMergeKmsInfoEntriesIntoInfoMap(t *testing.T) {
 	t.Parallel()
-
 	t.Run("duplicate labels are qualified by purpose", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
@@ -938,5 +937,51 @@ func TestMergeKmsInfoEntries(t *testing.T) {
 		}, infoKeys)
 		assert.Equal("us-east-1", info["[downstream-worker-auth 1] AWS KMS Region"])
 		assert.Equal("us-west-2", info["[downstream-worker-auth 2] AWS KMS Region"])
+	})
+
+	t.Run("skipping for KMS AEAD type", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{}
+		info := map[string]string{}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{kmsType: wrapping.WrapperTypeAead.String(), key: "[root] Aead Type", value: "aes-gcm", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+			{kmsType: wrapping.WrapperTypeAead.String(), key: "[worker-auth] Aead Type", value: "aes-gcm", purpose: globals.KmsPurposeRecovery, purposeOrdinal: 1},
+		}, map[string]uint{
+			globals.KmsPurposeRoot:     1,
+			globals.KmsPurposeRecovery: 1,
+		})
+
+		assert.ElementsMatch([]string{
+			"[root] Aead Type",
+			"[worker-auth] Aead Type",
+		}, infoKeys)
+		assert.Equal("aes-gcm", info["[root] Aead Type"])
+		assert.Equal("aes-gcm", info["[worker-auth] Aead Type"])
+	})
+
+	t.Run("preserve all existing info keys", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{
+			"log level",
+		}
+		info := map[string]string{
+			"log level": "debug",
+		}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{key: "Azure Key Name", value: "boundary-root", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+		}, map[string]uint{
+			globals.KmsPurposeRoot: 1,
+		})
+
+		assert.ElementsMatch([]string{
+			"[root] Azure Key Name",
+			"log level",
+		}, infoKeys)
+		assert.Equal("boundary-root", info["[root] Azure Key Name"])
+		assert.Equal("debug", info["log level"])
 	})
 }
