@@ -36,10 +36,10 @@ container {
 				# Boundary does not utilize ping in iputils.
 				"CVE-2025-48964",
 
-                # zlib@1.3.1-r2 https://nvd.nist.gov/vuln/detail/CVE-2026-27171
-                #
-                # There's no base image fix for this yet.
-                "CVE-2026-27171"
+				# libgcrypt@1.10.3-r1 https://nvd.nist.gov/vuln/detail/CVE-2026-41989
+				#
+				# There is no fix available in the Alpine Docker image yet.
+				"CVE-2026-41989"
 			]
 		}
 	}
