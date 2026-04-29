@@ -395,6 +395,33 @@ jobs:
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
 
+  build-redhat:
+    name: Red Hat UBI ${{ matrix.arch }} build
+    needs:
+      - product-metadata
+      - set-product-version
+      - build-linux
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    strategy:
+      matrix:
+        arch: ["amd64", "arm64"]
+    env:
+      version: ${{ needs.set-product-version.outputs.product-version }}
+      revision: ${{ needs.set-product-version.outputs.product-version }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Docker Build (Red Hat UBI)
+        uses: hashicorp/actions-docker-build@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        with:
+          version: ${{ env.version }}
+          target: ubi
+          arch: ${{ matrix.arch }}
+          dockerfile: Dockerfile
+          # redhat_tag instructs actions-docker-build to push to the Red Hat
+          # Quay registry via CRT. The ospid below is the Boundary project ID
+          # from the Red Hat Connect portal.
+          redhat_tag: quay.io/redhat-isv-containers/69efb41d8ba3d570793cb151:${{ env.version }}-ubi
+
   e2e:
     name: e2e
     # Only run the Enos workflow on pull requests that have been originated from

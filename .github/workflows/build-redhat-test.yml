@@ -1,0 +1,104 @@
+name: build-redhat-test
+
+on:
+  push:
+    branches:
+      - 'ICU-18816'
+
+jobs:
+  set-product-version:
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    outputs:
+      product-version: ${{ steps.set-product-version.outputs.product-version }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Set Product version
+        id: set-product-version
+        uses: hashicorp/actions-set-product-version@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+
+  product-metadata:
+    needs: set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Determine Go version
+        id: get-go-version
+        run: |
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    needs:
+      - product-metadata
+      - set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: ["amd64", "arm64"]
+        go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
+      fail-fast: true
+    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
+    env:
+      GOPRIVATE: "github.com/hashicorp"
+      GO111MODULE: on
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Set up Git
+        run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Determine SHA
+        id: set-sha
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Download UI artifact
+        uses: dawidd6/action-download-artifact@ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5 # v11
+        with:
+          workflow: build-admin-ui.yaml
+          commit: ${{ steps.set-sha.outputs.sha }}
+          repo: "hashicorp/boundary-ui"
+          name: admin-ui-oss
+          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
+      - name: Go Build
+        env:
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.product-version }}
+          METADATA_PRODUCT_VERSION: oss
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        with:
+          product_name: boundary
+          product_version: ${{ needs.set-product-version.outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
+
+  build-redhat:
+    name: Red Hat UBI ${{ matrix.arch }} build
+    needs:
+      - product-metadata
+      - set-product-version
+      - build-linux
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    strategy:
+      matrix:
+        arch: ["amd64", "arm64"]
+    env:
+      version: ${{ needs.set-product-version.outputs.product-version }}
+      revision: ${{ needs.set-product-version.outputs.product-version }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Docker Build (Red Hat UBI)
+        uses: hashicorp/actions-docker-build@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        with:
+          version: ${{ env.version }}
+          target: ubi
+          arch: ${{ matrix.arch }}
+          dockerfile: Dockerfile
+          redhat_tag: quay.io/redhat-isv-containers/69efb41d8ba3d570793cb151:${{ env.version }}-ubi

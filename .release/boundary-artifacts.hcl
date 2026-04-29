@@ -44,5 +44,9 @@ artifacts {
     "boundary_default_linux_arm64_${version}_${commit_sha}.docker.tar",
     "boundary_default_linux_arm_${version}_${commit_sha}.docker.dev.tar",
     "boundary_default_linux_arm_${version}_${commit_sha}.docker.tar",
+    # UBI (Red Hat) container images — pushed to registry.connect.redhat.com
+    # via the CRT release pipeline (update-ironbank event in ci.hcl).
+    "boundary_ubi_linux_amd64_${version}_${commit_sha}.docker.redhat.tar",
+    "boundary_ubi_linux_arm64_${version}_${commit_sha}.docker.redhat.tar",
   ]
 }

@@ -143,3 +143,76 @@ COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 USER ${NAME}
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
+
+
+## UBI DOCKERFILE ##
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS ubi
+
+ARG BIN_NAME
+# NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
+# and the version to download. Example: NAME=boundary PRODUCT_VERSION=0.18.0
+ARG NAME=boundary
+ARG PRODUCT_VERSION
+ARG PRODUCT_REVISION
+# TARGETARCH and TARGETOS are set automatically when --platform is provided.
+ARG TARGETOS TARGETARCH
+# LICENSE_SOURCE is the path to the license file in the build context.
+ARG LICENSE_SOURCE=LICENSE
+# LICENSE_DEST is the path where the license file is installed in the container.
+ARG LICENSE_DEST=/usr/share/doc/boundary
+
+# Additional metadata labels used by container registries, platforms
+# and certification scanners.
+LABEL name="Boundary" \
+      maintainer="Boundary Team <boundary@hashicorp.com>" \
+      vendor="HashiCorp" \
+      version=${PRODUCT_VERSION} \
+      release=${PRODUCT_REVISION} \
+      revision=${PRODUCT_REVISION} \
+      summary="Boundary enables practitioners to apply fine-grained authorization policies to infrastructure." \
+      description="Boundary enables practitioners to apply fine-grained authorization policies to infrastructure access, with a focus on identity-based access controls and usage visibility across dynamic infrastructure."
+
+# Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
+ENV NAME=$NAME
+
+# Copy the license file as per Legal requirement
+COPY ${LICENSE_SOURCE} ${LICENSE_DEST}/
+
+# We must have a copy of the license in this directory to comply with the HasLicense Redhat requirement
+# Note the trailing slash on the first argument -- plain files meet the requirement but directories do not.
+COPY ${LICENSE_SOURCE} /licenses/
+
+# Set up certificates and base tools.
+RUN set -eux; \
+    microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux tar && \
+    microdnf clean all && \
+    rm -rf /var/cache/dnf /var/cache/yum
+
+# Create a non-root user to run the software.
+RUN groupadd --gid 1000 ${NAME} && \
+    adduser --uid 1001 --system -g ${NAME} ${NAME} && \
+    usermod -a -G root ${NAME}
+
+# Copy in the new Boundary from CRT pipeline, rather than fetching it from our public releases.
+COPY dist/${TARGETOS}/${TARGETARCH}/${BIN_NAME} /usr/local/bin/${BIN_NAME}
+
+# Set IPC_LOCK at build time because the container runs as an unprivileged user
+RUN setcap cap_ipc_lock=+ep /usr/local/bin/${BIN_NAME}
+
+ENV HOME=/home/${NAME}
+RUN mkdir -p /opt/boundary $HOME /usr/share/doc/boundary && \
+    chown -R ${NAME} /opt/boundary $HOME && \
+    chgrp -R 0 /opt/boundary $HOME /usr/local/bin/${BIN_NAME} /usr/share/doc/boundary && \
+    chmod -R g+rwX /opt/boundary $HOME /usr/local/bin/${BIN_NAME} /usr/share/doc/boundary
+
+COPY ./.release/docker/config.hcl /opt/boundary/config.hcl
+
+COPY .release/docker/ubi-docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+WORKDIR /opt/boundary
+
+USER ${NAME}
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["server", "-config=/opt/boundary/config.hcl"]
