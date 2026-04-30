@@ -33,6 +33,11 @@ variable "script" {
   description = "Filename of a script in the module directory to run"
   type        = string
 }
+variable "worker_name" {
+  description = "Name of worker to look up"
+  type        = string
+  default     = ""
+}
 variable "worker_token" {
   description = "Worker generated auth token"
   type        = string
@@ -69,6 +74,7 @@ resource "enos_local_exec" "run_script" {
     SCRIPT                        = "${abspath(path.module)}/${var.script}"
     BOUNDARY_TOKEN                = local.auth_token
     WORKER_TOKEN                  = var.worker_token
+    WORKER_NAME                   = var.worker_name
   }
   inline = ["bash ./${path.module}/script_runner.sh"]
 }
