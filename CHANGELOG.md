@@ -54,7 +54,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Removed the error log during RDP basic settings exchange: When you connect to
   an RDP target using the built-in Windows Remote Desktop Connection app. ([PR](https://github.com/hashicorp/boundary/pull/6136))
 
-## 0.20.3 (2026/04/24)
+## 0.20.3 (2026/04/30)
 
 ### New and Improved 
 * Added support for new `debug` flag to expose pprof endpoints for debugging purposes. ([PR](https://github.com/hashicorp/boundary/pull/6644))
