@@ -68,7 +68,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 				"-p", "{{boundary.port}}", // this is provided by boundary
 				"{{boundary.ip}}",
-				"for i in {1..120}; do pwd; sleep 1s; done",
+				"sh -c 'i=0; while [ \"$i\" -lt 120 ]; do pwd; sleep 1; i=$((i+1)); done'",
 			),
 		)
 	}()
