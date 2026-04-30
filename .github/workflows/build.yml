@@ -364,12 +364,12 @@ jobs:
     strategy:
       matrix:
         arch: ["arm", "arm64", "386", "amd64"]
-    outputs:
-      name: docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.set-product-version.outputs.product-version }}
       minor-version: ${{ needs.product-metadata.outputs.product-minor-version }}
+    outputs:
+      name: docker.io/hashicorp/${{ env.repo }}:${{ env.version }}_${{ github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Docker Build (Action)
@@ -384,9 +384,6 @@ jobs:
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
-          dev_tags: |
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
 
   enos:
     name: Enos
@@ -406,7 +403,7 @@ jobs:
       go-version: ${{ needs.product-metadata.outputs.go-version }}
       edition: ${{ needs.product-metadata.outputs.product-edition }}
       docker-image-name: ${{ needs.build-docker.outputs.name }}
-      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
+      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.tar"
     secrets: inherit
   bats:
     uses: ./.github/workflows/test-cli-ui_oss.yml
