@@ -371,8 +371,6 @@ jobs:
     strategy:
       matrix:
         arch: ["arm", "arm64", "386", "amd64"]
-    outputs:
-      name: docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.set-product-version.outputs.product-version }}
@@ -391,9 +389,6 @@ jobs:
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
-          dev_tags: |
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
 
   e2e:
     name: e2e
@@ -411,7 +406,7 @@ jobs:
     with:
       artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       edition: ${{ needs.product-metadata.outputs.product-edition }}
-      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
+      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.tar"
     secrets: inherit
   bats:
     uses: ./.github/workflows/test-cli-ui_oss.yml
