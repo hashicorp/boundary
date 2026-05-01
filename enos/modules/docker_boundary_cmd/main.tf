@@ -41,7 +41,7 @@ variable "worker_token" {
 
 resource "enos_local_exec" "get_auth_token" {
   environment = {
-    TEST_BOUNDARY_IMAGE           = var.image_name
+    TEST_BOUNDARY_IMAGE           = local.image_name
     BOUNDARY_ADDR                 = var.address
     TEST_NETWORK_NAME             = var.network_name
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.login_name
@@ -53,6 +53,7 @@ resource "enos_local_exec" "get_auth_token" {
 }
 
 locals {
+  image_name = replace(var.image_name, "+", "-")
   auth_info  = jsondecode(enos_local_exec.get_auth_token.stdout)
   auth_token = local.auth_info["item"]["attributes"]["token"]
 }
@@ -60,7 +61,7 @@ locals {
 resource "enos_local_exec" "run_script" {
   depends_on = [enos_local_exec.get_auth_token]
   environment = {
-    TEST_BOUNDARY_IMAGE           = var.image_name
+    TEST_BOUNDARY_IMAGE           = local.image_name
     BOUNDARY_ADDR                 = var.address
     TEST_NETWORK_NAME             = var.network_name
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.login_name
