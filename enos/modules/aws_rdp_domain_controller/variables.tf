@@ -6,6 +6,24 @@ variable "vpc_id" {
   description = "Id of VPC to add additional infra resources to."
 }
 
+variable "extra_users" {
+  type        = number
+  description = "Number of additional domcain users to be created"
+  default     = 0
+}
+
+variable "extra_users_password_base" {
+  type        = string
+  description = "base of password for the extra users"
+  default     = "p@ssw0rd00!"
+}
+
+variable "extra_users_username_base" {
+  type        = string
+  description = "base of password for the extra users"
+  default     = "user"
+}
+
 # =================================================================
 # ec2 instance configuration
 # =================================================================
