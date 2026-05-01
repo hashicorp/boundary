@@ -1,0 +1,128 @@
+name: Dependency Remediation On Security Failure
+
+on:
+  workflow_run:
+    workflows: ["Security Scan"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to remediate"
+        required: true
+        default: "test-security-scan"
+        type: choice
+        options:
+          - main
+          - test-security-scan
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  remediate-go-deps:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'failure' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'test-security-scan')) }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
+
+    steps:
+      - name: Select target branch
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            target_branch="${{ github.event.inputs.target_branch }}"
+          else
+            target_branch="${{ github.event.workflow_run.head_branch }}"
+          fi
+          safe_branch=$(echo "$target_branch" | tr '/' '-')
+          echo "target_branch=$target_branch" >> "$GITHUB_OUTPUT"
+          echo "safe_branch=$safe_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout target branch
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ steps.target.outputs.target_branch }}
+          token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
+
+      - name: Determine Go version
+        id: get-go-version
+        run: |
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: ${{ steps.get-go-version.outputs.go-version }}
+          cache: false
+
+      - name: Configure git for private module access
+        run: |
+          git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+
+      - name: Evaluate and apply patch-level updates
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dirs=(
+            "."
+            "api"
+            "sdk"
+            "plugins/kms/mains/ocikms"
+            "plugins/kms/mains/awskms"
+            "plugins/kms/mains/azurekeyvault"
+            "plugins/kms/mains/transit"
+            "plugins/kms/mains/gcpckms"
+            "plugins/kms/mains/alicloudkms"
+            "plugins/boundary/mains/gcp"
+            "plugins/boundary/mains/azure"
+            "plugins/boundary/mains/aws"
+            "plugins/boundary/mains/minio"
+          )
+
+          changed=0
+
+          for d in "${dirs[@]}"; do
+            if [[ -f "$d/go.mod" ]]; then
+              echo "Evaluating module directory: $d"
+              (
+                cd "$d"
+                go get -u=patch ./...
+                go mod tidy
+              )
+            fi
+          done
+
+          if ! git diff --quiet; then
+            changed=1
+          fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+      - name: Create remediation pull request
+        if: ${{ steps.bump.outputs.changed == '1' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
+          commit-message: "chore(deps): patch update Go dependencies after security scan failure"
+          branch: "automation/security-dependency-remediation-${{ steps.target.outputs.safe_branch }}"
+          base: ${{ steps.target.outputs.target_branch }}
+          delete-branch: true
+          title: "chore(deps): remediate Go dependencies after security scan failure (${{ steps.target.outputs.target_branch }})"
+          body: |
+            This PR was generated automatically after the Security Scan workflow failed.
+
+            Target branch: `${{ steps.target.outputs.target_branch }}`
+
+            What this workflow did:
+            - Evaluated Go modules in the repository's configured module directories.
+            - Applied patch-level dependency updates using `go get -u=patch`.
+            - Ran `go mod tidy` in each module directory.
+
+            Next step:
+            - Re-run Security Scan and build workflows to verify the vulnerability findings are resolved.
+          labels: |
+            dependencies
+            security
