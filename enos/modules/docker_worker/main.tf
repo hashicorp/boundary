@@ -67,11 +67,12 @@ variable "worker_led_registration" {
 }
 
 resource "docker_image" "boundary" {
-  name         = var.image_name
+  name         = local.image_name
   keep_locally = true
 }
 
 locals {
+  image_name             = replace(var.image_name, "+", "-")
   recording_storage_path = "/boundary/recordings"
   port_ops               = var.port + 1
 }

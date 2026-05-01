@@ -61,13 +61,13 @@ variable "max_page_size" {
 }
 
 resource "docker_image" "boundary" {
-  name         = var.image_name
+  name         = local.image_name
   keep_locally = false
 }
 
 resource "enos_local_exec" "init_database" {
   environment = {
-    TEST_BOUNDARY_IMAGE   = var.image_name
+    TEST_BOUNDARY_IMAGE   = local.image_name
     TEST_DATABASE_ADDRESS = var.postgres_address
     TEST_DATABASE_NETWORK = var.database_network
     TEST_BOUNDARY_LICENSE = var.boundary_license
@@ -77,6 +77,7 @@ resource "enos_local_exec" "init_database" {
 }
 
 locals {
+  image_name     = replace(var.image_name, "+", "-")
   db_init_info   = jsondecode(enos_local_exec.init_database.stdout)
   auth_method_id = local.db_init_info["auth_method"]["auth_method_id"]
   login_name     = local.db_init_info["auth_method"]["login_name"]
