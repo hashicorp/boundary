@@ -162,7 +162,6 @@ func TestRepository_GetConfiguration(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.GetConfiguration(ctx, tt.authMethodId)
@@ -289,7 +288,6 @@ func TestRepository_SetConfiguration(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.SetConfiguration(context.Background(), o.GetPublicId(), tt.in)

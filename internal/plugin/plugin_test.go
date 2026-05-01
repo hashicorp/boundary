@@ -68,7 +68,6 @@ func TestPlugin_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewPlugin(tt.opts...)
 			require.NotNil(t, got)

@@ -148,7 +148,6 @@ func TestScheduler_New(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := New(ctx, tt.args.serverId, tt.args.jobRepo, tt.opts...)
@@ -219,7 +218,6 @@ func TestScheduler_RegisterJob(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			err := sched.RegisterJob(context.Background(), tt.job)

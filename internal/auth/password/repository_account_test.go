@@ -40,7 +40,6 @@ func TestCheckLoginName(t *testing.T) {
 		{"validloginname", true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.in, func(t *testing.T) {
 			assert.Equal(t, tt.want, validLoginName(tt.in))
 		})
@@ -236,7 +235,6 @@ func TestRepository_CreateAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(context.Background(), rw, rw, kms)
@@ -387,7 +385,6 @@ func TestRepository_LookupAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -445,7 +442,6 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(ctx, rw, rw, kms)
@@ -504,7 +500,6 @@ func TestRepository_ListAccounts(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(context.Background(), rw, rw, kms)
@@ -584,7 +579,6 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(context.Background(), rw, rw, kms, tt.repoOpts...)
@@ -926,7 +920,6 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(context.Background(), rw, rw, kms)

@@ -149,7 +149,6 @@ var testCases = []testCase{
 
 func TestPatchStruct(t *testing.T) {
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
 			dst, src := mustStruct(tc.dst), mustStruct(tc.src)
@@ -177,7 +176,6 @@ func TestPatchStruct(t *testing.T) {
 
 func TestPatchBytes(t *testing.T) {
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
 			dst, src := mustMarshal(tc.dst), mustMarshal(tc.src)

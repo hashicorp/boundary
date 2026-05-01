@@ -72,7 +72,6 @@ func TestConfig(t *testing.T) {
 		{0, 0, DefaultMax + 1, DefaultMax},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("min-max-size_%d-%d-%d", tt.min, tt.max, tt.size), func(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)
@@ -119,7 +118,6 @@ func TestConfig_setSize(t *testing.T) {
 		{15, 15, true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("newSize_%d", tt.newSize), func(t *testing.T) {
 			t.Parallel()
 			assert, require := assert.New(t), require.New(t)
@@ -159,7 +157,6 @@ func TestConfig_targetRange(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("target_%d", tt.target), func(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)
@@ -198,7 +195,6 @@ func TestConfig_exponentialDecrease(t *testing.T) {
 		{500, 2, 125},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("batchSize=%d/attempt=%d", tt.batchSize, tt.attempt), func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -239,7 +235,6 @@ func Test_linearDecrease(t *testing.T) {
 		{100, 2, 80},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("batchSize=%d/attempt=%d", tt.batchSize, tt.attempt), func(t *testing.T) {
 			t.Parallel()
 			assert, require := assert.New(t), require.New(t)
@@ -281,7 +276,6 @@ func Test_linearIncrease(t *testing.T) {
 		{10, 2, 12},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("batchSize=%d/attempt=%d", tt.batchSize, tt.attempt), func(t *testing.T) {
 			t.Parallel()
 			assert, require := assert.New(t), require.New(t)
@@ -537,7 +531,6 @@ func TestRun(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)

@@ -149,7 +149,6 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var confs []*Argon2Configuration
@@ -283,7 +282,6 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got := tt.in.validate(context.Background())
@@ -429,7 +427,6 @@ func TestArgon2Credential_New(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newArgon2Credential(context.Background(), tt.args.accountId, tt.args.password, tt.args.conf, rand.Reader)

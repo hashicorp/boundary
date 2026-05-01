@@ -108,7 +108,6 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 	// across all tests.
 	semaphore := make(chan struct{}, runtime.NumCPU())
 	for _, scenario := range scenarios {
-		scenario := scenario // Parallel test closures act as goroutines, copy iteration variable
 		t.Run(fmt.Sprintf("Generate-%d-sessions-%d-conns-per-session-%d-users-dump", scenario.sessions, scenario.connsPerSession, scenario.users), func(t *testing.T) {
 			t.Parallel() // Lets speed things up a bit
 			ctx := context.Background()
@@ -140,7 +139,6 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			users := make([]*user, scenario.users)
 			eg, gCtx := errgroup.WithContext(ctx)
 			for i := 0; i < scenario.users; i++ {
-				i := i
 				// Parallelize user creation
 				eg.Go(func() error {
 					select {
@@ -165,7 +163,6 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			t.Logf("Populating %d sessions", scenario.sessions)
 			eg, gCtx = errgroup.WithContext(ctx)
 			for i := 0; i < scenario.sessions; i++ {
-				i := i
 				userIndex := i % len(users)
 				// Parallelize session creation
 				eg.Go(func() error {

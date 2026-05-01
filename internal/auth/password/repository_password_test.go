@@ -106,7 +106,6 @@ func TestRepository_Authenticate(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			authAcct, err := repo.Authenticate(context.Background(), o.GetPublicId(), tt.args.authMethodId, tt.args.loginName, tt.args.password)
@@ -373,7 +372,6 @@ func TestRepository_ChangePassword(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
@@ -493,7 +491,6 @@ func TestRepository_SetPassword(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			acct := tt.createAcct(tt.oldPw)

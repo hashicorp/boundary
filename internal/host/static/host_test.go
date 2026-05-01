@@ -129,7 +129,6 @@ func TestHost_New(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			got, err := NewHost(ctx, tt.args.catalogId, tt.args.opts...)

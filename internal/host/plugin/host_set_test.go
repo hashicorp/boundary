@@ -162,7 +162,6 @@ func TestHostSet_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			got, err := NewHostSet(ctx, tt.args.catalogId, tt.args.opts...)

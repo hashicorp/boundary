@@ -107,7 +107,6 @@ func TestRepository_CreatePlugin(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := repo.CreatePlugin(context.Background(), tt.in, tt.opts...)
@@ -200,7 +199,6 @@ func TestRepository_LookupPlugin(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -257,7 +255,6 @@ func TestRepository_LookupPluginByName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -329,7 +326,6 @@ func TestRepository_AddSupportFlag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)

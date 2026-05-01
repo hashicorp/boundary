@@ -580,7 +580,6 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -752,7 +751,6 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				// setup
 				assert, require := assert.New(t), require.New(t)
@@ -1488,7 +1486,6 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
@@ -1853,7 +1850,6 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				assert, require := assert.New(t), require.New(t)
 				kms := kms.TestKms(t, conn, wrapper)

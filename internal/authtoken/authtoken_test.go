@@ -103,7 +103,6 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			w := db.New(conn)
@@ -173,7 +172,6 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			at := &AuthToken{AuthToken: tt.in}
@@ -234,7 +232,6 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			cnt, err := db.New(conn).Delete(ctx, tt.at)

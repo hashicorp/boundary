@@ -293,7 +293,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
@@ -1268,7 +1267,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
@@ -1355,7 +1353,6 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
@@ -1451,7 +1448,6 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pluginInstance.OnDeleteCatalogFn = func(_ context.Context, request *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
 				require.NotNil(t, request.GetCatalog().GetPlugin())
@@ -1509,7 +1505,6 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)

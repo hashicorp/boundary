@@ -165,7 +165,6 @@ func TestHostCatalog_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewHostCatalog(ctx, tt.args.projectId, tt.args.pluginId, tt.args.opts...)
 			require.NoError(t, err)

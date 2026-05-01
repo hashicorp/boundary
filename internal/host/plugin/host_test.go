@@ -201,7 +201,6 @@ func TestHost_Create(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			got := NewHost(ctx, tt.args.catalogId, tt.args.externalId, tt.args.opts...)
