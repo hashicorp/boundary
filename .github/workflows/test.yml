@@ -187,6 +187,7 @@ jobs:
           until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit 255; sleep 1; done
 
       - name: Test
+        id: test
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
         env:
           TESTARGS: -v
@@ -195,7 +196,29 @@ jobs:
           max_attempts: 1
           timeout_minutes: 120
           retry_on: error
-          command: make test
+          command: make test 2>&1 | tee test-output.log
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test.outcome }}" == "success" ]; then
+            echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Tests failed!**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f test-output.log ]; then
+            echo "### Test Summary Table" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            sed -n '/│.*STATUS.*PACKAGE.*PASS.*FAIL/,/^[0-9].*└/p' test-output.log >> $GITHUB_STEP_SUMMARY || \
+            echo "Test summary table not available" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**Workflow Run:** [View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY          
       - name: Cleanup
         if: always()
         run: |
