@@ -163,6 +163,11 @@ resource "enos_local_exec" "check_address" {
   inline = ["timeout 10s bash -c 'until echo $(curl -s -i \"http://0.0.0.0:${local.port_ops}/health?worker_info=1\") | grep -i \\\"upstream_connection_state\\\":\\\"READY\\\"; do sleep 2; done'"]
 }
 
+
+output "worker_name" {
+  value = var.container_name
+}
+
 output "upstream_address" {
   value = "${var.container_name}:${var.port}"
 }
