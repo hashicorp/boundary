@@ -60,7 +60,7 @@ select public_id, project_id from target
 `
 
 	estimateCountTargets = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass,  'target_rdp'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass,  'target_rdp'::regclass)
 `
 
 	listTargetsTemplate = `

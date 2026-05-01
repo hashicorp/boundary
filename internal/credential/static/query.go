@@ -60,7 +60,7 @@ select distinct json.public_id,
 `
 
 	estimateCountCredentials = `
-select sum(reltuples::bigint) as estimate
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate
   from pg_class
  where oid in (
   'credential_static_json_credential'::regclass,

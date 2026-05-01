@@ -2125,6 +2125,9 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	sort.Slice(got.GrantStrings, func(i, j int) bool {
 		return got.GrantStrings[i] < got.GrantStrings[j]
 	})
+	sort.Slice(got.Grants, func(i, j int) bool {
+		return got.Grants[i].GetRaw() < got.Grants[j].GetRaw()
+	})
 	for i, v := range expected {
 		parsed, err := perms.Parse(context.Background(), perms.GrantTuple{RoleScopeId: "o_abc123", GrantScopeId: "o_abc123", Grant: v})
 		require.NoError(err)

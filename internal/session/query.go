@@ -420,7 +420,7 @@ with session_ids as (
 order by update_time desc, public_id desc;
 `
 	estimateCountSessions = `
-    select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
+	select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('session'::regclass)
 `
 
 	selectStates = `
