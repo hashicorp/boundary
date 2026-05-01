@@ -51,3 +51,11 @@ output "vault_ldap_user" {
   description = "User created for Vault LDAP use"
   value       = local.vault_ldap_user
 }
+
+output "extra_domain_users" {
+  description = "Extra domain users created for performance testing"
+  value = [
+    for user_number in range(var.extra_users) :
+    "Username: ${var.extra_users_username_base}${user_number + 1} Password: ${var.extra_users_password_base}${user_number + 1}"
+  ]
+}
