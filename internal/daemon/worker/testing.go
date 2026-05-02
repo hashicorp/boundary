@@ -113,9 +113,8 @@ type TestSessionInfo struct {
 // as a part of TestSessionInfo. See that struct for details about
 // the purpose of this data and how it's gathered.
 type TestConnectionInfo struct {
-	Id        string
-	Status    pbs.CONNECTIONSTATUS
-	CloseTime time.Time
+	Id     string
+	Status pbs.CONNECTIONSTATUS
 }
 
 // LookupSession returns session info from the worker's local session
@@ -135,9 +134,8 @@ func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 	conns := make(map[string]TestConnectionInfo)
 	for _, conn := range sess.GetLocalConnections() {
 		conns[conn.Id] = TestConnectionInfo{
-			Id:        conn.Id,
-			Status:    conn.Status,
-			CloseTime: conn.CloseTime,
+			Id:     conn.Id,
+			Status: conn.Status,
 		}
 	}
 
