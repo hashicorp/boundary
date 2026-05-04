@@ -269,7 +269,46 @@ func createTestCert(t *testing.T) []byte {
 	return certBytes
 }
 
-func TestWorkerSetCloseTimeForResponse(t *testing.T) {
+// TestRemoveClosedConnections_CancelFuncInvoked verifies that the cancel func
+// stored on a ConnInfo is called when the controller confirms the connection
+// closed — this is the primary goroutine-leak fix.
+func TestRemoveClosedConnections_CancelFuncInvoked(t *testing.T) {
+	cancelled := false
+	m := new(sync.Map)
+	m.Store("sess1", &sess{
+		resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
+			SessionId: "sess1",
+		}},
+		sessionId: "sess1",
+		connInfoMap: map[string]*ConnInfo{
+			"conn1": {
+				Id: "conn1",
+				connCtxCancelFunc: func() {
+					cancelled = true
+				},
+			},
+		},
+	})
+
+	manager := &manager{sessionMap: m}
+	closedIds, errs := removeClosedConnections(manager, map[string][]*pbs.CloseConnectionResponseData{
+		"sess1": {
+			{ConnectionId: "conn1", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
+		},
+	})
+
+	require.Empty(t, errs)
+	require.ElementsMatch(t, []string{"conn1"}, closedIds)
+	assert.True(t, cancelled, "cancel func must be invoked when connection is confirmed closed")
+
+	// Verify the entry is pruned from the map.
+	si := manager.Get("sess1")
+	require.NotNil(t, si)
+	_, exists := si.GetLocalConnections()["conn1"]
+	assert.False(t, exists, "closed connection should be pruned from local state")
+}
+
+func TestWorkerRemoveClosedConnections(t *testing.T) {
 	cases := []struct {
 		name             string
 		sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
@@ -454,19 +493,21 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			require := require.New(t)
 			manager := &manager{sessionMap: new(sync.Map)}
 			manager.sessionMap = tc.sessionInfoMap()
-			actual, actualErr := setCloseTimeForResponse(manager, tc.sessionCloseInfo)
+			actual, actualErr := removeClosedConnections(manager, tc.sessionCloseInfo)
 
-			// Assert all close times were set
+			// Assert closed connections are pruned from local state and
+			// open connections are still present.
 			manager.ForEachLocalSession(func(value Session) bool {
 				t.Helper()
-				for _, ci := range value.GetLocalConnections() {
-					if _, ok := tc.expectedClosed[ci.Id]; ok {
-						require.NotEqual(time.Time{}, ci.CloseTime)
-					} else {
-						require.Equal(time.Time{}, ci.CloseTime)
-					}
+				localConns := value.GetLocalConnections()
+				for connId := range tc.expectedClosed {
+					_, exists := localConns[connId]
+					require.False(exists, "expected closed connection %q to be pruned from local state", connId)
 				}
-
+				for _, ci := range localConns {
+					_, shouldBeClosed := tc.expectedClosed[ci.Id]
+					require.False(shouldBeClosed, "connection %q should have been pruned from local state", ci.Id)
+				}
 				return true
 			})
 

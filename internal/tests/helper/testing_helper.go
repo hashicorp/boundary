@@ -178,6 +178,8 @@ func (s *TestSession) ExpectConnectionStateOnController(
 
 // ExpectConnectionStateOnWorker waits until all connections in a
 // session have transitioned to a particular state on the worker.
+// Connections that have been pruned from the worker's local map
+// (i.e. confirmed closed) are treated as StatusClosed.
 func (s *TestSession) ExpectConnectionStateOnWorker(
 	ctx context.Context,
 	t *testing.T,
@@ -216,6 +218,21 @@ func (s *TestSession) ExpectConnectionStateOnWorker(
 			actualStates[conn.Id] = session.ConnectionStatusFromProtoVal(conn.Status)
 		}
 
+		// Closed connections are immediately pruned from the worker's local
+		// map. Treat any connection that has disappeared from the map as
+		// StatusClosed so that callers waiting for StatusClosed converge.
+		si, ok := tw.LookupSession(s.SessionId)
+		if ok {
+			for id, state := range actualStates {
+				if state == sessionStatusUnknown {
+					continue
+				}
+				if _, present := si.Connections[id]; !present {
+					actualStates[id] = session.StatusClosed
+				}
+			}
+		}
+
 		if reflect.DeepEqual(expectStates, actualStates) {
 			break
 		}
@@ -240,10 +257,8 @@ func (s *TestSession) testWorkerConnectionInfo(t *testing.T, tw *worker.TestWork
 	// local state.
 	require.True(ok)
 
-	// Likewise, we require the helper to always be used with
-	// connections.
-	require.Greater(len(si.Connections), 0, "should have at least one connection")
-
+	// Closed connections are immediately pruned from the local map, so
+	// the connections set may legitimately be empty. Do not require > 0.
 	return si.Connections
 }
 

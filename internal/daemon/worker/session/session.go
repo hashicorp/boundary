@@ -36,10 +36,6 @@ type ConnInfo struct {
 	BytesUp func() int64
 	// The number of bytes downloaded to the client.
 	BytesDown func() int64
-
-	// The time the controller has successfully reported that this connection is
-	// closed.
-	CloseTime time.Time
 }
 
 // ConnectionCloseData encapsulates the data we need to send via CloseConnection
@@ -171,7 +167,14 @@ func (s *sess) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONST
 
 	connInfo.Status = status
 	if connInfo.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
-		connInfo.CloseTime = time.Now()
+		// Cancel the proxy context so the goroutine is stopped in the
+		// controller-initiated close path, then immediately remove the
+		// entry from the map to prevent unbounded growth when a session
+		// carries a large number of short-lived connections.
+		if connInfo.connCtxCancelFunc != nil {
+			connInfo.connCtxCancelFunc()
+		}
+		delete(s.connInfoMap, connId)
 	}
 	return nil
 }
@@ -204,7 +207,6 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 		res[k] = ConnInfo{
 			Id:        v.Id,
 			Status:    v.Status,
-			CloseTime: v.CloseTime,
 			BytesUp:   v.BytesUp,
 			BytesDown: v.BytesDown,
 		}
@@ -356,30 +358,30 @@ func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectCo
 	return nil
 }
 
+// cancelLocalConnections iterates connInfoMap, cancels the proxy context for
+// each matching connection, and returns the cancelled connection IDs.
+// If onlyClosed is true, only connections with status CLOSED are cancelled.
+func (s *sess) cancelLocalConnections(onlyClosed bool) []string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	var cancelledIds []string
+	for k, v := range s.connInfoMap {
+		if onlyClosed && v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+			continue
+		}
+		v.connCtxCancelFunc()
+		cancelledIds = append(cancelledIds, k)
+	}
+	return cancelledIds
+}
+
 // CancelOpenLocalConnections closes the local connections in this session
 // based on the connection's state by calling the connections context cancel
 // function.
 //
 // The returned slice are connection ids that were closed.
 func (s *sess) CancelOpenLocalConnections() []string {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	var closedIds []string
-	for k, v := range s.connInfoMap {
-		if v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
-			continue
-		}
-		v.connCtxCancelFunc()
-
-		// CloseTime is set when the controller has reported that the connection
-		// is closed.  The worker should only request a connection be marked
-		// closed after it has already been cancelled.
-		if v.CloseTime.IsZero() {
-			closedIds = append(closedIds, k)
-		}
-	}
-
-	return closedIds
+	return s.cancelLocalConnections(true)
 }
 
 // CancelAllLocalConnections close connections regardless of connection's state
@@ -387,21 +389,7 @@ func (s *sess) CancelOpenLocalConnections() []string {
 //
 // The returned slice is the connection ids which were closed.
 func (s *sess) CancelAllLocalConnections() []string {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	var closedIds []string
-	for k, v := range s.connInfoMap {
-		v.connCtxCancelFunc()
-
-		// CloseTime is set when the controller has reported that the connection
-		// is closed.  The worker should only request a connection be marked
-		// closed after it has already been cancelled.
-		if v.CloseTime.IsZero() {
-			closedIds = append(closedIds, k)
-		}
-	}
-
-	return closedIds
+	return s.cancelLocalConnections(false)
 }
 
 // ApplyConnectionCounterCallbacks sets a connection's bytes up and bytes
@@ -479,7 +467,7 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 }
 
 // closeConnections is a helper worker function that sends connection close
-// requests to the controller, and sets close times within the worker. It is
+// requests to the controller and removes closed connections from local state. It is
 // called during the worker session info loop and on connection exit on the proxy.
 //
 // The boolean indicates whether the function was successful, e.g. had any
@@ -527,7 +515,7 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 	}
 
 	// Mark connections as closed
-	_, errs := setCloseTimeForResponse(sManager, sessionCloseInfo)
+	_, errs := removeClosedConnections(sManager, sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
@@ -565,7 +553,7 @@ func makeCloseConnectionRequest(closeInfo map[string]*ConnectionCloseData) *pbs.
 // our original closeInfo map and makes a map of slices, indexed by
 // session ID, of all of the connection responses. This allows us to
 // easily lock on session once for all connections in
-// setCloseTimeForResponse.
+// removeClosedConnections.
 func makeSessionCloseInfo(
 	closeInfo map[string]*ConnectionCloseData,
 	response *pbs.CloseConnectionResponse,
@@ -583,7 +571,7 @@ func makeSessionCloseInfo(
 	return result, nil
 }
 
-// makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
+// makeFakeSessionCloseInfo makes a "fake" session close info map, intended
 // for use when we can't contact the controller.
 func makeFakeSessionCloseInfo(
 	closeInfo map[string]*ConnectionCloseData,
@@ -604,9 +592,10 @@ func makeFakeSessionCloseInfo(
 	return result, nil
 }
 
-// setCloseTimeForResponse iterates a CloseConnectionResponse and
-// sets the close time for any connection found to be closed to the
-// current time.
+// removeClosedConnections iterates a CloseConnectionResponse and
+// removes any connection confirmed closed by the controller from the
+// session's local connection map. Removing the entry also cancels the
+// connection's proxy context, stopping any in-flight goroutine.
 //
 // sessionCloseInfo can be derived from the closeInfo supplied to
 // makeCloseConnectionRequest through reverseCloseInfo, which creates
@@ -616,7 +605,7 @@ func makeFakeSessionCloseInfo(
 // failed, as some connections may have been marked as closed. The
 // actual list of connection IDs closed is returned as the first
 // return value.
-func setCloseTimeForResponse(sManager Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
+func removeClosedConnections(sManager Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
 	closedIds := make([]string, 0)
 	var result []error
 	for sessionId, responses := range sessionCloseInfo {
@@ -625,13 +614,11 @@ func setCloseTimeForResponse(sManager Manager, sessionCloseInfo map[string][]*pb
 			result = append(result, fmt.Errorf("could not find session ID %q in local state after closing connections", sessionId))
 			continue
 		}
-		connStatus := make(map[string]pbs.CONNECTIONSTATUS, len(responses))
 		for _, response := range responses {
 			if err := si.ApplyLocalConnectionStatus(response.GetConnectionId(), response.GetStatus()); err != nil {
 				result = append(result, err)
 				continue
 			}
-			connStatus[response.GetConnectionId()] = response.GetStatus()
 			if response.GetStatus() == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
 				closedIds = append(closedIds, response.GetConnectionId())
 			}

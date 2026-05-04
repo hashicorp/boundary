@@ -71,18 +71,14 @@ func TestTestWorkerLookupSession(t *testing.T) {
 		sessionManager: manager,
 	}
 
-	closeTime := s.GetLocalConnections()["one"].CloseTime
-	assert.NotZero(t, closeTime)
+	// Closed connections are pruned from the local map immediately; the
+	// session itself must still be visible but with an empty connection set.
+	_, exists := s.GetLocalConnections()["one"]
+	assert.False(t, exists, "closed connection should be pruned from local state")
 	expected := TestSessionInfo{
-		Id:     "foo",
-		Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
-		Connections: map[string]TestConnectionInfo{
-			"one": {
-				Id:        "one",
-				Status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
-				CloseTime: closeTime,
-			},
-		},
+		Id:          "foo",
+		Status:      pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+		Connections: map[string]TestConnectionInfo{},
 	}
 
 	actual, ok := tw.LookupSession("foo")

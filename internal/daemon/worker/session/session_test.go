@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
@@ -49,15 +48,12 @@ func TestSession_CancelAllLocalConnections(t *testing.T) {
 		"3": {
 			Id:                "3",
 			connCtxCancelFunc: cancelFn("3"),
-			CloseTime:         time.Now(),
 		},
 	}
 	sess := &sess{
 		connInfoMap: connInfo,
 	}
-	assert.ElementsMatch(t, sess.CancelAllLocalConnections(), []string{"1", "2"})
-	// We can call the cancel context multiple times, even if it was marked
-	// closed previously.
+	assert.ElementsMatch(t, sess.CancelAllLocalConnections(), []string{"1", "2", "3"})
 	assert.ElementsMatch(t, closedContextCalled, []string{"1", "2", "3"})
 }
 
@@ -74,12 +70,6 @@ func TestSession_CancelOpenLocalConnections(t *testing.T) {
 			connCtxCancelFunc: cancelFn("1"),
 			Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
 		},
-		"2": {
-			Id:                "2",
-			connCtxCancelFunc: cancelFn("2"),
-			Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
-			CloseTime:         time.Now(),
-		},
 		"3": {
 			Id:                "3",
 			connCtxCancelFunc: cancelFn("3"),
@@ -90,9 +80,7 @@ func TestSession_CancelOpenLocalConnections(t *testing.T) {
 		connInfoMap: connInfo,
 	}
 	assert.ElementsMatch(t, sess.CancelOpenLocalConnections(), []string{"1"})
-	// We call the cancel context multiple times, even if it was marked
-	// closed previously like connection 2 was (by setting CloseTime)
-	assert.ElementsMatch(t, closedContextCalled, []string{"1", "2"})
+	assert.ElementsMatch(t, closedContextCalled, []string{"1"})
 }
 
 func TestSession_RequestActivate(t *testing.T) {
@@ -272,6 +260,126 @@ func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
 		make(map[string][]*pbs.CloseConnectionResponseData),
 		actual,
 	)
+}
+
+// TestSession_ApplyLocalConnectionStatus_Closed verifies that marking a
+// connection closed cancels its proxy context and removes it from the map.
+func TestSession_ApplyLocalConnectionStatus_Closed(t *testing.T) {
+	cancelled := false
+	s := &sess{
+		sessionId: "sess1",
+		connInfoMap: map[string]*ConnInfo{
+			"conn1": {
+				Id:     "conn1",
+				Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+				connCtxCancelFunc: func() {
+					cancelled = true
+				},
+			},
+		},
+	}
+
+	require.NoError(t, s.ApplyLocalConnectionStatus("conn1", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
+	assert.True(t, cancelled, "cancel func should have been called")
+	_, exists := s.connInfoMap["conn1"]
+	assert.False(t, exists, "closed connection should be removed from connInfoMap")
+}
+
+// TestSession_ApplyLocalConnectionStatus_NilCancelFunc verifies that a nil
+// cancel func is handled safely and the entry is still deleted.
+func TestSession_ApplyLocalConnectionStatus_NilCancelFunc(t *testing.T) {
+	s := &sess{
+		sessionId: "sess1",
+		connInfoMap: map[string]*ConnInfo{
+			"conn1": {
+				Id:                "conn1",
+				Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+				connCtxCancelFunc: nil,
+			},
+		},
+	}
+
+	require.NoError(t, s.ApplyLocalConnectionStatus("conn1", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
+	_, exists := s.connInfoMap["conn1"]
+	assert.False(t, exists, "closed connection should be removed even when cancel func is nil")
+}
+
+// TestSession_ApplyLocalConnectionStatus_NonClosed verifies that a non-closed
+// status update leaves the entry in the map.
+func TestSession_ApplyLocalConnectionStatus_NonClosed(t *testing.T) {
+	s := &sess{
+		sessionId: "sess1",
+		connInfoMap: map[string]*ConnInfo{
+			"conn1": {
+				Id:     "conn1",
+				Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+			},
+		},
+	}
+
+	require.NoError(t, s.ApplyLocalConnectionStatus("conn1", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED))
+	conn, exists := s.connInfoMap["conn1"]
+	require.True(t, exists, "non-closed connection should remain in connInfoMap")
+	assert.Equal(t, pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED, conn.Status)
+}
+
+// TestSession_ApplyLocalConnectionStatus_UnknownConnection verifies that an
+// error is returned for an unknown connection ID.
+func TestSession_ApplyLocalConnectionStatus_UnknownConnection(t *testing.T) {
+	s := &sess{
+		sessionId:   "sess1",
+		connInfoMap: make(map[string]*ConnInfo),
+	}
+	err := s.ApplyLocalConnectionStatus("nonexistent", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "nonexistent")
+	assert.Contains(t, err.Error(), "sess1")
+}
+
+// TestSession_CancelAllLocalConnections_Empty verifies that an empty map
+// returns an empty slice.
+func TestSession_CancelAllLocalConnections_Empty(t *testing.T) {
+	s := &sess{connInfoMap: make(map[string]*ConnInfo)}
+	assert.Empty(t, s.CancelAllLocalConnections())
+}
+
+// TestSession_CancelOpenLocalConnections_Empty verifies that an empty map
+// returns an empty slice.
+func TestSession_CancelOpenLocalConnections_Empty(t *testing.T) {
+	s := &sess{connInfoMap: make(map[string]*ConnInfo)}
+	assert.Empty(t, s.CancelOpenLocalConnections())
+}
+
+// TestSession_CancelOpenLocalConnections_MixedStatuses verifies that only
+// CLOSED connections are cancelled across all possible connection statuses.
+func TestSession_CancelOpenLocalConnections_MixedStatuses(t *testing.T) {
+	var cancelled []string
+	cancelFn := func(id string) context.CancelFunc {
+		return func() { cancelled = append(cancelled, id) }
+	}
+	s := &sess{
+		connInfoMap: map[string]*ConnInfo{
+			"authorized": {
+				Id:                "authorized",
+				connCtxCancelFunc: cancelFn("authorized"),
+				Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+			},
+			"connected": {
+				Id:                "connected",
+				connCtxCancelFunc: cancelFn("connected"),
+				Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+			},
+			"closed": {
+				Id:                "closed",
+				connCtxCancelFunc: cancelFn("closed"),
+				Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+			},
+		},
+	}
+
+	result := s.CancelOpenLocalConnections()
+	assert.ElementsMatch(t, []string{"closed"}, result)
+	assert.ElementsMatch(t, []string{"closed"}, cancelled)
 }
 
 func TestApplyConnectionCounterCallbacks(t *testing.T) {
