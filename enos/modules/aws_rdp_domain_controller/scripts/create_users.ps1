@@ -49,9 +49,6 @@ function Grant-AdminGroupMembership {
 	}
 }
 
-
-
-
 for ($i = $StartAt; $i -lt ($StartAt + $Count); $i++) {
 	$username = "$UsernamePrefix$i"
 	$plainPassword = "$PasswordPrefix$i"

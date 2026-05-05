@@ -540,7 +540,7 @@ resource "enos_local_exec" "add_create_users_script" {
   depends_on = [
     enos_local_exec.make_dir,
   ]
-  count = var.extra_users > 0 ? 1 : 0
+  count = (var.extra_users > 0 && var.server_version != "2016") ? 1 : 0
 
   inline = ["scp -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${path.module}/scripts/create_users.ps1 Administrator@${aws_instance.domain_controller.public_ip}:${local.test_dir}"]
 }
@@ -549,14 +549,14 @@ resource "enos_local_exec" "run_create_users_script" {
   depends_on = [
     enos_local_exec.add_create_users_script,
   ]
-  count = var.extra_users > 0 ? 1 : 0
+  count = (var.extra_users > 0 && var.server_version != "2016") ? 1 : 0
 
   inline = ["ssh -i ${abspath(local_sensitive_file.private_key.filename)} -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no Administrator@${aws_instance.domain_controller.public_ip} ${local.test_dir}/create_users.ps1 -Count ${var.extra_users} -PasswordPrefix ${var.extra_users_password_base}"]
 }
 
 resource "local_file" "create_users_script_output" {
   depends_on = [enos_local_exec.run_create_users_script]
-  count      = var.extra_users > 0 ? 1 : 0
+  count      = (var.extra_users > 0 && var.server_version != "2016") ? 1 : 0
 
   content  = enos_local_exec.run_create_users_script[0].stdout
   filename = "${path.root}/.terraform/tmp/create_users.out"

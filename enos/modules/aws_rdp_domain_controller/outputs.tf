@@ -52,7 +52,7 @@ output "vault_ldap_user" {
   value       = local.vault_ldap_user
 }
 
-output "extra_domain_users" {
+output "rdp_domain_users" {
   description = "Extra domain users created for performance testing"
   value = [
     for user_number in range(var.extra_users) :

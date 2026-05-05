@@ -270,7 +270,7 @@ variable "is_ci" {
 }
 
 variable "extra_windows_users" {
-  description = "number of extra windows users to create"
+  description = "number of extra windows users to create on the ec2 windows client"
   type        = number
   default     = 0
 }

@@ -8,8 +8,13 @@ variable "vpc_id" {
 
 variable "extra_users" {
   type        = number
-  description = "Number of additional domcain users to be created"
+  description = "Number of additional domain users to be created"
   default     = 0
+
+  validation {
+    condition     = var.extra_users >= 0 && floor(var.extra_users) == var.extra_users
+    error_message = "extra_users must be a whole number greater than or equal to 0."
+  }
 }
 
 variable "extra_users_password_base" {
@@ -20,7 +25,7 @@ variable "extra_users_password_base" {
 
 variable "extra_users_username_base" {
   type        = string
-  description = "base of password for the extra users"
+  description = "base of username for the extra users"
   default     = "user"
 }
 

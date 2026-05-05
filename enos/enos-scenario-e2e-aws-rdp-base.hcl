@@ -470,7 +470,7 @@ scenario "e2e_aws_rdp_base" {
     value = step.generate_ssh_key.private_key_path
   }
 
-  output "extra_domain_users" {
-    value = step.create_rdp_domain_controller.extra_domain_users
+  output "rdp_domain_users" {
+    value = step.create_rdp_domain_controller.rdp_domain_users
   }
 }
