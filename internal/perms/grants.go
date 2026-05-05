@@ -669,6 +669,9 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 					if grant.typ == resource.Unknown {
 						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains a pin but no resource type", grant.CanonicalString()))
 					}
+					if grant.typ == pinType {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains a type that is the same as the pin type (%s)", grant.CanonicalString(), pinType.String()))
+					}
 					if grant.typ != resource.All && grant.typ.Parent() != pinType {
 						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified pin", grant.CanonicalString(), grant.typ.String(), pinType.String()))
 					}

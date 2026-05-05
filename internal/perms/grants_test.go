@@ -1154,6 +1154,16 @@ func Test_Parse(t *testing.T) {
 			input: `{"pins":["hcst_foobar","csst_foobaz"],"type":"host-set","actions":["read"]}`,
 			err:   `perms.Parse: input grant string "{\"pins\":[\"hcst_foobar\",\"csst_foobaz\"],\"type\":\"host-set\",\"actions\":[\"read\"]}" contains pins of differently-typed resources: parameter violation: error #100`,
 		},
+		{
+			name:  "bad text pins - same type as pin",
+			input: `pins=hcst_foobar;type=host-catalog;actions=read`,
+			err:   `perms.Parse: parsed grant string "pins=hcst_foobar;type=host-catalog;actions=read" contains a type that is the same as the pin type (host-catalog): parameter violation: error #100`,
+		},
+		{
+			name:  "bad json pins - same type as pin",
+			input: `{"pins":["hcst_foobar"],"type":"host-catalog","actions":["read"]}`,
+			err:   `perms.Parse: parsed grant string "pins=hcst_foobar;type=host-catalog;actions=read" contains a type that is the same as the pin type (host-catalog): parameter violation: error #100`,
+		},
 	}
 
 	_, err := Parse(ctx, GrantTuple{RoleScopeId: "", GrantScopeId: "", Grant: ""})
