@@ -49,3 +49,49 @@ func TestBuildGrantSchema(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, json.Valid(data), "output should be valid JSON")
 }
+
+func TestBuildGrantSchema_PinPrefixes(t *testing.T) {
+	ctx := context.Background()
+	schema, err := perms.BuildGrantSchema(ctx)
+	require.NoError(t, err)
+
+	// Build a lookup by type name for easy assertions
+	byType := make(map[string]perms.ResourceTypeSchema, len(schema.ResourceTypes))
+	for _, rt := range schema.ResourceTypes {
+		byType[rt.Type] = rt
+	}
+
+	// Child types must have PinPrefixes set to the parent's ID prefixes
+	hostSet, ok := byType["host-set"]
+	require.True(t, ok, "host-set should be in the schema")
+	assert.Equal(t, "host-catalog", hostSet.ParentType)
+	assert.NotEmpty(t, hostSet.PinPrefixes, "host-set should have pin prefixes")
+
+	host, ok := byType["host"]
+	require.True(t, ok, "host should be in the schema")
+	assert.Equal(t, "host-catalog", host.ParentType)
+	assert.NotEmpty(t, host.PinPrefixes, "host should have pin prefixes")
+
+	account, ok := byType["account"]
+	require.True(t, ok, "account should be in the schema")
+	assert.Equal(t, "auth-method", account.ParentType)
+	assert.NotEmpty(t, account.PinPrefixes, "account should have pin prefixes")
+
+	credLib, ok := byType["credential-library"]
+	require.True(t, ok, "credential-library should be in the schema")
+	assert.Equal(t, "credential-store", credLib.ParentType)
+	assert.NotEmpty(t, credLib.PinPrefixes, "credential-library should have pin prefixes")
+
+	// Top-level types must not have PinPrefixes
+	hostCatalog, ok := byType["host-catalog"]
+	require.True(t, ok, "host-catalog should be in the schema")
+	assert.Empty(t, hostCatalog.PinPrefixes, "host-catalog is a top-level type and should have no pin prefixes")
+
+	authMethod, ok := byType["auth-method"]
+	require.True(t, ok, "auth-method should be in the schema")
+	assert.Empty(t, authMethod.PinPrefixes, "auth-method is a top-level type and should have no pin prefixes")
+
+	// PinPrefixes for host-set should match host-catalog's IdPrefixes
+	assert.ElementsMatch(t, hostCatalog.IdPrefixes, hostSet.PinPrefixes,
+		"host-set's pin prefixes should match host-catalog's id prefixes")
+}

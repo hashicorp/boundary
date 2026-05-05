@@ -38,6 +38,12 @@ type ResourceTypeSchema struct {
 
 	// The parent resource type, if any, omitted if no parent
 	ParentType string `json:"parent_type,omitempty"`
+
+	// The ID prefixes that are valid as pins for this resource type.
+	// Populated only for resource types that have a parent (e.g. host-set,
+	// account). These are the ID prefixes of the parent resource, so a
+	// "pins=" grant value must begin with one of these prefixes.
+	PinPrefixes []string `json:"pin_prefixes,omitempty"`
 }
 
 // BuildGrantSchema constructs the full grant schema from the registered
@@ -92,8 +98,10 @@ func BuildGrantSchema(ctx context.Context) (*GrantSchema, error) {
 		// Parent type is the resource's parent if one exists,
 		// otherwise this will be an empty string.
 		var parentType string
+		var pinPrefixes []string
 		if parent := typ.Parent(); parent != typ {
 			parentType = parent.String()
+			pinPrefixes = globals.ResourcePrefixesFromType(parent)
 		}
 
 		schema.ResourceTypes = append(schema.ResourceTypes, ResourceTypeSchema{
@@ -103,6 +111,7 @@ func BuildGrantSchema(ctx context.Context) (*GrantSchema, error) {
 			Scopes:            scopeStrs,
 			IdPrefixes:        globals.ResourcePrefixesFromType(typ),
 			ParentType:        parentType,
+			PinPrefixes:       pinPrefixes,
 		})
 	}
 
