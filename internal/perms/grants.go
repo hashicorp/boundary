@@ -127,6 +127,11 @@ type Grant struct {
 	// The IDs in the grant, if provided
 	ids []string
 
+	// The pins in the grant, if provided. Pins explicitly constrain a grant to
+	// resources within the given parent resources, making the pinning intent
+	// clear.
+	pins []string
+
 	// The grant scope ID of the grant
 	grantScopeId string
 
@@ -152,6 +157,12 @@ func (g Grant) Id() string {
 // Ids returns the IDs the grant refers to, if any
 func (g Grant) Ids() []string {
 	return g.ids
+}
+
+// Pins returns the pins the grant refers to, if any. Pins constrain the grant
+// to resources within the given parent resources.
+func (g Grant) Pins() []string {
+	return g.pins
 }
 
 // GrantScopeId returns the grant scope ID the grant refers to, if any
@@ -190,12 +201,17 @@ func (g Grant) clone() *Grant {
 		roleParentScopeId: g.roleParentScopeId,
 		id:                g.id,
 		ids:               g.ids,
+		pins:              g.pins,
 		grantScopeId:      g.grantScopeId,
 		typ:               g.typ,
 	}
 	if g.ids != nil {
 		ret.ids = make([]string, len(g.ids))
 		copy(ret.ids, g.ids)
+	}
+	if g.pins != nil {
+		ret.pins = make([]string, len(g.pins))
+		copy(ret.pins, g.pins)
 	}
 	if g.actionsBeingParsed != nil {
 		ret.actionsBeingParsed = append(ret.actionsBeingParsed, g.actionsBeingParsed...)
@@ -224,6 +240,10 @@ func (g Grant) CanonicalString() string {
 
 	if len(g.ids) > 0 {
 		builder = append(builder, fmt.Sprintf("ids=%s", strings.Join(g.ids, ",")))
+	}
+
+	if len(g.pins) > 0 {
+		builder = append(builder, fmt.Sprintf("pins=%s", strings.Join(g.pins, ",")))
 	}
 
 	if g.typ != resource.Unknown {
@@ -255,6 +275,9 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	}
 	if len(g.ids) > 0 {
 		res["ids"] = g.ids
+	}
+	if len(g.pins) > 0 {
+		res["pins"] = g.pins
 	}
 	if g.typ != resource.Unknown {
 		res["type"] = g.typ.String()
@@ -315,6 +338,25 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 			}
 			g.ids[i] = idStr
+		}
+	}
+	if rawPins, ok := raw["pins"]; ok {
+		pins, ok := rawPins.([]any)
+		if !ok {
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "pins"))
+		}
+		g.pins = make([]string, len(pins))
+		for i, pin := range pins {
+			pinStr, ok := pin.(string)
+			switch {
+			case !ok:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "pins", pin))
+			case pinStr == "":
+				return errors.New(ctx, errors.InvalidParameter, op, "empty pin provided")
+			case strings.ContainsAny(pinStr, ",;="):
+				return errors.New(ctx, errors.InvalidParameter, op, "pin cannot contain a comma, semicolon or equals sign")
+			}
+			g.pins[i] = pinStr
 		}
 	}
 	if rawType, ok := raw["type"]; ok {
@@ -410,6 +452,14 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 				}
 			}
 
+		case "pins":
+			g.pins = strings.Split(kv[1], ",")
+			for _, pin := range g.pins {
+				if pin == "" {
+					return errors.New(ctx, errors.InvalidParameter, op, "empty pin provided")
+				}
+			}
+
 		case "type":
 			typeString := strings.ToLower(kv[1])
 			g.typ = resource.Map[typeString]
@@ -486,11 +536,18 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 	if len(grant.ids) > 1 && slices.Contains(grant.ids, "*") {
 		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains both wildcard and non-wildcard values in %q field", tuple.Grant, "ids"))
 	}
+	if len(grant.pins) > 0 && (grant.id != "" || len(grant.ids) > 0) {
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q cannot contain both id/ids and pins fields", tuple.Grant))
+	}
+	if slices.Contains(grant.pins, "*") {
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains wildcard value in %q field", tuple.Grant, "pins"))
+	}
 
 	opts := getOpts(opt...)
 
 	var grantIds []string
 	var deprecatedId bool
+	var isPinGrant bool
 	switch {
 	case grant.id != "":
 		grantIds = []string{grant.id}
@@ -508,6 +565,23 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 				}
 				if seenType != globals.ResourceInfoFromPrefix(id).Type {
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains ids of differently-typed resources", tuple.Grant))
+				}
+			}
+		}
+	case len(grant.pins) > 0:
+		grantIds = grant.pins
+		isPinGrant = true
+		// Ensure we aren't seeing mixed types in pins. We will have already
+		// filtered out the wildcard case above.
+		if len(grant.pins) > 1 {
+			var seenType resource.Type
+			for i, pin := range grantIds {
+				if i == 0 {
+					seenType = globals.ResourceInfoFromPrefix(pin).Type
+					continue
+				}
+				if seenType != globals.ResourceInfoFromPrefix(pin).Type {
+					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains pins of differently-typed resources", tuple.Grant))
 				}
 			}
 		}
@@ -547,8 +621,11 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 					}
 				default:
 					fieldName := "ids"
-					if deprecatedId {
+					switch {
+					case deprecatedId:
 						fieldName = "id"
+					case isPinGrant:
+						fieldName = "pins"
 					}
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown template %q in grant %q value", currId, fieldName))
 				}
@@ -578,38 +655,57 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains wildcard id and no specified type", grant.CanonicalString()))
 				}
 			case grantIds[i] != "":
-				// Non-wildcard but specified ID. This can match
-				//   id=foo_bar;actions=foo,bar
-				// or
-				//   id=foo_bar;type=sometype;actions=foo,bar
-				// or
-				//   id=foo_bar;type=*;actions=foo,bar
-				// but notably the specified types have to actually make sense: in
-				// the second example the type corresponding to the ID must have the
-				// specified type as a child type; in the third the ID must be a
-				// type that has child types.
-				idType := globals.ResourceInfoFromPrefix(grantIds[i]).Type
-				if idType == resource.Unknown {
-					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id %q of an unknown resource type", grant.CanonicalString(), grantIds[i]))
-				}
-				switch grant.typ {
-				case resource.Unknown:
-					// This is fine as-is but we do not support collection actions
-					// without a type (either directly specified or wildcard) so
-					// check that
-					if grant.actions[action.Create] ||
-						grant.actions[action.List] {
-						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains create or list action in a format that does not allow these", grant.CanonicalString()))
+				if isPinGrant {
+					// Explicit pin grant: pins=<parent_ids>;type=<child_type>;actions=<action>
+					// The pin must be a resource type that has child types, and a
+					// type must be explicitly specified.
+					pinType := globals.ResourceInfoFromPrefix(grantIds[i]).Type
+					if pinType == resource.Unknown {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains a pin %q of an unknown resource type", grant.CanonicalString(), grantIds[i]))
 					}
-				case resource.All:
-					// Verify that the ID is a type that has child types
-					if !idType.HasChildTypes() {
-						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id that does not support child types", grant.CanonicalString()))
+					if !pinType.HasChildTypes() {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains a pin that does not support child types", grant.CanonicalString()))
 					}
-				default:
-					// Specified resource type, verify it's a child
-					if grant.typ.Parent() != idType {
-						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), grant.typ.Parent()))
+					if grant.typ == resource.Unknown {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains a pin but no resource type", grant.CanonicalString()))
+					}
+					if grant.typ != resource.All && grant.typ.Parent() != pinType {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified pin", grant.CanonicalString(), grant.typ.String(), pinType.String()))
+					}
+				} else {
+					// Non-wildcard but specified ID. This can match
+					//   id=foo_bar;actions=foo,bar
+					// or
+					//   id=foo_bar;type=sometype;actions=foo,bar
+					// or
+					//   id=foo_bar;type=*;actions=foo,bar
+					// but notably the specified types have to actually make sense: in
+					// the second example the type corresponding to the ID must have the
+					// specified type as a child type; in the third the ID must be a
+					// type that has child types.
+					idType := globals.ResourceInfoFromPrefix(grantIds[i]).Type
+					if idType == resource.Unknown {
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id %q of an unknown resource type", grant.CanonicalString(), grantIds[i]))
+					}
+					switch grant.typ {
+					case resource.Unknown:
+						// This is fine as-is but we do not support collection actions
+						// without a type (either directly specified or wildcard) so
+						// check that
+						if grant.actions[action.Create] ||
+							grant.actions[action.List] {
+							return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains create or list action in a format that does not allow these", grant.CanonicalString()))
+						}
+					case resource.All:
+						// Verify that the ID is a type that has child types
+						if !idType.HasChildTypes() {
+							return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id that does not support child types", grant.CanonicalString()))
+						}
+					default:
+						// Specified resource type, verify it's a child
+						if grant.typ.Parent() != idType {
+							return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), grant.typ.Parent()))
+						}
 					}
 				}
 			default: // no specified id
@@ -653,7 +749,16 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 				// ensure that we get allowed. We need to use the templated
 				// grant, if any, so we send in a clone with an updated ID.
 				grantForValidation := grant.clone()
-				grantForValidation.id = grantIds[i]
+				if isPinGrant {
+					// For pin grants, the grantIds[i] is the pin (parent
+					// resource ID), not the resource's own ID. Expose it via
+					// the id field so that aclGrantFromGrant puts it in
+					// AclGrant.Id, which is what Case 5 of Allowed() checks.
+					grantForValidation.pins = nil
+					grantForValidation.id = grantIds[i]
+				} else {
+					grantForValidation.id = grantIds[i]
+				}
 				acl := NewACL(*grantForValidation)
 				// For special scope names we aren't sure where the resource
 				// might be, so check possible scopes and see if any are valid
@@ -681,7 +786,7 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 						Type:          grant.typ,
 						ParentScopeId: parentScopeId,
 					}
-					if !grant.typ.TopLevelType() {
+					if isPinGrant || !grant.typ.TopLevelType() {
 						r.Pin = grantIds[i]
 					}
 					for k := range grant.actions {
@@ -707,14 +812,16 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 		}
 	}
 
-	// See if we need to move grantIds back for the deprecated case. grantIds
-	// will always be at least size 1 since we add the empty string if no IDs
-	// were provided, so we can check to see if that was the case first.
+	// See if we need to move grantIds back for the deprecated/pin case.
+	// grantIds will always be at least size 1 since we add the empty string
+	// if no IDs were provided, so we can check to see if that was the case first.
 	switch {
 	case grantIds[0] == "":
 		// Nothing to do
 	case deprecatedId:
 		grant.id = grantIds[0]
+	case isPinGrant:
+		grant.pins = grantIds
 	default:
 		grant.ids = grantIds
 	}

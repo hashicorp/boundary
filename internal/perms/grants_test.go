@@ -245,6 +245,15 @@ func Test_MarshalingAndCloning(t *testing.T) {
 			jsonOutput:      `{"actions":["create","read"],"ids":["baz","bop"],"output_fields":["ids","name","version"],"type":"group"}`,
 			canonicalString: `ids=baz,bop;type=group;actions=create,read;output_fields=ids,name,version`,
 		},
+		{
+			name: "type and pins single pin",
+			input: Grant{
+				pins: []string{"hcst_foobar"},
+				typ:  resource.HostSet,
+			},
+			jsonOutput:      `{"pins":["hcst_foobar"],"type":"host-set"}`,
+			canonicalString: `pins=hcst_foobar;type=host-set`,
+		},
 	}
 
 	for _, test := range tests {
@@ -409,6 +418,60 @@ func Test_Unmarshaling(t *testing.T) {
 			},
 			jsonInput: `{"ids":["foobar"]}`,
 			textInput: `ids=foobar`,
+		},
+		{
+			name: "good pins",
+			expected: Grant{
+				pins: []string{"hcst_foobar", "hcst_foobaz"},
+			},
+			jsonInput: `{"pins":["hcst_foobar","hcst_foobaz"]}`,
+			textInput: `pins=hcst_foobar,hcst_foobaz`,
+		},
+		{
+			name:      "bad pin type",
+			jsonInput: `{"pins":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "pins" as array: parameter violation: error #100`,
+			textInput: `pins=`,
+			textErr:   `perms.(Grant).unmarshalText: segment "pins=" not formatted correctly, missing value: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins empty",
+			jsonInput: `{"pins":""}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "pins" as array: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins comma",
+			jsonInput: `{"pins":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: pin cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `pins=,something`,
+			textErr:   `perms.(Grant).unmarshalText: empty pin provided: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins type",
+			jsonInput: `{"pins":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "pins" as array: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins empty element",
+			jsonInput: `{"pins":[""]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: empty pin provided: parameter violation: error #100`,
+			textInput: `pins=hcst_foobar,`,
+			textErr:   `perms.(Grant).unmarshalText: empty pin provided: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins comma in element",
+			jsonInput: `{"pins":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: pin cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins semicolon in element",
+			jsonInput: `{"pins":[";"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: pin cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "bad pins equals in element",
+			jsonInput: `{"pins":["="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: pin cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "bad id",
@@ -1000,6 +1063,97 @@ func Test_Parse(t *testing.T) {
 				},
 			},
 		},
+		// pins grant tests
+		{
+			name:  "good text pins single",
+			input: `pins=hcst_foobar;type=host-set;actions=read`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				pins:         []string{"hcst_foobar"},
+				typ:          resource.HostSet,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good json pins single",
+			input: `{"pins":["hcst_foobar"],"type":"host-set","actions":["read"]}`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				pins:         []string{"hcst_foobar"},
+				typ:          resource.HostSet,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good text pins multiple",
+			input: `pins=hcst_foobar,hcst_foobaz;type=host-set;actions=read`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				pins:         []string{"hcst_foobar", "hcst_foobaz"},
+				typ:          resource.HostSet,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good json pins multiple",
+			input: `{"pins":["hcst_foobar","hcst_foobaz"],"type":"host-set","actions":["read"]}`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				pins:         []string{"hcst_foobar", "hcst_foobaz"},
+				typ:          resource.HostSet,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good text pins wildcard type",
+			input: `pins=hcst_foobar;type=*;actions=read`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				pins:         []string{"hcst_foobar"},
+				typ:          resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "bad pins and ids conflict",
+			input: `{"pins":["hcst_foobar"],"ids":["hcst_foobaz"],"type":"host-set","actions":["read"]}`,
+			err:   `perms.Parse: input grant string "{\"pins\":[\"hcst_foobar\"],\"ids\":[\"hcst_foobaz\"],\"type\":\"host-set\",\"actions\":[\"read\"]}" cannot contain both id/ids and pins fields: parameter violation: error #100`,
+		},
+		{
+			name:  "bad pins - not a parent type",
+			input: `{"pins":["hsst_foobar"],"type":"host","actions":["read"]}`,
+			err:   `perms.Parse: parsed grant string "pins=hsst_foobar;type=host;actions=read" contains a pin that does not support child types: parameter violation: error #100`,
+		},
+		{
+			name:  "bad pins - no type specified",
+			input: `{"pins":["hcst_foobar"],"actions":["read"]}`,
+			err:   `perms.Parse: parsed grant string "pins=hcst_foobar;actions=read" contains a pin but no resource type: parameter violation: error #100`,
+		},
+		{
+			name:  "bad pins - wrong child type",
+			input: `{"pins":["hcst_foobar"],"type":"credential","actions":["read"]}`,
+			err:   `perms.Parse: parsed grant string "pins=hcst_foobar;type=credential;actions=read" contains type credential that is not a child type of the type (host-catalog) of the specified pin: parameter violation: error #100`,
+		},
+		{
+			name:  "bad pins - mixed types",
+			input: `{"pins":["hcst_foobar","csst_foobaz"],"type":"host-set","actions":["read"]}`,
+			err:   `perms.Parse: input grant string "{\"pins\":[\"hcst_foobar\",\"csst_foobaz\"],\"type\":\"host-set\",\"actions\":[\"read\"]}" contains pins of differently-typed resources: parameter violation: error #100`,
+		},
 	}
 
 	_, err := Parse(ctx, GrantTuple{RoleScopeId: "", GrantScopeId: "", Grant: ""})
@@ -1124,6 +1278,12 @@ func FuzzParse(f *testing.F) {
 		`{"id":"foobar","type":"host-catalog","actions":["create"]}`,
 		`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`,
 		`{"ids":["\""]}`,
+		// pins seed cases
+		`pins=hcst_foobar;type=host-set;actions=read`,
+		`pins=hcst_foobar,hcst_foobaz;type=host-set;actions=read`,
+		`{"pins":["hcst_foobar"],"type":"host-set","actions":["read"]}`,
+		`{"pins":["hcst_foobar","hcst_foobaz"],"type":"host-set","actions":["read"]}`,
+		`pins=hcst_foobar;type=*;actions=read`,
 	}
 	for _, tc := range tc {
 		f.Add(tc)

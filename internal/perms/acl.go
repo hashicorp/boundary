@@ -147,24 +147,35 @@ func NewACL(grants ...Grant) ACL {
 		descendantsGrants: make([]AclGrant, 0, len(grants)),
 	}
 
+	addGrant := func(grant Grant, id string) {
+		switch grant.grantScopeId {
+		case globals.GrantScopeDescendants:
+			ret.descendantsGrants = append(ret.descendantsGrants, aclGrantFromGrant(grant, id))
+		case globals.GrantScopeChildren:
+			// We use the role's scope here because we're evaluating the
+			// grants themselves, not the resource, so we want to know the
+			// scope of the role that said "children"
+			ret.childrenScopeMap[grant.roleScopeId] = append(ret.childrenScopeMap[grant.roleScopeId], aclGrantFromGrant(grant, id))
+		default:
+			ret.directScopeMap[grant.grantScopeId] = append(ret.directScopeMap[grant.grantScopeId], aclGrantFromGrant(grant, id))
+		}
+	}
+
 	for _, grant := range grants {
+		// Handle id/ids grants
 		ids := grant.ids
 		if len(ids) == 0 {
 			// This handles the no-ID case as well as the deprecated single-ID case
 			ids = []string{grant.id}
 		}
 		for _, id := range ids {
-			switch grant.grantScopeId {
-			case globals.GrantScopeDescendants:
-				ret.descendantsGrants = append(ret.descendantsGrants, aclGrantFromGrant(grant, id))
-			case globals.GrantScopeChildren:
-				// We use the role's scope here because we're evaluating the
-				// grants themselves, not the resource, so we want to know the
-				// scope of the role that said "children"
-				ret.childrenScopeMap[grant.roleScopeId] = append(ret.childrenScopeMap[grant.roleScopeId], aclGrantFromGrant(grant, id))
-			default:
-				ret.directScopeMap[grant.grantScopeId] = append(ret.directScopeMap[grant.grantScopeId], aclGrantFromGrant(grant, id))
-			}
+			addGrant(grant, id)
+		}
+
+		// Handle explicit pins grants. Pins are stored in AclGrant.Id so
+		// that Case 5 of Allowed() can match them against Resource.Pin.
+		for _, pin := range grant.pins {
+			addGrant(grant, pin)
 		}
 	}
 

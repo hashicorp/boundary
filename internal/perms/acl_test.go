@@ -393,6 +393,153 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.CreateWorkerLed, authorized: true},
 			},
 		},
+		// Explicit pin/pins grant tests (Case 5 via pin field)
+		{
+			name: "explicit pins field - matching pin and type",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_mypin",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_mypin,hcst_mapins;type=host-set;actions=read,update"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update, authorized: true},
+				{action: action.Delete},
+				{action: action.List},
+			},
+		},
+		{
+			name: "explicit pins field - matching pin and type on second value",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_mapins",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_mypin,hcst_mapins;type=host-set;actions=read,update"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update, authorized: true},
+				{action: action.Delete},
+				{action: action.List},
+			},
+		},
+		{
+			name: "explicit pins field - wrong pin",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_wrongpin",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_mypin;type=host-set;actions=read,update"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read},
+				{action: action.Update},
+				{action: action.Delete},
+			},
+		},
+		{
+			name: "explicit pins field - wildcard type",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_mypin",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_mypin;type=*;actions=read"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update},
+				{action: action.Delete},
+			},
+		},
+		{
+			name: "explicit pins field - multiple pins, matching first",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_pin1",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_pin1,hcst_pin2;type=host-set;actions=read"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update},
+			},
+		},
+		{
+			name: "explicit pins field - multiple pins, matching second",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_pin2",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_pin1,hcst_pin2;type=host-set;actions=read"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update},
+			},
+		},
+		{
+			name: "explicit pins field - no matching pin",
+			resource: Resource{
+				ParentScopeId: scope.Global.String(),
+				ScopeId:       "o_e",
+				Pin:           "hcst_other",
+				Type:          resource.HostSet,
+			},
+			scopeGrants: []scopeGrant{
+				{
+					roleScope:  "o_e",
+					grantScope: "o_e",
+					grants:     []string{"pins=hcst_pin1,hcst_pin2;type=host-set;actions=read"},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read},
+				{action: action.Update},
+			},
+		},
 	}
 
 	for _, test := range tests {
