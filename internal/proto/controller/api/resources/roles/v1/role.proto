@@ -36,6 +36,10 @@ message GrantJson {
 
   // Output only. The actions.
   repeated string actions = 3; // @gotags: `class:"public"`
+
+  // Output only. The pins, if set. Pins constrain the grant to resources
+  // within the given parent resources.
+  repeated string pins = 5; // @gotags: `class:"public"`
 }
 
 message Grant {

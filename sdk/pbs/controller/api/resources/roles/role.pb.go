@@ -103,7 +103,10 @@ type GrantJson struct {
 	// Output only. The type, if set.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The actions.
-	Actions       []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	Actions []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Output only. The pins, if set. Pins constrain the grant to resources
+	// within the given parent resources.
+	Pins          []string `protobuf:"bytes,5,rep,name=pins,proto3" json:"pins,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -163,6 +166,13 @@ func (x *GrantJson) GetType() string {
 func (x *GrantJson) GetActions() []string {
 	if x != nil {
 		return x.Actions
+	}
+	return nil
+}
+
+func (x *GrantJson) GetPins() []string {
+	if x != nil {
+		return x.Pins
 	}
 	return nil
 }
@@ -408,12 +418,13 @@ const file_controller_api_resources_roles_v1_role_proto_rawDesc = "" +
 	"\tPrincipal\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
-	"\bscope_id\x18\x03 \x01(\tR\bscope_id\"_\n" +
+	"\bscope_id\x18\x03 \x01(\tR\bscope_id\"s\n" +
 	"\tGrantJson\x12\x12\n" +
 	"\x02id\x18\x01 \x01(\tB\x02\x18\x01R\x02id\x12\x10\n" +
 	"\x03ids\x18\x04 \x03(\tR\x03ids\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
-	"\aactions\x18\x03 \x03(\tR\aactions\"y\n" +
+	"\aactions\x18\x03 \x03(\tR\aactions\x12\x12\n" +
+	"\x04pins\x18\x05 \x03(\tR\x04pins\"y\n" +
 	"\x05Grant\x12\x10\n" +
 	"\x03raw\x18\x01 \x01(\tR\x03raw\x12\x1c\n" +
 	"\tcanonical\x18\x02 \x01(\tR\tcanonical\x12@\n" +

@@ -6835,6 +6835,14 @@
           },
           "description": "Output only. The actions.",
           "readOnly": true
+        },
+        "pins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The pins, if set. Pins constrain the grant to resources\nwithin the given parent resources.",
+          "readOnly": true
         }
       }
     },
