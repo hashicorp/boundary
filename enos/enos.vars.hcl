@@ -76,6 +76,10 @@
 // region where you've got an AWS keypair. Applies to AWS scenarios only.
 // aws_region = "us-east-1"
 
+// Number of extra users you want to create in RDP scenarios.
+// Useful for performance testing.
+// extra_windows_users = 0
+
 // ENTERPRISE ONLY
 // Path to a license file
 // boundary_license_path = "./support/boundary.hclic"

@@ -268,3 +268,9 @@ variable "is_ci" {
   type        = bool
   default     = false
 }
+
+variable "extra_windows_users" {
+  description = "number of extra windows users to create on the ec2 windows client"
+  type        = number
+  default     = 0
+}

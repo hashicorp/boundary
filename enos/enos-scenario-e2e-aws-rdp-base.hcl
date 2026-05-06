@@ -193,6 +193,7 @@ scenario "e2e_aws_rdp_base" {
       vpc_id         = step.create_base_infra.vpc_id
       server_version = matrix.rdp_server == "2016" ? "2019" : matrix.rdp_server
       ip_version     = local.ip_version
+      extra_users    = var.extra_windows_users
     }
   }
 
@@ -467,5 +468,9 @@ scenario "e2e_aws_rdp_base" {
 
   output "aws_ssh_key_path" {
     value = step.generate_ssh_key.private_key_path
+  }
+
+  output "rdp_domain_users" {
+    value = step.create_rdp_domain_controller.rdp_domain_users
   }
 }
