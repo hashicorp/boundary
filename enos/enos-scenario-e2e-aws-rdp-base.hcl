@@ -418,7 +418,7 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_vault_cluster.instance_addresses[0]
   }
 
-  output value_addr_private {
+  output vault_addr_private {
     value = step.create_vault_cluster.instance_addresses_private[0]
   }
 
