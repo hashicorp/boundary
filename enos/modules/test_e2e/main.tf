@@ -133,21 +133,6 @@ variable "aws_bucket_name" {
   type        = string
   default     = ""
 }
-variable "aws_bucket_user" {
-  description = "User name for the aws bucket"
-  type        = string
-  default     = ""
-}
-variable "access_key_id" {
-  description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
-  type        = string
-  default     = ""
-}
-variable "secret_access_key" {
-  description = "Secret Access Key for AWS IAM user used in dynamic host catalogs"
-  type        = string
-  default     = ""
-}
 variable "aws_role_arn" {
   description = "AWS Role ARN that has access to bucket"
   type        = string
@@ -312,9 +297,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2                        = local.aws_host_set_ips2
     E2E_AWS_REGION                               = var.aws_region
     E2E_AWS_BUCKET_NAME                          = var.aws_bucket_name
-    E2E_AWS_BUCKET_USER                          = var.aws_bucket_user
-    E2E_BUCKET_ACCESS_KEY_ID                     = var.access_key_id
-    E2E_BUCKET_SECRET_ACCESS_KEY                 = var.secret_access_key
     E2E_AWS_ROLE_ARN                             = var.aws_role_arn
     E2E_WORKER_TAG_INGRESS                       = var.worker_tag_ingress
     E2E_WORKER_TAG_ISOLATED                      = var.worker_tag_isolated

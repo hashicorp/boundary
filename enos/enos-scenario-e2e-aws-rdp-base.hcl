@@ -337,9 +337,8 @@ scenario "e2e_aws_rdp_base" {
       target_user                              = "ubuntu"
       target_port                              = "22"
       aws_bucket_name                          = step.create_bucket.bucket_name
-      aws_bucket_user                          = step.iam_setup.user_name
-      access_key_id                            = step.iam_setup.access_key_id
-      secret_access_key                        = step.iam_setup.secret_access_key
+      aws_access_key_id                        = step.iam_setup.access_key_id
+      aws_secret_access_key                    = step.iam_setup.secret_access_key
       aws_region                               = var.aws_region
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
@@ -380,7 +379,7 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_boundary_cluster.auth_method_id
   }
 
-  output aws_bucket_access_key {
+  output aws_access_key_id {
     value = step.iam_setup.access_key_id
   }
 
@@ -388,7 +387,7 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_bucket.bucket_name
   }
 
-  output aws_bucket_secret_key {
+  output aws_secret_access_key {
     value = step.iam_setup.secret_access_key
   }
 
