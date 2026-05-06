@@ -19,6 +19,7 @@ docker run \
     -e "BPASS=$E2E_PASSWORD_ADMIN_PASSWORD" \
     -e "BOUNDARY_TOKEN=$BOUNDARY_TOKEN" \
     -e "WORKER_TOKEN=$WORKER_TOKEN" \
+    -e "WORKER_NAME=$WORKER_NAME" \
     -e "SKIP_CHOWN=true" \
     --cap-add IPC_LOCK \
     --network $TEST_NETWORK_NAME \

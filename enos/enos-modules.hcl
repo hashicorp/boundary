@@ -206,6 +206,10 @@ module "docker_check_health" {
   source = "./modules/docker_check_health"
 }
 
+module "docker_check_worker_log" {
+  source = "./modules/docker_check_worker_log"
+}
+
 module "docker_ldap" {
   source = "./modules/docker_ldap"
 }
