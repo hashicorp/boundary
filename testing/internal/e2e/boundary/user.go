@@ -74,7 +74,6 @@ func CreateUserCli(t testing.TB, ctx context.Context, scopeId string, opt ...e2e
 
 // SetAccountToUserCli sets an account to a the specified user using the cli.
 func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accountId string, opt ...e2e.Option) error {
-
 	var options []e2e.Option
 	options = append(options,
 		e2e.WithArgs(
