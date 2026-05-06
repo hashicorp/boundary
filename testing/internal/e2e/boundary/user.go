@@ -36,13 +36,14 @@ func CreateUserApi(t testing.TB, ctx context.Context, client *api.Client, scopeI
 
 // CreateUserCli creates a new user using the cli.
 // Returns the id of the new user
-func CreateUserCli(t testing.TB, ctx context.Context, scopeId string) (string, error) {
+func CreateUserCli(t testing.TB, ctx context.Context, scopeId string, opt ...e2e.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"users", "create",
 			"-scope-id", scopeId,
@@ -50,6 +51,11 @@ func CreateUserCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 			"-description", "e2e",
 			"-format", "json",
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
@@ -67,13 +73,20 @@ func CreateUserCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 }
 
 // SetAccountToUserCli sets an account to a the specified user using the cli.
-func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accountId string) error {
-	output := e2e.RunCommand(ctx, "boundary",
+func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accountId string, opt ...e2e.Option) error {
+
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"users", "set-accounts",
 			"-id", userId,
 			"-account", accountId,
 		),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))

@@ -45,15 +45,18 @@ func CreateAccountApi(t testing.TB, ctx context.Context, client *api.Client, aut
 
 // CreateAccountCli creates a new account using the cli.
 // Returns the id of the new account as well as the password that was generated
-func CreateAccountCli(t testing.TB, ctx context.Context, authMethodId string, loginName string) (string, string, error) {
+func CreateAccountCli(t testing.TB, ctx context.Context, authMethodId string, loginName string, opt ...e2e.Option) (string, string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", "", err
 	}
 
+	var options []e2e.Option
+
 	password, err := base62.Random(16)
 	require.NoError(t, err)
-	output := e2e.RunCommand(ctx, "boundary",
+
+	options = append(options,
 		e2e.WithArgs(
 			"accounts", "create", "password",
 			"-auth-method-id", authMethodId,
@@ -64,6 +67,11 @@ func CreateAccountCli(t testing.TB, ctx context.Context, authMethodId string, lo
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_TEST_ACCOUNT_PASSWORD", password),
+	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		options...,
 	)
 	if output.Err != nil {
 		return "", "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
