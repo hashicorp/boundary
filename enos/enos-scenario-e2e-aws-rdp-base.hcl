@@ -337,6 +337,9 @@ scenario "e2e_aws_rdp_base" {
       target_user                              = "ubuntu"
       target_port                              = "22"
       aws_bucket_name                          = step.create_bucket.bucket_name
+      aws_bucket_user                          = step.iam_setup.user_name
+      access_key_id                            = step.iam_setup.access_key_id
+      secret_access_key                        = step.iam_setup.secret_access_key
       aws_region                               = var.aws_region
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
@@ -365,6 +368,67 @@ scenario "e2e_aws_rdp_base" {
     }
   }
 
+
+
+  output "alb_boundary_api_addr" {
+    value = step.create_boundary_cluster.alb_boundary_api_addr
+  }
+
+  output "auth_method_id" {
+    value = step.create_boundary_cluster.auth_method_id
+  }
+
+  output "auth_login_name" {
+    value = step.create_boundary_cluster.auth_login_name
+  }
+
+  output "local_boundary_dir" {
+    value = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
+  }
+
+  aws_bucket_name {
+    value = step.create_bucket.bucket_name
+  }
+
+  output aws_bucket_user {
+    value = step.iam_setup.user_name
+  }
+
+  output aws_bucket_access_key {
+    value = step.iam_setup.access_key_id
+  }
+
+  output aws_bucket_secret_key {
+    value = step.step.iam_setup.secret_access_key
+  }
+
+  output rdp_member_server_username {
+    value = step.create_rdp_member_server.admin_username
+  }
+
+  output rdp_member_server_password {
+    value = step.create_rdp_member_server.password
+  }
+
+  output client_test_dir {
+    value = step.create_windows_client.test_dir
+  }
+
+  output vault_addr_public {
+    value = step.create_vault_cluster.instance_addresses[0]
+  }
+
+  output value_addr_private {
+    value = step.create_vault_cluster.instance_addresses_private[0]
+  }
+
+  output vault_root_token {
+    value = step.create_vault_cluster.vault_root_token
+  }
+
+  output worker_tag_collocated {
+    value = local.collocated_tag
+  }
   output "controller_ips" {
     value = step.create_boundary_cluster.controller_ips
   }
