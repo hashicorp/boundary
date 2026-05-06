@@ -152,4 +152,125 @@ func TestPreferencer(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, exp, out)
 	})
+	t.Run("netPublicSelectsPublicIPv4", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"10.0.0.5", "192.168.1.1", "54.23.1.100"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "54.23.1.100", out)
+	})
+	t.Run("netPublicSelectsPublicIPv6", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"fc00::1", "2001:db8::1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "2001:db8::1", out)
+	})
+	t.Run("netPublicNoMatch", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"10.0.0.5", "192.168.1.1", "172.16.0.1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "", out)
+	})
+	t.Run("netPrivateSelectsPrivateIPv4", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:private"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"54.23.1.100", "10.0.0.5", "3.128.0.1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "10.0.0.5", out)
+	})
+	t.Run("netPrivateSelectsPrivateIPv6", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:private"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"2001:db8::1", "fc00::1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "fc00::1", out)
+	})
+	t.Run("netPrivateNoMatch", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:private"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"54.23.1.100", "3.128.0.1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "", out)
+	})
+	t.Run("netPublicWithDnsFallback", func(t *testing.T) {
+		// address_type:public only matches IPs, not DNS names. DNS matcher should be used separately.
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public", "dns:*.amazonaws.com"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"10.0.0.5"}),
+			WithDnsNames([]string{"ec2-54-1-2-3.compute-1.amazonaws.com"}),
+		)
+		require.NoError(t, err)
+		// No public IPs, so address_type:public doesn't match, falls through to dns matcher
+		assert.Equal(t, "ec2-54-1-2-3.compute-1.amazonaws.com", out)
+	})
+	t.Run("netPublicPrecedenceOverDns", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public", "dns:*.amazonaws.com"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"10.0.0.5", "54.23.1.100"}),
+			WithDnsNames([]string{"ec2-54-1-2-3.compute-1.amazonaws.com"}),
+		)
+		require.NoError(t, err)
+		// Public IP found first since address_type:public is higher priority
+		assert.Equal(t, "54.23.1.100", out)
+	})
+	t.Run("netPublicExcludesLoopback", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"127.0.0.1", "54.23.1.100"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "54.23.1.100", out)
+	})
+	t.Run("netPublicExcludesLinkLocal", func(t *testing.T) {
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:public"}))
+		require.NoError(t, err)
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"169.254.1.1", "52.10.0.1"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "52.10.0.1", out)
+	})
+	t.Run("netBadValue", func(t *testing.T) {
+		_, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:happy"}))
+		assert.Error(t, err)
+	})
+	t.Run("netEmpty", func(t *testing.T) {
+		_, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"address_type:"}))
+		assert.Error(t, err)
+	})
+	t.Run("netPublicMixedWithCidr", func(t *testing.T) {
+		// cidr:10.0.0.0/8 is first priority, address_type:public is fallback
+		p, err := NewPreferencer(ctx, WithPreferenceOrder([]string{"cidr:10.0.0.0/8", "address_type:public"}))
+		require.NoError(t, err)
+		// Has a 10.x address, should prefer that
+		out, err := p.Choose(ctx,
+			WithIpAddrs([]string{"54.23.1.100", "10.0.0.5"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "10.0.0.5", out)
+
+		// No 10.x address, falls through to address_type:public
+		out, err = p.Choose(ctx,
+			WithIpAddrs([]string{"192.168.1.1", "54.23.1.100"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "54.23.1.100", out)
+	})
 }

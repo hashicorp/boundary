@@ -3908,7 +3908,7 @@ func TestAuthorizeSession(t *testing.T) {
 					{
 						SetIds:      setIds,
 						ExternalId:  "test",
-						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
+						IpAddresses: []string{"10.0.0.1", "192.168.0.1", "54.23.1.100"},
 						DnsNames:    []string{"example.com"},
 					},
 					{
@@ -3969,6 +3969,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	phc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	phs := hostplugin.TestSet(t, conn, kms, sche, phc, plgm, hostplugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
+	phsPublic := hostplugin.TestSet(t, conn, kms, sche, phc, plgm, hostplugin.WithPreferredEndpoints([]string{"address_type:public"}))
 
 	// Sync the boundary db from the plugins
 	hostplugin.TestRunSetSync(t, conn, kms, plgm)
@@ -4032,6 +4033,14 @@ func TestAuthorizeSession(t *testing.T) {
 			credSourceId:          clsResp.GetItem().GetId(),
 			wantedHostId:          "?",
 			wantedEndpoint:        fmt.Sprintf("10.0.0.1:%d", defaultPort),
+			wantedConnectionLimit: 100,
+		},
+		{
+			name:                  "plugin host with address_type:public preferred endpoint",
+			hostSourceId:          phsPublic.GetPublicId(),
+			credSourceId:          clsResp.GetItem().GetId(),
+			wantedHostId:          "?",
+			wantedEndpoint:        fmt.Sprintf("54.23.1.100:%d", defaultPort),
 			wantedConnectionLimit: 100,
 		},
 	}

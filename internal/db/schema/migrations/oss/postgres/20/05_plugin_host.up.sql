@@ -342,6 +342,7 @@ begin;
         check(length(trim(condition)) > 4) -- minimum is 'dns:*'
       constraint condition_must_not_be_too_long
         check(length(trim(condition)) < 255)
+      -- Updated in 104/01_host_set_preferred_endpoint_addr_type.up.sql
       constraint condition_has_valid_prefix
         check(
               left(trim(condition), 4) = 'dns:'

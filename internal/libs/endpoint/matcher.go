@@ -17,6 +17,7 @@ type matcher interface {
 var (
 	_ matcher = (*dnsMatcher)(nil)
 	_ matcher = (*cidrMatcher)(nil)
+	_ matcher = (*addrTypeMatcher)(nil)
 )
 
 // DnsMatcher is a function that given an input returns true if there is a
@@ -48,4 +49,35 @@ func (m cidrMatcher) Match(in string) bool {
 		return false
 	}
 	return m.ipNet.Contains(ip)
+}
+
+// addressType represents the desired IP address classification (public or private).
+type addressType int
+
+const (
+	addrTypePublic addressType = iota
+	addrTypePrivate
+)
+
+// addrTypeMatcher is a matcher that returns true if the input IP address
+// matches the desired classification (public or private).
+type addrTypeMatcher struct {
+	addrType addressType
+}
+
+// Match satisfies the matcher interface. It returns true if the IP's
+// public/private classification matches the desired address type.
+func (m addrTypeMatcher) Match(in string) bool {
+	ip := net.ParseIP(in)
+	if ip == nil {
+		return false
+	}
+	switch m.addrType {
+	case addrTypePrivate:
+		return ip.IsPrivate()
+	case addrTypePublic:
+		return ip.IsGlobalUnicast() && !ip.IsPrivate()
+	default:
+		return false
+	}
 }

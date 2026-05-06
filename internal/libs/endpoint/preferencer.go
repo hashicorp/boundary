@@ -105,7 +105,7 @@ func (p *preferencer) Choose(ctx context.Context, opt ...Option) (string, error)
 						return name, nil
 					}
 				}
-			case cidrMatcher:
+			case cidrMatcher, addrTypeMatcher:
 				for _, addr := range opts.withIpAddrs {
 					if m.Match(addr) {
 						return addr, nil

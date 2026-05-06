@@ -48,4 +48,66 @@ func TestMatchers(t *testing.T) {
 		assert.True(t, d.Match("2001:1234:3092::abcd:dead:beef:2423"))
 		assert.False(t, d.Match("2001:1244:3092::abcd:dead:beef:2423"))
 	})
+	t.Run("addrTypeMatcherPublicIPv4", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.True(t, m.Match("54.23.1.100"))
+	})
+	t.Run("addrTypeMatcherPublicIPv6", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.True(t, m.Match("2001:db8::1"))
+	})
+	t.Run("addrTypeMatcherPublicRejectsPrivateIPv4", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.False(t, m.Match("10.0.0.1"))
+		assert.False(t, m.Match("172.16.0.1"))
+		assert.False(t, m.Match("192.168.1.1"))
+	})
+	t.Run("addrTypeMatcherPublicRejectsPrivateIPv6", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.False(t, m.Match("fc00::1"))
+	})
+	t.Run("addrTypeMatcherPublicRejectsLoopback", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.False(t, m.Match("127.0.0.1"))
+		assert.False(t, m.Match("::1"))
+	})
+	t.Run("addrTypeMatcherPublicRejectsLinkLocal", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.False(t, m.Match("169.254.1.1"))
+		assert.False(t, m.Match("fe80::1"))
+	})
+	t.Run("addrTypeMatcherPrivateIPv4", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePrivate}
+		assert.True(t, m.Match("10.0.0.1"))
+		assert.True(t, m.Match("172.16.0.1"))
+		assert.True(t, m.Match("192.168.1.1"))
+	})
+	t.Run("addrTypeMatcherPrivateIPv6", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePrivate}
+		assert.True(t, m.Match("fc00::1"))
+	})
+	t.Run("addrTypeMatcherPrivateRejectsPublic", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePrivate}
+		assert.False(t, m.Match("54.23.1.100"))
+		assert.False(t, m.Match("2001:db8::1"))
+	})
+	t.Run("addrTypeMatcherPrivateRejectsLoopback", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePrivate}
+		assert.False(t, m.Match("127.0.0.1"))
+		assert.False(t, m.Match("::1"))
+	})
+	t.Run("addrTypeMatcherInvalidInput", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePublic}
+		assert.False(t, m.Match("not-an-ip"))
+		assert.False(t, m.Match(""))
+	})
+	t.Run("addrTypeMatcherInvalidInputPrivate", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addrTypePrivate}
+		assert.False(t, m.Match("not-an-ip"))
+		assert.False(t, m.Match(""))
+	})
+	t.Run("addrTypeMatcherUnknownType", func(t *testing.T) {
+		m := addrTypeMatcher{addrType: addressType(99)}
+		assert.False(t, m.Match("54.23.1.100"))
+	})
 }

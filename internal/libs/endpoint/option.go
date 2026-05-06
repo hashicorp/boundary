@@ -97,6 +97,17 @@ func WithPreferenceOrder(with []string) Option {
 					pattern: pattern,
 				}
 
+			case strings.HasPrefix(input, "address_type:"):
+				val := strings.TrimPrefix(input, "address_type:")
+				switch val {
+				case "public":
+					m = addrTypeMatcher{addrType: addrTypePublic}
+				case "private":
+					m = addrTypeMatcher{addrType: addrTypePrivate}
+				default:
+					return fmt.Errorf("unsupported address_type %q, must be \"public\" or \"private\"", val)
+				}
+
 			default:
 				return fmt.Errorf("preference string %q is not supported", input)
 			}

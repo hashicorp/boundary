@@ -69,10 +69,12 @@ func extraPluginFlagsFuncImpl(c *PluginCommand, set *base.FlagSets, f *base.Flag
 			fs.StringSliceVar(&base.StringSliceVar{
 				Name:   "preferred-endpoint",
 				Target: &c.flagPreferredEndpoints,
-				Usage: `An endpoint preference, specified by "cidr:<valid IPv4/6 CIDR>" ` +
-					`or "dns:<globbed name>", specifying which IP address or DNS name out ` +
-					`of a host's available possibilities should be preferred. May be specified ` +
-					`multiple times, which will build up an in-order set of preferences. ` +
+				Usage: `An endpoint preference, specified by "cidr:<valid IPv4/6 CIDR>", ` +
+					`"dns:<globbed name>", or "address_type:<public|private>", specifying which ` +
+					`IP address, DNS name or address type out of a host's available possibilities should ` +
+					`be preferred. The "address_type:public" option selects publicly routable addresses ` +
+					`while "address_type:private" selects RFC 1918 addresses (10.x, 172.16-31.x, 192.168.x). ` +
+					`May be specified multiple times, which will build up an in-order set of preferences. ` +
 					`If no preferences are specified, a value will be chosen from among all ` +
 					`available values using a built-in priority order. May not be valid ` +
 					`for all plugin types.`,
