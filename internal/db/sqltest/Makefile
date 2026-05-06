@@ -56,14 +56,18 @@ ifeq ($(DB_LOGS), 1)
 	log_cmd = docker logs $(SQL_TEST_CONTAINER_NAME)
 endif
 
+SQL_TEST_NETWORK_NAME ?= boundary-sql-tests-net
+
 # re-write paths for docker
 dockerized_tests = $(patsubst tests/%,/test/%,$(TESTS))
 
 test:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
+	@docker network create $(SQL_TEST_NETWORK_NAME) 2>/dev/null || true
 	@docker run -d \
 		--name $(SQL_TEST_CONTAINER_NAME) \
+		--network $(SQL_TEST_NETWORK_NAME) \
 		$(DOCKER_ARGS) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
@@ -73,16 +77,16 @@ test:
 		$(POSTGRES_DOCKER_IMAGE)
 	@docker run --rm \
 		--name test \
-		--link $(SQL_TEST_CONTAINER_NAME):db \
+		--network $(SQL_TEST_NETWORK_NAME) \
 		-e DATABASE=boundary \
-		-e HOST=db \
+		-e HOST=$(SQL_TEST_CONTAINER_NAME) \
 		-e PORT=5432 \
 		-e USER=boundary \
 		-e PASSWORD=boundary \
 		-e TESTS="$(PROVE_OPTS) $(dockerized_tests)" \
 		-v "$(CWD)/tests":/test \
 		$(PG_TAP_DOCKER_IMAGE); \
-		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) > /dev/null 2>&1 && $(log_cmd) && docker rm -f -v $(SQL_TEST_CONTAINER_NAME) > /dev/null 2>&1 && exit $$ret)
+		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) > /dev/null 2>&1 && $(log_cmd) && docker rm -f -v $(SQL_TEST_CONTAINER_NAME) > /dev/null 2>&1 && docker network rm $(SQL_TEST_NETWORK_NAME) > /dev/null 2>&1 && exit $$ret)
 
 database-up:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
