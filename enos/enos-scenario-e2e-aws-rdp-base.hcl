@@ -233,6 +233,7 @@ scenario "e2e_aws_rdp_base" {
       alb_sg_additional_ips       = step.create_windows_client.public_ip_list
       aws_ssh_keypair_name        = step.generate_ssh_key.key_pair_name
       aws_ssh_private_key_path    = step.generate_ssh_key.private_key_path
+      db_class                    = var.database_instance_type
     }
   }
 
@@ -293,6 +294,7 @@ scenario "e2e_aws_rdp_base" {
       domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
       aws_region                          = var.aws_region
       ip_version                          = local.ip_version
+      instance_type                       = var.windows_worker_instance_type
     }
   }
 
@@ -314,6 +316,7 @@ scenario "e2e_aws_rdp_base" {
       domain_controller_private_key       = step.create_rdp_domain_controller.ssh_private_key
       domain_controller_sec_group_id_list = step.create_rdp_domain_controller.security_group_id_list
       ip_version                          = local.ip_version
+      instance_type                       = var.rdp_target_instance_type
     }
   }
 
