@@ -34,6 +34,12 @@ variable "boundary_docker_image_file" {
   default     = ""
 }
 
+variable "windows_worker_instance_type" {
+  description = "EC2 Instance type"
+  type        = string
+  default     = "m7i-flex.xlarge"
+}
+
 variable "worker_instance_type" {
   description = "EC2 Instance type"
   type        = string
@@ -273,4 +279,16 @@ variable "extra_windows_users" {
   description = "number of extra windows users to create on the ec2 windows client"
   type        = number
   default     = 0
+}
+
+variable "database_instance_type" {
+  description = "AWS RDS DB instance type for database"
+  type        = string
+  default     = "db.t4g.small"
+}
+
+variable "rdp_target_instance_type" {
+  description = "Instance type for rdp member server"
+  type        = string
+  default     = "m7i-flex.xlarge"
 }
