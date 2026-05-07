@@ -341,6 +341,8 @@ scenario "e2e_aws_rdp_base" {
       target_user                              = "ubuntu"
       target_port                              = "22"
       aws_bucket_name                          = step.create_bucket.bucket_name
+      aws_access_key_id                        = step.iam_setup.access_key_id
+      aws_secret_access_key                    = step.iam_setup.secret_access_key
       aws_region                               = var.aws_region
       max_page_size                            = step.create_boundary_cluster.max_page_size
       worker_tag_collocated                    = local.collocated_tag
@@ -369,96 +371,108 @@ scenario "e2e_aws_rdp_base" {
     }
   }
 
+  output aws_access_key_id {
+    value = step.iam_setup.access_key_id
+  }
+
+  output aws_bucket_name {
+    value = step.create_bucket.bucket_name
+  }
+
+  output aws_secret_access_key {
+    value = step.iam_setup.secret_access_key
+  }
+
+  output aws_bucket_user {
+    value = step.iam_setup.user_name
+  }
+
+  output "aws_ssh_key_path" {
+    value = step.generate_ssh_key.private_key_path
+  }
+
+  output "boundary_addr" {
+    value = step.create_boundary_cluster.alb_boundary_api_addr
+  }
+
+  output "boundary_auth_login_name" {
+    value = step.create_boundary_cluster.auth_login_name
+  }
+
+  output "boundary_auth_method_id" {
+    value = step.create_boundary_cluster.auth_method_id
+  }
+
+  output "boundary_auth_password" {
+    value = step.create_boundary_cluster.auth_password
+  }
+
   output "controller_ips" {
     value = step.create_boundary_cluster.controller_ips
   }
 
-  output "worker_ips" {
-    value = step.create_boundary_cluster.worker_ips
-  }
-
-  output "rdp_domain_ssh_key" {
-    value = step.create_rdp_domain_controller.ssh_private_key
-  }
-
-  output "rdp_domain_controller_public_ip" {
-    value = step.create_rdp_domain_controller.public_ip
-  }
-
-  output "rdp_domain_controller_private_ip" {
-    value = step.create_rdp_domain_controller.private_ip
-  }
-
-  output "rdp_domain_controller_ipv6" {
-    value = step.create_rdp_domain_controller.ipv6
-  }
-
-  output "rdp_domain_controller_admin_username" {
-    value = step.create_rdp_domain_controller.admin_username
-  }
-
-  output "rdp_domain_controller_admin_password" {
-    value = step.create_rdp_domain_controller.password
+  output "local_boundary_dir" {
+    value = local.local_boundary_dir != null ? local.local_boundary_dir : step.get_boundary_binary.path
   }
 
   output "rdp_domain" {
     value = step.create_rdp_domain_controller.domain_name
   }
 
-  output "rdp_member_server_public_ip" {
-    value = step.create_rdp_member_server.public_ip
+  output "rdp_domain_controller_admin_password" {
+    value = step.create_rdp_domain_controller.password
   }
 
-  output "rdp_member_server_private_ip" {
-    value = step.create_rdp_member_server.private_ip
+  output "rdp_domain_controller_admin_username" {
+    value = step.create_rdp_domain_controller.admin_username
   }
 
-  output "rdp_member_server_domain_hostname" {
-    value = step.create_rdp_member_server.domain_hostname
+  output "rdp_domain_controller_ipv6" {
+    value = step.create_rdp_domain_controller.ipv6
+  }
+
+  output "rdp_domain_controller_private_ip" {
+    value = step.create_rdp_domain_controller.private_ip
+  }
+
+  output "rdp_domain_controller_public_ip" {
+    value = step.create_rdp_domain_controller.public_ip
+  }
+
+  output "rdp_domain_ssh_key" {
+    value = step.create_rdp_domain_controller.ssh_private_key
   }
 
   output "rdp_member_server_admin_password" {
     value = step.create_rdp_member_server.password
   }
 
-  output "windows_client_public_ip" {
-    value = step.create_windows_client.public_ip
+  output "rdp_member_server_domain_hostname" {
+    value = step.create_rdp_member_server.domain_hostname
   }
 
-  output "windows_client_private_ip" {
-    value = step.create_windows_client.private_ip
+  output rdp_member_server_password {
+    value = step.create_rdp_member_server.password
   }
 
-  output "windows_client_admin_password" {
-    value = step.create_windows_client.admin_password
+  output "rdp_member_server_private_ip" {
+    value = step.create_rdp_member_server.private_ip
   }
 
-  output "windows_client_test_user" {
-    value = step.create_windows_client.test_username
+  output "rdp_member_server_public_ip" {
+    value = step.create_rdp_member_server.public_ip
   }
 
-  output "windows_client_test_password" {
-    value = step.create_windows_client.test_password
+  output rdp_member_server_username {
+    value = step.create_rdp_member_server.admin_username
   }
 
-  output "windows_client_ssh_key" {
-    value = step.create_windows_client.ssh_private_key
+  output vault_addr_private {
+    value = step.create_vault_cluster.instance_addresses_private[0]
   }
 
-  output "windows_worker_admin_username" {
-    value = step.create_windows_worker.admin_username
-  }
-
-  output "windows_worker_admin_password" {
-    value = step.create_windows_worker.admin_password
-  }
-
-  output "windows_worker_public_ip" {
-    value = step.create_windows_worker.public_ip
-  }
-
-  output "windows_worker_private_ip" {
-    value = step.create_windows_worker.private_ip
+  output vault_addr_public {
+    value = step.create_vault_cluster.instance_addresses[0]
   }
 
   output "vault_address_public" {
@@ -469,8 +483,56 @@ scenario "e2e_aws_rdp_base" {
     value = step.create_vault_cluster.vault_root_token
   }
 
-  output "aws_ssh_key_path" {
-    value = step.generate_ssh_key.private_key_path
+  output "windows_client_admin_password" {
+    value = step.create_windows_client.admin_password
+  }
+
+  output "windows_client_private_ip" {
+    value = step.create_windows_client.private_ip
+  }
+
+  output "windows_client_public_ip" {
+    value = step.create_windows_client.public_ip
+  }
+
+  output "windows_client_ssh_key" {
+    value = step.create_windows_client.ssh_private_key
+  }
+
+  output windows_client_test_dir {
+    value = step.create_windows_client.test_dir
+  }
+
+  output "windows_client_test_password" {
+    value = step.create_windows_client.test_password
+  }
+
+  output "windows_client_test_user" {
+    value = step.create_windows_client.test_username
+  }
+
+  output "windows_worker_admin_password" {
+    value = step.create_windows_worker.admin_password
+  }
+
+  output "windows_worker_admin_username" {
+    value = step.create_windows_worker.admin_username
+  }
+
+  output "windows_worker_private_ip" {
+    value = step.create_windows_worker.private_ip
+  }
+
+  output "windows_worker_public_ip" {
+    value = step.create_windows_worker.public_ip
+  }
+
+  output "worker_ips" {
+    value = step.create_boundary_cluster.worker_ips
+  }
+
+  output worker_tag_collocated {
+    value = local.collocated_tag
   }
 
   output "rdp_domain_users" {
