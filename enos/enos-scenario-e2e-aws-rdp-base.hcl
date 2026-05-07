@@ -367,18 +367,6 @@ scenario "e2e_aws_rdp_base" {
     }
   }
 
-  output "alb_boundary_api_addr" {
-    value = step.create_boundary_cluster.alb_boundary_api_addr
-  }
-
-  output "auth_login_name" {
-    value = step.create_boundary_cluster.auth_login_name
-  }
-
-  output "auth_method_id" {
-    value = step.create_boundary_cluster.auth_method_id
-  }
-
   output aws_access_key_id {
     value = step.iam_setup.access_key_id
   }
@@ -399,8 +387,20 @@ scenario "e2e_aws_rdp_base" {
     value = step.generate_ssh_key.private_key_path
   }
 
-  output client_test_dir {
-    value = step.create_windows_client.test_dir
+  output "boundary_addr" {
+    value = step.create_boundary_cluster.alb_boundary_api_addr
+  }
+
+  output "boundary_auth_login_name" {
+    value = step.create_boundary_cluster.auth_login_name
+  }
+
+  output "boundary_auth_method_id" {
+    value = step.create_boundary_cluster.auth_method_id
+  }
+
+  output "boundary_auth_password" {
+    value = step.create_boundary_cluster.auth_password
   }
 
   output "controller_ips" {
@@ -493,6 +493,10 @@ scenario "e2e_aws_rdp_base" {
 
   output "windows_client_ssh_key" {
     value = step.create_windows_client.ssh_private_key
+  }
+
+  output windows_client_test_dir {
+    value = step.create_windows_client.test_dir
   }
 
   output "windows_client_test_password" {
