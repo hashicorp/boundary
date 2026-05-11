@@ -173,7 +173,7 @@ func NewACL(grants ...Grant) ACL {
 		}
 
 		// Handle explicit pins grants. Pins are stored in AclGrant.Id so
-		// that Case 5 of Allowed() can match them against Resource.Pin.
+		// that Case 5 of acl.Allowed() can match them against Resource.Pin.
 		for _, pin := range grant.pins {
 			addGrant(grant, pin)
 		}
