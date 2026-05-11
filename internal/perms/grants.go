@@ -440,23 +440,32 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 		switch kv[0] {
 		case "id":
 			g.id = kv[1]
-			if strings.Contains(g.id, ",") {
+			switch {
+			case strings.Contains(g.id, ","):
 				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma")
+			case strings.ContainsAny(g.id, ",;="):
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 			}
 
 		case "ids":
 			g.ids = strings.Split(kv[1], ",")
 			for _, id := range g.ids {
-				if id == "" {
+				switch {
+				case id == "":
 					return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+				case strings.ContainsAny(id, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 				}
 			}
 
 		case "pins":
 			g.pins = strings.Split(kv[1], ",")
 			for _, pin := range g.pins {
-				if pin == "" {
+				switch {
+				case pin == "":
 					return errors.New(ctx, errors.InvalidParameter, op, "empty pin provided")
+				case strings.ContainsAny(pin, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "pin cannot contain a comma, semicolon or equals sign")
 				}
 			}
 
