@@ -14,6 +14,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -146,7 +148,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	}
 }
 
-func TestVerify_AuditEvent(t *testing.T) {
+func TestVerify_RedactedAuth_AuditEvent(t *testing.T) {
 	ctx := context.Background()
 	eventConfig := event.TestEventerConfig(t, "Test_Verify", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
@@ -261,6 +263,335 @@ func TestVerify_AuditEvent(t *testing.T) {
 					require.True(ok)
 					assert.Equal(tt.wantUserId, userInfo["id"])
 				}
+			}
+		})
+	}
+}
+
+func TestVerify_UnredactedLdapAuth_AuditEvent(t *testing.T) {
+	ctx := context.Background()
+	eventConfig := event.TestEventerConfig(t, "Test_Verify", event.TestWithAuditSink(t))
+
+	// Disable redaction so we can assert on actual values
+	for _, sink := range eventConfig.EventerConfig.Sinks {
+		if sink.AuditConfig != nil {
+			sink.AuditConfig.FilterOverrides = event.AuditFilterOperations{
+				event.SensitiveClassification: event.NoOperation,
+			}
+		}
+	}
+
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "Test_Verify", event.WithEventerConfig(&eventConfig.EventerConfig)))
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	tokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return tokenRepo, nil
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, testKms)
+	}
+
+	// ok lets create a LDAP auth token
+	o, _ := iam.TestScopes(t, iamRepo)
+	databaseWrapper, err := testKms.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, testAuthMethod, "freyja",
+		ldap.WithFullName(ctx, "Freyja Happy Doggo"),
+		ldap.WithEmail(ctx, "you@hellothere.com"),
+	)
+	foundLdapAcct := ldap.AllocAccount()
+	foundLdapAcct.PublicId = ldapAcct.GetPublicId()
+	require.NoError(t, rw.LookupById(ctx, foundLdapAcct))
+	require.Equal(t, "Freyja Happy Doggo", foundLdapAcct.FullName)
+	require.Equal(t, "you@hellothere.com", foundLdapAcct.Email)
+
+	user := iam.TestUser(t, iamRepo, o.GetPublicId())
+	_, err = iamRepo.AddUserAccounts(ctx, user.PublicId, user.Version, []string{ldapAcct.GetPublicId()})
+	require.NoError(t, err)
+
+	// set ldap auth method as primary
+	s, err := iamRepo.LookupScope(ctx, o.PublicId)
+	require.NoError(t, err)
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, s, testAuthMethod.GetPublicId())
+
+	// ok lets verify we have a fullName and email to populated in the user
+	lookedUpUser, _, err := iamRepo.LookupUser(ctx, user.PublicId)
+	require.NoError(t, err)
+	require.Equal(t, "Freyja Happy Doggo", lookedUpUser.FullName)
+	require.Equal(t, "you@hellothere.com", lookedUpUser.Email)
+
+	at, err := tokenRepo.CreateAuthToken(ctx, user, ldapAcct.GetPublicId())
+	require.NoError(t, err)
+	encToken, err := authtoken.EncryptToken(context.Background(), testKms, o.GetPublicId(), at.GetPublicId(), at.GetToken())
+	require.NoError(t, err)
+
+	tokValue := at.GetPublicId() + "_" + encToken
+	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]
+
+	tests := []struct {
+		name              string
+		headers           map[string]string
+		cookies           []http.Cookie
+		opt               []Option
+		disableAuth       bool
+		disableAuthzFails bool
+		wantResults       VerifyResults
+		wantUserId        string
+		wantNameEmail     bool
+	}{
+		{
+			name:          "bearer-token",
+			headers:       map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
+			opt:           []Option{WithScopeId(o.PublicId)},
+			wantUserId:    at.IamUserId,
+			wantNameEmail: true,
+		},
+		{
+			name: "split-cookie-token",
+			cookies: []http.Cookie{
+				{Name: handlers.HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: handlers.JsVisibleCookieName, Value: jsCookieVal},
+			},
+			opt:           []Option{WithScopeId(o.PublicId)},
+			wantUserId:    at.IamUserId,
+			wantNameEmail: true,
+		},
+		{
+			name:       "no-auth-data",
+			opt:        []Option{WithScopeId(o.PublicId)},
+			wantUserId: globals.AnonymousUserId,
+		},
+		{
+			name:        "disable-auth",
+			opt:         []Option{WithScopeId(o.PublicId)},
+			disableAuth: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			req := httptest.NewRequest("GET", "http://127.0.0.1/v1/scopes/o_1", nil)
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+			for _, c := range tt.cookies {
+				req.AddCookie(&c)
+			}
+
+			// Add values for authn/authz checking
+			requestInfo := authpb.RequestInfo{
+				Path:                 req.URL.Path,
+				Method:               req.Method,
+				DisableAuthEntirely:  tt.disableAuth,
+				DisableAuthzFailures: true, // we skipped giving grants so disable authz
+			}
+			requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), testKms, req)
+
+			ctx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, testKms, &requestInfo)
+
+			_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
+			_ = Verify(ctx, resource.Scope, tt.opt...)
+			got := api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
+
+			auth, ok := got.Data.(map[string]any)["auth"].(map[string]any)
+			require.True(ok)
+
+			if tt.wantNameEmail {
+				assert.Equal("Freyja Happy Doggo", auth["name"])
+				assert.Equal("you@hellothere.com", auth["email"])
+			} else {
+				assert.Nil(auth["name"])
+				assert.Nil(auth["email"])
+			}
+
+			if tt.disableAuth {
+				assert.Equal(true, auth["disabled_auth_entirely"])
+			}
+			if tt.wantUserId != "" {
+				userInfo, ok := auth["user_info"].(map[string]any)
+				require.True(ok)
+				assert.Equal(tt.wantUserId, userInfo["id"])
+			}
+		})
+	}
+}
+
+func TestVerify_UnredactedOidcAuth_AuditEvent(t *testing.T) {
+	ctx := context.Background()
+	eventConfig := event.TestEventerConfig(t, "Test_Verify", event.TestWithAuditSink(t))
+
+	// Disable redaction so we can assert on actual values
+	for _, sink := range eventConfig.EventerConfig.Sinks {
+		if sink.AuditConfig != nil {
+			sink.AuditConfig.FilterOverrides = event.AuditFilterOperations{
+				event.SensitiveClassification: event.NoOperation,
+			}
+		}
+	}
+
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "Test_Verify", event.WithEventerConfig(&eventConfig.EventerConfig)))
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	tokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return tokenRepo, nil
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, testKms)
+	}
+
+	// ok lets create a OIDC auth token
+	o, _ := iam.TestScopes(t, iamRepo)
+	databaseWrapper, err := testKms.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://hellothere.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, testAuthMethod, "Freyja",
+		oidc.WithFullName("Freyja Good Doggo"),
+		oidc.WithEmail("me@hellothere.com"),
+	)
+
+	user := iam.TestUser(t, iamRepo, o.GetPublicId())
+	_, err = iamRepo.AddUserAccounts(ctx, user.PublicId, user.Version, []string{oidcAcct.GetPublicId()})
+	require.NoError(t, err)
+
+	s, err := iamRepo.LookupScope(ctx, o.PublicId)
+	require.NoError(t, err)
+
+	// set oidcg auth method as primary
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, s, testAuthMethod.GetPublicId())
+
+	// ok lets verify we have a fullName and email to populated in the user
+	lookedUpUser, _, err := iamRepo.LookupUser(ctx, user.PublicId)
+	require.NoError(t, err)
+	require.Equal(t, "Freyja Good Doggo", lookedUpUser.FullName)
+	require.Equal(t, "me@hellothere.com", lookedUpUser.Email)
+
+	at, err := tokenRepo.CreateAuthToken(ctx, user, oidcAcct.GetPublicId())
+	require.NoError(t, err)
+	encToken, err := authtoken.EncryptToken(context.Background(), testKms, o.GetPublicId(), at.GetPublicId(), at.GetToken())
+	require.NoError(t, err)
+
+	tokValue := at.GetPublicId() + "_" + encToken
+	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]
+
+	tests := []struct {
+		name              string
+		headers           map[string]string
+		cookies           []http.Cookie
+		opt               []Option
+		disableAuth       bool
+		disableAuthzFails bool
+		wantResults       VerifyResults
+		wantUserId        string
+		wantNameEmail     bool
+	}{
+		{
+			name:          "bearer-token",
+			headers:       map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
+			opt:           []Option{WithScopeId(o.PublicId)},
+			wantUserId:    at.IamUserId,
+			wantNameEmail: true,
+		},
+		{
+			name: "split-cookie-token",
+			cookies: []http.Cookie{
+				{Name: handlers.HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: handlers.JsVisibleCookieName, Value: jsCookieVal},
+			},
+			opt:           []Option{WithScopeId(o.PublicId)},
+			wantUserId:    at.IamUserId,
+			wantNameEmail: true,
+		},
+		{
+			name:       "no-auth-data",
+			opt:        []Option{WithScopeId(o.PublicId)},
+			wantUserId: globals.AnonymousUserId,
+		},
+		{
+			name:        "disable-auth",
+			opt:         []Option{WithScopeId(o.PublicId)},
+			disableAuth: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			req := httptest.NewRequest("GET", "http://127.0.0.1/v1/scopes/o_1", nil)
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+			for _, c := range tt.cookies {
+				req.AddCookie(&c)
+			}
+
+			// Add values for authn/authz checking
+			requestInfo := authpb.RequestInfo{
+				Path:                 req.URL.Path,
+				Method:               req.Method,
+				DisableAuthEntirely:  tt.disableAuth,
+				DisableAuthzFailures: true, // we skipped giving grants so disable authz
+			}
+			requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), testKms, req)
+
+			ctx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, testKms, &requestInfo)
+
+			_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
+			_ = Verify(ctx, resource.Scope, tt.opt...)
+			got := api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
+
+			auth, ok := got.Data.(map[string]any)["auth"].(map[string]any)
+			require.True(ok)
+
+			if tt.wantNameEmail {
+				assert.Equal("Freyja Good Doggo", auth["name"])
+				assert.Equal("me@hellothere.com", auth["email"])
+			} else {
+				assert.Nil(auth["name"])
+				assert.Nil(auth["email"])
+			}
+
+			if tt.disableAuth {
+				assert.Equal(true, auth["disabled_auth_entirely"])
+			}
+			if tt.wantUserId != "" {
+				userInfo, ok := auth["user_info"].(map[string]any)
+				require.True(ok)
+				assert.Equal(tt.wantUserId, userInfo["id"])
 			}
 		})
 	}
