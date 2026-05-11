@@ -9,4 +9,5 @@ type GrantJson struct {
 	Ids     []string `json:"ids,omitempty"`
 	Type    string   `json:"type,omitempty"`
 	Actions []string `json:"actions,omitempty"`
+	Pins    []string `json:"pins,omitempty"`
 }
