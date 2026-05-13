@@ -36,13 +36,9 @@ artifacts {
     "boundary_${version_linux}-1_i386.deb",
   ]
   container = [
-    "boundary_default_linux_386_${version}_${commit_sha}.docker.dev.tar",
     "boundary_default_linux_386_${version}_${commit_sha}.docker.tar",
-    "boundary_default_linux_amd64_${version}_${commit_sha}.docker.dev.tar",
     "boundary_default_linux_amd64_${version}_${commit_sha}.docker.tar",
-    "boundary_default_linux_arm64_${version}_${commit_sha}.docker.dev.tar",
     "boundary_default_linux_arm64_${version}_${commit_sha}.docker.tar",
-    "boundary_default_linux_arm_${version}_${commit_sha}.docker.dev.tar",
     "boundary_default_linux_arm_${version}_${commit_sha}.docker.tar",
   ]
 }
