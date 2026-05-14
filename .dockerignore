@@ -3,3 +3,4 @@
 !dist/**
 !.release/docker/**
 !.release/ibm-pao/**
+!LICENSE

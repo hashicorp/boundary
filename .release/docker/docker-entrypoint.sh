@@ -14,19 +14,9 @@ ulimit -c 0
 
 # If the user is trying to run Boundary directly with some arguments, then
 # pass them to Boundary.
-if [ "${1:0:1}" = '-' ]; then
-    set -- boundary "$@"
-fi
-
-if [ "$1" = 'server' ]; then
-    shift
-    set -- boundary server \
-        "$@"
-elif boundary --help "$1" 2>&1 | grep -q "boundary $1"; then
-    # We can't use the return code to check for the existence of a subcommand, so
-    # we have to use grep to look for a pattern in the help output.
-    set -- boundary "$@"
-fi
+# Look for Boundary subcommands.
+# shellcheck source=.release/docker/entrypoint-common.sh
+. /usr/local/bin/entrypoint-common.sh
 
 # If we are running Boundary, make sure it executes as the proper user.
 if [ "$1" = 'boundary' ]; then
