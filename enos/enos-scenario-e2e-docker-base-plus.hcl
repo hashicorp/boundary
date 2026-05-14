@@ -135,6 +135,7 @@ scenario "e2e_docker_base_plus" {
       step.create_boundary,
     ]
     variables {
+      is_ci                     = var.is_ci
       test_package              = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_plus"
       controller_container_name = step.create_boundary.container_name
       network_name              = step.create_docker_network.network_name
