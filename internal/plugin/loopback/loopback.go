@@ -113,6 +113,7 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	ret.GetObjectFn = ret.getObject
 	ret.PutObjectFn = ret.putObject
 	ret.DeleteObjectsFn = ret.deleteObjects
+	ret.ListObjectsFn = ret.listObjects
 	if len(opts.withMockBuckets) > 0 {
 		ret.buckets = opts.withMockBuckets
 	}

@@ -29,6 +29,7 @@ const (
 	StoragePluginService_ValidatePermissions_FullMethodName        = "/plugin.v1.StoragePluginService/ValidatePermissions"
 	StoragePluginService_HeadObject_FullMethodName                 = "/plugin.v1.StoragePluginService/HeadObject"
 	StoragePluginService_GetObject_FullMethodName                  = "/plugin.v1.StoragePluginService/GetObject"
+	StoragePluginService_ListObjects_FullMethodName                = "/plugin.v1.StoragePluginService/ListObjects"
 	StoragePluginService_PutObject_FullMethodName                  = "/plugin.v1.StoragePluginService/PutObject"
 	StoragePluginService_DeleteObjects_FullMethodName              = "/plugin.v1.StoragePluginService/DeleteObjects"
 )
@@ -66,14 +67,16 @@ type StoragePluginServiceClient interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(ctx context.Context, in *OnDeleteStorageBucketRequest, opts ...grpc.CallOption) (*OnDeleteStorageBucketResponse, error)
-	// ValidatePermissions is a hook that checks if the secrets associated with
+	// ValidatePermissions checks if the secrets associated with
 	// the storage bucket meet the requirements of the plugin.
 	ValidatePermissions(ctx context.Context, in *ValidatePermissionsRequest, opts ...grpc.CallOption) (*ValidatePermissionsResponse, error)
-	// HeadObject is a hook that retrieves metadata about an object.
+	// HeadObject returns metadata about an object.
 	HeadObject(ctx context.Context, in *HeadObjectRequest, opts ...grpc.CallOption) (*HeadObjectResponse, error)
-	// GetObject is a hook that retrieves objects.
+	// GetObject returns object requested.
 	GetObject(ctx context.Context, in *GetObjectRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetObjectResponse], error)
-	// PutObject is a hook that reads a file stored on local disk and
+	// ListObjects returns a list of objects within a storage bucket that matches the provided prefix.
+	ListObjects(ctx context.Context, in *ListObjectsRequest, opts ...grpc.CallOption) (*ListObjectsResponse, error)
+	// PutObject reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error)
 	// DeleteObjects deletes one or many files in an external object store
@@ -168,6 +171,16 @@ func (c *storagePluginServiceClient) GetObject(ctx context.Context, in *GetObjec
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StoragePluginService_GetObjectClient = grpc.ServerStreamingClient[GetObjectResponse]
 
+func (c *storagePluginServiceClient) ListObjects(ctx context.Context, in *ListObjectsRequest, opts ...grpc.CallOption) (*ListObjectsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListObjectsResponse)
+	err := c.cc.Invoke(ctx, StoragePluginService_ListObjects_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *storagePluginServiceClient) PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PutObjectResponse)
@@ -221,14 +234,16 @@ type StoragePluginServiceServer interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(context.Context, *OnDeleteStorageBucketRequest) (*OnDeleteStorageBucketResponse, error)
-	// ValidatePermissions is a hook that checks if the secrets associated with
+	// ValidatePermissions checks if the secrets associated with
 	// the storage bucket meet the requirements of the plugin.
 	ValidatePermissions(context.Context, *ValidatePermissionsRequest) (*ValidatePermissionsResponse, error)
-	// HeadObject is a hook that retrieves metadata about an object.
+	// HeadObject returns metadata about an object.
 	HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error)
-	// GetObject is a hook that retrieves objects.
+	// GetObject returns object requested.
 	GetObject(*GetObjectRequest, grpc.ServerStreamingServer[GetObjectResponse]) error
-	// PutObject is a hook that reads a file stored on local disk and
+	// ListObjects returns a list of objects within a storage bucket that matches the provided prefix.
+	ListObjects(context.Context, *ListObjectsRequest) (*ListObjectsResponse, error)
+	// PutObject reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error)
 	// DeleteObjects deletes one or many files in an external object store
@@ -264,6 +279,9 @@ func (UnimplementedStoragePluginServiceServer) HeadObject(context.Context, *Head
 }
 func (UnimplementedStoragePluginServiceServer) GetObject(*GetObjectRequest, grpc.ServerStreamingServer[GetObjectResponse]) error {
 	return status.Error(codes.Unimplemented, "method GetObject not implemented")
+}
+func (UnimplementedStoragePluginServiceServer) ListObjects(context.Context, *ListObjectsRequest) (*ListObjectsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListObjects not implemented")
 }
 func (UnimplementedStoragePluginServiceServer) PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PutObject not implemented")
@@ -411,6 +429,24 @@ func _StoragePluginService_GetObject_Handler(srv interface{}, stream grpc.Server
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StoragePluginService_GetObjectServer = grpc.ServerStreamingServer[GetObjectResponse]
 
+func _StoragePluginService_ListObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListObjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).ListObjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoragePluginService_ListObjects_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).ListObjects(ctx, req.(*ListObjectsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StoragePluginService_PutObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutObjectRequest)
 	if err := dec(in); err != nil {
@@ -477,6 +513,10 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HeadObject",
 			Handler:    _StoragePluginService_HeadObject_Handler,
+		},
+		{
+			MethodName: "ListObjects",
+			Handler:    _StoragePluginService_ListObjects_Handler,
 		},
 		{
 			MethodName: "PutObject",

@@ -37,6 +37,7 @@ type TestPluginStorageServer struct {
 	GetObjectFn                  func(*plgpb.GetObjectRequest, plgpb.StoragePluginService_GetObjectServer) error
 	PutObjectFn                  func(context.Context, *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error)
 	DeleteObjectsFn              func(context.Context, *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error)
+	ListObjectsFn                func(context.Context, *plgpb.ListObjectsRequest) (*plgpb.ListObjectsResponse, error)
 	plgpb.UnimplementedStoragePluginServiceServer
 }
 
@@ -103,6 +104,13 @@ func (t TestPluginStorageServer) DeleteObjects(ctx context.Context, req *plgpb.D
 	return t.DeleteObjectsFn(ctx, req)
 }
 
+func (t TestPluginStorageServer) ListObjects(ctx context.Context, req *plgpb.ListObjectsRequest) (*plgpb.ListObjectsResponse, error) {
+	if t.ListObjectsFn == nil {
+		return t.UnimplementedStoragePluginServiceServer.ListObjects(ctx, req)
+	}
+	return t.ListObjectsFn(ctx, req)
+}
+
 type (
 	BucketName string
 	ObjectName string
@@ -157,7 +165,23 @@ func (l *LoopbackStorage) normalizeStorageBucketData(ctx context.Context, req *p
 // ResetNormalizations sets the number of times that NormalizeStorageBucketData
 // has been called to 0. Useful for unit tests.
 func (l *LoopbackStorage) ResetNormalizations() {
+	l.m.Lock()
+	defer l.m.Unlock()
 	l.normalizations = 0
+}
+
+// ResetMockErrors removes all mock errors.
+func (l *LoopbackStorage) ResetMockErrors() {
+	l.m.Lock()
+	defer l.m.Unlock()
+	l.errs = []PluginMockError{}
+}
+
+// SetMockErrors overrides the existing mock errors.
+func (l *LoopbackStorage) SetMockErrors(mockErrs ...PluginMockError) {
+	l.m.Lock()
+	defer l.m.Unlock()
+	l.errs = mockErrs
 }
 
 // GetNormalizations returns the number of times that NormalizeStorageBucketData
@@ -538,6 +562,53 @@ func (l *LoopbackStorage) deleteObjects(ctx context.Context, req *plgpb.DeleteOb
 	}, nil
 }
 
+func (l *LoopbackStorage) listObjects(ctx context.Context, req *plgpb.ListObjectsRequest) (*plgpb.ListObjectsResponse, error) {
+	const op = "loopback.(LoopbackStorage).listObjects"
+
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
+	}
+	if req.GetBucket() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
+	}
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing bucket attributes", op)
+	}
+	l.m.Lock()
+	defer l.m.Unlock()
+	bucket, ok := l.buckets[BucketName(req.GetBucket().GetBucketName())]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
+	}
+
+	// return an expected mock error if one was provided
+	for _, err := range l.errs {
+		if err.match(req.GetBucket(), req.GetKeyPrefix(), ListObjects) {
+			if err.StorageBucketCredentialState != nil {
+				return nil, createErrorWithBucketCredentialState(err.ErrCode, fmt.Sprintf("%s: %s", op, err.ErrMsg), err.StorageBucketCredentialState)
+			}
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
+		}
+	}
+
+	searchPrefix := path.Join(req.GetBucket().GetBucketPrefix(), req.GetKeyPrefix())
+	// path.Join strips trailing slashes, but we need to preserve them for directory prefixes
+	// to ensure proper filtering behavior in listObjects functions
+	if strings.HasSuffix(req.GetKeyPrefix(), "/") || (req.GetKeyPrefix() == "" && strings.HasSuffix(req.GetBucket().GetBucketPrefix(), "/")) {
+		searchPrefix = searchPrefix + "/"
+	}
+
+	var objects []*plgpb.Object
+	if req.GetRecursive() {
+		objects = listObjectsRecursive(bucket, searchPrefix)
+	} else {
+		objects = listObjectsNonRecursive(bucket, searchPrefix)
+	}
+	return &plgpb.ListObjectsResponse{
+		Objects: objects,
+	}, nil
+}
+
 // CloneBucket returns a clone of the bucket.
 // returns nil when the bucket is not found.
 func (l *LoopbackStorage) CloneBucket(name string) Bucket {
@@ -611,4 +682,147 @@ func createErrorWithBucketCredentialState(errCode codes.Code, msg string, sbcSta
 		st = stWithDetails
 	}
 	return st.Err()
+}
+
+// listObjectsRecursive returns recursive list of all files and directories found under a prefix from a provided bucket
+func listObjectsRecursive(bucket Bucket, searchPrefix string) []*plgpb.Object {
+	var objects []*plgpb.Object
+	dirs := make(map[string]struct{})
+	seenKeys := make(map[string]struct{})
+
+	for objectName := range bucket {
+		key := string(objectName)
+		// Skip any objects that do not match the search prefix
+		if !strings.HasPrefix(key, searchPrefix) {
+			continue
+		}
+
+		// Skip any objects that have already been seen
+		if _, exists := seenKeys[key]; exists {
+			continue
+		}
+
+		isDirFile := strings.HasSuffix(key, "/")
+		// If the object is a directory and matches the search prefix, skip it
+		// This can happen if the prefix itself is a directory
+		// e.g. prefix = "foo/", object key = "foo/"
+		// In this case we don't want to return the directory itself as an object
+		if isDirFile && key == searchPrefix {
+			continue
+		}
+
+		dirPaths := buildRecursiveDirectoryPaths(key, searchPrefix)
+		for _, dirPath := range dirPaths {
+			dirs[dirPath] = struct{}{}
+			seenKeys[dirPath] = struct{}{}
+		}
+
+		// Only add the object if it hasn't already been added as a directory
+		// This can happen if the object key ends with a '/' and is added as a directory
+		// in the previous step
+		if _, exists := seenKeys[key]; !exists {
+			objects = append(objects, &plgpb.Object{
+				Key:   key,
+				IsDir: isDirFile,
+			})
+		}
+		seenKeys[key] = struct{}{}
+	}
+
+	for dirKey := range dirs {
+		objects = append(objects, &plgpb.Object{
+			Key:   dirKey,
+			IsDir: true,
+		})
+	}
+
+	return objects
+}
+
+// listObjectsNonRecursive returns only top-level files and directories within the prefix
+func listObjectsNonRecursive(bucket Bucket, searchPrefix string) []*plgpb.Object {
+	var objects []*plgpb.Object
+	seenKeys := make(map[string]struct{})
+
+	for objectName := range bucket {
+		key := string(objectName)
+		// Skip any objects that do not match the search prefix
+		if !strings.HasPrefix(key, searchPrefix) {
+			continue
+		}
+
+		// Skip any objects that have already been seen
+		if _, exists := seenKeys[key]; exists {
+			continue
+		}
+
+		isDirFile := strings.HasSuffix(key, "/")
+		// If the object is a directory and matches the search prefix, skip it
+		// This can happen if the prefix itself is a directory
+		// e.g. prefix = "foo/", object key = "foo/"
+		// In this case we don't want to return the directory itself as an object
+		if isDirFile && key == searchPrefix {
+			continue
+		}
+
+		// Trim the prefix and and trailing '/' after which we split the path
+		// to determine if this object is in a subdirectory or a file at the root prefix
+		relativeFullPath := strings.TrimSuffix(strings.TrimPrefix(key, searchPrefix), "/")
+		split := strings.Split(relativeFullPath, "/")
+		// Adding this to guardrail against the case that the stdlib updates the behavior
+		// of strings.Split() causing it to not always return at least a 1 length slice
+		if len(split) == 0 {
+			continue
+		}
+		relativeParentPath := searchPrefix + split[0]
+
+		// If the original object key ends with a '/' we treat it as a directory
+		// even if it is at the root of the prefix.
+		// If the split contains more than one entry, it is also a directory as it has sub-paths
+		if len(split) > 1 || isDirFile {
+			relativeParentPath += "/"
+		}
+
+		// Skip any constructed parent paths that have already been seen
+		if _, exists := seenKeys[relativeParentPath]; exists {
+			continue
+		}
+
+		// If the split contains more than one entry, it is a directory as it has sub-paths
+		// If the original object key ends with a '/' we treat it as a directory
+		// even if it is at the root of the prefix.
+		if len(split) > 1 {
+			objects = append(objects, &plgpb.Object{
+				Key:   relativeParentPath,
+				IsDir: true,
+			})
+		} else {
+			objects = append(objects, &plgpb.Object{
+				Key:   relativeParentPath,
+				IsDir: strings.HasSuffix(relativeParentPath, "/"),
+			})
+		}
+		seenKeys[relativeParentPath] = struct{}{}
+	}
+
+	return objects
+}
+
+// buildDirectoryPaths collects all parent directory paths from an object key
+// that are within the given prefix. This is used to simulate directory
+// structures in object storage.
+func buildRecursiveDirectoryPaths(objectKey, prefix string) []string {
+	var dirPaths []string
+	prefixDir := strings.TrimSuffix(prefix, "/")
+
+	pathParts := strings.Split(objectKey, "/")
+	// Build all possible parent directory paths from the split parts
+	for i := 1; i < len(pathParts); i++ {
+		dirPath := strings.Join(pathParts[:i], "/")
+		// Only include directories that are deeper than the search prefix and add a trailing slash to denote a directory
+		if len(dirPath) > len(prefixDir) && strings.HasPrefix(dirPath+"/", prefix) {
+			dirPaths = append(dirPaths, fmt.Sprintf("%s/", dirPath))
+		}
+	}
+	return dirPaths
 }

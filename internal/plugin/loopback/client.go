@@ -91,6 +91,10 @@ func (tpc *WrappingPluginStorageClient) HeadObject(ctx context.Context, req *plg
 	return tpc.Server.HeadObject(ctx, req)
 }
 
+func (tpc *WrappingPluginStorageClient) ListObjects(ctx context.Context, req *plgpb.ListObjectsRequest, opts ...grpc.CallOption) (*plgpb.ListObjectsResponse, error) {
+	return tpc.Server.ListObjects(ctx, req)
+}
+
 func (tpc *WrappingPluginStorageClient) ValidatePermissions(ctx context.Context, req *plgpb.ValidatePermissionsRequest, opts ...grpc.CallOption) (*plgpb.ValidatePermissionsResponse, error) {
 	return tpc.Server.ValidatePermissions(ctx, req)
 }
