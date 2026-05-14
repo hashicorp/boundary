@@ -4,6 +4,8 @@
 package loopback
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -39,6 +41,9 @@ const (
 
 	// Will return an error for the DeleteObjects method
 	DeleteObjects
+
+	// Will return an error for the ListObjects method
+	ListObjects
 )
 
 const (
@@ -47,12 +52,47 @@ const (
 
 // PluginMockError is used to mock an error when interacting with an external object store.
 type PluginMockError struct {
-	BucketName                   string
-	BucketPrefix                 string
-	ObjectKey                    string
-	ErrMsg                       string
-	ErrCode                      codes.Code
-	ErrMethod                    Method
+	// BucketName is the name of the bucket to match on.
+	BucketName string
+
+	// BucketPrefix is the prefix of the bucket to match on.
+	BucketPrefix string
+
+	// ObjectKey is the object key to match on. This is optional and may be empty.
+	// If empty, the error will match any object key, as long as the ErrPath is not set.
+	// This is because the ErrPath is a less specific match than the ObjectKey.
+	// The ObjectKey is ignored when the ErrPath is set.
+	// The ObjectKey is also ignored for the following plugin methods: onCreateStorageBucket,
+	// onUpdateStorageBucket, onDeleteStorageBucket as these methods do not provide an object key.
+	ObjectKey string
+
+	// ErrPath is the object key path prefix to match on. This is optional and may be empty.
+	// If empty, the error will match any object key, as long as the ObjectKey is not set.
+	// The ErrPath is ignored when the ObjectKey is set.
+	// The ErrPath is also ignored for the following plugin methods: onCreateStorageBucket,
+	// onUpdateStorageBucket, onDeleteStorageBucket as these methods do not provide an object key.
+	// The ErrPath is used to match on a prefix of the object key. For example, if the ErrPath
+	// is set to "path/to/obj", it will match any object key that starts with "path/to/obj",
+	// such as "path/to/obj1", "path/to/obj2/subobj", etc.
+	// This allows for more flexible error mocking based on object key prefixes.
+	// The ErrPath should always end with a "/" if it is intended to match a directory prefix.
+	// For example, to match all objects under "path/to/dir/", the ErrPath should be set to "path/to/dir/".
+	// This ensures that it does not unintentionally match objects like "path/to/dir_obj".
+	ErrPath string
+
+	// ErrMsg is the error message to return.
+	ErrMsg string
+
+	// ErrCode is the gRPC error code to return.
+	ErrCode codes.Code
+
+	// ErrMethod is the plugin method to match on. This is optional and may be set to Any.
+	// If set to Any, the error will be returned for any plugin method that matches the bucket
+	// and object key criteria. If set to a specific method, the error will only be returned
+	// for that method if the bucket and object key criteria also match.
+	ErrMethod Method
+
+	// StorageBucketCredentialState is the credential state to return.
 	StorageBucketCredentialState *plgpb.StorageBucketCredentialState
 }
 
@@ -67,7 +107,8 @@ func (e PluginMockError) match(bucket *storagebuckets.StorageBucket, key string,
 	// the object key comparison is ignored when the given key is empty because the following
 	// plugin methods do not provide key values: onCreateStorageBucket, onUpdateStorageBucket,
 	// onDeleteStorageBucket
-	if key != "" && e.ObjectKey != key {
+	// if the mocked error object key is empty, it should match any key, as long as the ErrPath is not set.
+	if key != "" && e.ObjectKey != "" && e.ObjectKey != key {
 		return false
 	}
 	// if the mocked error bucket name does not match the request's bucket name, return false.
@@ -85,6 +126,10 @@ func (e PluginMockError) match(bucket *storagebuckets.StorageBucket, key string,
 	}
 	// if the mocked error method does match the given method, return false.
 	if e.ErrMethod != method {
+		return false
+	}
+	// if the mocked error path is not empty and the key does not have the mocked error path as a prefix, return false.
+	if e.ErrPath != "" && !strings.HasPrefix(key, e.ErrPath) {
 		return false
 	}
 	// all checks comparison checks passed, return true.

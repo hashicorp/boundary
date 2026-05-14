@@ -1618,6 +1618,611 @@ func TestLoopbackDeleteObjects(t *testing.T) {
 	}
 }
 
+func TestLoopbackListObjects(t *testing.T) {
+	require, assert := tr.New(t), ta.New(t)
+
+	mockStorageMapData := map[BucketName]Bucket{
+		"aws_s3_mock": {
+			"test-file-1": MockObject([]Chunk{
+				[]byte("content of test-file-1"),
+			}),
+			"folder1/": MockObject(nil),
+			"test-file-2": MockObject([]Chunk{
+				[]byte("content of test-file-2"),
+			}),
+			"folder1/file-1": MockObject([]Chunk{
+				[]byte("content of folder1/file-1"),
+			}),
+			"folder1/subfolder/": MockObject(nil),
+			"folder1/subfolder/file-2": MockObject([]Chunk{
+				[]byte("content of folder1/subfolder/file-2"),
+			}),
+			"folder1/subfolder/nested/file-3": MockObject([]Chunk{
+				[]byte("content of folder1/subfolder/nested/file-3"),
+			}),
+			"folder1/subfolder2/": MockObject(nil),
+			"folder2/file-4": MockObject([]Chunk{
+				[]byte("content of folder2/file-4"),
+			}),
+			"folder3/": MockObject(nil),
+		},
+		"aws_s3_err": {
+			"test-file": MockObject([]Chunk{
+				[]byte("test content"),
+			}),
+		},
+	}
+
+	plg, err := NewLoopbackPlugin(
+		WithMockBuckets(mockStorageMapData),
+		WithMockError(PluginMockError{
+			BucketName: "aws_s3_err",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
+		}),
+	)
+	assert.NoError(err)
+
+	client := NewWrappingPluginStorageClient(plg)
+	secrets := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"AWS_ACCESS_KEY_ID":     structpb.NewStringValue("access_key_id"),
+			"AWS_SECRET_ACCESS_KEY": structpb.NewStringValue("secret_access_key"),
+		},
+	}
+
+	tests := []struct {
+		name            string
+		request         *plgpb.ListObjectsRequest
+		expectedErr     codes.Code
+		expectedObjects []*plgpb.Object
+	}{
+		{
+			name:        "missing request",
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name:        "missing storage bucket",
+			request:     &plgpb.ListObjectsRequest{},
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name: "missing attributes",
+			request: &plgpb.ListObjectsRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+				},
+			},
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name: "bucket not found",
+			request: &plgpb.ListObjectsRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "invalid_bucket",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedErr: codes.NotFound,
+		},
+		{
+			name: "mocked error",
+			request: &plgpb.ListObjectsRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_err",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedErr: codes.PermissionDenied,
+		},
+		{
+			name: "list all objects without prefix recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "test-file-1", IsDir: false},
+				{Key: "test-file-2", IsDir: false},
+				{Key: "folder1/", IsDir: true},
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+				{Key: "folder2/", IsDir: true},
+				{Key: "folder2/file-4", IsDir: false},
+				{Key: "folder3/", IsDir: true},
+			},
+		},
+		{
+			name: "list all objects without prefix non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "test-file-1", IsDir: false},
+				{Key: "test-file-2", IsDir: false},
+				{Key: "folder1/", IsDir: true},
+				{Key: "folder2/", IsDir: true},
+				{Key: "folder3/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/ recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/ non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/sub recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/sub",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/sub non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/sub",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with prefix folder3/ recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder3/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects with prefix folder3/ non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder3/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects with prefix folder1/subfolder2 recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/subfolder2",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/subfolder2 non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/subfolder2",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with prefix folder1/subfolder2/ recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/subfolder2/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects with prefix folder1/subfolder2/ non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/subfolder2/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects with non-existent prefix recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "nonexistent/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects with non-existent prefix non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "nonexistent/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+		{
+			name: "list objects without secrets non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "test-file-1", IsDir: false},
+				{Key: "test-file-2", IsDir: false},
+				{Key: "folder1/", IsDir: true},
+				{Key: "folder2/", IsDir: true},
+				{Key: "folder3/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects without secrets recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "test-file-1", IsDir: false},
+				{Key: "test-file-2", IsDir: false},
+				{Key: "folder1/", IsDir: true},
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+				{Key: "folder2/", IsDir: true},
+				{Key: "folder2/file-4", IsDir: false},
+				{Key: "folder3/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with bucket prefix and no key prefix recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "folder1/",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+			},
+		},
+		{
+			name: "list objects with bucket prefix and no key prefix non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "folder1/",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with bucket prefix and key prefix recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "subfolder/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "folder1/",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+			},
+		},
+		{
+			name: "list objects with bucket prefix and key prefix non-recursively",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "subfolder/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "folder1/",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with bucket prefix no trailing slash and key prefix with trailing slash",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "subfolder/",
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "folder1",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/subfolder/file-2", IsDir: false},
+				{Key: "folder1/subfolder/nested/", IsDir: true},
+				{Key: "folder1/subfolder/nested/file-3", IsDir: false},
+			},
+		},
+		{
+			name: "list objects with bucket prefix empty and key prefix folder1/",
+			request: &plgpb.ListObjectsRequest{
+				KeyPrefix: "folder1/",
+				Recursive: false,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{
+				{Key: "folder1/file-1", IsDir: false},
+				{Key: "folder1/subfolder/", IsDir: true},
+				{Key: "folder1/subfolder2/", IsDir: true},
+			},
+		},
+		{
+			name: "list objects with bucket prefix filter matching nothing",
+			request: &plgpb.ListObjectsRequest{
+				Recursive: true,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "aws_s3_mock",
+					BucketPrefix: "nonexistent/",
+					Secrets:      secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedObjects: []*plgpb.Object{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.ListObjects(context.Background(), tt.request)
+			if tt.expectedErr != codes.OK {
+				assert.Error(err)
+				assert.Nil(resp)
+				s, ok := status.FromError(err)
+				require.True(ok, "invalid error type")
+				assert.Equal(tt.expectedErr, s.Code())
+				return
+			}
+			assert.NoError(err)
+			require.NotNil(resp)
+
+			require.Equal(len(tt.expectedObjects), len(resp.Objects), "object count mismatch")
+			assert.ElementsMatch(tt.expectedObjects, resp.Objects, "object list mismatch")
+		})
+	}
+}
+
 func TestLoopbackStoragePlugin(t *testing.T) {
 	td := t.TempDir()
 
