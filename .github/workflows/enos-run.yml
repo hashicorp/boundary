@@ -263,7 +263,7 @@ jobs:
           # environment
           # A virtual environment was needed because python environments on
           # self-hosted runners are externally managed.
-          sudo apt install -y python3
+          sudo apt install -y python3-venv
           python3 -m venv "$HOME/cqlsh-venv"
           "$HOME/cqlsh-venv/bin/pip" install --upgrade pip
           "$HOME/cqlsh-venv/bin/pip" install cqlsh
