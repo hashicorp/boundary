@@ -90,22 +90,11 @@ echo "trusted-key $KEY_ID" >> ~/.gnupg/gpg.conf
 pass init $KEY_ID &>/dev/null
 
 # Install the vault cli
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-export lines=$(gpg --no-default-keyring --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg --fingerprint --with-colons)
-while read -r line
-do
-  if [[ $line =~ "fpr"* ]]; then
-    if [[ "$(echo $line | sed -r 's/fpr|://g')" != "798AEC654E5C15428C8E42EEAA16FCBCA621E701" ]]; then
-      echo "HashiCorp key fingerprint does not match expected"
-      exit 1
-    else
-      break
-    fi
-  fi
-done <<< $lines
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
-apt update
-apt install vault -y
+export vault_version="1.17.6"
+export vault_arch=$(dpkg --print-architecture)
+wget "https://releases.hashicorp.com/vault/${vault_version}/vault_${vault_version}_linux_${vault_arch}.zip" -O /tmp/vault.zip
+unzip -o /tmp/vault.zip -d /usr/local/bin/
+rm /tmp/vault.zip
 
 # Install the docker cli
 wget -O- https://download.docker.com/linux/debian/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -117,6 +106,6 @@ apt update
 apt install docker-ce-cli -y
 
 # Run Tests
-unzip /boundary.zip -d /usr/local/bin/
+unzip -o /boundary.zip -d /usr/local/bin/
 cd /src/boundary
 go test -v -count=1 $TEST_PACKAGE -timeout $TEST_TIMEOUT | tee /testlogs/test-e2e-${TEST_PACKAGE##*/}.log
