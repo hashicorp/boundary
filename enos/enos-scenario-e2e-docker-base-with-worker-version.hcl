@@ -177,6 +177,34 @@ scenario "e2e_docker_base_with_worker_version" {
     }
   }
 
+  step "get_worker_id" {
+    module = module.docker_boundary_cmd
+    depends_on = [
+      step.create_worker
+    ]
+    variables {
+      address      = step.create_boundary.container_address
+      image_name   = step.build_boundary_docker_image.image_name
+      network_name = local.network_cluster
+      login_name   = step.create_boundary.login_name
+      password     = step.create_boundary.password
+      script       = "get_worker_id.sh"
+      worker_name  = step.create_worker.worker_name
+    }
+  }
+
+  step "wait_for_worker_registration" {
+    module = module.docker_check_worker_log
+    depends_on = [
+      step.create_worker,
+      step.get_worker_id
+    ]
+    variables {
+      container_name = step.create_boundary.container_name
+      worker_id      = step.get_worker_id.output["items"][0]["id"]
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e_docker
     depends_on = [

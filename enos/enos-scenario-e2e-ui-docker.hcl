@@ -140,6 +140,34 @@ scenario "e2e_ui_docker" {
     }
   }
 
+  step "get_worker_id" {
+    module = module.docker_boundary_cmd
+    depends_on = [
+      step.create_worker
+    ]
+    variables {
+      address      = step.create_boundary.container_address
+      image_name   = step.build_boundary_docker_image.image_name
+      network_name = local.network_cluster
+      login_name   = step.create_boundary.login_name
+      password     = step.create_boundary.password
+      script       = "get_worker_id.sh"
+      worker_name  = step.create_worker.worker_name
+    }
+  }
+
+  step "wait_for_worker_registration" {
+    module = module.docker_check_worker_log
+    depends_on = [
+      step.create_worker,
+      step.get_worker_id
+    ]
+    variables {
+      container_name = step.create_boundary.container_name
+      worker_id      = step.get_worker_id.output["items"][0]["id"]
+    }
+  }
+
   step "create_ldap_server" {
     module = module.docker_ldap
     depends_on = [
