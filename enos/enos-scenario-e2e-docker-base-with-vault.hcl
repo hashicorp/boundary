@@ -130,6 +130,7 @@ scenario "e2e_docker_base_with_vault" {
       step.create_boundary,
       step.create_vault,
       step.create_host,
+      step.create_ldap_server,
     ]
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_vault"
