@@ -22,21 +22,11 @@ apt install unzip pass lsb-release postgresql-client default-mysql-client wget a
 
 # Function to install Cassandra
 install_cassandra() {
-  # Add Cassandra repository key
-  wget -O cassandra.keys https://www.apache.org/dist/cassandra/KEYS
-
-  # Convert key to gpg format
-  gpg --no-default-keyring --keyring ./temp-keyring.gpg --import cassandra.keys
-  gpg --no-default-keyring --keyring ./temp-keyring.gpg --export --output cassandra.gpg
-  rm ./temp-keyring.gpg cassandra.keys
-  mv cassandra.gpg /etc/apt/keyrings/cassandra.gpg
-
-  # Add Cassandra repository
-  echo "deb [signed-by=/etc/apt/keyrings/cassandra.gpg] https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
-
-  # Update package list and install Cassandra
-  apt update
-  apt install cassandra -y
+  apt install -y python3-venv
+  python3 -m venv "$HOME/cqlsh-venv"
+  "$HOME/cqlsh-venv/bin/pip" install --upgrade pip
+  "$HOME/cqlsh-venv/bin/pip" install cqlsh
+  export PATH="$HOME/cqlsh-venv/bin:$PATH"
 }
 
 # Install Cassandra
