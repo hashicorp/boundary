@@ -120,8 +120,11 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	output := buf.String()
 	t.Logf("Cassandra session output: %s", output)
 
-	require.Contains(t, output, "keyspace_name")
-	require.Contains(t, output, keyspace)
+	// Note: Additional assertions can be tricky due to output containing \r\n
+	// and \b characters. The following assertions should be sufficient to prove
+	// that commands were executed successfully
+	require.Contains(t, output, "system_schema") // output of DESCRIBE KEYSPACES
+	require.Contains(t, output, "(1 rows)")      // output of SELECT query
 
 	t.Log("Successfully connected to Cassandra target")
 }

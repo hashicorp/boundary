@@ -247,18 +247,27 @@ jobs:
       - name: Install other test dependencies
         if: contains(matrix.filter, 'e2e_docker_base_plus')
         run: |
-          # mongosh
-          wget -q https://github.com/mongodb-js/mongosh/releases/download/v2.7.0/mongosh-2.7.0-linux-x64.tgz -O /tmp/mongosh.tgz
+          # Download dependencies in parallel
+          wget -q https://github.com/mongodb-js/mongosh/releases/download/v2.7.0/mongosh-2.7.0-linux-x64.tgz -O /tmp/mongosh.tgz &
+          wget -q https://archive.apache.org/dist/cassandra/4.1.10/apache-cassandra-4.1.10-bin.tar.gz -O /tmp/cassandra.tar.gz &
+          wait
+
+          # Install redis and mysql
+          sudo apt update && sudo apt install -y redis-tools mysql-client
+
+          # Install mongosh
           tar -xzf /tmp/mongosh.tgz -C "$HOME"
           echo "$HOME/mongosh-2.7.0-linux-x64/bin" >> "$GITHUB_PATH"
 
-          # cqlsh (cassandra CLI)
-          wget -q https://archive.apache.org/dist/cassandra/4.1.10/apache-cassandra-4.1.10-bin.tar.gz -O /tmp/cassandra.tar.gz
-          tar -xzf /tmp/cassandra.tar.gz -C "$HOME"
-          echo "$HOME/apache-cassandra-4.1.10/bin" >> "$GITHUB_PATH"
-
-          # redis
-          sudo apt update && sudo apt install -y redis-tools mysql-client
+          # Install cassandra and update it to use the python virtual
+          # environment
+          # A virtual environment was needed because python environments on
+          # self-hosted runners are externally managed.
+          sudo apt install -y python3.12-venv
+          python3 -m venv "$HOME/cqlsh-venv"
+          "$HOME/cqlsh-venv/bin/pip" install --upgrade pip
+          "$HOME/cqlsh-venv/bin/pip" install cqlsh
+          echo "$HOME/cqlsh-venv/bin" >> "$GITHUB_PATH"
       - name: Determine boundary version to test against previous worker version
         # Resolve the worker version from the previous release line.
         if: contains(matrix.filter, 'e2e_docker_base_with_worker_version')
