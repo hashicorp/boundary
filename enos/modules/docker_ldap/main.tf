@@ -98,6 +98,32 @@ resource "enos_local_exec" "create_ldap_group" {
   inline = ["docker exec ${var.container_name} ldapadd -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -f /tmp/ldap/group.ldif"]
 }
 
+resource "enos_local_exec" "wait_for_user_entry" {
+  depends_on = [
+    enos_local_exec.create_ldap_user,
+  ]
+
+  inline = [
+    # First verify the user is discoverable the same way Boundary authenticates it.
+    "timeout 20s bash -c 'until docker exec ${var.container_name} ldapsearch -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -b \"${local.domain_dn}\" \"(uid=${local.user_name})\" | grep \"numEntries: 1\"; do sleep 2; done'",
+    # Then verify the exact seeded DN exists for Vault static-role operations.
+    "timeout 20s bash -c 'until docker exec ${var.container_name} ldapsearch -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -b \"cn=${local.user_name},${local.domain_dn}\" -s base \"(objectClass=*)\" | grep \"numEntries: 1\"; do sleep 2; done'",
+    # Finally verify we can bind as the user using the seeded DN shape.
+    "timeout 20s bash -c 'until docker exec ${var.container_name} ldapwhoami -x -H ldap://localhost -D \"cn=${local.user_name},${local.domain_dn}\" -w ${local.user_password}; do sleep 2; done'"
+  ]
+}
+
+resource "enos_local_exec" "wait_for_group_entry" {
+  depends_on = [
+    enos_local_exec.create_ldap_group,
+  ]
+
+  inline = [
+    # Verify that the group is discoverable
+    "timeout 20s bash -c 'until docker exec ${var.container_name} ldapsearch -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -b \"${local.domain_dn}\" \"(cn=${local.group_name})\" | grep \"numEntries: 1\"; do sleep 2; done'"
+  ]
+}
+
 output "address" {
   value = "ldap://${var.container_name}"
 }

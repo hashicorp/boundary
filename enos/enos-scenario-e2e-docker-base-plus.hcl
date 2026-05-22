@@ -105,6 +105,7 @@ scenario "e2e_docker_base_plus" {
     module = module.test_e2e_docker
     depends_on = [
       step.create_boundary,
+      step.create_ldap_server,
     ]
     variables {
       test_package              = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_plus"

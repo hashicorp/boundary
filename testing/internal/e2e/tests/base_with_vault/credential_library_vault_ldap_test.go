@@ -84,10 +84,12 @@ func TestApiVaultLdapCredentialLibrary(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 
-		output = e2e.RunCommand(context.Background(), "vault",
-			e2e.WithArgs("policy", "delete", ldapPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
+		if ldapPolicyName != "" {
+			output = e2e.RunCommand(context.Background(), "vault",
+				e2e.WithArgs("policy", "delete", ldapPolicyName),
+			)
+			require.NoError(t, output.Err, string(output.Stderr))
+		}
 	})
 	require.NoError(t, err)
 
