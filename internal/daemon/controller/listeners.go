@@ -163,9 +163,10 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	// need to handle individual listener shutdown.
 	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
-			Context:      c.baseContext,
-			Storage:      workerAuthStorage,
-			BaseListener: ln.ClusterListener,
+			Context:             c.baseContext,
+			Storage:             workerAuthStorage,
+			BaseListener:        ln.ClusterListener,
+			TlsHandshakeTimeout: 15 * time.Second,
 			Options: []nodee.Option{
 				nodee.WithLogger(eventLogger),
 				nodee.WithRegistrationWrapper(wrapperToUse),

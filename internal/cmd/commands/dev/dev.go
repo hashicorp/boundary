@@ -87,6 +87,7 @@ type Command struct {
 	flagWorkerProxyListenAddr                          string
 	flagWorkerPublicAddr                               string
 	flagOpsListenAddr                                  string
+	flagDebug                                          bool
 	flagUiPassthroughDir                               string
 	flagRecoveryKey                                    string
 	flagDatabaseUrl                                    string
@@ -260,6 +261,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagOpsListenAddr,
 		EnvVar: "BOUNDARY_DEV_OPS_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for \"ops\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "debug",
+		Target: &c.flagDebug,
+		Usage:  "Enable debug mode. Currently this exposes pprof endpoints on the ops listener.",
+		Hidden: true,
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -722,8 +730,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	base.StartPprof(c.Context)
-
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
@@ -993,7 +999,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.flagDebug, c.Listeners...)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
 		return base.CommandCliError

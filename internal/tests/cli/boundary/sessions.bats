@@ -11,12 +11,14 @@ load _helpers
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
-  echo "$output"
+  echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 
   # Run twice so we have two values for later testing
   run connect_nc $DEFAULT_TARGET
-  echo "$output"
+  echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 
@@ -26,12 +28,14 @@ load _helpers
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
-  echo "$output"
+  echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 
   # Run twice so we have two values for later testing
   run connect_nc $DEFAULT_TARGET
-  echo "$output"
+  echo "connecting to $id: $output"
+  echo "status: $status"
   [ "$status" -eq 0 ]
 }
 

@@ -26,6 +26,11 @@ resource "aws_instance" "controller" {
     encrypted   = true
   }
 
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
   tags = merge(local.common_tags,
     {
       Name = "${local.name_prefix}-boundary-controller-${count.index}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
@@ -52,6 +57,11 @@ resource "aws_instance" "worker" {
     throughput  = var.worker_ebs_throughput
     tags        = local.common_tags
     encrypted   = true
+  }
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
   }
 
   tags = merge(local.common_tags,

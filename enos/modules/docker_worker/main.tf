@@ -5,7 +5,7 @@ terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "3.0.1"
+      version = "3.6.2"
     }
 
     tls = {
@@ -72,7 +72,7 @@ resource "docker_image" "boundary" {
 }
 
 locals {
-  recording_storage_path = "/recordings"
+  recording_storage_path = "/boundary/recordings"
   port_ops               = var.port + 1
 }
 
@@ -96,13 +96,9 @@ resource "docker_container" "worker" {
   capabilities {
     add = ["IPC_LOCK"]
   }
-  mounts {
-    type   = "tmpfs"
-    target = local.recording_storage_path
-  }
-  mounts {
-    type   = "tmpfs"
-    target = "/boundary/logs"
+  tmpfs = {
+    (local.recording_storage_path) = "mode=1777"
+    "/boundary/logs"               = "mode=1777"
   }
   upload {
     content = templatefile("${abspath(path.module)}/${var.config_file}", {

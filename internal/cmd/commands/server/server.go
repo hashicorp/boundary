@@ -62,6 +62,7 @@ type Command struct {
 	flagLogLevel                string
 	flagLogFormat               string
 	flagCombineLogs             bool
+	flagDebug                   bool
 	flagSkipPlugins             bool
 	flagSkipAliasTargetCreation bool
 	flagWorkerDnsServer         string
@@ -148,7 +149,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagWorkerAuthCaReinitialize,
 		Hidden: true,
 	})
-
+	f.BoolVar(&base.BoolVar{
+		Name:   "debug",
+		Target: &c.flagDebug,
+		Usage:  "Enable debug mode. Currently this exposes pprof endpoints on the ops listener.",
+		Hidden: true,
+	})
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-plugins",
 		Target: &c.flagSkipPlugins,
@@ -217,7 +223,6 @@ func (c *Command) Run(args []string) int {
 	c.WorkerAuthDebuggingEnabled.Store(c.Config.EnableWorkerAuthDebugging)
 
 	base.StartMemProfiler(c.Context)
-	base.StartPprof(c.Context)
 
 	// Note: the checks directly after this must remain where they are because
 	// they rely on the state of configured KMSes.
@@ -548,7 +553,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.flagDebug, c.Listeners...)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError

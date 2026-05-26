@@ -347,6 +347,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "paused",
 		Kind:    State,
 	},
+	WindowsRDPClientEarlyDisconnection: {
+		Message: "rdp client disconnected early",
+		Kind:    State,
+	},
 	ExternalPlugin: {
 		Message: "plugin error",
 		Kind:    External,

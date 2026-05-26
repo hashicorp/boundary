@@ -21,9 +21,7 @@ resource "aws_iam_user" "boundary" {
   name                 = "demo-${local.user_email}-${var.test_id}"
   tags                 = { boundary-demo = local.user_email }
   permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/DemoUser"
-  # If credential rotation is used, this is necessary to delete the user since a new access
-  # key will be generated.
-  force_destroy = var.enable_credential_rotation ? true : false
+  force_destroy        = true
 }
 
 resource "aws_iam_user_policy" "boundary" {

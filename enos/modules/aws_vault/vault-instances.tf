@@ -17,6 +17,11 @@ resource "aws_instance" "vault_instance" {
       Type = local.vault_cluster_tag
     },
   )
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
 }
 
 resource "enos_remote_exec" "install_dependencies" {
