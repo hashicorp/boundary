@@ -30,24 +30,27 @@ func SynopsisFunc(inFunc, resType string) string {
 
 func HelpMap(resType string) map[string]func() string {
 	prefixMap := map[string]string{
-		resource.Scope.String():            "o",
-		resource.AuthToken.String():        "at",
-		resource.AuthMethod.String():       "am",
-		resource.Account.String():          "a",
-		resource.Billing.String():          "b",
-		resource.Role.String():             "r",
-		resource.Group.String():            "g",
-		resource.User.String():             "u",
-		resource.HostCatalog.String():      "hc",
-		resource.HostSet.String():          "hs",
-		resource.Host.String():             "h",
-		resource.Session.String():          "s",
-		resource.Target.String():           "t",
-		resource.Worker.String():           "w",
-		resource.SessionRecording.String(): "sr",
-		resource.StorageBucket.String():    "sb",
-		resource.Policy.String():           "p",
-		resource.Alias.String():            "alt",
+		resource.Scope.String():             "o",
+		resource.AuthToken.String():         "at",
+		resource.AuthMethod.String():        "am",
+		resource.Account.String():           "a",
+		resource.Billing.String():           "b",
+		resource.Role.String():              "r",
+		resource.Group.String():             "g",
+		resource.User.String():              "u",
+		resource.HostCatalog.String():       "hc",
+		resource.HostSet.String():           "hs",
+		resource.Host.String():              "h",
+		resource.Session.String():           "s",
+		resource.Target.String():            "t",
+		resource.Worker.String():            "w",
+		resource.SessionRecording.String():  "sr",
+		resource.StorageBucket.String():     "sb",
+		resource.Policy.String():            "p",
+		resource.Alias.String():             "alt",
+		resource.CredentialStore.String():   "cs",
+		resource.CredentialLibrary.String(): "cl",
+		resource.ManagedGroup.String():      "mg",
 	}
 	return map[string]func() string{
 		"base": func() string {
@@ -136,6 +139,8 @@ func subtype(in []string, resType string, prefixMap map[string]string) []string 
 	default:
 		articleType = fmt.Sprintf("a %s", articleType)
 	}
+	// Normalize resType to use hyphens for map lookup
+	normalizedResType := strings.ReplaceAll(resType, " ", "-")
 	for i, v := range in {
 		in[i] = strings.Replace(
 			strings.Replace(
@@ -147,7 +152,7 @@ func subtype(in []string, resType string, prefixMap map[string]string) []string 
 							"{{type}}", resType, -1),
 						"{{pluraltypes}}", pluralTypes, -1),
 					"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
-				"{{prefix}}", prefixMap[resType], -1),
+				"{{prefix}}", prefixMap[normalizedResType], -1),
 			"{{articletype}}", articleType, -1)
 	}
 	return in
