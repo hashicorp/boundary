@@ -64,6 +64,10 @@ For `create table` statements:
 - Give `check` constraints a name that describes what rule the constraint is enforcing.
 - The naming pattern for foreign key constraints is `reftable_fkey` where
   `reftable` is the name of the referenced table.
+- For foreign key constraints:
+    - put the `references` statement on a new line indented under the `constraint` name
+    - put the `on delete` statement on a new line under the `references` statement at the same indentation
+    - put the `on update` statement on a new line under the `on delete` statement at the same indentation
 - The naming pattern for unique constraints is `tablename_col1_colx_uq` where
   `tablename` is the name of the table and `col1_colx` is the name of each
   column in the unique constraint.
