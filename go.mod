@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.25.7
+go 1.26.4
 
 replace github.com/hashicorp/boundary/api => ./api
 
