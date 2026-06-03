@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/kms/mains/transit
 
-go 1.25.7
+go 1.26.4
 
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.9
