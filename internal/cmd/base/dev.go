@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -584,7 +585,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	discoveryUrl, err := url.Parse(fmt.Sprintf("http://%s:%d", b.DevOidcSetup.hostAddr, b.DevOidcSetup.oidcPort))
+	discoveryUrl, err := url.Parse(fmt.Sprintf("http://%s", net.JoinHostPort(b.DevOidcSetup.hostAddr, strconv.Itoa(b.DevOidcSetup.oidcPort))))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing oidc test provider address: %w", err)
 	}
