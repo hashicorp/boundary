@@ -69,7 +69,10 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
-const uiPath = "/"
+const (
+	uiPath         = "/"
+	cspNonceHeader = "X-Boundary-Csp-Nonce"
+)
 
 // createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
 // for unified logic between responses and headers.
@@ -810,7 +813,7 @@ func wrapHandlerWithCsp(h http.Handler, props HandlerProperties, isUiRequest fun
 
 		w.Header().Set(cspKey, csp)
 		// Creating a custom key so we can pull it when serving UI page
-		w.Header().Set("X-Boundary-Csp-Nonce", nonce)
+		w.Header().Set(cspNonceHeader, nonce)
 		h.ServeHTTP(w, req)
 	})
 }
