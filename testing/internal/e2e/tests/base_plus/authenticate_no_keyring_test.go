@@ -12,11 +12,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,16 +37,16 @@ func TestCliAuthenticateNoKeyring(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that `pass` is not in the docker container
-	execConfig := container.ExecOptions{
+	execConfig := client.ExecCreateOptions{
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd: []string{
 			"which", "pass",
 		},
 	}
-	exec, err := docker.ContainerExecCreate(ctx, containerID, execConfig)
+	exec, err := docker.ExecCreate(ctx, containerID, execConfig)
 	require.NoError(t, err)
-	resp, err := docker.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
+	resp, err := docker.ExecAttach(ctx, exec.ID, client.ExecAttachOptions{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		resp.Close()
@@ -77,7 +76,7 @@ func TestCliAuthenticateNoKeyring(t *testing.T) {
 	require.Empty(t, string(stdout))
 
 	// Try to authenticate from inside the docker container
-	execConfig = container.ExecOptions{
+	execConfig = client.ExecCreateOptions{
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd: []string{
@@ -91,9 +90,9 @@ func TestCliAuthenticateNoKeyring(t *testing.T) {
 			fmt.Sprintf("E2E_PASSWORD=%s", bc.AdminLoginPassword),
 		},
 	}
-	exec, err = docker.ContainerExecCreate(ctx, containerID, execConfig)
+	exec, err = docker.ExecCreate(ctx, containerID, execConfig)
 	require.NoError(t, err)
-	authResp, err := docker.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
+	authResp, err := docker.ExecAttach(ctx, exec.ID, client.ExecAttachOptions{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		authResp.Close()
