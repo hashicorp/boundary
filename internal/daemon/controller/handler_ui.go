@@ -20,6 +20,8 @@ func init() {
 	handleUi = handleUiWithAssets
 }
 
+const cspPlaceholder = "__BOUNDARY_CSP_NONCE__"
+
 // serveMetadata provides controller metadata to the UI for licensed versions of Boundary.
 var serveMetadata = func(ctx context.Context, w http.ResponseWriter) {}
 
@@ -35,8 +37,6 @@ var serveGrantSchema = func(ctx context.Context, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
-
-const cspPlaceholder = "__BOUNDARY_CSP_NONCE__"
 
 // cspWriter wraps an http.ResponseWriter to replace the CSP nonce placeholder
 // in index.html with the actual nonce value.
@@ -82,7 +82,7 @@ func handleUiWithAssets(c *Controller) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			// Lets remove nonce in case we return here
-			w.Header().Del("X-Boundary-Csp-Nonce")
+			w.Header().Del(cspNonceHeader)
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
@@ -99,7 +99,8 @@ func handleUiWithAssets(c *Controller) http.Handler {
 			case "/metadata.json":
 				serveMetadata(c.baseContext, w)
 				return
-			case "/grants-schema.json":
+			// TODO: Refactor to inject directly rather than a network call
+			case "/internal/grants-schema.json":
 				serveGrantSchema(c.baseContext, w)
 				return
 			default:
@@ -120,16 +121,16 @@ func handleUiWithAssets(c *Controller) http.Handler {
 
 		// For document requests, replace the CSP placeholder inside <head>.
 		if r.URL.Path == "/" {
-			if nonce := w.Header().Get("X-Boundary-Csp-Nonce"); nonce != "" {
+			if nonce := w.Header().Get(cspNonceHeader); nonce != "" {
 				// Remove nonce once we have injected it in the Write() call
-				w.Header().Del("X-Boundary-Csp-Nonce")
+				w.Header().Del(cspNonceHeader)
 				nextHandler.ServeHTTP(&cspWriter{ResponseWriter: w, nonce: nonce}, r)
 				return
 			}
 		}
 
 		// Strip internal nonce header for non document requests
-		w.Header().Del("X-Boundary-Csp-Nonce")
+		w.Header().Del(cspNonceHeader)
 		nextHandler.ServeHTTP(w, r)
 	})
 }
