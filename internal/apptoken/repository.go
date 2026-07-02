@@ -764,13 +764,6 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, 
 		return 0, errors.New(ctx, errors.InvalidParameter, op, "missing public ID")
 	}
 
-	// eventually change this to a lookup to confirm existence before delete
-	tokenToDelete := &appToken{
-		AppToken: &store.AppToken{
-			PublicId: publicId,
-		},
-	}
-
 	var rowsDeleted int
 	var err error
 	_, err = r.writer.DoTx(
@@ -778,9 +771,19 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string) (int, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			// confirm existence before delete
+			_, err := getAppTokenScopeId(ctx, r.reader, publicId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
 			rowsDeleted, err = w.Delete(
 				ctx,
-				tokenToDelete,
+				&appToken{
+					AppToken: &store.AppToken{
+						PublicId: publicId,
+					},
+				},
 			)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
