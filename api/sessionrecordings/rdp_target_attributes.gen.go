@@ -2,7 +2,7 @@
 // Copyright IBM Corp. 2020, 2026
 // SPDX-License-Identifier: MPL-2.0
 
-package targets
+package sessionrecordings
 
 import (
 	"fmt"
@@ -11,10 +11,8 @@ import (
 )
 
 type RdpTargetAttributes struct {
-	DefaultPort            uint32 `json:"default_port,omitempty"`
-	DefaultClientPort      uint32 `json:"default_client_port,omitempty"`
-	StorageBucketId        string `json:"storage_bucket_id,omitempty"`
-	EnableSessionRecording bool   `json:"enable_session_recording,omitempty"`
+	DefaultPort       uint32 `json:"default_port,omitempty"`
+	DefaultClientPort uint32 `json:"default_client_port,omitempty"`
 }
 
 func AttributesMapToRdpTargetAttributes(in map[string]any) (*RdpTargetAttributes, error) {

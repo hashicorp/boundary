@@ -49,6 +49,7 @@ type templateInput struct {
 	SliceSubtypes         map[string]sliceSubtypeInfo
 	ExtraFields           []fieldInfo
 	VersionEnabled        bool
+	MimeTypeEnabled       bool
 	NonPaginatedListing   bool
 	CreateResponseTypes   []string
 	SkipListFiltering     bool
@@ -70,6 +71,7 @@ func fillTemplates() {
 			ParentTypeName:      in.parentTypeName,
 			ExtraFields:         in.extraFields,
 			VersionEnabled:      in.versionEnabled,
+			MimeTypeEnabled:     in.mimeTypeEnabled,
 			NonPaginatedListing: in.nonPaginatedListing,
 			CreateResponseTypes: in.createResponseTypes,
 			SkipListFiltering:   in.skipListFiltering,
@@ -204,6 +206,7 @@ func fillTemplates() {
 			SkipListFiltering: inputMap[pkg].skipListFiltering,
 			RecursiveListing:  inputMap[pkg].recursiveListing,
 			VersionEnabled:    inputMap[pkg].versionEnabled,
+			MimeTypeEnabled:   inputMap[pkg].mimeTypeEnabled,
 		}
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
@@ -955,6 +958,7 @@ type options struct {
 	withPageSize uint32
     withResourcePathOverride string
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
+	{{ if .MimeTypeEnabled }} withMimeType string {{ end }}
 }
 
 func getDefaultOptions() options {
@@ -986,7 +990,10 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	} {{ end }}
 	if opts.withPageSize != 0 {
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
-	}
+	}{{ if .MimeTypeEnabled }}
+	if opts.withMimeType != "" {
+		opts.queryMap["mime_type"] = opts.withMimeType
+	} {{ end }}
 	return opts, apiOpts
 }
 
@@ -1055,6 +1062,14 @@ func WithResourcePathOverride(path string) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = recurse
+	}
+}
+{{ end }}
+{{ if .MimeTypeEnabled }}
+// WithMimeType tells the API to set a specific mime-type on this request.
+func WithMimeType(mimeType string) Option {
+	return func(o *options) {
+		o.withMimeType = mimeType
 	}
 }
 {{ end }}

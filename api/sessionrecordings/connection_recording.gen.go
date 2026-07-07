@@ -21,4 +21,7 @@ type ConnectionRecording struct {
 	Duration          api.Duration        `json:"duration,omitempty"`
 	MimeTypes         []string            `json:"mime_types,omitempty"`
 	ChannelRecordings []*ChannelRecording `json:"channel_recordings,omitempty"`
+	RecordingState    *RecordingState     `json:"recording_state,omitempty"`
+	Exports           []*Export           `json:"exports,omitempty"`
+	Videos            []*Video            `json:"videos,omitempty"`
 }

@@ -24,11 +24,13 @@ var (
 )
 
 const (
-	castExt = ".cast" // default download file extension (is overridden when an output file is specified)
+	castExt = ".cast" // default download file extension for Asciicast files (overridden when an output file is specified)
+	webmExt = ".webm" // default download file extension for Webm files (overridden when an output file is specified)
 )
 
 type DownloadCommand struct {
 	*base.Command
+	flagMimeType string
 }
 
 func (c *DownloadCommand) Synopsis() string {
@@ -59,7 +61,7 @@ func (c *DownloadCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:    "output",
 		Target:  &c.FlagOutputFile,
-		Usage:   "An optional output file for the download. If not provided the recording id will be used with a \".cast\" extension. Use \"-\" for stdout.",
+		Usage:   "An optional output file for the download. If not provided the recording id will be used with a \".cast\" or \".webm\" extension. Use \"-\" for stdout.",
 		Aliases: []string{"o"},
 	})
 	f.BoolVar(&base.BoolVar{
@@ -67,6 +69,13 @@ func (c *DownloadCommand) Flags() *base.FlagSets {
 		Target:  &c.FlagNoClobber,
 		Usage:   "An option to stop downloads that would overwrite existing files.",
 		Aliases: []string{"nc"},
+	})
+	f.StringVar(&base.StringVar{
+		Name:    "mime-type",
+		Target:  &c.flagMimeType,
+		Usage:   "The mime-type for the requested content.",
+		Default: api.AsciiCastMimeType,
+		Aliases: []string{"mt"},
 	})
 	return set
 }
@@ -91,6 +100,16 @@ func (c *DownloadCommand) Run(args []string) int {
 	case c.FlagId == "":
 		c.PrintCliError(errors.New("ID must be provided via -id"))
 		return base.CommandUserError
+	case c.flagMimeType == "":
+		c.flagMimeType = api.AsciiCastMimeType // Allow for backwards compatibility.
+	}
+
+	switch c.flagMimeType {
+	case api.AsciiCastMimeType:
+	case api.VideoMimeType:
+	default:
+		c.PrintCliError(fmt.Errorf("Unknown mime-type %q", c.flagMimeType))
+		return base.CommandUserError
 	}
 
 	client, err := c.Client()
@@ -107,7 +126,7 @@ func (c *DownloadCommand) Run(args []string) int {
 	}
 
 	sClient := sessionrecordings.NewClient(client)
-	result, err := sClient.Download(c.Context, c.FlagId)
+	result, err := sClient.Download(c.Context, c.FlagId, sessionrecordings.WithMimeType(c.flagMimeType))
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, "Error from controller when downloading session recording")
@@ -146,7 +165,7 @@ func (c *DownloadCommand) Run(args []string) int {
 		}
 		defer outFile.Close()
 	default:
-		fileName := getNextFileName(c.FlagId)
+		fileName := getNextFileName(c.FlagId, c.flagMimeType)
 		outFile, err = os.Create(fileName)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Unable to create download file %q: %w", fileName, err))
@@ -162,13 +181,23 @@ func (c *DownloadCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func getNextFileName(baseName string) string {
-	if _, err := os.Stat(baseName + castExt); os.IsNotExist(err) {
-		return baseName + castExt
+func getNextFileName(baseName, mimeType string) string {
+	var ext string
+	switch mimeType {
+	case api.AsciiCastMimeType:
+		ext = castExt
+	case api.VideoMimeType:
+		ext = webmExt
+	default:
+		ext = castExt // Allow for backwards compatibility
+	}
+
+	if _, err := os.Stat(baseName + ext); os.IsNotExist(err) {
+		return baseName + ext
 	}
 	startIndex := 1
 	for {
-		fileName := baseName + castExt + "." + strconv.Itoa(startIndex)
+		fileName := baseName + ext + "." + strconv.Itoa(startIndex)
 		if _, err := os.Stat(fileName); os.IsNotExist(err) {
 			return fileName
 		}

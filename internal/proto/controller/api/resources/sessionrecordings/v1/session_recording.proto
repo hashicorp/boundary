@@ -44,6 +44,29 @@ message ChannelRecording {
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Channel.
   // The only supported mime type is "application/x-asciicast".
+  // Deprecated: This field has been moved to SSH-specific attributes and will be removed
+  // entirely in a future Boundary version.
+  repeated string mime_types = 9 [
+    json_name = "mime_types",
+    deprecated = true
+  ]; // @gotags: class:"public" eventstream:"observation"
+
+  // The detailed state of the channel recording.
+  RecordingState recording_state = 23 [json_name = "recording_state"]; // @gotags: class:"public" eventstream:"observation"
+
+  oneof attrs {
+    // The attributes that are applicable for the specific Channel Recording type.
+    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+
+    SshChannelRecording ssh_channel_recording = 11 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "ssh_channel_recording"
+    ];
+  }
+}
+
+// SshChannelRecording contains SSH-specific attributes for a channel recording.
+message SshChannelRecording {
   repeated string mime_types = 9 [json_name = "mime_types"]; // @gotags: class:"public" eventstream:"observation"
 }
 
@@ -83,6 +106,17 @@ message ConnectionRecording {
   // Optionally, the channels used in this Connection,
   // if it is using a multiplexed protocol, such as SSH.
   repeated ChannelRecording channel_recordings = 10 [json_name = "channel_recordings"];
+
+  // The detailed state of the connection recording.
+  RecordingState recording_state = 11 [json_name = "recording_state"]; // @gotags: class:"public" eventstream:"observation"
+
+  // Optionally, exports that may have been created for this Connection
+  // Recording.
+  repeated Export exports = 12 [json_name = "exports"]; // @gotags: class:"public"
+
+  // Optionally, videos that may have been recorded for this Connection
+  // Recording.
+  repeated Video videos = 13 [json_name = "videos"]; // @gotags: class:"public"
 }
 
 // User describes an authenticated user in Boundary.
@@ -216,6 +250,10 @@ message Target {
       (google.api.field_visibility).restriction = "INTERNAL",
       (custom_options.v1.subtype) = "ssh"
     ];
+    RdpTargetAttributes rdp_target_attributes = 13 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "rdp"
+    ];
   }
 }
 
@@ -225,6 +263,15 @@ message SshTargetAttributes {
   uint32 default_port = 1 [json_name = "default_port"]; // @gotags: class:"public"
 
   // The default TCP port that will be listened on by the client's local proxy.
+  uint32 default_client_port = 2 [json_name = "default_client_port"]; // @gotags: class:"public"
+}
+
+// RdpTargetAttributes contains attributes relevant to Targets of type "rdp"
+message RdpTargetAttributes {
+  // The default RDP port used when connecting to the endpoint.
+  uint32 default_port = 1 [json_name = "default_port"]; // @gotags: class:"public"
+
+  // The default TCP port listened on by the client's local proxy.
   uint32 default_client_port = 2 [json_name = "default_client_port"]; // @gotags: class:"public"
 }
 
@@ -312,6 +359,10 @@ message Credential {
       (google.api.field_visibility).restriction = "INTERNAL",
       (custom_options.v1.subtype) = "password"
     ];
+    UsernamePasswordDomainCredentialAttributes username_password_domain_attributes = 12 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "username_password_domain"
+    ];
   }
 }
 
@@ -322,6 +373,18 @@ message UsernamePasswordCredentialAttributes {
 
   // The hmac value of the password.
   string password_hmac = 2; // @gotags: class:"public"
+}
+
+// The attributes of a UsernamePasswordDomain Credential.
+message UsernamePasswordDomainCredentialAttributes {
+  // The username associated with the credential.
+  string username = 1; // @gotags: class:"sensitive"
+
+  // The hmac value of the password.
+  string password_hmac = 2; // @gotags: class:"public"
+
+  // The domain associated with the credential.
+  string domain = 3; // @gotags: class:"public"
 }
 
 // The attributes of a SshPrivateKey Credential.
@@ -383,6 +446,10 @@ message CredentialLibrary {
       (google.api.field_visibility).restriction = "INTERNAL",
       (custom_options.v1.subtype) = "vault-ssh-certificate"
     ];
+    VaultLdapCredentialLibraryAttributes vault_ldap_credential_library_attributes = 11 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "vault-ldap"
+    ];
   }
 }
 
@@ -396,6 +463,12 @@ message VaultCredentialLibraryAttributes {
 
   // The body of the HTTP request the library sends to vault.
   string http_request_body = 3; // @gotags: `class:"secret"`
+}
+
+// The attributes of a Vault typed LDAP Credential Library.
+message VaultLdapCredentialLibraryAttributes {
+  // The path in Vault to request credentials from.
+  string path = 1; // @gotags: class:"public"
 }
 
 // The attributes of a vault SSH Certificate Credential Library.
@@ -444,6 +517,59 @@ message ValuesAtTime {
   repeated CredentialLibrary credential_libraries = 5 [json_name = "credential_libraries"];
 }
 
+// RecordingState contain information about the state of a recording.
+message RecordingState {
+  // Information about the storage state of the recording.
+  string storage_state = 1; // @gotags: class:"public"
+
+  // Information about the syncing error details of the recording.
+  string syncing_error_details = 2; // @gotags: class:"public"
+
+  // Information about the verification error details of the recording.
+  string verification_error_details = 3; // @gotags: class:"public"
+}
+
+// Export contains information about the export of a session recording.
+message Export {
+  // The ID of the Export.
+  string id = 10; // @gotags: class:"public"
+  // The scope that the Export is in. This is inferred from the storage bucket
+  // associated with the session recording.
+  resources.scopes.v1.ScopeInfo scope = 20; // @gotags: class:"public"
+  // The mime type of the Export.
+  string mime_type = 30; // @gotags: class:"public" eventstream:"observation"
+  // The current state of the Export.
+  string state = 40; // @gotags: class:"public" eventstream:"observation"
+  // The export's current progress.
+  uint32 progress_percent = 50; // @gotags: class:"public" eventstream:"observation"
+  // The ID of the worker processing the Export.
+  string worker_id = 60; // @gotags: class:"public" eventstream:"observation"
+  // The time the Export was created.
+  google.protobuf.Timestamp created_time = 70; // @gotags: class:"public" eventstream:"observation"
+  // The time of the most recent update to the Export.
+  google.protobuf.Timestamp updated_time = 80; // @gotags: class:"public" eventstream:"observation"
+  // The version of the Export.
+  uint32 version = 90; // @gotags: `class:"public"`
+  // The ID of the Connection Recording being exported.
+  string connection_recording_id = 100; // @gotags: class:"public" eventstream:"observation"
+  // Any error encountered during the Export, if the Export failed.
+  string error = 110; // @gotags: class:"public"
+  // The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: class:"public"
+}
+
+// Video contains information about the video recording of a Session Recording.
+message Video {
+  // The ID of the Video.
+  string id = 10; // @gotags: class:"public"
+  // The time the Video was created.
+  google.protobuf.Timestamp created_time = 20; // @gotags: class:"public" eventstream:"observation"
+  // The duration of the Video in seconds.
+  uint64 length_seconds = 30; // @gotags: class:"public" eventstream:"observation"
+  // The size of the Video in bytes.
+  uint64 size_bytes = 40; // @gotags: class:"public" eventstream:"observation"
+}
+
 // SessionRecording contains information about the recording of a Session.
 message SessionRecording {
   // The ID of the Session recording.
@@ -490,10 +616,16 @@ message SessionRecording {
 
   // The current state of the session recording. One of
   // "started", "available" and "unknown".
+  //
+  // Note: this field will eventually be deprecated two release after 1.0.0
+  // in favor of the availability field.
   string state = 13; // @gotags: class:"public" eventstream:"observation"
 
   // Any error seen during the closing of the session recording.
   // Currently only set if state is "unknown".
+  //
+  // Note: this field will eventually be deprecated two release after 1.0.0
+  // in favor of the error details contained in the recording_state field.
   string error_details = 14; // @gotags: class:"public"
 
   // MimeTypes define the mime types that can
@@ -520,4 +652,10 @@ message SessionRecording {
 
   // The time a session recording is scheduled to be automatically deleted.
   google.protobuf.Timestamp delete_after = 21 [json_name = "delete_after"]; // @gotags: class:"public" eventstream:"observation"
+
+  // The availability of the session recording. One of "available" or "not available".
+  string availability = 22 [json_name = "availability"]; // @gotags: class:"public" eventstream:"observation"
+
+  // The detailed state of the session recording.
+  RecordingState recording_state = 23 [json_name = "recording_state"]; // @gotags: class:"public" eventstream:"observation"
 }

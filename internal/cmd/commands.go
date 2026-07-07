@@ -1296,6 +1296,30 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "delete",
 			}
 		}),
+		"session-recordings list-exports": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.ExportCommand{
+				Command: base.NewCommand(ui, opts...),
+				Action:  sessionrecordingscmd.ExportCommandActionList,
+			}
+		}),
+		"session-recordings export": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.ExportCommand{
+				Command: base.NewCommand(ui, opts...),
+				Action:  sessionrecordingscmd.ExportCommandActionCreate,
+			}
+		}),
+		"session-recordings export read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.ExportCommand{
+				Command: base.NewCommand(ui, opts...),
+				Action:  sessionrecordingscmd.ExportCommandActionRead,
+			}
+		}),
+		"session-recordings export cancel": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.ExportCommand{
+				Command: base.NewCommand(ui, opts...),
+				Action:  sessionrecordingscmd.ExportCommandActionCancel,
+			}
+		}),
 		"session-recordings reapply-storage-policy": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &sessionrecordingscmd.ReApplyStoragePolicyCommand{
 				Command: base.NewCommand(ui, opts...),

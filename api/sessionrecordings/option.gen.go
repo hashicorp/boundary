@@ -30,6 +30,7 @@ type options struct {
 	withPageSize                 uint32
 	withResourcePathOverride     string
 	withRecursive                bool
+	withMimeType                 string
 }
 
 func getDefaultOptions() options {
@@ -61,6 +62,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withPageSize != 0 {
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
+	}
+	if opts.withMimeType != "" {
+		opts.queryMap["mime_type"] = opts.withMimeType
 	}
 	return opts, apiOpts
 }
@@ -108,5 +112,12 @@ func WithResourcePathOverride(path string) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = recurse
+	}
+}
+
+// WithMimeType tells the API to set a specific mime-type on this request.
+func WithMimeType(mimeType string) Option {
+	return func(o *options) {
+		o.withMimeType = mimeType
 	}
 }
