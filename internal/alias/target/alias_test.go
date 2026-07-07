@@ -117,9 +117,9 @@ func TestCreate(t *testing.T) {
 			errContains: `destination_id_set_when_host_id_is_set constraint failed`,
 		},
 		{
-			name:        "supported project scope",
+			name:        "unsupported project scope",
 			scope:       proj.GetPublicId(),
-			value:       "supported.project.scope",
+			value:       "unsupported.project.scope",
 			errContains: "alias_must_be_in_global_scope constraint failed",
 		},
 		{
