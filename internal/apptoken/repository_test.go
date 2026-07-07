@@ -7,6 +7,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,14 +170,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   true,
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
@@ -192,26 +194,26 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 					{
 						Label:         "test-2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantErr: false,
 			wantPerms: []testPermission{
 				{
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					GrantThis:   true,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
 				},
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   false,
 					Description: "test-2",
 					Grants:      []string{"type=target;actions=list"},
@@ -252,7 +254,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -281,22 +283,22 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId(), proj2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId(), proj2.GetPublicId()},
 					},
 					{
 						Label:         "test3",
 						Grants:        []string{"type=session;actions=list"},
-						GrantedScopes: []string{"this", proj2.GetPublicId(), "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, proj2.GetPublicId(), globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test4",
 						Grants:        []string{"type=role;actions=list", "type=user;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 					{
 						Label:         "test5",
 						Grants:        []string{"type=group;actions=list", "type=scope;actions=list"},
-						GrantedScopes: []string{"this", org2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, org2.GetPublicId()},
 					},
 				},
 			},
@@ -317,14 +319,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				},
 				{
 					Description: "test3",
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   true,
 					Grants:      []string{"type=session;actions=list"},
 					Scopes:      []string{proj2.GetPublicId()},
 				},
 				{
 					Description: "test4",
-					GrantScope:  "descendants",
+					GrantScope:  globals.GrantScopeDescendants,
 					GrantThis:   false,
 					Grants:      []string{"type=role;actions=list", "type=user;actions=list"},
 					Scopes:      []string{},
@@ -348,7 +350,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", org.GetPublicId(), proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, org.GetPublicId(), proj.GetPublicId()},
 					},
 				},
 			},
@@ -381,14 +383,14 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   true,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
@@ -405,26 +407,26 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test-2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantErr: false,
 			wantPerms: []testPermission{
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   true,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list", "type=session;actions=list"},
 					Scopes:      []string{},
 				},
 				{
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					GrantThis:   false,
 					Description: "test-2",
 					Grants:      []string{"type=target;actions=list"},
@@ -465,7 +467,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -489,24 +491,24 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 					{
 						Label:         "test3",
 						Grants:        []string{"type=session;actions=list", "type=role;actions=list"},
-						GrantedScopes: []string{"this", "children"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 			},
 			wantPerms: []testPermission{
 				{
 					GrantThis:   false,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test",
 					Grants:      []string{"type=host-catalog;actions=list"},
 					Scopes:      []string{},
@@ -520,7 +522,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				},
 				{
 					GrantThis:   true,
-					GrantScope:  "children",
+					GrantScope:  globals.GrantScopeChildren,
 					Description: "test3",
 					Grants:      []string{"type=session;actions=list", "type=role;actions=list"},
 					Scopes:      []string{},
@@ -546,7 +548,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 				},
 			},
@@ -568,7 +570,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-						GrantedScopes: []string{"this", proj.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj.GetPublicId()},
 					},
 					{
 						Label:         "test-2",
@@ -601,7 +603,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"oops_broken", "type=session;actions=list"},
-						GrantedScopes: []string{"this", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -633,7 +635,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=session;actions=list"},
-						GrantedScopes: []string{"children", "descendants"},
+						GrantedScopes: []string{globals.GrantScopeChildren, globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -655,7 +657,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test2",
 						Grants:        []string{"type=target;actions=list"},
-						GrantedScopes: []string{"this", proj2.GetPublicId()},
+						GrantedScopes: []string{globals.GrantScopeThis, proj2.GetPublicId()},
 					},
 				},
 			},
@@ -689,7 +691,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{proj.GetPublicId(), "children"},
+						GrantedScopes: []string{proj.GetPublicId(), globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -706,7 +708,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -723,7 +725,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{proj.GetPublicId(), "children"},
+						GrantedScopes: []string{proj.GetPublicId(), globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -740,7 +742,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -757,7 +759,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list"},
-						GrantedScopes: []string{"children"},
+						GrantedScopes: []string{globals.GrantScopeChildren},
 					},
 				},
 			},
@@ -808,7 +810,7 @@ func TestRepository_CreateAppToken(t *testing.T) {
 					{
 						Label:         "test",
 						Grants:        []string{"type=host-catalog;actions=list", "type=host-catalog;actions=list"},
-						GrantedScopes: []string{"descendants"},
+						GrantedScopes: []string{globals.GrantScopeDescendants},
 					},
 				},
 			},
@@ -856,10 +858,11 @@ func TestRepository_CreateAppToken(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.NotNil(at.PublicId)
+			assert.NotNil(at)
+			assert.NotEmpty(at.PublicId)
+			assert.NotEmpty(at.Token)
 			assert.NotNil(at.CreateTime)
 			assert.NotNil(at.ApproximateLastAccessTime)
-			assert.NotNil(at.Token)
 			assert.Equal(at.CreateTime, at.ApproximateLastAccessTime)
 			assert.GreaterOrEqual(at.ExpirationTime.AsTime().Unix(), at.CreateTime.AsTime().Unix())
 
@@ -873,6 +876,403 @@ func TestRepository_CreateAppToken(t *testing.T) {
 			// validate app token cipher using db queries
 			err = testCheckAppTokenCipher(t, repo, at.PublicId)
 			assert.NoError(err)
+		})
+	}
+}
+
+// labeler is an interface implemented by any struct that has a label or id field that can be used for sorting.
+// Used to sort AppTokenPermission and DeletedScope slices by their label/id for easier test comparisons.
+type labeler interface {
+	label() string
+}
+
+func (p AppTokenPermission) label() string {
+	return p.Label
+}
+
+func (p DeletedScope) label() string {
+	return p.ScopeId
+}
+
+func sortByLabel[T labeler](perms []T) {
+	slices.SortFunc(perms, func(a, b T) int {
+		return strings.Compare(a.label(), b.label())
+	})
+}
+
+func TestRepository_LookupAppToken(t *testing.T) {
+	ctx := t.Context()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+
+	// Lookup a random token ID and assert not found error
+	t.Run("no token found", func(t *testing.T) {
+		token, err := repo.LookupAppToken(ctx, "appt_12345")
+		assert.NoError(t, err)
+		assert.Nil(t, token)
+	})
+
+	// Test various scenarios for valid app tokens with different grant scopes and permissions
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+
+	org1, proj1a := iam.TestScopes(t, iamRepo)
+	proj1b := iam.TestProject(t, iamRepo, org1.PublicId)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+
+	tests := []struct {
+		name           string
+		wantToken      func() *AppToken
+		scopesToDelete func() []string
+		wantErrMsg     string
+	}{
+		{
+			name: "global token: multiple grants, grant this with individual org and project grant scopes",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
+							GrantedScopes: []string{globals.GrantScopeThis, org1.PublicId, org2.PublicId, proj2.PublicId},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "global token: multiple grants, children grant scope with individual project grant scopes",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 10,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"},
+							GrantedScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1a.PublicId, proj2.PublicId},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "global token: multiple permissions with individual org and project grant scopes",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 10,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=alias;actions=create"},
+							GrantedScopes: []string{proj1a.PublicId, proj2.PublicId},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=alias;actions=create"},
+							GrantedScopes: []string{org1.PublicId, proj2.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj2.PublicId}
+			},
+		},
+		{
+			name: "global token: multiple grants with descendants grant scope",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 10,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=alias;actions=create", "ids=*;type=group;actions=list"},
+							GrantedScopes: []string{globals.GrantScopeDescendants},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "global token: multiple grants to all individual org and project grant scopes with some deleted",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            globals.GlobalPrefix,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=scope;actions=list", "ids=*;type=group;actions=create"},
+							GrantedScopes: []string{org1.PublicId, org2.PublicId, proj1a.PublicId, proj1b.PublicId, proj2.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj2.PublicId, org1.PublicId}
+			},
+		},
+		{
+			name: "org token: multiple grants with individual project grant scopes",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            org1.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=group;actions=read", "ids=*;type=user;actions=create"},
+							GrantedScopes: []string{globals.GrantScopeThis, proj1a.PublicId, proj1b.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj1b.PublicId}
+			},
+		},
+		{
+			name: "org token: multiple grants with children grant scope",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            org1.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=group;actions=read", "ids=*;type=user;actions=create"},
+							GrantedScopes: []string{globals.GrantScopeChildren},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "org token: multiple permissions",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            org1.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=user;actions=create"},
+							GrantedScopes: []string{globals.GrantScopeThis, proj1a.PublicId},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=group;actions=read"},
+							GrantedScopes: []string{globals.GrantScopeChildren},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "org token: multiple permissions with a deleted scope from each",
+			wantToken: func() *AppToken {
+				proj3 := iam.TestProject(t, iamRepo, org1.PublicId)
+
+				return &AppToken{
+					ScopeId:            org1.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=user;actions=create"},
+							GrantedScopes: []string{proj1a.PublicId, proj3.PublicId},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=group;actions=read"},
+							GrantedScopes: []string{proj1a.PublicId, proj1b.PublicId, proj3.PublicId},
+						},
+					},
+				}
+			},
+			scopesToDelete: func() []string {
+				return []string{proj1a.PublicId}
+			},
+		},
+		{
+			name: "project token: multiple grants, this grant scope",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            proj2.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test",
+							Grants:        []string{"ids=*;type=target;actions=create,update", "ids=*;type=alias;actions=delete,read"},
+							GrantedScopes: []string{globals.GrantScopeThis},
+						},
+					},
+				}
+			},
+		},
+		{
+			name: "project token: multiple permissions",
+			wantToken: func() *AppToken {
+				return &AppToken{
+					ScopeId:            proj2.PublicId,
+					CreatedByUserId:    u.PublicId,
+					TimeToStaleSeconds: 100,
+					ExpirationTime:     timestamp.New(time.Now().Add(time.Hour)),
+					Permissions: []AppTokenPermission{
+						{
+							Label:         "test perm 1",
+							Grants:        []string{"ids=*;type=target;actions=create,update"},
+							GrantedScopes: []string{globals.GrantScopeThis},
+						},
+						{
+							Label:         "test perm 2",
+							Grants:        []string{"ids=*;type=alias;actions=delete,read"},
+							GrantedScopes: []string{globals.GrantScopeThis},
+						},
+					},
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			// Create the token
+			wantToken := tt.wantToken()
+			want := TestCreateAppToken(t, repo, wantToken)
+
+			var scopesToDelete []string
+			if tt.scopesToDelete != nil {
+				scopesToDelete = tt.scopesToDelete()
+			}
+			deletedScopes := make(map[string]struct{})
+
+			// If deleting an org, add its child project scopes
+			if slices.Contains(scopesToDelete, org1.PublicId) {
+				scopesToDelete = append(scopesToDelete, proj1a.PublicId, proj1b.PublicId)
+			}
+			if slices.Contains(scopesToDelete, org2.PublicId) {
+				scopesToDelete = append(scopesToDelete, proj2.PublicId)
+			}
+			slices.Sort(scopesToDelete)
+
+			// Delete the scope referenced by the current App Token, and then re-create it so it can be used for the other tests
+			for _, scopeId := range scopesToDelete {
+				_, err := iamRepo.DeleteScope(ctx, scopeId)
+				require.NoError(t, err)
+
+				deletedScopes[scopeId] = struct{}{}
+
+				switch scopeId {
+				case org1.PublicId:
+					org1 = iam.TestOrg(t, iamRepo)
+				case org2.PublicId:
+					org2 = iam.TestOrg(t, iamRepo)
+				case proj1a.PublicId:
+					proj1a = iam.TestProject(t, iamRepo, org1.PublicId)
+				case proj1b.PublicId:
+					proj1b = iam.TestProject(t, iamRepo, org1.PublicId)
+				case proj2.PublicId:
+					proj2 = iam.TestProject(t, iamRepo, org2.PublicId)
+				}
+			}
+
+			// Lookup the token
+			got, err := repo.LookupAppToken(ctx, want.PublicId)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(want.PublicId, got.PublicId)
+			assert.Equal(wantToken.ScopeId, got.ScopeId)
+			assert.Equal(wantToken.Name, got.Name)
+			assert.Equal(wantToken.Description, got.Description)
+			assert.Equal(wantToken.TimeToStaleSeconds, got.TimeToStaleSeconds)
+			assert.Equal(want.Token, got.Token)
+			assert.Equal(wantToken.CreatedByUserId, got.CreatedByUserId)
+			assert.Equal(want.KeyId, got.KeyId)
+			assert.Equal(wantToken.Revoked, got.Revoked)
+
+			// Assert that times are within one second of the values captured at creation time
+			assert.WithinDuration(want.CreateTime.AsTime(), got.CreateTime.AsTime(), time.Second)
+			assert.WithinDuration(want.UpdateTime.AsTime(), got.UpdateTime.AsTime(), time.Second)
+			assert.WithinDuration(want.ApproximateLastAccessTime.AsTime(), got.ApproximateLastAccessTime.AsTime(), time.Second)
+			assert.WithinDuration(wantToken.ExpirationTime.AsTime(), got.ExpirationTime.AsTime(), time.Second)
+
+			// Sort to ensure consistent ordering for assertions
+			sortByLabel(wantToken.Permissions)
+			sortByLabel(got.Permissions)
+
+			for i := range wantToken.Permissions {
+				assert.Equal(wantToken.Permissions[i].Label, got.Permissions[i].Label)
+				assert.ElementsMatch(wantToken.Permissions[i].Grants, got.Permissions[i].Grants)
+
+				wantGrantedScopes := make([]string, 0)
+
+				// Build the list of expected granted scopes. Omit any deleted scopes
+				for _, gs := range wantToken.Permissions[i].GrantedScopes {
+					if gs == globals.GrantScopeChildren || gs == globals.GrantScopeDescendants {
+						wantGrantedScopes = append(wantGrantedScopes, gs)
+						continue
+					}
+					if _, deleted := deletedScopes[gs]; !deleted {
+						wantGrantedScopes = append(wantGrantedScopes, gs)
+						continue
+					}
+					// Check for its children as well if it's an org scope
+					switch gs {
+					case org1.PublicId:
+						for _, ps := range []string{proj1a.PublicId, proj1b.PublicId} {
+							_, childDeleted := deletedScopes[ps]
+							assert.True(childDeleted, "expected child scope %s of deleted org scope %s to also be deleted", ps, gs)
+						}
+					case org2.PublicId:
+						_, childDeleted := deletedScopes[proj2.PublicId]
+						assert.True(childDeleted, "expected child scope %s of deleted org scope %s to also be deleted", proj2.PublicId, gs)
+					}
+					continue
+				}
+				slices.Sort(wantGrantedScopes)
+				slices.Sort(got.Permissions[i].GrantedScopes)
+				assert.ElementsMatch(wantGrantedScopes, got.Permissions[i].GrantedScopes)
+
+				// No scopes to delete
+				if tt.scopesToDelete == nil {
+					assert.Empty(got.Permissions[i].DeletedScopes)
+					continue
+				}
+
+				for _, ds := range got.Permissions[i].DeletedScopes {
+					_, deleted := deletedScopes[ds.ScopeId]
+					assert.True(deleted, "unexpected deleted scope %s found in permission %s", ds.ScopeId, got.Permissions[i].Label)
+				}
+			}
 		})
 	}
 }
@@ -1408,51 +1808,49 @@ func TestRepository_DeleteAppToken(t *testing.T) {
 		assert.True(errors.IsNotFoundError(err))
 	})
 
-	// re-enable after Lookup is implemented
-	// t.Run("invalid-id", func(t *testing.T) {
-	// 	require := require.New(t)
-	// 	idToDelete := "invalid-id"
+	t.Run("invalid-id", func(t *testing.T) {
+		require := require.New(t)
+		idToDelete := "invalid-id"
 
-	// 	d, err := repo.DeleteAppToken(ctx, idToDelete)
-	// 	require.Equal(0, d)
-	// 	require.Error(err)
-	// })
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(0, d)
+		require.Error(err)
+	})
 
-	// re-enable after Lookup is implemented
-	// t.Run("invalid-double-delete", func(t *testing.T) {
-	// 	assert, require := assert.New(t), require.New(t)
-	// 	at := &AppToken{
-	// 		ScopeId:         proj.PublicId,
-	// 		CreatedByUserId: u.PublicId,
-	// 		Permissions: []AppTokenPermission{
-	// 			{
-	// 				Label:         "test",
-	// 				Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
-	// 				GrantedScopes: []string{"this"},
-	// 			},
-	// 		},
-	// 	}
-	// 	createdAt, err := repo.CreateAppToken(ctx, at)
-	// 	require.NoError(err)
-	// 	require.NotNil(createdAt)
-	// 	idToDelete := createdAt.PublicId
+	t.Run("invalid-double-delete", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		at := &AppToken{
+			ScopeId:         proj.PublicId,
+			CreatedByUserId: u.PublicId,
+			Permissions: []AppTokenPermission{
+				{
+					Label:         "test",
+					Grants:        []string{"type=host-catalog;actions=list", "type=session;actions=list"},
+					GrantedScopes: []string{"this"},
+				},
+			},
+		}
+		createdAt, err := repo.CreateAppToken(ctx, at)
+		require.NoError(err)
+		require.NotNil(createdAt)
+		idToDelete := createdAt.PublicId
 
-	// 	d, err := repo.DeleteAppToken(ctx, idToDelete)
-	// 	require.Equal(1, d)
-	// 	assert.NoError(err)
+		d, err := repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(1, d)
+		assert.NoError(err)
 
-	// 	// verify it's gone
-	// 	atCheck := allocProjectAppToken()
-	// 	atCheck.PublicId = idToDelete
-	// 	err = repo.reader.LookupByPublicId(ctx, &atCheck)
-	// 	assert.Error(err)
-	// 	assert.True(errors.IsNotFoundError(err))
+		// verify it's gone
+		atCheck := allocProjectAppToken()
+		atCheck.PublicId = idToDelete
+		err = repo.reader.LookupByPublicId(ctx, &atCheck)
+		assert.Error(err)
+		assert.True(errors.IsNotFoundError(err))
 
-	// 	// try it again, it should fail
-	// 	d, err = repo.DeleteAppToken(ctx, idToDelete)
-	// 	require.Equal(0, d)
-	// 	require.Error(err)
-	// })
+		// try it again, it should fail
+		d, err = repo.DeleteAppToken(ctx, idToDelete)
+		require.Equal(0, d)
+		require.Error(err)
+	})
 }
 
 func TestRepository_listDeletedIds(t *testing.T) {

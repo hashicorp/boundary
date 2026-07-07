@@ -581,9 +581,9 @@ const (
 	`
 
 	scopeIdFromRoleIdQuery = `
-	   select scope_id
-		 from iam_role
-		where public_id = @public_id;`
+    select scope_id
+      from iam_role
+     where public_id = @public_id;`
 
 	listRolesQuery = `
 with

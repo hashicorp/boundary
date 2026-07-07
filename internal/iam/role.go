@@ -492,7 +492,6 @@ type projectRole struct {
 
 func (p *projectRole) removeGrantScope() {
 	// no-op since hierarchical isn't supported by project roles
-	return
 }
 
 func (p *projectRole) setGrantScope(ctx context.Context, specialGrant string) error {
