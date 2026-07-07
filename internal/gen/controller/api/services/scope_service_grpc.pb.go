@@ -33,6 +33,8 @@ const (
 	ScopeService_DestroyKeyVersion_FullMethodName             = "/controller.api.services.v1.ScopeService/DestroyKeyVersion"
 	ScopeService_AttachStoragePolicy_FullMethodName           = "/controller.api.services.v1.ScopeService/AttachStoragePolicy"
 	ScopeService_DetachStoragePolicy_FullMethodName           = "/controller.api.services.v1.ScopeService/DetachStoragePolicy"
+	ScopeService_SetAliasSuffix_FullMethodName                = "/controller.api.services.v1.ScopeService/SetAliasSuffix"
+	ScopeService_RemoveAliasSuffix_FullMethodName             = "/controller.api.services.v1.ScopeService/RemoveAliasSuffix"
 )
 
 // ScopeServiceClient is the client API for ScopeService service.
@@ -93,6 +95,16 @@ type ScopeServiceClient interface {
 	// if a Storage Policy is attempted to be removed from the Scope when the Scope
 	// does not have the Storage Policy attached to it.
 	DetachStoragePolicy(ctx context.Context, in *DetachStoragePolicyRequest, opts ...grpc.CallOption) (*DetachStoragePolicyResponse, error)
+	// SetAliasSuffix sets the alias suffix on a scope (org or project).
+	// The suffix is a single DNS label that project-scoped aliases must
+	// include as part of their value.
+	SetAliasSuffix(ctx context.Context, in *SetAliasSuffixRequest, opts ...grpc.CallOption) (*SetAliasSuffixResponse, error)
+	// RemoveAliasSuffix removes the alias suffix from the specified scope.
+	// The provided request must include the Scope ID for the scope from which
+	// the alias suffix will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope, an error is returned. An error is returned
+	// if aliases exist under the scope (or its child projects for an org scope).
+	RemoveAliasSuffix(ctx context.Context, in *RemoveAliasSuffixRequest, opts ...grpc.CallOption) (*RemoveAliasSuffixResponse, error)
 }
 
 type scopeServiceClient struct {
@@ -213,6 +225,26 @@ func (c *scopeServiceClient) DetachStoragePolicy(ctx context.Context, in *Detach
 	return out, nil
 }
 
+func (c *scopeServiceClient) SetAliasSuffix(ctx context.Context, in *SetAliasSuffixRequest, opts ...grpc.CallOption) (*SetAliasSuffixResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetAliasSuffixResponse)
+	err := c.cc.Invoke(ctx, ScopeService_SetAliasSuffix_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *scopeServiceClient) RemoveAliasSuffix(ctx context.Context, in *RemoveAliasSuffixRequest, opts ...grpc.CallOption) (*RemoveAliasSuffixResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveAliasSuffixResponse)
+	err := c.cc.Invoke(ctx, ScopeService_RemoveAliasSuffix_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScopeServiceServer is the server API for ScopeService service.
 // All implementations must embed UnimplementedScopeServiceServer
 // for forward compatibility.
@@ -271,6 +303,16 @@ type ScopeServiceServer interface {
 	// if a Storage Policy is attempted to be removed from the Scope when the Scope
 	// does not have the Storage Policy attached to it.
 	DetachStoragePolicy(context.Context, *DetachStoragePolicyRequest) (*DetachStoragePolicyResponse, error)
+	// SetAliasSuffix sets the alias suffix on a scope (org or project).
+	// The suffix is a single DNS label that project-scoped aliases must
+	// include as part of their value.
+	SetAliasSuffix(context.Context, *SetAliasSuffixRequest) (*SetAliasSuffixResponse, error)
+	// RemoveAliasSuffix removes the alias suffix from the specified scope.
+	// The provided request must include the Scope ID for the scope from which
+	// the alias suffix will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope, an error is returned. An error is returned
+	// if aliases exist under the scope (or its child projects for an org scope).
+	RemoveAliasSuffix(context.Context, *RemoveAliasSuffixRequest) (*RemoveAliasSuffixResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }
 
@@ -313,6 +355,12 @@ func (UnimplementedScopeServiceServer) AttachStoragePolicy(context.Context, *Att
 }
 func (UnimplementedScopeServiceServer) DetachStoragePolicy(context.Context, *DetachStoragePolicyRequest) (*DetachStoragePolicyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DetachStoragePolicy not implemented")
+}
+func (UnimplementedScopeServiceServer) SetAliasSuffix(context.Context, *SetAliasSuffixRequest) (*SetAliasSuffixResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAliasSuffix not implemented")
+}
+func (UnimplementedScopeServiceServer) RemoveAliasSuffix(context.Context, *RemoveAliasSuffixRequest) (*RemoveAliasSuffixResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveAliasSuffix not implemented")
 }
 func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 func (UnimplementedScopeServiceServer) testEmbeddedByValue()                      {}
@@ -533,6 +581,42 @@ func _ScopeService_DetachStoragePolicy_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScopeService_SetAliasSuffix_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAliasSuffixRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).SetAliasSuffix(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScopeService_SetAliasSuffix_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).SetAliasSuffix(ctx, req.(*SetAliasSuffixRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ScopeService_RemoveAliasSuffix_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveAliasSuffixRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).RemoveAliasSuffix(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScopeService_RemoveAliasSuffix_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).RemoveAliasSuffix(ctx, req.(*RemoveAliasSuffixRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScopeService_ServiceDesc is the grpc.ServiceDesc for ScopeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -583,6 +667,14 @@ var ScopeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DetachStoragePolicy",
 			Handler:    _ScopeService_DetachStoragePolicy_Handler,
+		},
+		{
+			MethodName: "SetAliasSuffix",
+			Handler:    _ScopeService_SetAliasSuffix_Handler,
+		},
+		{
+			MethodName: "RemoveAliasSuffix",
+			Handler:    _ScopeService_RemoveAliasSuffix_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

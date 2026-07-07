@@ -147,6 +147,32 @@ service ScopeService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Detaches the specified Storage Policy from the Scope."};
   }
+
+  // SetAliasSuffix sets the alias suffix on a scope (org or project).
+  // The suffix is a single DNS label that project-scoped aliases must
+  // include as part of their value.
+  rpc SetAliasSuffix(SetAliasSuffixRequest) returns (SetAliasSuffixResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:set-alias-suffix"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the alias suffix on a Scope."};
+  }
+
+  // RemoveAliasSuffix removes the alias suffix from the specified scope.
+  // The provided request must include the Scope ID for the scope from which
+  // the alias suffix will be removed. If the ID is missing, malformed, or
+  // references a non-existing scope, an error is returned. An error is returned
+  // if aliases exist under the scope (or its child projects for an org scope).
+  rpc RemoveAliasSuffix(RemoveAliasSuffixRequest) returns (RemoveAliasSuffixResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:remove-alias-suffix"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the alias suffix from a Scope."};
+  }
 }
 
 message GetScopeRequest {
@@ -281,5 +307,28 @@ message DetachStoragePolicyRequest {
 }
 
 message DetachStoragePolicyResponse {
+  api.resources.scopes.v1.Scope item = 1;
+}
+
+message SetAliasSuffixRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string alias_suffix = 2; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 3; // @gotags: `class:"public"`
+}
+
+message SetAliasSuffixResponse {
+  api.resources.scopes.v1.Scope item = 1;
+}
+
+message RemoveAliasSuffixRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+}
+
+message RemoveAliasSuffixResponse {
   api.resources.scopes.v1.Scope item = 1;
 }

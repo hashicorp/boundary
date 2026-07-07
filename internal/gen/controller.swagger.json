@@ -3891,6 +3891,86 @@
         ]
       }
     },
+    "/v1/scopes/{id}:remove-alias-suffix": {
+      "post": {
+        "summary": "Removes the alias suffix from a Scope.",
+        "operationId": "ScopeService_RemoveAliasSuffix",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ScopeService.RemoveAliasSuffixBody"
+            }
+          }
+        ],
+        "tags": [
+          "Scope service"
+        ]
+      }
+    },
+    "/v1/scopes/{id}:set-alias-suffix": {
+      "post": {
+        "summary": "Sets the alias suffix on a Scope.",
+        "operationId": "ScopeService_SetAliasSuffix",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ScopeService.SetAliasSuffixBody"
+            }
+          }
+        ],
+        "tags": [
+          "Scope service"
+        ]
+      }
+    },
     "/v1/scopes/{scope_id}:list-key-version-destruction-jobs": {
       "get": {
         "summary": "Lists all pending key version destruction jobs in a Scope.",
@@ -10720,6 +10800,14 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveAliasSuffixResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -10985,6 +11073,30 @@
         }
       }
     },
+    "controller.api.services.v1.ScopeService.RemoveAliasSuffixBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        }
+      }
+    },
+    "controller.api.services.v1.ScopeService.SetAliasSuffixBody": {
+      "type": "object",
+      "properties": {
+        "alias_suffix": {
+          "type": "string",
+          "title": ""
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        }
+      }
+    },
     "controller.api.services.v1.SessionRecordingService.CreateExportBody": {
       "type": "object",
       "properties": {
@@ -11001,6 +11113,14 @@
           "type": "integer",
           "format": "int64",
           "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.SetAliasSuffixResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
         }
       }
     },
