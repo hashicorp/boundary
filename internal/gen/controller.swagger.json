@@ -4043,6 +4043,46 @@
         ]
       }
     },
+    "/v1/session-recordings/{connection_recording_id}:export": {
+      "post": {
+        "summary": "CreateExport creates an export of the specified Connection Recording in the requested mime type. The export is processed asynchronously; use GetExport to poll the status of the export. If the ID is missing, malformed, or references a non-existing resource, an error is returned.",
+        "operationId": "SessionRecordingService_CreateExport",
+        "responses": {
+          "200": {
+            "description": "The created export.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "connection_recording_id",
+            "description": "The ID of the Connection Recording to export.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SessionRecordingService.CreateExportBody"
+            }
+          }
+        ],
+        "tags": [
+          "Session recording service"
+        ]
+      }
+    },
     "/v1/session-recordings/{id}": {
       "get": {
         "summary": "GetSessionRecording returns a stored Session recording if present. The provided request must include the Session recording ID for the Session recording being retrieved, or the ID of the Session that was recorded. If that ID is missing, malformed or reference a non existing resource, an error is returned.",
@@ -4075,7 +4115,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a Session Recording",
+        "summary": "Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned.",
         "operationId": "SessionRecordingService_DeleteSessionRecording",
         "responses": {
           "200": {
@@ -4107,7 +4147,7 @@
     },
     "/v1/session-recordings/{id}:download": {
       "get": {
-        "summary": "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\".",
+        "summary": "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. A Video ID is required to look up a Video recording. Supported mime types: \"application/x-asciicast\", \"video/webm\".",
         "operationId": "SessionRecordingService_Download",
         "responses": {
           "200": {
@@ -4129,16 +4169,80 @@
         "parameters": [
           {
             "name": "id",
-            "description": "The ID of the resource that should be downloaded. Supported types:\n  - Session ID and Session recording ID for Session recordings\n  - Connection ID and Connection recording ID for Connection recordings\n  - Channel recording ID for Channel recordings",
+            "description": "The ID of the resource that should be downloaded. Supported types:\n  - Session ID and Session recording ID for Session recordings\n  - Connection ID and Connection recording ID for Connection recordings\n  - Channel recording ID for Channel recordings\n  - Video ID for Video recordings",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "mime_type",
-            "description": "The format of the response. The only supported mime type is \"application/x-asciicast\".\nDefaults to \"application/x-asciicast\" if not set.",
+            "description": "The format of the response. Supports \"application/x-asciicast\" and \"video/webm\".\nDefaults to \"application/x-asciicast\" if not set.",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Session recording service"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}:export": {
+      "get": {
+        "summary": "GetExport returns a stored Export if present. The provided request must include the Export ID for the Export being retrieved. If that ID is missing, malformed, or references a non-existing resource, an error is returned.",
+        "operationId": "SessionRecordingService_GetExport",
+        "responses": {
+          "200": {
+            "description": "The requested export.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the Export to retrieve.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Session recording service"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}:export:cancel": {
+      "post": {
+        "summary": "CancelExport cancels an Export that is in progress. The provided request must include the Export ID for the Export being cancelled. If that ID is missing, malformed, or references a non-existing resource, an error is returned. Returns the Export in its cancelled state.",
+        "operationId": "SessionRecordingService_CancelExport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CancelExportResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the Export to cancel.",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -4172,6 +4276,60 @@
             "in": "path",
             "required": true,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "Session recording service"
+        ]
+      }
+    },
+    "/v1/session-recordings:list-exports": {
+      "get": {
+        "summary": "ListExports lists all exports. Exports are ordered by created_time descending (most recently created first).",
+        "operationId": "SessionRecordingService_ListExports",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListExportsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "The scope in which to list exports.\nMust be set unless recursive is set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "Whether to recurse into child scopes when listing.\nIf set and scope_id is empty, shows exports in\nall scopes the caller has access to.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -7195,7 +7353,15 @@
           "items": {
             "type": "string"
           },
-          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Channel.\nThe only supported mime type is \"application/x-asciicast\"."
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Channel.\nThe only supported mime type is \"application/x-asciicast\".\nDeprecated: This field has been moved to SSH-specific attributes and will be removed\nentirely in a future Boundary version."
+        },
+        "recording_state": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.RecordingState",
+          "description": "The detailed state of the channel recording."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Channel Recording type."
         }
       },
       "description": "ChannelRecording contains recorded information about a single Channel within a Connection.\nChannels are only present in multiplexed protocols, such as SSH."
@@ -7255,6 +7421,26 @@
             "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ChannelRecording"
           },
           "description": "Optionally, the channels used in this Connection,\nif it is using a multiplexed protocol, such as SSH."
+        },
+        "recording_state": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.RecordingState",
+          "description": "The detailed state of the connection recording."
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export"
+          },
+          "description": "Optionally, exports that may have been created for this Connection\nRecording."
+        },
+        "videos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Video"
+          },
+          "description": "Optionally, videos that may have been recorded for this Connection\nRecording."
         }
       },
       "description": "ConnectionRecording contains the recording of a single Connection within a Session."
@@ -7363,6 +7549,67 @@
       },
       "title": "CredentialStore contains all fields related to a Credential Store resource"
     },
+    "controller.api.resources.sessionrecordings.v1.Export": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Export."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the Export is in. This is inferred from the storage bucket\nassociated with the session recording."
+        },
+        "mime_type": {
+          "type": "string",
+          "description": "The mime type of the Export."
+        },
+        "state": {
+          "type": "string",
+          "description": "The current state of the Export."
+        },
+        "progress_percent": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The export's current progress."
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "The ID of the worker processing the Export."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Export was created."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Export."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version of the Export."
+        },
+        "connection_recording_id": {
+          "type": "string",
+          "description": "The ID of the Connection Recording being exported."
+        },
+        "error": {
+          "type": "string",
+          "description": "Any error encountered during the Export, if the Export failed."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The available actions on this resource for this user."
+        }
+      },
+      "description": "Export contains information about the export of a session recording."
+    },
     "controller.api.resources.sessionrecordings.v1.Host": {
       "type": "object",
       "properties": {
@@ -7440,6 +7687,24 @@
       },
       "description": "HostCatalog describes the HostCatalog that contains the host chosen for the\nrecorded session."
     },
+    "controller.api.resources.sessionrecordings.v1.RecordingState": {
+      "type": "object",
+      "properties": {
+        "storage_state": {
+          "type": "string",
+          "description": "Information about the storage state of the recording."
+        },
+        "syncing_error_details": {
+          "type": "string",
+          "description": "Information about the syncing error details of the recording."
+        },
+        "verification_error_details": {
+          "type": "string",
+          "description": "Information about the verification error details of the recording."
+        }
+      },
+      "description": "RecordingState contain information about the state of a recording."
+    },
     "controller.api.resources.sessionrecordings.v1.SessionRecording": {
       "type": "object",
       "properties": {
@@ -7499,11 +7764,11 @@
         },
         "state": {
           "type": "string",
-          "description": "The current state of the session recording. One of\n\"started\", \"available\" and \"unknown\"."
+          "description": "The current state of the session recording. One of\n\"started\", \"available\" and \"unknown\".\n\nNote: this field will eventually be deprecated two release after 1.0.0\nin favor of the availability field."
         },
         "error_details": {
           "type": "string",
-          "description": "Any error seen during the closing of the session recording.\nCurrently only set if state is \"unknown\"."
+          "description": "Any error seen during the closing of the session recording.\nCurrently only set if state is \"unknown\".\n\nNote: this field will eventually be deprecated two release after 1.0.0\nin favor of the error details contained in the recording_state field."
         },
         "mime_types": {
           "type": "array",
@@ -7544,6 +7809,14 @@
           "type": "string",
           "format": "date-time",
           "description": "The time a session recording is scheduled to be automatically deleted."
+        },
+        "availability": {
+          "type": "string",
+          "description": "The availability of the session recording. One of \"available\" or \"not available\"."
+        },
+        "recording_state": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.RecordingState",
+          "description": "The detailed state of the session recording."
         }
       },
       "description": "SessionRecording contains information about the recording of a Session."
@@ -7655,6 +7928,31 @@
         }
       },
       "description": "ValuesAtTime contain information about other Boundary resources as they\nwere at a certain time through the lifetime of the Session Recording."
+    },
+    "controller.api.resources.sessionrecordings.v1.Video": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Video."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Video was created."
+        },
+        "length_seconds": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The duration of the Video in seconds."
+        },
+        "size_bytes": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The size of the Video in bytes."
+        }
+      },
+      "description": "Video contains information about the video recording of a Session Recording."
     },
     "controller.api.resources.sessions.v1.Connection": {
       "type": "object",
@@ -8826,6 +9124,9 @@
         }
       }
     },
+    "controller.api.services.v1.CancelExportResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.CancelSessionResponse": {
       "type": "object",
       "properties": {
@@ -8931,6 +9232,15 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateExportResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export",
+          "description": "The created export."
         }
       }
     },
@@ -9220,6 +9530,15 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+        }
+      }
+    },
+    "controller.api.services.v1.GetExportResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export",
+          "description": "The requested export."
         }
       }
     },
@@ -9691,6 +10010,47 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
+        }
+      }
+    },
+    "controller.api.services.v1.ListExportsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Export"
           },
           "description": "The items returned in this page."
         },
@@ -10622,6 +10982,15 @@
           "type": "integer",
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        }
+      }
+    },
+    "controller.api.services.v1.SessionRecordingService.CreateExportBody": {
+      "type": "object",
+      "properties": {
+        "mime_type": {
+          "type": "string",
+          "description": "The mime type of the export."
         }
       }
     },

@@ -341,6 +341,30 @@ func DefaultEgressWorkerFilter() Option {
 	}
 }
 
+func WithRdpTargetEnableSessionRecording(inEnableSessionRecording bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["enable_session_recording"] = inEnableSessionRecording
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultRdpTargetEnableSessionRecording() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["enable_session_recording"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithSshTargetEnableSessionRecording(inEnableSessionRecording bool) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -349,6 +373,18 @@ func WithSshTargetEnableSessionRecording(inEnableSessionRecording bool) Option {
 		}
 		val := raw.(map[string]any)
 		val["enable_session_recording"] = inEnableSessionRecording
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultSshTargetEnableSessionRecording() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["enable_session_recording"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -428,6 +464,30 @@ func WithSessionMaxSeconds(inSessionMaxSeconds uint32) Option {
 func DefaultSessionMaxSeconds() Option {
 	return func(o *options) {
 		o.postMap["session_max_seconds"] = nil
+	}
+}
+
+func WithRdpTargetStorageBucketId(inStorageBucketId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["storage_bucket_id"] = inStorageBucketId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultRdpTargetStorageBucketId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["storage_bucket_id"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

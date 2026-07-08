@@ -312,8 +312,9 @@ type DownloadRequest struct {
 	//   - Session ID and Session recording ID for Session recordings
 	//   - Connection ID and Connection recording ID for Connection recordings
 	//   - Channel recording ID for Channel recordings
+	//   - Video ID for Video recordings
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
-	// The format of the response. The only supported mime type is "application/x-asciicast".
+	// The format of the response. Supports "application/x-asciicast" and "video/webm".
 	// Defaults to "application/x-asciicast" if not set.
 	MimeType      string `protobuf:"bytes,2,opt,name=mime_type,proto3" json:"mime_type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	unknownFields protoimpl.UnknownFields
@@ -534,6 +535,464 @@ func (*DeleteSessionRecordingResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{8}
 }
 
+type CreateExportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the Connection Recording to export.
+	ConnectionRecordingId string `protobuf:"bytes,1,opt,name=connection_recording_id,json=connectionRecordingId,proto3" json:"connection_recording_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// The mime type of the export.
+	MimeType      string `protobuf:"bytes,2,opt,name=mime_type,proto3" json:"mime_type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateExportRequest) Reset() {
+	*x = CreateExportRequest{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateExportRequest) ProtoMessage() {}
+
+func (x *CreateExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateExportRequest.ProtoReflect.Descriptor instead.
+func (*CreateExportRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateExportRequest) GetConnectionRecordingId() string {
+	if x != nil {
+		return x.ConnectionRecordingId
+	}
+	return ""
+}
+
+func (x *CreateExportRequest) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+type CreateExportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The created export.
+	Item          *session_recordings.Export `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateExportResponse) Reset() {
+	*x = CreateExportResponse{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateExportResponse) ProtoMessage() {}
+
+func (x *CreateExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateExportResponse.ProtoReflect.Descriptor instead.
+func (*CreateExportResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CreateExportResponse) GetItem() *session_recordings.Export {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type GetExportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the Export to retrieve.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExportRequest) Reset() {
+	*x = GetExportRequest{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExportRequest) ProtoMessage() {}
+
+func (x *GetExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExportRequest.ProtoReflect.Descriptor instead.
+func (*GetExportRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetExportRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetExportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The requested export.
+	Item          *session_recordings.Export `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExportResponse) Reset() {
+	*x = GetExportResponse{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExportResponse) ProtoMessage() {}
+
+func (x *GetExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExportResponse.ProtoReflect.Descriptor instead.
+func (*GetExportResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetExportResponse) GetItem() *session_recordings.Export {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type ListExportsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The scope in which to list exports.
+	// Must be set unless recursive is set.
+	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// Whether to recurse into child scopes when listing.
+	// If set and scope_id is empty, shows exports in
+	// all scopes the caller has access to.
+	Recursive bool `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// An opaque token that Boundary uses to continue an existing iteration or
+	// request updated items. If you do not specify a token, pagination
+	// starts from the beginning. To learn more about list pagination
+	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The maximum size of a page in this iteration.
+	// If you do not set a page size, Boundary uses the configured default page size.
+	// If the page_size is greater than the default page size configured,
+	// Boundary truncates the page size to this number.
+	PageSize      uint32 `protobuf:"varint,4,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExportsRequest) Reset() {
+	*x = ListExportsRequest{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExportsRequest) ProtoMessage() {}
+
+func (x *ListExportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExportsRequest.ProtoReflect.Descriptor instead.
+func (*ListExportsRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListExportsRequest) GetScopeId() string {
+	if x != nil {
+		return x.ScopeId
+	}
+	return ""
+}
+
+func (x *ListExportsRequest) GetRecursive() bool {
+	if x != nil {
+		return x.Recursive
+	}
+	return false
+}
+
+func (x *ListExportsRequest) GetListToken() string {
+	if x != nil {
+		return x.ListToken
+	}
+	return ""
+}
+
+func (x *ListExportsRequest) GetPageSize() uint32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListExportsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The items returned in this page.
+	Items []*session_recordings.Export `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// The type of response, either "delta" or "complete".
+	// Delta signifies that this is part of a paginated result
+	// or an update to a previously completed pagination.
+	// Complete signifies that it is the last page.
+	ResponseType string `protobuf:"bytes,2,opt,name=response_type,proto3" json:"response_type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// An opaque token used to continue an existing pagination or
+	// request updated items. Use this token in the next list request
+	// to request the next page.
+	ListToken string `protobuf:"bytes,3,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The name of the field which the items are sorted by.
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,proto3" json:"sort_by,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// The direction of the sort, either "asc" or "desc".
+	SortDir string `protobuf:"bytes,5,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// A list of item IDs that have been removed since they were returned
+	// as part of a pagination. They should be dropped from any client cache.
+	// This may contain items that are not known to the cache, if they were
+	// created and deleted between listings.
+	RemovedIds []string `protobuf:"bytes,6,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	// An estimate at the total items available. This may change during pagination.
+	EstItemCount  uint32 `protobuf:"varint,7,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExportsResponse) Reset() {
+	*x = ListExportsResponse{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExportsResponse) ProtoMessage() {}
+
+func (x *ListExportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExportsResponse.ProtoReflect.Descriptor instead.
+func (*ListExportsResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListExportsResponse) GetItems() []*session_recordings.Export {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *ListExportsResponse) GetResponseType() string {
+	if x != nil {
+		return x.ResponseType
+	}
+	return ""
+}
+
+func (x *ListExportsResponse) GetListToken() string {
+	if x != nil {
+		return x.ListToken
+	}
+	return ""
+}
+
+func (x *ListExportsResponse) GetSortBy() string {
+	if x != nil {
+		return x.SortBy
+	}
+	return ""
+}
+
+func (x *ListExportsResponse) GetSortDir() string {
+	if x != nil {
+		return x.SortDir
+	}
+	return ""
+}
+
+func (x *ListExportsResponse) GetRemovedIds() []string {
+	if x != nil {
+		return x.RemovedIds
+	}
+	return nil
+}
+
+func (x *ListExportsResponse) GetEstItemCount() uint32 {
+	if x != nil {
+		return x.EstItemCount
+	}
+	return 0
+}
+
+type CancelExportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the Export to cancel.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelExportRequest) Reset() {
+	*x = CancelExportRequest{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelExportRequest) ProtoMessage() {}
+
+func (x *CancelExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelExportRequest.ProtoReflect.Descriptor instead.
+func (*CancelExportRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CancelExportRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type CancelExportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelExportResponse) Reset() {
+	*x = CancelExportResponse{}
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelExportResponse) ProtoMessage() {}
+
+func (x *CancelExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_session_recording_service_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelExportResponse.ProtoReflect.Descriptor instead.
+func (*CancelExportResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP(), []int{16}
+}
+
 var File_controller_api_services_v1_session_recording_service_proto protoreflect.FileDescriptor
 
 const file_controller_api_services_v1_session_recording_service_proto_rawDesc = "" +
@@ -569,13 +1028,46 @@ const file_controller_api_services_v1_session_recording_service_proto_rawDesc = 
 	"\x04item\x18\x01 \x01(\v2?.controller.api.resources.sessionrecordings.v1.SessionRecordingR\x04item\"/\n" +
 	"\x1dDeleteSessionRecordingRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\" \n" +
-	"\x1eDeleteSessionRecordingResponse2\xe5\x12\n" +
+	"\x1eDeleteSessionRecordingResponse\"k\n" +
+	"\x13CreateExportRequest\x126\n" +
+	"\x17connection_recording_id\x18\x01 \x01(\tR\x15connectionRecordingId\x12\x1c\n" +
+	"\tmime_type\x18\x02 \x01(\tR\tmime_type\"a\n" +
+	"\x14CreateExportResponse\x12I\n" +
+	"\x04item\x18\x01 \x01(\v25.controller.api.resources.sessionrecordings.v1.ExportR\x04item\"\"\n" +
+	"\x10GetExportRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"^\n" +
+	"\x11GetExportResponse\x12I\n" +
+	"\x04item\x18\x01 \x01(\v25.controller.api.resources.sessionrecordings.v1.ExportR\x04item\"\x8b\x01\n" +
+	"\x12ListExportsRequest\x12\x19\n" +
+	"\bscope_id\x18\x01 \x01(\tR\ascopeId\x12\x1c\n" +
+	"\trecursive\x18\x02 \x01(\bR\trecursive\x12\x1e\n" +
+	"\n" +
+	"list_token\x18\x03 \x01(\tR\n" +
+	"list_token\x12\x1c\n" +
+	"\tpage_size\x18\x04 \x01(\rR\tpage_size\"\xa8\x02\n" +
+	"\x13ListExportsResponse\x12K\n" +
+	"\x05items\x18\x01 \x03(\v25.controller.api.resources.sessionrecordings.v1.ExportR\x05items\x12$\n" +
+	"\rresponse_type\x18\x02 \x01(\tR\rresponse_type\x12\x1e\n" +
+	"\n" +
+	"list_token\x18\x03 \x01(\tR\n" +
+	"list_token\x12\x18\n" +
+	"\asort_by\x18\x04 \x01(\tR\asort_by\x12\x1a\n" +
+	"\bsort_dir\x18\x05 \x01(\tR\bsort_dir\x12 \n" +
+	"\vremoved_ids\x18\x06 \x03(\tR\vremoved_ids\x12&\n" +
+	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count\"%\n" +
+	"\x13CancelExportRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x16\n" +
+	"\x14CancelExportResponse2\xe4 \n" +
 	"\x17SessionRecordingService\x12\xea\x03\n" +
 	"\x13GetSessionRecording\x126.controller.api.services.v1.GetSessionRecordingRequest\x1a7.controller.api.services.v1.GetSessionRecordingResponse\"\xe1\x02\x92A\xb4\x02\x12\xb1\x02GetSessionRecording returns a stored Session recording if present. The provided request must include the Session recording ID for the Session recording being retrieved, or the ID of the Session that was recorded. If that ID is missing, malformed or reference a non existing resource, an error is returned.\x82\xd3\xe4\x93\x02#b\x04item\x12\x1b/v1/session-recordings/{id}\x12\xbe\x02\n" +
-	"\x15ListSessionRecordings\x128.controller.api.services.v1.ListSessionRecordingsRequest\x1a9.controller.api.services.v1.ListSessionRecordingsResponse\"\xaf\x01\x92A\x8d\x01\x12\x8a\x01ListSessionRecordings lists all Session recordings. Session recordings are ordered by start_time descending (most recently started first).\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/session-recordings\x12\x87\x04\n" +
-	"\bDownload\x12+.controller.api.services.v1.DownloadRequest\x1a\x14.google.api.HttpBody\"\xb5\x03\x92A\x85\x03\x12\x82\x03Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\".\x82\xd3\xe4\x93\x02&\x12$/v1/session-recordings/{id}:download0\x01\x12\xc7\x02\n" +
-	"\x14ReApplyStoragePolicy\x127.controller.api.services.v1.ReApplyStoragePolicyRequest\x1a8.controller.api.services.v1.ReApplyStoragePolicyResponse\"\xbb\x01\x92Ax\x12vReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording.\x82\xd3\xe4\x93\x02:b\x04item\"2/v1/session-recordings/{id}:reapply-storage-policy\x12\xd4\x01\n" +
-	"\x16DeleteSessionRecording\x129.controller.api.services.v1.DeleteSessionRecordingRequest\x1a:.controller.api.services.v1.DeleteSessionRecordingResponse\"C\x92A\x1d\x12\x1bDeletes a Session Recording\x82\xd3\xe4\x93\x02\x1d*\x1b/v1/session-recordings/{id}\x1a\xf0\x03\x92A\xec\x03\n" +
+	"\x15ListSessionRecordings\x128.controller.api.services.v1.ListSessionRecordingsRequest\x1a9.controller.api.services.v1.ListSessionRecordingsResponse\"\xaf\x01\x92A\x8d\x01\x12\x8a\x01ListSessionRecordings lists all Session recordings. Session recordings are ordered by start_time descending (most recently started first).\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/session-recordings\x12\xc0\x04\n" +
+	"\bDownload\x12+.controller.api.services.v1.DownloadRequest\x1a\x14.google.api.HttpBody\"\xee\x03\x92A\xbe\x03\x12\xbb\x03Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. A Video ID is required to look up a Video recording. Supported mime types: \"application/x-asciicast\", \"video/webm\".\x82\xd3\xe4\x93\x02&\x12$/v1/session-recordings/{id}:download0\x01\x12\xc7\x02\n" +
+	"\x14ReApplyStoragePolicy\x127.controller.api.services.v1.ReApplyStoragePolicyRequest\x1a8.controller.api.services.v1.ReApplyStoragePolicyResponse\"\xbb\x01\x92Ax\x12vReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording.\x82\xd3\xe4\x93\x02:b\x04item\"2/v1/session-recordings/{id}:reapply-storage-policy\x12\xf1\x02\n" +
+	"\x16DeleteSessionRecording\x129.controller.api.services.v1.DeleteSessionRecordingRequest\x1a:.controller.api.services.v1.DeleteSessionRecordingResponse\"\xdf\x01\x92A\xb8\x01\x12\xb5\x01Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned.\x82\xd3\xe4\x93\x02\x1d*\x1b/v1/session-recordings/{id}\x12\xd9\x03\n" +
+	"\fCreateExport\x12/.controller.api.services.v1.CreateExportRequest\x1a0.controller.api.services.v1.CreateExportResponse\"\xe5\x02\x92A\x99\x02\x12\x96\x02CreateExport creates an export of the specified Connection Recording in the requested mime type. The export is processed asynchronously; use GetExport to poll the status of the export. If the ID is missing, malformed, or references a non-existing resource, an error is returned.\x82\xd3\xe4\x93\x02B:\x01*b\x04item\"7/v1/session-recordings/{connection_recording_id}:export\x12\xfe\x02\n" +
+	"\tGetExport\x12,.controller.api.services.v1.GetExportRequest\x1a-.controller.api.services.v1.GetExportResponse\"\x93\x02\x92A\xdf\x01\x12\xdc\x01GetExport returns a stored Export if present. The provided request must include the Export ID for the Export being retrieved. If that ID is missing, malformed, or references a non-existing resource, an error is returned.\x82\xd3\xe4\x93\x02*b\x04item\x12\"/v1/session-recordings/{id}:export\x12\x8d\x02\n" +
+	"\vListExports\x12..controller.api.services.v1.ListExportsRequest\x1a/.controller.api.services.v1.ListExportsResponse\"\x9c\x01\x92An\x12lListExports lists all exports. Exports are ordered by created_time descending (most recently created first).\x82\xd3\xe4\x93\x02%\x12#/v1/session-recordings:list-exports\x12\xb9\x03\n" +
+	"\fCancelExport\x12/.controller.api.services.v1.CancelExportRequest\x1a0.controller.api.services.v1.CancelExportResponse\"\xc5\x02\x92A\x90\x02\x12\x8d\x02CancelExport cancels an Export that is in progress. The provided request must include the Export ID for the Export being cancelled. If that ID is missing, malformed, or references a non-existing resource, an error is returned. Returns the Export in its cancelled state.\x82\xd3\xe4\x93\x02+\")/v1/session-recordings/{id}:export:cancel\x1a\xf0\x03\x92A\xec\x03\n" +
 	"\x19Session recording service\x12\xb7\x02A session recording is a feature that enables administrators to record and play back user access sessions to target resources. It provides an audit trail of user activity and lets administrators monitor access. The session recording service provides endpoints that let you manage session recordings in Boundary.\x1a\x94\x01\n" +
 	":Read about session recordings in the Boundary domain model\x12Vhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordingsBMZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 
@@ -591,7 +1083,7 @@ func file_controller_api_services_v1_session_recording_service_proto_rawDescGZIP
 	return file_controller_api_services_v1_session_recording_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_session_recording_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_controller_api_services_v1_session_recording_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_controller_api_services_v1_session_recording_service_proto_goTypes = []any{
 	(*GetSessionRecordingRequest)(nil),          // 0: controller.api.services.v1.GetSessionRecordingRequest
 	(*GetSessionRecordingResponse)(nil),         // 1: controller.api.services.v1.GetSessionRecordingResponse
@@ -602,28 +1094,48 @@ var file_controller_api_services_v1_session_recording_service_proto_goTypes = []
 	(*ReApplyStoragePolicyResponse)(nil),        // 6: controller.api.services.v1.ReApplyStoragePolicyResponse
 	(*DeleteSessionRecordingRequest)(nil),       // 7: controller.api.services.v1.DeleteSessionRecordingRequest
 	(*DeleteSessionRecordingResponse)(nil),      // 8: controller.api.services.v1.DeleteSessionRecordingResponse
-	(*session_recordings.SessionRecording)(nil), // 9: controller.api.resources.sessionrecordings.v1.SessionRecording
-	(*httpbody.HttpBody)(nil),                   // 10: google.api.HttpBody
+	(*CreateExportRequest)(nil),                 // 9: controller.api.services.v1.CreateExportRequest
+	(*CreateExportResponse)(nil),                // 10: controller.api.services.v1.CreateExportResponse
+	(*GetExportRequest)(nil),                    // 11: controller.api.services.v1.GetExportRequest
+	(*GetExportResponse)(nil),                   // 12: controller.api.services.v1.GetExportResponse
+	(*ListExportsRequest)(nil),                  // 13: controller.api.services.v1.ListExportsRequest
+	(*ListExportsResponse)(nil),                 // 14: controller.api.services.v1.ListExportsResponse
+	(*CancelExportRequest)(nil),                 // 15: controller.api.services.v1.CancelExportRequest
+	(*CancelExportResponse)(nil),                // 16: controller.api.services.v1.CancelExportResponse
+	(*session_recordings.SessionRecording)(nil), // 17: controller.api.resources.sessionrecordings.v1.SessionRecording
+	(*session_recordings.Export)(nil),           // 18: controller.api.resources.sessionrecordings.v1.Export
+	(*httpbody.HttpBody)(nil),                   // 19: google.api.HttpBody
 }
 var file_controller_api_services_v1_session_recording_service_proto_depIdxs = []int32{
-	9,  // 0: controller.api.services.v1.GetSessionRecordingResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
-	9,  // 1: controller.api.services.v1.ListSessionRecordingsResponse.items:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
-	9,  // 2: controller.api.services.v1.ReApplyStoragePolicyResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
-	0,  // 3: controller.api.services.v1.SessionRecordingService.GetSessionRecording:input_type -> controller.api.services.v1.GetSessionRecordingRequest
-	2,  // 4: controller.api.services.v1.SessionRecordingService.ListSessionRecordings:input_type -> controller.api.services.v1.ListSessionRecordingsRequest
-	4,  // 5: controller.api.services.v1.SessionRecordingService.Download:input_type -> controller.api.services.v1.DownloadRequest
-	5,  // 6: controller.api.services.v1.SessionRecordingService.ReApplyStoragePolicy:input_type -> controller.api.services.v1.ReApplyStoragePolicyRequest
-	7,  // 7: controller.api.services.v1.SessionRecordingService.DeleteSessionRecording:input_type -> controller.api.services.v1.DeleteSessionRecordingRequest
-	1,  // 8: controller.api.services.v1.SessionRecordingService.GetSessionRecording:output_type -> controller.api.services.v1.GetSessionRecordingResponse
-	3,  // 9: controller.api.services.v1.SessionRecordingService.ListSessionRecordings:output_type -> controller.api.services.v1.ListSessionRecordingsResponse
-	10, // 10: controller.api.services.v1.SessionRecordingService.Download:output_type -> google.api.HttpBody
-	6,  // 11: controller.api.services.v1.SessionRecordingService.ReApplyStoragePolicy:output_type -> controller.api.services.v1.ReApplyStoragePolicyResponse
-	8,  // 12: controller.api.services.v1.SessionRecordingService.DeleteSessionRecording:output_type -> controller.api.services.v1.DeleteSessionRecordingResponse
-	8,  // [8:13] is the sub-list for method output_type
-	3,  // [3:8] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	17, // 0: controller.api.services.v1.GetSessionRecordingResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
+	17, // 1: controller.api.services.v1.ListSessionRecordingsResponse.items:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
+	17, // 2: controller.api.services.v1.ReApplyStoragePolicyResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.SessionRecording
+	18, // 3: controller.api.services.v1.CreateExportResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.Export
+	18, // 4: controller.api.services.v1.GetExportResponse.item:type_name -> controller.api.resources.sessionrecordings.v1.Export
+	18, // 5: controller.api.services.v1.ListExportsResponse.items:type_name -> controller.api.resources.sessionrecordings.v1.Export
+	0,  // 6: controller.api.services.v1.SessionRecordingService.GetSessionRecording:input_type -> controller.api.services.v1.GetSessionRecordingRequest
+	2,  // 7: controller.api.services.v1.SessionRecordingService.ListSessionRecordings:input_type -> controller.api.services.v1.ListSessionRecordingsRequest
+	4,  // 8: controller.api.services.v1.SessionRecordingService.Download:input_type -> controller.api.services.v1.DownloadRequest
+	5,  // 9: controller.api.services.v1.SessionRecordingService.ReApplyStoragePolicy:input_type -> controller.api.services.v1.ReApplyStoragePolicyRequest
+	7,  // 10: controller.api.services.v1.SessionRecordingService.DeleteSessionRecording:input_type -> controller.api.services.v1.DeleteSessionRecordingRequest
+	9,  // 11: controller.api.services.v1.SessionRecordingService.CreateExport:input_type -> controller.api.services.v1.CreateExportRequest
+	11, // 12: controller.api.services.v1.SessionRecordingService.GetExport:input_type -> controller.api.services.v1.GetExportRequest
+	13, // 13: controller.api.services.v1.SessionRecordingService.ListExports:input_type -> controller.api.services.v1.ListExportsRequest
+	15, // 14: controller.api.services.v1.SessionRecordingService.CancelExport:input_type -> controller.api.services.v1.CancelExportRequest
+	1,  // 15: controller.api.services.v1.SessionRecordingService.GetSessionRecording:output_type -> controller.api.services.v1.GetSessionRecordingResponse
+	3,  // 16: controller.api.services.v1.SessionRecordingService.ListSessionRecordings:output_type -> controller.api.services.v1.ListSessionRecordingsResponse
+	19, // 17: controller.api.services.v1.SessionRecordingService.Download:output_type -> google.api.HttpBody
+	6,  // 18: controller.api.services.v1.SessionRecordingService.ReApplyStoragePolicy:output_type -> controller.api.services.v1.ReApplyStoragePolicyResponse
+	8,  // 19: controller.api.services.v1.SessionRecordingService.DeleteSessionRecording:output_type -> controller.api.services.v1.DeleteSessionRecordingResponse
+	10, // 20: controller.api.services.v1.SessionRecordingService.CreateExport:output_type -> controller.api.services.v1.CreateExportResponse
+	12, // 21: controller.api.services.v1.SessionRecordingService.GetExport:output_type -> controller.api.services.v1.GetExportResponse
+	14, // 22: controller.api.services.v1.SessionRecordingService.ListExports:output_type -> controller.api.services.v1.ListExportsResponse
+	16, // 23: controller.api.services.v1.SessionRecordingService.CancelExport:output_type -> controller.api.services.v1.CancelExportResponse
+	15, // [15:24] is the sub-list for method output_type
+	6,  // [6:15] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_services_v1_session_recording_service_proto_init() }
@@ -637,7 +1149,7 @@ func file_controller_api_services_v1_session_recording_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_services_v1_session_recording_service_proto_rawDesc), len(file_controller_api_services_v1_session_recording_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

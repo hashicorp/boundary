@@ -28,6 +28,10 @@ const (
 	SessionRecordingService_Download_FullMethodName               = "/controller.api.services.v1.SessionRecordingService/Download"
 	SessionRecordingService_ReApplyStoragePolicy_FullMethodName   = "/controller.api.services.v1.SessionRecordingService/ReApplyStoragePolicy"
 	SessionRecordingService_DeleteSessionRecording_FullMethodName = "/controller.api.services.v1.SessionRecordingService/DeleteSessionRecording"
+	SessionRecordingService_CreateExport_FullMethodName           = "/controller.api.services.v1.SessionRecordingService/CreateExport"
+	SessionRecordingService_GetExport_FullMethodName              = "/controller.api.services.v1.SessionRecordingService/GetExport"
+	SessionRecordingService_ListExports_FullMethodName            = "/controller.api.services.v1.SessionRecordingService/ListExports"
+	SessionRecordingService_CancelExport_FullMethodName           = "/controller.api.services.v1.SessionRecordingService/CancelExport"
 )
 
 // SessionRecordingServiceClient is the client API for SessionRecordingService service.
@@ -46,16 +50,35 @@ type SessionRecordingServiceClient interface {
 	// Supports both Session ID and Session recording ID for looking up a Session recording.
 	// Supports both Connection ID and Connection recording ID to look up a Connection recording.
 	// A Channel recording ID is required to look up a Channel recording.
-	// The only supported mime type is "application/x-asciicast".
+	// A Video ID is required to look up a Video recording.
+	// Supported mime types: "application/x-asciicast", "video/webm"
 	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[httpbody.HttpBody], error)
 	// ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
 	// and updates the retain until and delete after values. The provided request
 	// must include the Session recording ID for the Session recording to be updated. If that ID
 	// is missing, malformed or reference a non existing resource, an error is returned.
 	ReApplyStoragePolicy(ctx context.Context, in *ReApplyStoragePolicyRequest, opts ...grpc.CallOption) (*ReApplyStoragePolicyResponse, error)
-	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
-	// is malformed or not provided an error is returned.
+	// DeleteSessionRecording deletes a Session Recording or Video recording.
+	// Supports Session Recording ID to delete a Session Recording.
+	// Supports Video ID to delete a Video recording.
+	// If the Session Recording id is malformed or not provided an error is returned.
 	DeleteSessionRecording(ctx context.Context, in *DeleteSessionRecordingRequest, opts ...grpc.CallOption) (*DeleteSessionRecordingResponse, error)
+	// CreateExport creates an export of the specified Connection Recording in the requested mime type.
+	// The provided request must include the Connection Recording ID. The export is processed
+	// asynchronously; use GetExport to poll the status of the export. If the ID is missing,
+	// malformed, or references a non-existing resource, an error is returned.
+	CreateExport(ctx context.Context, in *CreateExportRequest, opts ...grpc.CallOption) (*CreateExportResponse, error)
+	// GetExport returns a stored Export if present. The provided request must include the Export ID
+	// for the Export being retrieved. If that ID is missing, malformed, or references a non-existing
+	// resource, an error is returned.
+	GetExport(ctx context.Context, in *GetExportRequest, opts ...grpc.CallOption) (*GetExportResponse, error)
+	// ListExports lists all Exports. Exports are ordered by create time descending
+	// (most recently created first).
+	ListExports(ctx context.Context, in *ListExportsRequest, opts ...grpc.CallOption) (*ListExportsResponse, error)
+	// CancelExport cancels an Export that is in progress. The provided request must include the
+	// Export ID for the Export being cancelled. If that ID is missing, malformed, or references a
+	// non-existing resource, an error is returned. Returns the Export in its cancelled state.
+	CancelExport(ctx context.Context, in *CancelExportRequest, opts ...grpc.CallOption) (*CancelExportResponse, error)
 }
 
 type sessionRecordingServiceClient struct {
@@ -125,6 +148,46 @@ func (c *sessionRecordingServiceClient) DeleteSessionRecording(ctx context.Conte
 	return out, nil
 }
 
+func (c *sessionRecordingServiceClient) CreateExport(ctx context.Context, in *CreateExportRequest, opts ...grpc.CallOption) (*CreateExportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateExportResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_CreateExport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sessionRecordingServiceClient) GetExport(ctx context.Context, in *GetExportRequest, opts ...grpc.CallOption) (*GetExportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetExportResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_GetExport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sessionRecordingServiceClient) ListExports(ctx context.Context, in *ListExportsRequest, opts ...grpc.CallOption) (*ListExportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListExportsResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_ListExports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sessionRecordingServiceClient) CancelExport(ctx context.Context, in *CancelExportRequest, opts ...grpc.CallOption) (*CancelExportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelExportResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_CancelExport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SessionRecordingServiceServer is the server API for SessionRecordingService service.
 // All implementations must embed UnimplementedSessionRecordingServiceServer
 // for forward compatibility.
@@ -141,16 +204,35 @@ type SessionRecordingServiceServer interface {
 	// Supports both Session ID and Session recording ID for looking up a Session recording.
 	// Supports both Connection ID and Connection recording ID to look up a Connection recording.
 	// A Channel recording ID is required to look up a Channel recording.
-	// The only supported mime type is "application/x-asciicast".
+	// A Video ID is required to look up a Video recording.
+	// Supported mime types: "application/x-asciicast", "video/webm"
 	Download(*DownloadRequest, grpc.ServerStreamingServer[httpbody.HttpBody]) error
 	// ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
 	// and updates the retain until and delete after values. The provided request
 	// must include the Session recording ID for the Session recording to be updated. If that ID
 	// is missing, malformed or reference a non existing resource, an error is returned.
 	ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error)
-	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
-	// is malformed or not provided an error is returned.
+	// DeleteSessionRecording deletes a Session Recording or Video recording.
+	// Supports Session Recording ID to delete a Session Recording.
+	// Supports Video ID to delete a Video recording.
+	// If the Session Recording id is malformed or not provided an error is returned.
 	DeleteSessionRecording(context.Context, *DeleteSessionRecordingRequest) (*DeleteSessionRecordingResponse, error)
+	// CreateExport creates an export of the specified Connection Recording in the requested mime type.
+	// The provided request must include the Connection Recording ID. The export is processed
+	// asynchronously; use GetExport to poll the status of the export. If the ID is missing,
+	// malformed, or references a non-existing resource, an error is returned.
+	CreateExport(context.Context, *CreateExportRequest) (*CreateExportResponse, error)
+	// GetExport returns a stored Export if present. The provided request must include the Export ID
+	// for the Export being retrieved. If that ID is missing, malformed, or references a non-existing
+	// resource, an error is returned.
+	GetExport(context.Context, *GetExportRequest) (*GetExportResponse, error)
+	// ListExports lists all Exports. Exports are ordered by create time descending
+	// (most recently created first).
+	ListExports(context.Context, *ListExportsRequest) (*ListExportsResponse, error)
+	// CancelExport cancels an Export that is in progress. The provided request must include the
+	// Export ID for the Export being cancelled. If that ID is missing, malformed, or references a
+	// non-existing resource, an error is returned. Returns the Export in its cancelled state.
+	CancelExport(context.Context, *CancelExportRequest) (*CancelExportResponse, error)
 	mustEmbedUnimplementedSessionRecordingServiceServer()
 }
 
@@ -175,6 +257,18 @@ func (UnimplementedSessionRecordingServiceServer) ReApplyStoragePolicy(context.C
 }
 func (UnimplementedSessionRecordingServiceServer) DeleteSessionRecording(context.Context, *DeleteSessionRecordingRequest) (*DeleteSessionRecordingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteSessionRecording not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) CreateExport(context.Context, *CreateExportRequest) (*CreateExportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateExport not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) GetExport(context.Context, *GetExportRequest) (*GetExportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetExport not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) ListExports(context.Context, *ListExportsRequest) (*ListExportsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExports not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) CancelExport(context.Context, *CancelExportRequest) (*CancelExportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelExport not implemented")
 }
 func (UnimplementedSessionRecordingServiceServer) mustEmbedUnimplementedSessionRecordingServiceServer() {
 }
@@ -281,6 +375,78 @@ func _SessionRecordingService_DeleteSessionRecording_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SessionRecordingService_CreateExport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).CreateExport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_CreateExport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).CreateExport(ctx, req.(*CreateExportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SessionRecordingService_GetExport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).GetExport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_GetExport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).GetExport(ctx, req.(*GetExportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SessionRecordingService_ListExports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).ListExports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_ListExports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).ListExports(ctx, req.(*ListExportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SessionRecordingService_CancelExport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).CancelExport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_CancelExport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).CancelExport(ctx, req.(*CancelExportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SessionRecordingService_ServiceDesc is the grpc.ServiceDesc for SessionRecordingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -303,6 +469,22 @@ var SessionRecordingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSessionRecording",
 			Handler:    _SessionRecordingService_DeleteSessionRecording_Handler,
+		},
+		{
+			MethodName: "CreateExport",
+			Handler:    _SessionRecordingService_CreateExport_Handler,
+		},
+		{
+			MethodName: "GetExport",
+			Handler:    _SessionRecordingService_GetExport_Handler,
+		},
+		{
+			MethodName: "ListExports",
+			Handler:    _SessionRecordingService_ListExports_Handler,
+		},
+		{
+			MethodName: "CancelExport",
+			Handler:    _SessionRecordingService_CancelExport_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

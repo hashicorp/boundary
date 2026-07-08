@@ -936,8 +936,12 @@ type RdpTargetAttributes struct {
 	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The default RDP port that will be listened on by the client's local proxy.
 	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// PublicId of the storage bucket associated with the target
+	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	// A boolean indicating if session recording has been enabled
+	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RdpTargetAttributes) Reset() {
@@ -980,6 +984,20 @@ func (x *RdpTargetAttributes) GetDefaultPort() *wrapperspb.UInt32Value {
 func (x *RdpTargetAttributes) GetDefaultClientPort() *wrapperspb.UInt32Value {
 	if x != nil {
 		return x.DefaultClientPort
+	}
+	return nil
+}
+
+func (x *RdpTargetAttributes) GetStorageBucketId() *wrapperspb.StringValue {
+	if x != nil {
+		return x.StorageBucketId
+	}
+	return nil
+}
+
+func (x *RdpTargetAttributes) GetEnableSessionRecording() *wrapperspb.BoolValue {
+	if x != nil {
+		return x.EnableSessionRecording
 	}
 	return nil
 }
@@ -1697,13 +1715,17 @@ const file_controller_api_resources_targets_v1_target_proto_rawDesc = "" +
 	"\x11storage_bucket_id\x18\x1e \x01(\v2\x1c.google.protobuf.StringValueB7\xa0\xda)\x01\xc2\xdd)/\n" +
 	"\x1cattributes.storage_bucket_id\x12\x0fStorageBucketIdR\x11storage_bucket_id\x12\x9d\x01\n" +
 	"\x18enable_session_recording\x18( \x01(\v2\x1a.google.protobuf.BoolValueBE\xa0\xda)\x01\xc2\xdd)=\n" +
-	"#attributes.enable_session_recording\x12\x16EnableSessionRecordingR\x18enable_session_recording\"\x95\x02\n" +
+	"#attributes.enable_session_recording\x12\x16EnableSessionRecordingR\x18enable_session_recording\"\xbb\x04\n" +
 	"\x13RdpTargetAttributes\x12p\n" +
 	"\fdefault_port\x18\n" +
 	" \x01(\v2\x1c.google.protobuf.UInt32ValueB.\xa0\xda)\x01\xc2\xdd)&\n" +
 	"\x17attributes.default_port\x12\vDefaultPortR\fdefault_port\x12\x8b\x01\n" +
 	"\x13default_client_port\x18\x14 \x01(\v2\x1c.google.protobuf.UInt32ValueB;\xa0\xda)\x01\xc2\xdd)3\n" +
-	"\x1eattributes.default_client_port\x12\x11DefaultClientPortR\x13default_client_port\"&\n" +
+	"\x1eattributes.default_client_port\x12\x11DefaultClientPortR\x13default_client_port\x12\x83\x01\n" +
+	"\x11storage_bucket_id\x18\x1e \x01(\v2\x1c.google.protobuf.StringValueB7\xa0\xda)\x01\xc2\xdd)/\n" +
+	"\x1cattributes.storage_bucket_id\x12\x0fStorageBucketIdR\x11storage_bucket_id\x12\x9d\x01\n" +
+	"\x18enable_session_recording\x18( \x01(\v2\x1a.google.protobuf.BoolValueBE\xa0\xda)\x01\xc2\xdd)=\n" +
+	"#attributes.enable_session_recording\x12\x16EnableSessionRecordingR\x18enable_session_recording\"&\n" +
 	"\n" +
 	"WorkerInfo\x12\x18\n" +
 	"\aaddress\x18\n" +
@@ -1839,19 +1861,21 @@ var file_controller_api_resources_targets_v1_target_proto_depIdxs = []int32{
 	24, // 31: controller.api.resources.targets.v1.SshTargetAttributes.enable_session_recording:type_name -> google.protobuf.BoolValue
 	22, // 32: controller.api.resources.targets.v1.RdpTargetAttributes.default_port:type_name -> google.protobuf.UInt32Value
 	22, // 33: controller.api.resources.targets.v1.RdpTargetAttributes.default_client_port:type_name -> google.protobuf.UInt32Value
-	19, // 34: controller.api.resources.targets.v1.SessionAuthorizationData.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	21, // 35: controller.api.resources.targets.v1.SessionAuthorizationData.created_time:type_name -> google.protobuf.Timestamp
-	21, // 36: controller.api.resources.targets.v1.SessionAuthorizationData.expiration:type_name -> google.protobuf.Timestamp
-	11, // 37: controller.api.resources.targets.v1.SessionAuthorizationData.worker_info:type_name -> controller.api.resources.targets.v1.WorkerInfo
-	19, // 38: controller.api.resources.targets.v1.SessionAuthorization.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	21, // 39: controller.api.resources.targets.v1.SessionAuthorization.created_time:type_name -> google.protobuf.Timestamp
-	21, // 40: controller.api.resources.targets.v1.SessionAuthorization.expiration:type_name -> google.protobuf.Timestamp
-	6,  // 41: controller.api.resources.targets.v1.SessionAuthorization.credentials:type_name -> controller.api.resources.targets.v1.SessionCredential
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	20, // 34: controller.api.resources.targets.v1.RdpTargetAttributes.storage_bucket_id:type_name -> google.protobuf.StringValue
+	24, // 35: controller.api.resources.targets.v1.RdpTargetAttributes.enable_session_recording:type_name -> google.protobuf.BoolValue
+	19, // 36: controller.api.resources.targets.v1.SessionAuthorizationData.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	21, // 37: controller.api.resources.targets.v1.SessionAuthorizationData.created_time:type_name -> google.protobuf.Timestamp
+	21, // 38: controller.api.resources.targets.v1.SessionAuthorizationData.expiration:type_name -> google.protobuf.Timestamp
+	11, // 39: controller.api.resources.targets.v1.SessionAuthorizationData.worker_info:type_name -> controller.api.resources.targets.v1.WorkerInfo
+	19, // 40: controller.api.resources.targets.v1.SessionAuthorization.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	21, // 41: controller.api.resources.targets.v1.SessionAuthorization.created_time:type_name -> google.protobuf.Timestamp
+	21, // 42: controller.api.resources.targets.v1.SessionAuthorization.expiration:type_name -> google.protobuf.Timestamp
+	6,  // 43: controller.api.resources.targets.v1.SessionAuthorization.credentials:type_name -> controller.api.resources.targets.v1.SessionCredential
+	44, // [44:44] is the sub-list for method output_type
+	44, // [44:44] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_targets_v1_target_proto_init() }

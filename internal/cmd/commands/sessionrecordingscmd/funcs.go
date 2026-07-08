@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessionrecordings"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/recording"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 type extraCmdVars struct{}
@@ -38,8 +39,11 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`      $ boundary session-recordings download -id chr_1234567890`,
 			"",
-
-			"  Please see the sessions subcommand help for detailed usage information.",
+			"   Export a session recording:",
+			"",
+			`      $ boundary session-recordings export -connection-recording-id cr_1234567890 -mime-type video/webm`,
+			"",
+			"  Please see subcommand help for detailed usage information.",
 		})
 
 	default:
@@ -115,6 +119,28 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 			output = append(output,
 				fmt.Sprintf("    State:               %s", item.State),
 			)
+		}
+		if item.Availability != "" {
+			output = append(output,
+				fmt.Sprintf("    Availability:        %s", item.Availability),
+			)
+		}
+		if !util.IsNil(item.RecordingState) {
+			if item.RecordingState.StorageState != "" {
+				output = append(output,
+					fmt.Sprintf("    Storage State:       %s", item.RecordingState.StorageState),
+				)
+			}
+			if item.RecordingState.SyncingErrorDetails != "" {
+				output = append(output,
+					fmt.Sprintf("    Syncing Error Details:               %s", item.RecordingState.SyncingErrorDetails),
+				)
+			}
+			if item.RecordingState.VerificationErrorDetails != "" {
+				output = append(output,
+					fmt.Sprintf("    Verification Error Details:               %s", item.RecordingState.VerificationErrorDetails),
+				)
+			}
 		}
 		if !item.RetainUntil.IsZero() {
 			var retention string
@@ -210,6 +236,9 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 	if item.Endpoint != "" {
 		nonAttributeMap["Endpoint"] = item.Endpoint
 	}
+	if item.Availability != "" {
+		nonAttributeMap["Availability"] = item.Availability
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
@@ -217,6 +246,25 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		"",
 		"Session Recording information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	if !util.IsNil(item.RecordingState) {
+		recordingStateMap := map[string]any{}
+		if item.RecordingState.StorageState != "" {
+			recordingStateMap["Storage State"] = item.RecordingState.StorageState
+		}
+		if item.RecordingState.SyncingErrorDetails != "" {
+			recordingStateMap["Syncing Error Details"] = item.RecordingState.SyncingErrorDetails
+		}
+		if item.RecordingState.VerificationErrorDetails != "" {
+			recordingStateMap["Verification Error Details"] = item.RecordingState.VerificationErrorDetails
+		}
+		if len(recordingStateMap) != 0 {
+			maxRecordingStateLength := base.MaxAttributesLength(recordingStateMap, nil, nil)
+			ret = append(ret,
+				"  Recording State:", base.WrapMap(4, maxRecordingStateLength+2, recordingStateMap),
+			)
+		}
 	}
 
 	if item.Scope != nil {
@@ -279,8 +327,14 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 			if item.CreateTimeValues.Target.IngressWorkerFilter != "" {
 				targetMap["Ingress Worker Filter"] = item.CreateTimeValues.Target.IngressWorkerFilter
 			}
+			if item.CreateTimeValues.Target.Type != "" {
+				targetMap["Target Type"] = item.CreateTimeValues.Target.Type
+			}
 			if item.CreateTimeValues.Target.Attributes != nil {
 				if attr, err := item.CreateTimeValues.Target.GetSshTargetAttributes(); err == nil && attr != nil && attr.DefaultPort != 0 {
+					targetMap["Default Port"] = attr.DefaultPort
+				}
+				if attr, err := item.CreateTimeValues.Target.GetRdpTargetAttributes(); err == nil && attr != nil && attr.DefaultPort != 0 {
 					targetMap["Default Port"] = attr.DefaultPort
 				}
 			}
@@ -388,6 +442,11 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 						cm["Http Request Body"] = attrs.HttpRequestBody
 					}
 				}
+				if attrs, _ := cl.GetVaultLdapCredentialLibraryAttributes(); attrs != nil {
+					if attrs.Path != "" {
+						cm["Path"] = attrs.Path
+					}
+				}
 				maxLibLength := base.MaxAttributesLength(cm, nil, nil)
 				ret = append(ret,
 					base.WrapMap(4, maxLibLength, cm),
@@ -435,6 +494,14 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 						cm["Username"] = attrs.Username
 					}
 				}
+				if attrs, _ := c.GetUsernamePasswordDomainCredentialAttributes(); attrs != nil {
+					if attrs.Username != "" {
+						cm["Username"] = attrs.Username
+					}
+					if attrs.Domain != "" {
+						cm["Domain"] = attrs.Domain
+					}
+				}
 				if attrs, _ := c.GetSshPrivateKeyCredentialAttributes(); attrs != nil {
 					if attrs.Username != "" {
 						cm["Username"] = attrs.Username
@@ -462,7 +529,7 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		maxAttrLen := len(durationKey)
 		ret = append(ret,
 			"",
-			"  Connections Recordings:",
+			"  Connection Recordings:",
 		)
 		for _, cr := range item.ConnectionRecordings {
 			cm := map[string]any{
@@ -492,13 +559,109 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 			if len(cr.MimeTypes) > 0 {
 				cm["Mime Types"] = strings.Join(cr.MimeTypes, ", ")
 			}
+
 			ret = append(ret,
 				base.WrapMap(4, maxAttrLen, cm),
+			)
+
+			if !util.IsNil(cr.RecordingState) {
+				connRecordingStateMap := map[string]any{}
+				if cr.RecordingState.StorageState != "" {
+					connRecordingStateMap["Storage State"] = cr.RecordingState.StorageState
+				}
+				if cr.RecordingState.SyncingErrorDetails != "" {
+					connRecordingStateMap["Syncing Error Details"] = cr.RecordingState.SyncingErrorDetails
+				}
+				if cr.RecordingState.VerificationErrorDetails != "" {
+					connRecordingStateMap["Verification Error Details"] = cr.RecordingState.VerificationErrorDetails
+				}
+				if len(connRecordingStateMap) != 0 {
+					maxConnRecordingStateLength := base.MaxAttributesLength(connRecordingStateMap, nil, nil)
+					ret = append(ret,
+						"    Recording State:", base.WrapMap(6, maxConnRecordingStateLength+2, connRecordingStateMap),
+					)
+				}
+			}
+
+			ret = append(ret,
 				"",
 			)
 
+			if len(cr.Exports) > 0 {
+				var exports []map[string]any
+				for _, exp := range cr.Exports {
+					expm := map[string]any{
+						"ID": exp.Id,
+					}
+					if exp.MimeType != "" {
+						expm["Mime Type"] = exp.MimeType
+					}
+					if exp.State != "" {
+						expm["State"] = exp.State
+					}
+					if exp.State == "processing" || exp.ProgressPercent > 0 {
+						expm["Progress (%)"] = exp.ProgressPercent
+					}
+					if exp.WorkerId != "" {
+						expm["Worker ID"] = exp.WorkerId
+					}
+					if exp.Error != "" {
+						expm["Error"] = exp.Error
+					}
+					if !exp.CreatedTime.IsZero() {
+						expm["Created Time"] = exp.CreatedTime.Local().Format(time.RFC1123)
+					}
+					if !exp.UpdatedTime.IsZero() {
+						expm["Updated Time"] = exp.UpdatedTime.Local().Format(time.RFC1123)
+					}
+					exports = append(exports, expm)
+				}
+				ret = append(ret,
+					"",
+					"    Connection Recording Exports:",
+				)
+				for _, exp := range exports {
+					ret = append(ret,
+						base.WrapMap(6, maxAttrLen, exp),
+						"",
+					)
+				}
+			}
+
+			if len(cr.Videos) > 0 {
+				var videos []map[string]any
+				for _, vid := range cr.Videos {
+					vidm := map[string]any{
+						"ID": vid.Id,
+					}
+					if vid.LengthSeconds != 0 {
+						vidm["Length (Seconds)"] = vid.LengthSeconds
+					}
+					if vid.SizeBytes != 0 {
+						vidm["Size (Bytes)"] = vid.SizeBytes
+					}
+					if !vid.CreatedTime.IsZero() {
+						vidm["Created Time"] = vid.CreatedTime.Local().Format(time.RFC1123)
+					}
+					videos = append(videos, vidm)
+				}
+				ret = append(ret,
+					"",
+					"    Connection Recording Videos:",
+				)
+				for _, vid := range videos {
+					ret = append(ret,
+						base.WrapMap(6, maxAttrLen, vid),
+						"",
+					)
+				}
+			}
+
 			if len(cr.ChannelRecordings) > 0 {
-				var channelRecordings []map[string]any
+				ret = append(ret,
+					"    Channel Recordings:",
+				)
+
 				for _, chr := range cr.ChannelRecordings {
 					chrm := map[string]any{
 						"ID": chr.Id,
@@ -527,15 +690,35 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 					if len(chr.MimeTypes) > 0 {
 						chrm["Mime Types"] = strings.Join(chr.MimeTypes, ", ")
 					}
-					channelRecordings = append(channelRecordings, chrm)
-				}
-				ret = append(ret,
-					"",
-					"    Channel Recordings:",
-				)
-				for _, cr := range channelRecordings {
+					// SSH attributes (SshChannelRecording in the proto exposes
+					// mime_types via the Attributes map).
+					if mimeTypes, ok := chr.Attributes["mime_types"].([]string); ok && len(mimeTypes) > 0 {
+						chrm["Mime Types"] = strings.Join(mimeTypes, ", ")
+					}
 					ret = append(ret,
-						base.WrapMap(6, maxAttrLen, cr),
+						base.WrapMap(6, maxAttrLen, chrm),
+					)
+
+					if !util.IsNil(chr.RecordingState) {
+						chanRecordingStateMap := map[string]any{}
+						if chr.RecordingState.StorageState != "" {
+							chanRecordingStateMap["Storage State"] = chr.RecordingState.StorageState
+						}
+						if chr.RecordingState.SyncingErrorDetails != "" {
+							chanRecordingStateMap["Syncing Error Details"] = chr.RecordingState.SyncingErrorDetails
+						}
+						if chr.RecordingState.VerificationErrorDetails != "" {
+							chanRecordingStateMap["Verification Error Details"] = chr.RecordingState.VerificationErrorDetails
+						}
+						if len(chanRecordingStateMap) != 0 {
+							maxChanRecordingStateLength := base.MaxAttributesLength(chanRecordingStateMap, nil, nil)
+							ret = append(ret,
+								"      Recording State:", base.WrapMap(8, maxChanRecordingStateLength+2, chanRecordingStateMap),
+							)
+						}
+					}
+
+					ret = append(ret,
 						"",
 					)
 				}

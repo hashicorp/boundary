@@ -25,10 +25,13 @@ func extraRdpActionsFlagsMapFuncImpl() map[string][]string {
 		"create": {
 			"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit",
 			"egress-worker-filter", "ingress-worker-filter",
+			"enable-session-recording", "storage-bucket-id",
 			"with-alias-value", "with-alias-scope-id", "with-alias-authorize-session-host-id",
 		},
 		"update": {
-			"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter",
+			"address", "default-port", "default-client-port", "session-max-seconds",
+			"session-connection-limit", "egress-worker-filter", "ingress-worker-filter",
+			"enable-session-recording", "storage-bucket-id",
 		},
 	}
 }
@@ -44,6 +47,8 @@ type extraRdpCmdVars struct {
 	flagWithAliasValue         string
 	flagWithAliasScopeId       string
 	flagWithAliasHostId        string
+	flagStorageBucketId        string
+	flagEnableSessionRecording string
 }
 
 func (c *RdpCommand) extraRdpHelpFunc(helpMap map[string]func() string) string {
@@ -140,6 +145,18 @@ func extraRdpFlagsFuncImpl(c *RdpCommand, set *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagWithAliasHostId,
 				Usage:  "The authorize session host id flag used by an alias to be created for and at the same time as this target.",
 			})
+		case "storage-bucket-id":
+			fs.StringVar(&base.StringVar{
+				Name:   "storage-bucket-id",
+				Target: &c.flagStorageBucketId,
+				Usage:  "The public ID of the storage bucket to associate with this target.",
+			})
+		case "enable-session-recording":
+			fs.StringVar(&base.StringVar{
+				Name:   "enable-session-recording",
+				Target: &c.flagEnableSessionRecording,
+				Usage:  "A boolean indicating if session recording is enabled for this target.",
+			})
 		}
 	}
 }
@@ -232,6 +249,25 @@ func extraRdpFlagsHandlingFuncImpl(c *RdpCommand, _ *base.FlagSets, opts *[]targ
 		*opts = append(*opts, targets.DefaultAddress())
 	default:
 		*opts = append(*opts, targets.WithAddress(c.flagAddress))
+	}
+
+	switch c.flagStorageBucketId {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultRdpTargetStorageBucketId())
+	default:
+		*opts = append(*opts, targets.WithRdpTargetStorageBucketId(c.flagStorageBucketId))
+	}
+
+	switch c.flagEnableSessionRecording {
+	case "":
+	case "false":
+		*opts = append(*opts, targets.WithRdpTargetEnableSessionRecording(false))
+	case "true":
+		*opts = append(*opts, targets.WithRdpTargetEnableSessionRecording(true))
+	default:
+		c.UI.Error(fmt.Sprintf("Invalid bool value for enable-session-recording %v", c.flagEnableSessionRecording))
+		return false
 	}
 
 	var aliasValue string

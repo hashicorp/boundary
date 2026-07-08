@@ -47,6 +47,7 @@ const (
 	EnvBoundarySRVLookup     = "BOUNDARY_SRV_LOOKUP"
 
 	AsciiCastMimeType = "application/x-asciicast"
+	VideoMimeType     = "video/webm"
 	StreamChunkSize   = 1024 * 64 // stream chuck buffer size
 )
 

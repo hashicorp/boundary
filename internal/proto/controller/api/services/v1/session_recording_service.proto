@@ -20,8 +20,8 @@ service SessionRecordingService {
       "It provides an audit trail of user activity and lets administrators monitor access. "
       "The session recording service provides endpoints that let you manage session recordings in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
-      description: "Read about session recordings in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings"
+      description: "Read about session recordings in the Boundary domain model"
     }
   };
 
@@ -48,10 +48,11 @@ service SessionRecordingService {
   // Supports both Session ID and Session recording ID for looking up a Session recording.
   // Supports both Connection ID and Connection recording ID to look up a Connection recording.
   // A Channel recording ID is required to look up a Channel recording.
-  // The only supported mime type is "application/x-asciicast".
+  // A Video ID is required to look up a Video recording.
+  // Supported mime types: "application/x-asciicast", "video/webm"
   rpc Download(DownloadRequest) returns (stream google.api.HttpBody) {
     option (google.api.http) = {get: "/v1/session-recordings/{id}:download"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\"."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. A Video ID is required to look up a Video recording. Supported mime types: \"application/x-asciicast\", \"video/webm\"."};
   }
 
   // ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
@@ -66,11 +67,52 @@ service SessionRecordingService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording."};
   }
 
-  // DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
-  // is malformed or not provided an error is returned.
+  // DeleteSessionRecording deletes a Session Recording or Video recording.
+  // Supports Session Recording ID to delete a Session Recording.
+  // Supports Video ID to delete a Video recording.
+  // If the Session Recording id is malformed or not provided an error is returned.
   rpc DeleteSessionRecording(DeleteSessionRecordingRequest) returns (DeleteSessionRecordingResponse) {
     option (google.api.http) = {delete: "/v1/session-recordings/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Session Recording"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned."};
+  }
+
+  // CreateExport creates an export of the specified Connection Recording in the requested mime type.
+  // The provided request must include the Connection Recording ID. The export is processed
+  // asynchronously; use GetExport to poll the status of the export. If the ID is missing,
+  // malformed, or references a non-existing resource, an error is returned.
+  rpc CreateExport(CreateExportRequest) returns (CreateExportResponse) {
+    option (google.api.http) = {
+      post: "/v1/session-recordings/{connection_recording_id}:export"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "CreateExport creates an export of the specified Connection Recording in the requested mime type. The export is processed asynchronously; use GetExport to poll the status of the export. If the ID is missing, malformed, or references a non-existing resource, an error is returned."};
+  }
+
+  // GetExport returns a stored Export if present. The provided request must include the Export ID
+  // for the Export being retrieved. If that ID is missing, malformed, or references a non-existing
+  // resource, an error is returned.
+  rpc GetExport(GetExportRequest) returns (GetExportResponse) {
+    option (google.api.http) = {
+      get: "/v1/session-recordings/{id}:export"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "GetExport returns a stored Export if present. The provided request must include the Export ID for the Export being retrieved. If that ID is missing, malformed, or references a non-existing resource, an error is returned."};
+  }
+
+  // ListExports lists all Exports. Exports are ordered by create time descending
+  // (most recently created first).
+  rpc ListExports(ListExportsRequest) returns (ListExportsResponse) {
+    option (google.api.http) = {get: "/v1/session-recordings:list-exports"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "ListExports lists all exports. Exports are ordered by created_time descending (most recently created first)."};
+  }
+
+  // CancelExport cancels an Export that is in progress. The provided request must include the
+  // Export ID for the Export being cancelled. If that ID is missing, malformed, or references a
+  // non-existing resource, an error is returned. Returns the Export in its cancelled state.
+  rpc CancelExport(CancelExportRequest) returns (CancelExportResponse) {
+    option (google.api.http) = {post: "/v1/session-recordings/{id}:export:cancel"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "CancelExport cancels an Export that is in progress. The provided request must include the Export ID for the Export being cancelled. If that ID is missing, malformed, or references a non-existing resource, an error is returned. Returns the Export in its cancelled state."};
   }
 }
 
@@ -134,8 +176,9 @@ message DownloadRequest {
   //   - Session ID and Session recording ID for Session recordings
   //   - Connection ID and Connection recording ID for Connection recordings
   //   - Channel recording ID for Channel recordings
+  //   - Video ID for Video recordings
   string id = 1; // @gotags: class:"public" eventstream:"observation"
-  // The format of the response. The only supported mime type is "application/x-asciicast".
+  // The format of the response. Supports "application/x-asciicast" and "video/webm".
   // Defaults to "application/x-asciicast" if not set.
   string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public" eventstream:"observation"
 }
@@ -155,3 +198,77 @@ message DeleteSessionRecordingRequest {
 }
 
 message DeleteSessionRecordingResponse {}
+
+message CreateExportRequest {
+  // The ID of the Connection Recording to export.
+  string connection_recording_id = 1; // @gotags: class:"public" eventstream:"observation"
+  // The mime type of the export.
+  string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public" eventstream:"observation"
+}
+
+message CreateExportResponse {
+  // The created export.
+  resources.sessionrecordings.v1.Export item = 1;
+}
+
+message GetExportRequest {
+  // The ID of the Export to retrieve.
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
+}
+
+message GetExportResponse {
+  // The requested export.
+  resources.sessionrecordings.v1.Export item = 1;
+}
+
+message ListExportsRequest {
+  // The scope in which to list exports.
+  // Must be set unless recursive is set.
+  string scope_id = 1; // @gotags: class:"public" eventstream:"observation"
+  // Whether to recurse into child scopes when listing.
+  // If set and scope_id is empty, shows exports in
+  // all scopes the caller has access to.
+  bool recursive = 2; // @gotags: class:"public" eventstream:"observation"
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
+  uint32 page_size = 4 [json_name = "page_size"]; // @gotags: class:"public" eventstream:"observation"
+}
+
+message ListExportsResponse {
+  // The items returned in this page.
+  repeated resources.sessionrecordings.v1.Export items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: class:"public" eventstream:"observation"
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: class:"public" eventstream:"observation"
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: class:"public" eventstream:"observation"
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: class:"public" eventstream:"observation"
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: class:"public" eventstream:"observation"
+}
+
+message CancelExportRequest {
+  // The ID of the Export to cancel.
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
+}
+
+message CancelExportResponse {}

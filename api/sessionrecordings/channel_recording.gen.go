@@ -11,13 +11,15 @@ import (
 )
 
 type ChannelRecording struct {
-	Id          string       `json:"id,omitempty"`
-	BytesUp     uint64       `json:"bytes_up,string,omitempty"`
-	BytesDown   uint64       `json:"bytes_down,string,omitempty"`
-	CreatedTime time.Time    `json:"created_time,omitempty"`
-	UpdatedTime time.Time    `json:"updated_time,omitempty"`
-	StartTime   time.Time    `json:"start_time,omitempty"`
-	EndTime     time.Time    `json:"end_time,omitempty"`
-	Duration    api.Duration `json:"duration,omitempty"`
-	MimeTypes   []string     `json:"mime_types,omitempty"`
+	Id             string                 `json:"id,omitempty"`
+	BytesUp        uint64                 `json:"bytes_up,string,omitempty"`
+	BytesDown      uint64                 `json:"bytes_down,string,omitempty"`
+	CreatedTime    time.Time              `json:"created_time,omitempty"`
+	UpdatedTime    time.Time              `json:"updated_time,omitempty"`
+	StartTime      time.Time              `json:"start_time,omitempty"`
+	EndTime        time.Time              `json:"end_time,omitempty"`
+	Duration       api.Duration           `json:"duration,omitempty"`
+	MimeTypes      []string               `json:"mime_types,omitempty"`
+	RecordingState *RecordingState        `json:"recording_state,omitempty"`
+	Attributes     map[string]interface{} `json:"attributes,omitempty"`
 }

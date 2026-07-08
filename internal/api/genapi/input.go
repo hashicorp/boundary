@@ -107,6 +107,10 @@ type structInfo struct {
 	// fields.
 	versionEnabled bool
 
+	// mimeTypeEnabled indicates that we should build a WithMimeType API option
+	// for this resource.
+	mimeTypeEnabled bool
+
 	// This is used for building the api path.
 	pluralResourceName string
 
@@ -1274,6 +1278,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &session_recordings.RdpTargetAttributes{},
+		outFile:        "sessionrecordings/rdp_target_attributes.gen.go",
+		subtypeName:    "Rdp",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &session_recordings.Host{},
 		outFile: "sessionrecordings/host.gen.go",
 	},
@@ -1307,6 +1320,15 @@ var inputStructs = []*structInfo{
 		inProto:        &session_recordings.UsernamePasswordCredentialAttributes{},
 		outFile:        "sessionrecordings/username_password_credential_attributes.gen.go",
 		subtype:        "username_password",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.UsernamePasswordDomainCredentialAttributes{},
+		outFile:        "sessionrecordings/username_password_domain_credential_attributes.gen.go",
+		subtype:        "username_password_domain",
 		parentTypeName: "Credential",
 		templates: []*template.Template{
 			mapstructureConversionTemplate,
@@ -1363,6 +1385,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &session_recordings.VaultLdapCredentialLibraryAttributes{},
+		outFile:        "sessionrecordings/vault_ldap_credential_library_attributes.gen.go",
+		subtype:        "vault-ldap",
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &session_recordings.CredentialStore{},
 		outFile: "sessionrecordings/credential_store.gen.go",
 	},
@@ -1378,6 +1409,10 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &session_recordings.ValuesAtTime{},
 		outFile: "sessionrecordings/values_at_time.gen.go",
+	},
+	{
+		inProto: &session_recordings.RecordingState{},
+		outFile: "sessionrecordings/recording_state.gen.go",
 	},
 	{
 		inProto: &session_recordings.ConnectionRecording{},
@@ -1402,6 +1437,23 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:             &session_recordings.Export{},
+		outFile:             "sessionrecordings/export.gen.go",
+		pluralResourceName:  "exports",
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, ListResponseType, DeleteResponseType}, // DeleteResponseType is used for cancel.
+	},
+	{
+		inProto: &session_recordings.Video{},
+		outFile: "sessionrecordings/video.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "LengthSeconds", JsonTags: []string{"string"}},
+			{Name: "SizeBytes", JsonTags: []string{"string"}},
+		},
+	},
+	{
 		// this must be the last block of session recording blocks, otherwise
 		// the bits beyond inProto and outFile will get overwritten by
 		// subsequent session recording blocks
@@ -1418,6 +1470,7 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 		skipListFiltering:   true,
 		versionEnabled:      false,
+		mimeTypeEnabled:     true,
 		fieldOverrides: []fieldInfo{
 			// int64 fields get marshalled by protobuf as strings, so we have
 			// to tell the json parser that their json representation is a

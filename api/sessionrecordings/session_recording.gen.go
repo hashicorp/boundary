@@ -39,6 +39,8 @@ type SessionRecording struct {
 	AuthorizedActions    []string               `json:"authorized_actions,omitempty"`
 	RetainUntil          time.Time              `json:"retain_until,omitempty"`
 	DeleteAfter          time.Time              `json:"delete_after,omitempty"`
+	Availability         string                 `json:"availability,omitempty"`
+	RecordingState       *RecordingState        `json:"recording_state,omitempty"`
 }
 
 type SessionRecordingReadResult struct {
