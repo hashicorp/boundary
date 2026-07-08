@@ -56,7 +56,7 @@ where public_id = ?
 `
 
 	estimateCountHosts = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('host_plugin_host'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('host_plugin_host'::regclass)
 `
 
 	listHostsTemplate = `
@@ -344,7 +344,7 @@ order by update_time desc, public_id desc;
 `
 
 	estimateCountHostSets = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('host_plugin_set'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('host_plugin_set'::regclass)
 `
 
 	listSetsTemplate = `

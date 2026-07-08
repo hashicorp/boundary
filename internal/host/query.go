@@ -5,7 +5,7 @@ package host
 
 const (
 	estimateCountCatalogsQuery = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in (
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in (
 	'static_host_catalog'::regclass,
 	'host_plugin_catalog'::regclass
 )

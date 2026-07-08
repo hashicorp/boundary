@@ -5,9 +5,9 @@ package ldap
 
 const (
 	estimateCountAccounts = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('auth_ldap_account'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('auth_ldap_account'::regclass)
 `
 	estimateCountManagedGroups = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('auth_ldap_managed_group'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('auth_ldap_managed_group'::regclass)
 `
 )

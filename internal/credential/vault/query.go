@@ -191,7 +191,7 @@ delete from credential_vault_credential
 `
 
 	estimateCountCredentialLibraries = `
-select sum(reltuples::bigint) as estimate
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate
   from pg_class
  where oid in (
   'credential_vault_generic_library'::regclass,

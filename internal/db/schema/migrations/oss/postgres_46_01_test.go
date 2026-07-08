@@ -347,17 +347,17 @@ func validateRepairFunc(t *testing.T, rw *db.Db, repairReport migration.Repairs)
 	  from target_credential_library as tcl
 	  	where tcl.target_id = 'ttcp_PRJA___65001'
 	),
-	resources (target_id, resource_id) as (
-	select target_id, host_set_id as resource_id
+	resources (ord, target_id, resource_id) as (
+	select 1 as ord, target_id, host_set_id as resource_id
 	  from ths
-	union
-	select target_id, credential_static_id as resource_id
+	union all
+	select 2 as ord, target_id, credential_static_id as resource_id
 	  from tsc
-	union
-	select target_id, credential_library_id as resource_id
+	union all
+	select 3 as ord, target_id, credential_library_id as resource_id
 	  from tcl
 	)
-	select * from resources;`
+	select target_id, resource_id from resources order by ord;`
 	rows, err = rw.Query(ctx, query, nil)
 	require.NoError(err)
 	associations := []targetAssociation{}
@@ -372,7 +372,7 @@ func validateRepairFunc(t *testing.T, rw *db.Db, repairReport migration.Repairs)
 		})
 	}
 	require.NoError(rows.Err())
-	require.Equal([]targetAssociation{
+	require.ElementsMatch([]targetAssociation{
 		{
 			targetId:   "ttcp_PRJA___65001",
 			resourceId: "clvlt_PRJA___65001",
