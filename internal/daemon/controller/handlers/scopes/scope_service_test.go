@@ -3188,3 +3188,27 @@ func TestDetachStoragePolicy(t *testing.T) {
 		assert.Equal(t, gotStatus.Message(), "Policies are an Enterprise-only feature")
 	})
 }
+
+func TestSetAliasSuffix(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.SetAliasSuffix(context.Background(), &pbs.SetAliasSuffixRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Alias suffixes are an Enterprise-only feature")
+	})
+}
+
+func TestRemoveAliasSuffix(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.RemoveAliasSuffix(context.Background(), &pbs.RemoveAliasSuffixRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Alias suffixes are an Enterprise-only feature")
+	})
+}

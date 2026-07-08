@@ -1171,6 +1171,210 @@ func (x *DetachStoragePolicyResponse) GetItem() *scopes.Scope {
 	return nil
 }
 
+type SetAliasSuffixRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"`                                      // @gotags: `class:"public" eventstream:"observation"`
+	AliasSuffix string                 `protobuf:"bytes,2,opt,name=alias_suffix,json=aliasSuffix,proto3" json:"alias_suffix,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Version is used to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
+	Version       uint32 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAliasSuffixRequest) Reset() {
+	*x = SetAliasSuffixRequest{}
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAliasSuffixRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAliasSuffixRequest) ProtoMessage() {}
+
+func (x *SetAliasSuffixRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAliasSuffixRequest.ProtoReflect.Descriptor instead.
+func (*SetAliasSuffixRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SetAliasSuffixRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SetAliasSuffixRequest) GetAliasSuffix() string {
+	if x != nil {
+		return x.AliasSuffix
+	}
+	return ""
+}
+
+func (x *SetAliasSuffixRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+type SetAliasSuffixResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          *scopes.Scope          `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAliasSuffixResponse) Reset() {
+	*x = SetAliasSuffixResponse{}
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAliasSuffixResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAliasSuffixResponse) ProtoMessage() {}
+
+func (x *SetAliasSuffixResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAliasSuffixResponse.ProtoReflect.Descriptor instead.
+func (*SetAliasSuffixResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SetAliasSuffixResponse) GetItem() *scopes.Scope {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type RemoveAliasSuffixRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	// Version is used to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
+	Version       uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveAliasSuffixRequest) Reset() {
+	*x = RemoveAliasSuffixRequest{}
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveAliasSuffixRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveAliasSuffixRequest) ProtoMessage() {}
+
+func (x *RemoveAliasSuffixRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveAliasSuffixRequest.ProtoReflect.Descriptor instead.
+func (*RemoveAliasSuffixRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *RemoveAliasSuffixRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RemoveAliasSuffixRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+type RemoveAliasSuffixResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          *scopes.Scope          `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveAliasSuffixResponse) Reset() {
+	*x = RemoveAliasSuffixResponse{}
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveAliasSuffixResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveAliasSuffixResponse) ProtoMessage() {}
+
+func (x *RemoveAliasSuffixResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveAliasSuffixResponse.ProtoReflect.Descriptor instead.
+func (*RemoveAliasSuffixResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RemoveAliasSuffixResponse) GetItem() *scopes.Scope {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
 var File_controller_api_services_v1_scope_service_proto protoreflect.FileDescriptor
 
 const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
@@ -1241,7 +1445,18 @@ const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\rR\aversion\"\\\n" +
 	"\x1bDetachStoragePolicyResponse\x12=\n" +
-	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item2\xae\x16\n" +
+	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item\"d\n" +
+	"\x15SetAliasSuffixRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\falias_suffix\x18\x02 \x01(\tR\valiasSuffix\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\rR\aversion\"W\n" +
+	"\x16SetAliasSuffixResponse\x12=\n" +
+	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item\"D\n" +
+	"\x18RemoveAliasSuffixRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\rR\aversion\"Z\n" +
+	"\x19RemoveAliasSuffixResponse\x12=\n" +
+	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item2\xe5\x19\n" +
 	"\fScopeService\x12\x9d\x01\n" +
 	"\bGetScope\x12+.controller.api.services.v1.GetScopeRequest\x1a,.controller.api.services.v1.GetScopeResponse\"6\x92A\x16\x12\x14Gets a single Scope.\x82\xd3\xe4\x93\x02\x17b\x04item\x12\x0f/v1/scopes/{id}\x12\xbe\x01\n" +
 	"\n" +
@@ -1257,7 +1472,9 @@ const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
 	"\x1dListKeyVersionDestructionJobs\x12@.controller.api.services.v1.ListKeyVersionDestructionJobsRequest\x1aA.controller.api.services.v1.ListKeyVersionDestructionJobsResponse\"~\x92A<\x12:Lists all pending key version destruction jobs in a Scope.\x82\xd3\xe4\x93\x029\x127/v1/scopes/{scope_id}:list-key-version-destruction-jobs\x12\xaa\x03\n" +
 	"\x11DestroyKeyVersion\x124.controller.api.services.v1.DestroyKeyVersionRequest\x1a5.controller.api.services.v1.DestroyKeyVersionResponse\"\xa7\x02\x92A\xfa\x01\x12\xf7\x01Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/v1/scopes:destroy-key-version\x12\xf6\x01\n" +
 	"\x13AttachStoragePolicy\x126.controller.api.services.v1.AttachStoragePolicyRequest\x1a7.controller.api.services.v1.AttachStoragePolicyResponse\"n\x92A5\x123Attaches the specified Storage Policy to the Scope.\x82\xd3\xe4\x93\x020:\x01*b\x04item\"%/v1/scopes/{id}:attach-storage-policy\x12\xf8\x01\n" +
-	"\x13DetachStoragePolicy\x126.controller.api.services.v1.DetachStoragePolicyRequest\x1a7.controller.api.services.v1.DetachStoragePolicyResponse\"p\x92A7\x125Detaches the specified Storage Policy from the Scope.\x82\xd3\xe4\x93\x020:\x01*b\x04item\"%/v1/scopes/{id}:detach-storage-policy\x1a\xa3\x03\x92A\x9f\x03\n" +
+	"\x13DetachStoragePolicy\x126.controller.api.services.v1.DetachStoragePolicyRequest\x1a7.controller.api.services.v1.DetachStoragePolicyResponse\"p\x92A7\x125Detaches the specified Storage Policy from the Scope.\x82\xd3\xe4\x93\x020:\x01*b\x04item\"%/v1/scopes/{id}:detach-storage-policy\x12\xd0\x01\n" +
+	"\x0eSetAliasSuffix\x121.controller.api.services.v1.SetAliasSuffixRequest\x1a2.controller.api.services.v1.SetAliasSuffixResponse\"W\x92A#\x12!Sets the alias suffix on a Scope.\x82\xd3\xe4\x93\x02+:\x01*b\x04item\" /v1/scopes/{id}:set-alias-suffix\x12\xe1\x01\n" +
+	"\x11RemoveAliasSuffix\x124.controller.api.services.v1.RemoveAliasSuffixRequest\x1a5.controller.api.services.v1.RemoveAliasSuffixResponse\"_\x92A(\x12&Removes the alias suffix from a Scope.\x82\xd3\xe4\x93\x02.:\x01*b\x04item\"#/v1/scopes/{id}:remove-alias-suffix\x1a\xa3\x03\x92A\x9f\x03\n" +
 	"\rScope service\x12\x8f\x02A scope acts as a permission Boundary modeled using the concept of a container. It creates a hierarchical structure that lets you organize your resources and manage access control within Boundary. The scope service provides endpoints to let you manage scopes in Boundary.\x1a|\n" +
 	".Read about scopes in the Boundary domain model\x12Jhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopesBMZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 
@@ -1273,7 +1490,7 @@ func file_controller_api_services_v1_scope_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_scope_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_controller_api_services_v1_scope_service_proto_goTypes = []any{
 	(*GetScopeRequest)(nil),                       // 0: controller.api.services.v1.GetScopeRequest
 	(*GetScopeResponse)(nil),                      // 1: controller.api.services.v1.GetScopeResponse
@@ -1297,50 +1514,60 @@ var file_controller_api_services_v1_scope_service_proto_goTypes = []any{
 	(*AttachStoragePolicyResponse)(nil),           // 19: controller.api.services.v1.AttachStoragePolicyResponse
 	(*DetachStoragePolicyRequest)(nil),            // 20: controller.api.services.v1.DetachStoragePolicyRequest
 	(*DetachStoragePolicyResponse)(nil),           // 21: controller.api.services.v1.DetachStoragePolicyResponse
-	(*scopes.Scope)(nil),                          // 22: controller.api.resources.scopes.v1.Scope
-	(*fieldmaskpb.FieldMask)(nil),                 // 23: google.protobuf.FieldMask
-	(*scopes.Key)(nil),                            // 24: controller.api.resources.scopes.v1.Key
-	(*scopes.KeyVersionDestructionJob)(nil),       // 25: controller.api.resources.scopes.v1.KeyVersionDestructionJob
+	(*SetAliasSuffixRequest)(nil),                 // 22: controller.api.services.v1.SetAliasSuffixRequest
+	(*SetAliasSuffixResponse)(nil),                // 23: controller.api.services.v1.SetAliasSuffixResponse
+	(*RemoveAliasSuffixRequest)(nil),              // 24: controller.api.services.v1.RemoveAliasSuffixRequest
+	(*RemoveAliasSuffixResponse)(nil),             // 25: controller.api.services.v1.RemoveAliasSuffixResponse
+	(*scopes.Scope)(nil),                          // 26: controller.api.resources.scopes.v1.Scope
+	(*fieldmaskpb.FieldMask)(nil),                 // 27: google.protobuf.FieldMask
+	(*scopes.Key)(nil),                            // 28: controller.api.resources.scopes.v1.Key
+	(*scopes.KeyVersionDestructionJob)(nil),       // 29: controller.api.resources.scopes.v1.KeyVersionDestructionJob
 }
 var file_controller_api_services_v1_scope_service_proto_depIdxs = []int32{
-	22, // 0: controller.api.services.v1.GetScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	22, // 1: controller.api.services.v1.ListScopesResponse.items:type_name -> controller.api.resources.scopes.v1.Scope
-	22, // 2: controller.api.services.v1.CreateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
-	22, // 3: controller.api.services.v1.CreateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	22, // 4: controller.api.services.v1.UpdateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
-	23, // 5: controller.api.services.v1.UpdateScopeRequest.update_mask:type_name -> google.protobuf.FieldMask
-	22, // 6: controller.api.services.v1.UpdateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	24, // 7: controller.api.services.v1.ListKeysResponse.items:type_name -> controller.api.resources.scopes.v1.Key
-	25, // 8: controller.api.services.v1.ListKeyVersionDestructionJobsResponse.items:type_name -> controller.api.resources.scopes.v1.KeyVersionDestructionJob
-	22, // 9: controller.api.services.v1.AttachStoragePolicyResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	22, // 10: controller.api.services.v1.DetachStoragePolicyResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	0,  // 11: controller.api.services.v1.ScopeService.GetScope:input_type -> controller.api.services.v1.GetScopeRequest
-	2,  // 12: controller.api.services.v1.ScopeService.ListScopes:input_type -> controller.api.services.v1.ListScopesRequest
-	4,  // 13: controller.api.services.v1.ScopeService.CreateScope:input_type -> controller.api.services.v1.CreateScopeRequest
-	6,  // 14: controller.api.services.v1.ScopeService.UpdateScope:input_type -> controller.api.services.v1.UpdateScopeRequest
-	8,  // 15: controller.api.services.v1.ScopeService.DeleteScope:input_type -> controller.api.services.v1.DeleteScopeRequest
-	10, // 16: controller.api.services.v1.ScopeService.ListKeys:input_type -> controller.api.services.v1.ListKeysRequest
-	12, // 17: controller.api.services.v1.ScopeService.RotateKeys:input_type -> controller.api.services.v1.RotateKeysRequest
-	14, // 18: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:input_type -> controller.api.services.v1.ListKeyVersionDestructionJobsRequest
-	16, // 19: controller.api.services.v1.ScopeService.DestroyKeyVersion:input_type -> controller.api.services.v1.DestroyKeyVersionRequest
-	18, // 20: controller.api.services.v1.ScopeService.AttachStoragePolicy:input_type -> controller.api.services.v1.AttachStoragePolicyRequest
-	20, // 21: controller.api.services.v1.ScopeService.DetachStoragePolicy:input_type -> controller.api.services.v1.DetachStoragePolicyRequest
-	1,  // 22: controller.api.services.v1.ScopeService.GetScope:output_type -> controller.api.services.v1.GetScopeResponse
-	3,  // 23: controller.api.services.v1.ScopeService.ListScopes:output_type -> controller.api.services.v1.ListScopesResponse
-	5,  // 24: controller.api.services.v1.ScopeService.CreateScope:output_type -> controller.api.services.v1.CreateScopeResponse
-	7,  // 25: controller.api.services.v1.ScopeService.UpdateScope:output_type -> controller.api.services.v1.UpdateScopeResponse
-	9,  // 26: controller.api.services.v1.ScopeService.DeleteScope:output_type -> controller.api.services.v1.DeleteScopeResponse
-	11, // 27: controller.api.services.v1.ScopeService.ListKeys:output_type -> controller.api.services.v1.ListKeysResponse
-	13, // 28: controller.api.services.v1.ScopeService.RotateKeys:output_type -> controller.api.services.v1.RotateKeysResponse
-	15, // 29: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:output_type -> controller.api.services.v1.ListKeyVersionDestructionJobsResponse
-	17, // 30: controller.api.services.v1.ScopeService.DestroyKeyVersion:output_type -> controller.api.services.v1.DestroyKeyVersionResponse
-	19, // 31: controller.api.services.v1.ScopeService.AttachStoragePolicy:output_type -> controller.api.services.v1.AttachStoragePolicyResponse
-	21, // 32: controller.api.services.v1.ScopeService.DetachStoragePolicy:output_type -> controller.api.services.v1.DetachStoragePolicyResponse
-	22, // [22:33] is the sub-list for method output_type
-	11, // [11:22] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	26, // 0: controller.api.services.v1.GetScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 1: controller.api.services.v1.ListScopesResponse.items:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 2: controller.api.services.v1.CreateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 3: controller.api.services.v1.CreateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 4: controller.api.services.v1.UpdateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
+	27, // 5: controller.api.services.v1.UpdateScopeRequest.update_mask:type_name -> google.protobuf.FieldMask
+	26, // 6: controller.api.services.v1.UpdateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	28, // 7: controller.api.services.v1.ListKeysResponse.items:type_name -> controller.api.resources.scopes.v1.Key
+	29, // 8: controller.api.services.v1.ListKeyVersionDestructionJobsResponse.items:type_name -> controller.api.resources.scopes.v1.KeyVersionDestructionJob
+	26, // 9: controller.api.services.v1.AttachStoragePolicyResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 10: controller.api.services.v1.DetachStoragePolicyResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 11: controller.api.services.v1.SetAliasSuffixResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	26, // 12: controller.api.services.v1.RemoveAliasSuffixResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	0,  // 13: controller.api.services.v1.ScopeService.GetScope:input_type -> controller.api.services.v1.GetScopeRequest
+	2,  // 14: controller.api.services.v1.ScopeService.ListScopes:input_type -> controller.api.services.v1.ListScopesRequest
+	4,  // 15: controller.api.services.v1.ScopeService.CreateScope:input_type -> controller.api.services.v1.CreateScopeRequest
+	6,  // 16: controller.api.services.v1.ScopeService.UpdateScope:input_type -> controller.api.services.v1.UpdateScopeRequest
+	8,  // 17: controller.api.services.v1.ScopeService.DeleteScope:input_type -> controller.api.services.v1.DeleteScopeRequest
+	10, // 18: controller.api.services.v1.ScopeService.ListKeys:input_type -> controller.api.services.v1.ListKeysRequest
+	12, // 19: controller.api.services.v1.ScopeService.RotateKeys:input_type -> controller.api.services.v1.RotateKeysRequest
+	14, // 20: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:input_type -> controller.api.services.v1.ListKeyVersionDestructionJobsRequest
+	16, // 21: controller.api.services.v1.ScopeService.DestroyKeyVersion:input_type -> controller.api.services.v1.DestroyKeyVersionRequest
+	18, // 22: controller.api.services.v1.ScopeService.AttachStoragePolicy:input_type -> controller.api.services.v1.AttachStoragePolicyRequest
+	20, // 23: controller.api.services.v1.ScopeService.DetachStoragePolicy:input_type -> controller.api.services.v1.DetachStoragePolicyRequest
+	22, // 24: controller.api.services.v1.ScopeService.SetAliasSuffix:input_type -> controller.api.services.v1.SetAliasSuffixRequest
+	24, // 25: controller.api.services.v1.ScopeService.RemoveAliasSuffix:input_type -> controller.api.services.v1.RemoveAliasSuffixRequest
+	1,  // 26: controller.api.services.v1.ScopeService.GetScope:output_type -> controller.api.services.v1.GetScopeResponse
+	3,  // 27: controller.api.services.v1.ScopeService.ListScopes:output_type -> controller.api.services.v1.ListScopesResponse
+	5,  // 28: controller.api.services.v1.ScopeService.CreateScope:output_type -> controller.api.services.v1.CreateScopeResponse
+	7,  // 29: controller.api.services.v1.ScopeService.UpdateScope:output_type -> controller.api.services.v1.UpdateScopeResponse
+	9,  // 30: controller.api.services.v1.ScopeService.DeleteScope:output_type -> controller.api.services.v1.DeleteScopeResponse
+	11, // 31: controller.api.services.v1.ScopeService.ListKeys:output_type -> controller.api.services.v1.ListKeysResponse
+	13, // 32: controller.api.services.v1.ScopeService.RotateKeys:output_type -> controller.api.services.v1.RotateKeysResponse
+	15, // 33: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:output_type -> controller.api.services.v1.ListKeyVersionDestructionJobsResponse
+	17, // 34: controller.api.services.v1.ScopeService.DestroyKeyVersion:output_type -> controller.api.services.v1.DestroyKeyVersionResponse
+	19, // 35: controller.api.services.v1.ScopeService.AttachStoragePolicy:output_type -> controller.api.services.v1.AttachStoragePolicyResponse
+	21, // 36: controller.api.services.v1.ScopeService.DetachStoragePolicy:output_type -> controller.api.services.v1.DetachStoragePolicyResponse
+	23, // 37: controller.api.services.v1.ScopeService.SetAliasSuffix:output_type -> controller.api.services.v1.SetAliasSuffixResponse
+	25, // 38: controller.api.services.v1.ScopeService.RemoveAliasSuffix:output_type -> controller.api.services.v1.RemoveAliasSuffixResponse
+	26, // [26:39] is the sub-list for method output_type
+	13, // [13:26] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_services_v1_scope_service_proto_init() }
@@ -1354,7 +1581,7 @@ func file_controller_api_services_v1_scope_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_services_v1_scope_service_proto_rawDesc), len(file_controller_api_services_v1_scope_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

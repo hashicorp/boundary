@@ -645,6 +645,16 @@ func (s *Service) DetachStoragePolicy(ctx context.Context, req *pbs.DetachStorag
 	return nil, status.Errorf(codes.Unimplemented, "Policies are an Enterprise-only feature")
 }
 
+// SetAliasSuffix implements the interface pbs.ScopeServiceServer.
+func (s *Service) SetAliasSuffix(ctx context.Context, req *pbs.SetAliasSuffixRequest) (*pbs.SetAliasSuffixResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "Alias suffixes are an Enterprise-only feature")
+}
+
+// RemoveAliasSuffix implements the interface pbs.ScopeServiceServer.
+func (s *Service) RemoveAliasSuffix(ctx context.Context, req *pbs.RemoveAliasSuffixRequest) (*pbs.RemoveAliasSuffixResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "Alias suffixes are an Enterprise-only feature")
+}
+
 func (s *Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
