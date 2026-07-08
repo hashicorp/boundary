@@ -120,13 +120,13 @@ func TestCreate(t *testing.T) {
 			name:        "unsupported project scope",
 			scope:       proj.GetPublicId(),
 			value:       "unsupported.project.scope",
-			errContains: "alias_must_be_in_global_scope constraint failed",
+			errContains: `alias_must_be_in_global_scope constraint failed`,
 		},
 		{
-			name:        "supported org scope",
+			name:        "unsupported org scope",
 			scope:       proj.GetParentId(),
-			value:       "supported.org.scope",
-			errContains: "check constraint violated",
+			value:       "unsupported.org.scope",
+			errContains: `alias_must_be_in_global_scope constraint failed`,
 		},
 		{
 			name:        "invalid scope",
@@ -161,7 +161,7 @@ func TestCreate(t *testing.T) {
 
 			err = rw.Create(ctx, a)
 			if c.errContains != "" {
-				require.Error(t, err)
+				assert.Error(t, err)
 				assert.Contains(t, err.Error(), c.errContains)
 			} else {
 				require.NoError(t, err)
