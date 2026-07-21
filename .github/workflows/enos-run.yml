@@ -67,12 +67,9 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'e2e_aws builder:crt ip_version:4'
-          - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_connect builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
-          - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
           - filter: 'e2e_docker_base_with_worker_version builder:crt'
@@ -83,17 +80,10 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
       # Scenario variables
       ENOS_DEBUG_DATA_ROOT_DIR: ./enos/support/debug-data
-      ENOS_VAR_aws_region: us-east-1
-      ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
-      ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
       ENOS_VAR_local_boundary_dir: ./support/boundary
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
-      ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
-      ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
-      ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
-      ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
       ENOS_VAR_is_ci: true
     steps:
       - name: Checkout
@@ -153,17 +143,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
-      - name: Configure GCP credentials
-        if: contains(matrix.filter, 'gcp')
-        id: gcp_auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
-        with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-          access_token_lifetime: '3600s'
-          project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
-      - name: 'Set up GCP Cloud SDK'
-        if: contains(matrix.filter, 'gcp')
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Set up Enos
         uses: hashicorp/action-setup-enos@v1
         with:
@@ -375,17 +354,6 @@ jobs:
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
-      - name: Get logs for aws dependencies error
-        # Retrieve logs from the terraform to help diagnose some aws cleanup issues
-        if: ${{ always() && steps.destroy.outcome == 'failure' }}
-        continue-on-error: true
-        run: |
-          enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
-          TF_DIR=$(find ./enos/.enos/ -type d -mindepth 1 -maxdepth 1  | tail -1)
-          pushd "${TF_DIR}"
-          terraform state list
-          terraform state show module.create_base_infra.aws_route.igw
-          popd
       - name: Destroy Enos scenario (Retry)
         if: ${{ always() && steps.destroy.outcome == 'failure' }}
         run: |
