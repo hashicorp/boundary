@@ -396,24 +396,3 @@ jobs:
         run: |
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
-      - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
-        # failure() captures errors before `Run Enos scenario`
-        # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
-        if: ${{ failure() || (steps.run.outcome == 'failure' && steps.run_retry.outcome == 'failure') }}
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
-      - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.repository }}:${{ github.head_ref || github.ref_name }}"
