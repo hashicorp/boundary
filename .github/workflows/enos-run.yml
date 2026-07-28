@@ -63,11 +63,8 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'e2e_aws builder:crt ip_version:4'
-          - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
-          - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
           - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
@@ -87,11 +84,6 @@ jobs:
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
-      ENOS_VAR_go_version: ${{ inputs.go-version }}
-      ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
-      ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
-      ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
-      ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -119,38 +111,6 @@ jobs:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
           terraform_wrapper: false
-      - name: Import GPG key for Boundary pass keystore
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
-        with:
-          gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
-      - name: Trust the pass keystore GPG key
-        id: trust_gpg
-        run: |
-          gpg -a --encrypt -r ${{ secrets.ENOS_GPG_UID }} --trust-model always
-          echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
-          cat ~/.gnupg/gpg.conf
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
-          aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
-          role-skip-session-tagging: true
-          role-duration-seconds: 3600
-      - name: Configure GCP credentials
-        if: contains(matrix.filter, 'gcp')
-        id: gcp_auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
-        with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-          access_token_lifetime: '3600s'
-          project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
-      - name: 'Set up GCP Cloud SDK'
-        if: contains(matrix.filter, 'gcp')
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Set up Enos
         uses: hashicorp/action-setup-enos@v1
         with:
@@ -190,11 +150,58 @@ jobs:
           wget https://github.com/zx2c4/password-store/archive/refs/tags/1.7.4.tar.gz -O /tmp/test-deps/pass/pass.tar.gz
           cd /tmp/test-deps/pass
           tar -xvf pass.tar.gz
-      - name: Install pass for Boundary keyring
+      - name: GPG setup
         run: |
-          cd /tmp/test-deps/pass/password-store-1.7.4
-          sudo make install
-          pass init ${{ secrets.ENOS_GPG_UID }}
+          # Create a GPG key
+          export KEY_PW=boundary
+          gpg --generate-key --batch <<eoGpgConf
+              %echo Started!
+              Key-Type: RSA
+              Key-Length: default
+              Subkey-Type: RSA
+              Name-Real: boundary
+              Name-Comment: default
+              Name-Email: default
+              Expire-Date: 0
+              Passphrase: boundary
+              %commit
+              %echo Done.
+          eoGpgConf
+
+          # Enable gpg-preset-passphrase so that key passwords can be saved
+          echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye &>/dev/null
+
+          # Get information about the created keys
+          lines=$(gpg --list-secret-keys --with-colons --with-keygrip)
+          export lines
+          export KEY_ID=""
+          while read -r line
+          do
+            # Save the first key id to be used later
+            if [[ $line =~ "fpr"* ]]; then
+              if [[ $KEY_ID == "" ]]; then
+                KEY_ID="$(echo "$line" | sed -r 's/fpr|://g')"
+              fi
+            fi
+
+            # Cache the passphrases for the keys so passwords do not need to be entered
+            if [[ $line =~ "grp"* ]]; then
+              KEYGRIP_ID="$(echo "$line" | sed -r 's/grp|://g')"
+              export KEYGRIP_ID
+              /usr/lib/gnupg/gpg-preset-passphrase --preset -P "$KEY_PW" "$KEYGRIP_ID"
+            fi
+          done <<< "$lines"
+
+          # Trust the key
+          touch /tmp/test.txt
+          gpg -a --encrypt -r "$KEY_ID" --trust-model always --batch --yes /tmp/test.txt
+          echo "trusted-key $KEY_ID" >> ~/.gnupg/gpg.conf
+
+          # Initialize the password store
+          sudo apt-get update
+          sudo apt-get install -y pass
+          pass init "$KEY_ID" &>/dev/null
       - name: Download Vault AMD64 binary
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
@@ -306,17 +313,6 @@ jobs:
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
-      - name: Get logs for aws dependencies error
-        # Retrieve logs from the terraform to help diagnose some aws cleanup issues
-        if: ${{ always() && steps.destroy.outcome == 'failure' }}
-        continue-on-error: true
-        run: |
-          enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
-          TF_DIR=$(find ./enos/.enos/ -type d -mindepth 1 -maxdepth 1  | tail -1)
-          pushd "${TF_DIR}"
-          terraform state list
-          terraform state show module.create_base_infra.aws_route.igw
-          popd
       - name: Destroy Enos scenario (Retry)
         if: ${{ always() && steps.destroy.outcome == 'failure' }}
         run: |
@@ -327,25 +323,3 @@ jobs:
         run: |
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
-      - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
-        # failure() captures errors before `Run Enos scenario`
-        # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
-        if: ${{ failure() || (steps.run.outcome == 'failure' && steps.run_retry.outcome == 'failure') }}
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-      - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-

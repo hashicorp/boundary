@@ -17,18 +17,6 @@ jobs:
     name: CLI tests
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Import GPG key for Boundary pass keystore
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
-        with:
-          gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
-      - name: Trust the pass keystore GPG key
-        id: trust_gpg
-        run: |
-          gpg -a --encrypt -r ${{ secrets.ENOS_GPG_UID }} --trust-model always
-          echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
-          cat ~/.gnupg/gpg.conf
       - name: Set up Bats CLI UI tests dependency cache
         id: dep-cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.3
@@ -60,11 +48,58 @@ jobs:
           wget https://github.com/zx2c4/password-store/archive/refs/tags/1.7.4.tar.gz -O /tmp/test-deps/pass/pass.tar.gz
           cd /tmp/test-deps/pass
           tar -xvf pass.tar.gz
-      - name: Install pass for Boundary keyring
+      - name: GPG setup
         run: |
-          cd /tmp/test-deps/pass/password-store-1.7.4
-          sudo make install
-          pass init ${{ secrets.ENOS_GPG_UID }}
+          # Create a GPG key
+          export KEY_PW=boundary
+          gpg --generate-key --batch <<'eoGpgConf'
+              %echo Started!
+              Key-Type: RSA
+              Key-Length: default
+              Subkey-Type: RSA
+              Name-Real: boundary
+              Name-Comment: default
+              Name-Email: default
+              Expire-Date: 0
+              Passphrase: boundary
+              %commit
+              %echo Done.
+          eoGpgConf
+
+          # Enable gpg-preset-passphrase so that key passwords can be saved
+          echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye &>/dev/null
+
+          # Get information about the created keys
+          lines=$(gpg --list-secret-keys --with-colons --with-keygrip)
+          export lines
+          export KEY_ID=""
+          while read -r line
+          do
+            # Save the first key id to be used later
+            if [[ $line =~ "fpr"* ]]; then
+              if [[ $KEY_ID == "" ]]; then
+                KEY_ID="$(echo "$line" | sed -r 's/fpr|://g')"
+              fi
+            fi
+
+            # Cache the passphrases for the keys so passwords do not need to be entered
+            if [[ $line =~ "grp"* ]]; then
+              KEYGRIP_ID="$(echo "$line" | sed -r 's/grp|://g')"
+              export KEYGRIP_ID
+              /usr/lib/gnupg/gpg-preset-passphrase --preset -P "$KEY_PW" "$KEYGRIP_ID"
+            fi
+          done <<< "$lines"
+
+          # Trust the key
+          touch /tmp/test.txt
+          gpg -a --encrypt -r "$KEY_ID" --trust-model always --batch --yes /tmp/test.txt
+          echo "trusted-key $KEY_ID" >> ~/.gnupg/gpg.conf
+
+          # Initialize the password store
+          sudo apt-get update
+          sudo apt-get install -y pass
+          pass init "$KEY_ID" &>/dev/null
       - name: Download Vault AMD64 binary for integration testing
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
@@ -109,12 +144,3 @@ jobs:
         if: success() || failure()
         run: |
           make -C internal/tests/cli test-vault-down
-      - name: Send Slack message
-        if: ${{ failure() }}
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
-            text: ":x: bats tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
