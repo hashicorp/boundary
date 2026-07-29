@@ -672,18 +672,18 @@ func (m *streamMock) RecvToClient() (*httpbody.HttpBody, error) {
 func Test_aliasResolutionInterceptor(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
+	txm := db.NewTransactionManager(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	aliasRepoFn := func() (*alias.Repository, error) {
-		return alias.NewRepository(context.Background(), rw, rw, kmsCache)
+		return alias.NewRepository(context.Background(), txm, kmsCache)
 	}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test-target")
-	al := talias.TestAlias(t, rw, "test-alias.example", talias.WithDestinationId(tar.GetPublicId()))
-	alWithoutDest := talias.TestAlias(t, rw, "no-destination.alias")
+	al := talias.TestNewAlias(t, txm, "test-alias.example", talias.WithDestinationId(tar.GetPublicId()))
+	alWithoutDest := talias.TestNewAlias(t, txm, "no-destination.alias")
 
 	interceptor := aliasResolutionInterceptor(ctx, aliasRepoFn)
 	require.NotNil(t, interceptor)
