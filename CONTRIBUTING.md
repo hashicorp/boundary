@@ -153,12 +153,12 @@ $ make test-database-up
 $ docker logs custom-name
 ```
 
-The default docker image is built using the `postgres:12` base image.
+The default docker image is built using the `postgres:15` base image.
 The image can be changed using a make option to test against other versions:
 
 ```
-$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:12-alpine test-database-up
-$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:13-alpine test-database-up
+$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:15-alpine test-database-up
+$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:16-alpine test-database-up
 $ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:alpine test-database-up
 ```
 

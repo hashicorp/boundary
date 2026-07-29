@@ -27,7 +27,7 @@ full configuration details can be found on Boundary's documentation site.
 
 ### Postgres
 
-The usage instructions in this README assume you have an external postgres database (version 12 or greater) to run boundary server with.
+The usage instructions in this README assume you have an external postgres database (version 15 or greater) to run boundary server with.
 If you want to get started quickly, you can start a local postgres in docker:
 
 ```bash
