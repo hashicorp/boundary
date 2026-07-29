@@ -565,19 +565,19 @@ const (
     `
 
 	estimateCountRoles = `
-		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
+    select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('iam_role'::regclass)
 	`
 
 	estimateCountUsers = `
-		select reltuples::bigint as estimate from pg_class where oid in ('iam_user'::regclass)
+    select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('iam_user'::regclass)
 	`
 
 	estimateCountGroups = `
-		select reltuples::bigint as estimate from pg_class where oid in ('iam_group'::regclass)
+    select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('iam_group'::regclass)
 	`
 
 	estimateCountScopes = `
-		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
+    select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
 
 	scopeIdFromRoleIdQuery = `

@@ -5,7 +5,7 @@ package auth
 
 const (
 	estimateCountAuthMethodsQuery = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in (
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in (
     'auth_password_method'::regclass,
     'auth_ldap_method'::regclass,
     'auth_oidc_method'::regclass

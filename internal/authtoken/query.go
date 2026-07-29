@@ -5,6 +5,6 @@ package authtoken
 
 const (
 	estimateCountAuthTokens = `
-select reltuples::bigint as estimate from pg_class where oid in ('auth_token'::regclass)
+select greatest(0, coalesce(sum(reltuples::bigint), 0)) as estimate from pg_class where oid in ('auth_token'::regclass)
 `
 )
