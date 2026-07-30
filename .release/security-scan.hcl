@@ -51,4 +51,20 @@ binary {
 	osv          = true
 	oss_index    = true
 	nvd          = true
+
+	triage {
+		suppress {
+			vulnerabilities = [
+				# golang.org/x/crypto/openpgp (GO-2026-5932)
+				# https://pkg.go.dev/vuln/GO-2026-5932
+				#
+				# The advisory is specific to openpgp; Boundary does not import this package.
+				#
+				# $ go mod why golang.org/x/crypto/openpgp
+				# # golang.org/x/crypto/openpgp
+				# (main module does not need package golang.org/x/crypto/openpgp)
+				"GO-2026-5932",
+			]
+		}
+	}
 }
