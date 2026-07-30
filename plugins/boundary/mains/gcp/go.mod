@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/boundary/mains/gcp
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/hashicorp/boundary-plugin-gcp v0.1.0
