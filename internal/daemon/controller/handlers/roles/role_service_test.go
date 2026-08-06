@@ -2120,8 +2120,12 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
 
-	// sort expected and got to ensure they are in the same order
+	// expected, got.Grants and got.GrantStrings need to be in the same order
 	sort.Strings(expected)
+	sort.Slice(got.Grants, func(i, j int) bool {
+		return got.Grants[i].GetRaw() < got.Grants[j].GetRaw()
+	})
+
 	sort.Slice(got.GrantStrings, func(i, j int) bool {
 		return got.GrantStrings[i] < got.GrantStrings[j]
 	})
@@ -2134,6 +2138,8 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		j := got.Grants[i].GetJson()
 		require.NotNil(j)
 		assert.Equal(parsed.Id(), j.GetId())
+		sort.Strings(parsed.Ids())
+		sort.Strings(j.Ids)
 		assert.Equal(parsed.Ids(), j.GetIds())
 		assert.Equal(parsed.Type().String(), j.GetType())
 		_, acts := parsed.Actions()
