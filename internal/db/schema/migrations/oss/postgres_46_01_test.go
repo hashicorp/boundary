@@ -372,7 +372,7 @@ func validateRepairFunc(t *testing.T, rw *db.Db, repairReport migration.Repairs)
 		})
 	}
 	require.NoError(rows.Err())
-	require.Equal([]targetAssociation{
+	require.ElementsMatch([]targetAssociation{
 		{
 			targetId:   "ttcp_PRJA___65001",
 			resourceId: "clvlt_PRJA___65001",

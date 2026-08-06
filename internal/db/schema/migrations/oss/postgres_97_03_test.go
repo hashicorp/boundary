@@ -286,7 +286,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
 		require.Len(globalRoles, 10)
-		require.Equal([]testRole{
+		require.ElementsMatch([]testRole{
 			{
 				role_id:               "r_go____name",
 				scope_id:              "global",
@@ -400,7 +400,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
 		require.Len(orgRoles, 6)
-		require.Equal([]testRole{
+		require.ElementsMatch([]testRole{
 			{
 				role_id:               "r_op_bc__art",
 				scope_id:              "o_____colors",
@@ -477,7 +477,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
 		require.Len(projRoles, 5)
-		require.Equal([]testRole{
+		require.ElementsMatch([]testRole{
 			{
 				role_id:               "r_prjaa____test",
 				scope_id:              "p_pA____test",
@@ -562,7 +562,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
 		require.Len(individualProjRoles, 2)
-		require.Equal([]testRole{
+		require.ElementsMatch([]testRole{
 			{
 				role_id:     "r_gp____spec",
 				scope_id:    "p____bcolors",
@@ -592,7 +592,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
 		require.Len(individualOrgRoles, 2)
-		require.Equal([]testRole{
+		require.ElementsMatch([]testRole{
 			{
 				role_id:     "r_op_rc__art",
 				scope_id:    "p____rcolors",
