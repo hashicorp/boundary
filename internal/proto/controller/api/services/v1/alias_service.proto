@@ -79,7 +79,17 @@ service AliasService {
   // is malformed or not provided an error is returned.
   rpc DeleteAlias(DeleteAliasRequest) returns (DeleteAliasResponse) {
     option (google.api.http) = {delete: "/v1/aliases/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an Alias."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes an Alias."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

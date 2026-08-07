@@ -83,7 +83,17 @@ service HostService {
   // is malformed or not provided an error is returned.
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {delete: "/v1/hosts/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Delete a Host."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Delete a Host."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

@@ -73,7 +73,17 @@ service SessionRecordingService {
   // If the Session Recording id is malformed or not provided an error is returned.
   rpc DeleteSessionRecording(DeleteSessionRecordingRequest) returns (DeleteSessionRecordingResponse) {
     option (google.api.http) = {delete: "/v1/session-recordings/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 
   // CreateExport creates an export of the specified Connection Recording in the requested mime type.

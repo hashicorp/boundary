@@ -94,7 +94,17 @@ service WorkerService {
   // is malformed or not provided an error is returned.
   rpc DeleteWorker(DeleteWorkerRequest) returns (DeleteWorkerResponse) {
     option (google.api.http) = {delete: "/v1/workers/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Worker."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Worker."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 
   // AddWorkerTags adds api tags to an existing Worker. If missing, malformed,

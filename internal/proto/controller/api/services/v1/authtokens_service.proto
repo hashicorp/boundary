@@ -44,7 +44,17 @@ service AuthTokenService {
   // Auth Token id is malformed or not provided an error is returned.
   rpc DeleteAuthToken(DeleteAuthTokenRequest) returns (DeleteAuthTokenResponse) {
     option (google.api.http) = {delete: "/v1/auth-tokens/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an Auth Token."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes an Auth Token."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

@@ -82,7 +82,17 @@ service ManagedGroupService {
   // is malformed or not provided an error is returned.
   rpc DeleteManagedGroup(DeleteManagedGroupRequest) returns (DeleteManagedGroupResponse) {
     option (google.api.http) = {delete: "/v1/managed-groups/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a ManagedGroup."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a ManagedGroup."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

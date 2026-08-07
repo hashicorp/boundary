@@ -79,7 +79,17 @@ service RoleService {
   // are malformed, or not provided an error is returned.
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
     option (google.api.http) = {delete: "/v1/roles/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Role."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Role."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 
   // AddRolePrincipals adds users and/or groups to a Role. The provided request

@@ -79,7 +79,17 @@ service ScopeService {
   // provided Scope IDs are malformed or not provided an error is returned.
   rpc DeleteScope(DeleteScopeRequest) returns (DeleteScopeResponse) {
     option (google.api.http) = {delete: "/v1/scopes/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Scope."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Scope."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 
   // ListKeys lists all the keys found in the scope specified. If the scope
