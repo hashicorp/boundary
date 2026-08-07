@@ -6,10 +6,10 @@ package session
 import (
 	"context"
 	"crypto/ed25519"
+	cyyptorand "crypto/rand"
 	"crypto/x509"
 	"io"
 	"math/big"
-	mathrand "math/rand"
 	"net"
 	"strings"
 	"time"
@@ -456,6 +456,11 @@ func newCert(ctx context.Context, jobId string, addresses []string, exp time.Tim
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
+	serialNumber, err := cyyptorand.Int(rand, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to generate certificate serial number"))
+	}
+
 	template := &x509.Certificate{
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -463,7 +468,7 @@ func newCert(ctx context.Context, jobId string, addresses []string, exp time.Tim
 		},
 		DNSNames:              []string{jobId},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-		SerialNumber:          big.NewInt(mathrand.Int63()),
+		SerialNumber:          serialNumber,
 		NotBefore:             time.Now().Add(-1 * time.Minute),
 		NotAfter:              exp,
 		BasicConstraintsValid: true,
