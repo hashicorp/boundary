@@ -76,7 +76,17 @@ service PolicyService {
   // policy ID is malformed or not provided.
   rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse) {
     option (google.api.http) = {delete: "/v1/policies/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an existing policy."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes an existing policy."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

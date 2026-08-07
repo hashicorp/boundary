@@ -79,7 +79,17 @@ service StorageBucketService {
   // provided DeleteStorageBucket returns an error.
   rpc DeleteStorageBucket(DeleteStorageBucketRequest) returns (DeleteStorageBucketResponse) {
     option (google.api.http) = {delete: "/v1/storage-buckets/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Storage Bucket"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Storage Bucket"
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 }
 

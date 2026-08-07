@@ -82,7 +82,17 @@ service TargetService {
   // is malformed or not provided an error is returned.
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
     option (google.api.http) = {delete: "/v1/targets/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Target."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a Target."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+      responses: {
+        key: "200"
+        value: {description: ""}
+      }
+    };
   }
 
   // AuthorizeSession creates authorization information from a given Target.
