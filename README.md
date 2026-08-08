@@ -8,7 +8,7 @@
 
 <img alt="Boundary" src="boundary.png" alt="Image" width="500px"/>
 
-Boundary is an identity-aware proxy that provides a simple, secure way to access hosts and critical systems on your network.
+Boundary is an identity-aware proxy that provides a simple and secure way to access hosts and critical systems on your network.
 
 With Boundary you can:
 
@@ -34,7 +34,7 @@ For more information, refer to "[What is Boundary?](https://developer.hashicorp.
 
 Boundary consists of two server components:
 
-* **Controller**, which serves the API and coordinate session requests
+* **Controller**, which serves the API and coordinates session requests
 * **Workers**, which perform session handling
 
 A real-world Boundary installation will likely consist of one or more
@@ -46,7 +46,7 @@ authorized sessions to resources across a network.
 
 <img src="boundary_desktop_example.gif" alt="Boundary Desktop GIF" width="66%" height="66%" loop="true">
 
-Boundary does _not_ require software to be installed on your hosts and services.
+Boundary does _not_ require any software to be installed on your hosts and services.
 
 ## Requirements
 
