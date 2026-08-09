@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/boundary/sdk/wspb"
 )
 
+var errUnableToAuthorizeConnection = errors.New("unable to authorize connection")
+
 func (p *ClientProxy) getWsConn(ctx context.Context) (*websocket.Conn, error) {
 	conn, resp, err := websocket.Dial(
 		ctx,
@@ -84,7 +86,7 @@ func (p *ClientProxy) runTcpProxyV1(wsConn *websocket.Conn, listeningConn net.Co
 			// connections after the first has failed. We don't cancel the
 			// context here as existing connections may be fine.
 			p.connsLeftCh <- 0
-			return errors.New("unable to authorize connection")
+			return errUnableToAuthorizeConnection
 		}
 		switch {
 		case strings.Contains(err.Error(), "tofu token not allowed"):
