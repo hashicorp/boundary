@@ -642,13 +642,15 @@ const file_controller_api_services_v1_storage_bucket_service_proto_rawDesc = "" 
 	"\x04item\x18\x01 \x01(\v29.controller.api.resources.storagebuckets.v1.StorageBucketR\x04item\",\n" +
 	"\x1aDeleteStorageBucketRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1d\n" +
-	"\x1bDeleteStorageBucketResponse2\x86\v\n" +
+	"\x1bDeleteStorageBucketResponse2\x98\v\n" +
 	"\x14StorageBucketService\x12\xc7\x01\n" +
 	"\x10GetStorageBucket\x123.controller.api.services.v1.GetStorageBucketRequest\x1a4.controller.api.services.v1.GetStorageBucketResponse\"H\x92A\x1f\x12\x1dGets a single Storage Bucket.\x82\xd3\xe4\x93\x02 b\x04item\x12\x18/v1/storage-buckets/{id}\x12\xc4\x01\n" +
 	"\x12ListStorageBuckets\x125.controller.api.services.v1.ListStorageBucketsRequest\x1a6.controller.api.services.v1.ListStorageBucketsResponse\"?\x92A!\x12\x1fGets a list of Storage Buckets.\x82\xd3\xe4\x93\x02\x15\x12\x13/v1/storage-buckets\x12\xcc\x01\n" +
 	"\x13CreateStorageBucket\x126.controller.api.services.v1.CreateStorageBucketRequest\x1a7.controller.api.services.v1.CreateStorageBucketResponse\"D\x92A\x1a\x12\x18Creates a Storage Bucket\x82\xd3\xe4\x93\x02!:\x04itemb\x04item\"\x13/v1/storage-buckets\x12\xd1\x01\n" +
-	"\x13UpdateStorageBucket\x126.controller.api.services.v1.UpdateStorageBucketRequest\x1a7.controller.api.services.v1.UpdateStorageBucketResponse\"I\x92A\x1a\x12\x18Updates a Storage Bucket\x82\xd3\xe4\x93\x02&:\x04itemb\x04item2\x18/v1/storage-buckets/{id}\x12\xc5\x01\n" +
-	"\x13DeleteStorageBucket\x126.controller.api.services.v1.DeleteStorageBucketRequest\x1a7.controller.api.services.v1.DeleteStorageBucketResponse\"=\x92A\x1a\x12\x18Deletes a Storage Bucket\x82\xd3\xe4\x93\x02\x1a*\x18/v1/storage-buckets/{id}\x1a\xf1\x02\x92A\xed\x02\n" +
+	"\x13UpdateStorageBucket\x126.controller.api.services.v1.UpdateStorageBucketRequest\x1a7.controller.api.services.v1.UpdateStorageBucketResponse\"I\x92A\x1a\x12\x18Updates a Storage Bucket\x82\xd3\xe4\x93\x02&:\x04itemb\x04item2\x18/v1/storage-buckets/{id}\x12\xd7\x01\n" +
+	"\x13DeleteStorageBucket\x126.controller.api.services.v1.DeleteStorageBucketRequest\x1a7.controller.api.services.v1.DeleteStorageBucketResponse\"O\x92A,\x12\x18Deletes a Storage BucketJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x1a*\x18/v1/storage-buckets/{id}\x1a\xf1\x02\x92A\xed\x02\n" +
 	"\x16Storage bucket service\x12\xc1\x01A storage bucket is an external storage location used to store recordings of user access sessions. The storage bucket service provides endpoints that let you manage storage buckets in Boundary.\x1a\x8e\x01\n" +
 	"7Read about storage buckets in the Boundary domain model\x12Shttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-bucketsBX\xa2\xe3)\astorageZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 

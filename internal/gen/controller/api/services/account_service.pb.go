@@ -864,14 +864,16 @@ const file_controller_api_services_v1_account_service_proto_rawDesc = "" +
 	"\x10current_password\x18\x03 \x01(\tR\x10current_password\x12\"\n" +
 	"\fnew_password\x18\x04 \x01(\tR\fnew_password\"[\n" +
 	"\x16ChangePasswordResponse\x12A\n" +
-	"\x04item\x18\x01 \x01(\v2-.controller.api.resources.accounts.v1.AccountR\x04item2\x9d\r\n" +
+	"\x04item\x18\x01 \x01(\v2-.controller.api.resources.accounts.v1.AccountR\x04item2\xaf\r\n" +
 	"\x0eAccountService\x12\xbc\x01\n" +
 	"\n" +
 	"GetAccount\x12-.controller.api.services.v1.GetAccountRequest\x1a..controller.api.services.v1.GetAccountResponse\"O\x92A-\x12+Gets a single account based on the input ID\x82\xd3\xe4\x93\x02\x19b\x04item\x12\x11/v1/accounts/{id}\x12\xb9\x01\n" +
 	"\fListAccounts\x12/.controller.api.services.v1.ListAccountsRequest\x1a0.controller.api.services.v1.ListAccountsResponse\"F\x92A/\x12-Lists all accounts in a specific auth method.\x82\xd3\xe4\x93\x02\x0e\x12\f/v1/accounts\x12\xd0\x01\n" +
 	"\rCreateAccount\x120.controller.api.services.v1.CreateAccountRequest\x1a1.controller.api.services.v1.CreateAccountResponse\"Z\x92A7\x125Creates a single account in the provided auth method.\x82\xd3\xe4\x93\x02\x1a:\x04itemb\x04item\"\f/v1/accounts\x12\xb3\x01\n" +
-	"\rUpdateAccount\x120.controller.api.services.v1.UpdateAccountRequest\x1a1.controller.api.services.v1.UpdateAccountResponse\"=\x92A\x15\x12\x13Updates an account.\x82\xd3\xe4\x93\x02\x1f:\x04itemb\x04item2\x11/v1/accounts/{id}\x12\xa7\x01\n" +
-	"\rDeleteAccount\x120.controller.api.services.v1.DeleteAccountRequest\x1a1.controller.api.services.v1.DeleteAccountResponse\"1\x92A\x15\x12\x13Deletes an account.\x82\xd3\xe4\x93\x02\x13*\x11/v1/accounts/{id}\x12\xcf\x01\n" +
+	"\rUpdateAccount\x120.controller.api.services.v1.UpdateAccountRequest\x1a1.controller.api.services.v1.UpdateAccountResponse\"=\x92A\x15\x12\x13Updates an account.\x82\xd3\xe4\x93\x02\x1f:\x04itemb\x04item2\x11/v1/accounts/{id}\x12\xb9\x01\n" +
+	"\rDeleteAccount\x120.controller.api.services.v1.DeleteAccountRequest\x1a1.controller.api.services.v1.DeleteAccountResponse\"C\x92A'\x12\x13Deletes an account.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x13*\x11/v1/accounts/{id}\x12\xcf\x01\n" +
 	"\vSetPassword\x12..controller.api.services.v1.SetPasswordRequest\x1a/.controller.api.services.v1.SetPasswordResponse\"_\x92A-\x12+Sets the password for the provided account.\x82\xd3\xe4\x93\x02):\x01*b\x04item\"\x1e/v1/accounts/{id}:set-password\x12\xdb\x01\n" +
 	"\x0eChangePassword\x121.controller.api.services.v1.ChangePasswordRequest\x1a2.controller.api.services.v1.ChangePasswordResponse\"b\x92A-\x12+Sets the password for the provided account.\x82\xd3\xe4\x93\x02,:\x01*b\x04item\"!/v1/accounts/{id}:change-password\x1a\xac\x02\x92A\xa8\x02\n" +
 	"\x0fAccount service\x12\x91\x01The account service exposes endpoints for interacting with accounts in Boundary. Accounts belong to an auth method and are associated with users.\x1a\x80\x01\n" +

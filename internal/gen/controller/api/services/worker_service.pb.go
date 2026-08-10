@@ -1159,14 +1159,16 @@ const file_controller_api_services_v1_worker_service_proto_rawDesc = "" +
 	"'ReinitializeCertificateAuthorityRequest\x12\x19\n" +
 	"\bscope_id\x18\x01 \x01(\tR\ascopeId\"y\n" +
 	"(ReinitializeCertificateAuthorityResponse\x12M\n" +
-	"\x04item\x18\x01 \x01(\v29.controller.api.resources.workers.v1.CertificateAuthorityR\x04item2\xa2\x14\n" +
+	"\x04item\x18\x01 \x01(\v29.controller.api.resources.workers.v1.CertificateAuthorityR\x04item2\xb4\x14\n" +
 	"\rWorkerService\x12\xa2\x01\n" +
 	"\tGetWorker\x12,.controller.api.services.v1.GetWorkerRequest\x1a-.controller.api.services.v1.GetWorkerResponse\"8\x92A\x17\x12\x15Gets a single Worker.\x82\xd3\xe4\x93\x02\x18b\x04item\x12\x10/v1/workers/{id}\x12\x9a\x01\n" +
 	"\vListWorkers\x12..controller.api.services.v1.ListWorkersRequest\x1a/.controller.api.services.v1.ListWorkersResponse\"*\x92A\x14\x12\x12Lists all Workers.\x82\xd3\xe4\x93\x02\r\x12\v/v1/workers\x12\xca\x01\n" +
 	"\x0fCreateWorkerLed\x122.controller.api.services.v1.CreateWorkerLedRequest\x1a3.controller.api.services.v1.CreateWorkerLedResponse\"N\x92A\x1a\x12\x18Creates a single Worker.\x82\xd3\xe4\x93\x02+:\x04itemb\x04item\"\x1d/v1/workers:create:worker-led\x12\xda\x01\n" +
 	"\x13CreateControllerLed\x126.controller.api.services.v1.CreateControllerLedRequest\x1a7.controller.api.services.v1.CreateControllerLedResponse\"R\x92A\x1a\x12\x18Creates a single Worker.\x82\xd3\xe4\x93\x02/:\x04itemb\x04item\"!/v1/workers:create:controller-led\x12\xad\x01\n" +
-	"\fUpdateWorker\x12/.controller.api.services.v1.UpdateWorkerRequest\x1a0.controller.api.services.v1.UpdateWorkerResponse\":\x92A\x13\x12\x11Updates a Worker.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/workers/{id}\x12\xa1\x01\n" +
-	"\fDeleteWorker\x12/.controller.api.services.v1.DeleteWorkerRequest\x1a0.controller.api.services.v1.DeleteWorkerResponse\".\x92A\x13\x12\x11Deletes a Worker.\x82\xd3\xe4\x93\x02\x12*\x10/v1/workers/{id}\x12\xd0\x01\n" +
+	"\fUpdateWorker\x12/.controller.api.services.v1.UpdateWorkerRequest\x1a0.controller.api.services.v1.UpdateWorkerResponse\":\x92A\x13\x12\x11Updates a Worker.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/workers/{id}\x12\xb3\x01\n" +
+	"\fDeleteWorker\x12/.controller.api.services.v1.DeleteWorkerRequest\x1a0.controller.api.services.v1.DeleteWorkerResponse\"@\x92A%\x12\x11Deletes a Worker.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x12*\x10/v1/workers/{id}\x12\xd0\x01\n" +
 	"\rAddWorkerTags\x120.controller.api.services.v1.AddWorkerTagsRequest\x1a1.controller.api.services.v1.AddWorkerTagsResponse\"Z\x92A&\x12$Adds api tags to an existing Worker.\x82\xd3\xe4\x93\x02+:\x01*b\x04item\" /v1/workers/{id}:add-worker-tags\x12\xd1\x01\n" +
 	"\rSetWorkerTags\x120.controller.api.services.v1.SetWorkerTagsRequest\x1a1.controller.api.services.v1.SetWorkerTagsResponse\"[\x92A'\x12%Sets api tags for an existing Worker.\x82\xd3\xe4\x93\x02+:\x01*b\x04item\" /v1/workers/{id}:set-worker-tags\x12\xe1\x01\n" +
 	"\x10RemoveWorkerTags\x123.controller.api.services.v1.RemoveWorkerTagsRequest\x1a4.controller.api.services.v1.RemoveWorkerTagsResponse\"b\x92A+\x12)Removes api tags from an existing Worker.\x82\xd3\xe4\x93\x02.:\x01*b\x04item\"#/v1/workers/{id}:remove-worker-tags\x12\x8b\x02\n" +

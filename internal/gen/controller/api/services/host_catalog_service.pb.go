@@ -641,14 +641,16 @@ const file_controller_api_services_v1_host_catalog_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\x04item\"*\n" +
 	"\x18DeleteHostCatalogRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1b\n" +
-	"\x19DeleteHostCatalogResponse2\xec\n" +
+	"\x19DeleteHostCatalogResponse2\xfe\n" +
 	"\n" +
 	"\x12HostCatalogService\x12\xbd\x01\n" +
 	"\x0eGetHostCatalog\x121.controller.api.services.v1.GetHostCatalogRequest\x1a2.controller.api.services.v1.GetHostCatalogResponse\"D\x92A\x1d\x12\x1bGets a single Host Catalog.\x82\xd3\xe4\x93\x02\x1eb\x04item\x12\x16/v1/host-catalogs/{id}\x12\xba\x01\n" +
 	"\x10ListHostCatalogs\x123.controller.api.services.v1.ListHostCatalogsRequest\x1a4.controller.api.services.v1.ListHostCatalogsResponse\";\x92A\x1f\x12\x1dGets a list of Host Catalogs.\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/host-catalogs\x12\xc2\x01\n" +
 	"\x11CreateHostCatalog\x124.controller.api.services.v1.CreateHostCatalogRequest\x1a5.controller.api.services.v1.CreateHostCatalogResponse\"@\x92A\x18\x12\x16Creates a Host Catalog\x82\xd3\xe4\x93\x02\x1f:\x04itemb\x04item\"\x11/v1/host-catalogs\x12\xc7\x01\n" +
-	"\x11UpdateHostCatalog\x124.controller.api.services.v1.UpdateHostCatalogRequest\x1a5.controller.api.services.v1.UpdateHostCatalogResponse\"E\x92A\x18\x12\x16Updates a Host Catalog\x82\xd3\xe4\x93\x02$:\x04itemb\x04item2\x16/v1/host-catalogs/{id}\x12\xbb\x01\n" +
-	"\x11DeleteHostCatalog\x124.controller.api.services.v1.DeleteHostCatalogRequest\x1a5.controller.api.services.v1.DeleteHostCatalogResponse\"9\x92A\x18\x12\x16Deletes a Host Catalog\x82\xd3\xe4\x93\x02\x18*\x16/v1/host-catalogs/{id}\x1a\x8b\x03\x92A\x87\x03\n" +
+	"\x11UpdateHostCatalog\x124.controller.api.services.v1.UpdateHostCatalogRequest\x1a5.controller.api.services.v1.UpdateHostCatalogResponse\"E\x92A\x18\x12\x16Updates a Host Catalog\x82\xd3\xe4\x93\x02$:\x04itemb\x04item2\x16/v1/host-catalogs/{id}\x12\xcd\x01\n" +
+	"\x11DeleteHostCatalog\x124.controller.api.services.v1.DeleteHostCatalogRequest\x1a5.controller.api.services.v1.DeleteHostCatalogResponse\"K\x92A*\x12\x16Deletes a Host CatalogJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x18*\x16/v1/host-catalogs/{id}\x1a\x8b\x03\x92A\x87\x03\n" +
 	"\x14Host catalog service\x12\xe1\x01A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. The host catalog service provides endpoints for managing host catalogs in Boundary.\x1a\x8a\x01\n" +
 	"5Read about host catalogs in the Boundary domain model\x12Qhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogsBU\xa2\xe3)\x04hostZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 

@@ -621,13 +621,15 @@ const file_controller_api_services_v1_credential_library_service_proto_rawDesc =
 	"\x04item\x18\x01 \x01(\v2B.controller.api.resources.credentiallibraries.v1.CredentialLibraryR\x04item\"0\n" +
 	"\x1eDeleteCredentialLibraryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"!\n" +
-	"\x1fDeleteCredentialLibraryResponse2\xa9\r\n" +
+	"\x1fDeleteCredentialLibraryResponse2\xbb\r\n" +
 	"\x18CredentialLibraryService\x12\xdc\x01\n" +
 	"\x14GetCredentialLibrary\x127.controller.api.services.v1.GetCredentialLibraryRequest\x1a8.controller.api.services.v1.GetCredentialLibraryResponse\"Q\x92A#\x12!Gets a single Credential Library.\x82\xd3\xe4\x93\x02%b\x04item\x12\x1d/v1/credential-libraries/{id}\x12\xd6\x01\n" +
 	"\x17ListCredentialLibraries\x12:.controller.api.services.v1.ListCredentialLibrariesRequest\x1a;.controller.api.services.v1.ListCredentialLibrariesResponse\"B\x92A\x1f\x12\x1dLists all Credential Library.\x82\xd3\xe4\x93\x02\x1a\x12\x18/v1/credential-libraries\x12\xe9\x01\n" +
 	"\x17CreateCredentialLibrary\x12:.controller.api.services.v1.CreateCredentialLibraryRequest\x1a;.controller.api.services.v1.CreateCredentialLibraryResponse\"U\x92A&\x12$Creates a single Credential Library.\x82\xd3\xe4\x93\x02&:\x04itemb\x04item\"\x18/v1/credential-libraries\x12\xe7\x01\n" +
-	"\x17UpdateCredentialLibrary\x12:.controller.api.services.v1.UpdateCredentialLibraryRequest\x1a;.controller.api.services.v1.UpdateCredentialLibraryResponse\"S\x92A\x1f\x12\x1dUpdates a Credential Library.\x82\xd3\xe4\x93\x02+:\x04itemb\x04item2\x1d/v1/credential-libraries/{id}\x12\xda\x01\n" +
-	"\x17DeleteCredentialLibrary\x12:.controller.api.services.v1.DeleteCredentialLibraryRequest\x1a;.controller.api.services.v1.DeleteCredentialLibraryResponse\"F\x92A\x1e\x12\x1cDeletes a Credential Library\x82\xd3\xe4\x93\x02\x1f*\x1d/v1/credential-libraries/{id}\x1a\xa1\x04\x92A\x9d\x04\n" +
+	"\x17UpdateCredentialLibrary\x12:.controller.api.services.v1.UpdateCredentialLibraryRequest\x1a;.controller.api.services.v1.UpdateCredentialLibraryResponse\"S\x92A\x1f\x12\x1dUpdates a Credential Library.\x82\xd3\xe4\x93\x02+:\x04itemb\x04item2\x1d/v1/credential-libraries/{id}\x12\xec\x01\n" +
+	"\x17DeleteCredentialLibrary\x12:.controller.api.services.v1.DeleteCredentialLibraryRequest\x1a;.controller.api.services.v1.DeleteCredentialLibraryResponse\"X\x92A0\x12\x1cDeletes a Credential LibraryJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x1f*\x1d/v1/credential-libraries/{id}\x1a\xa1\x04\x92A\x9d\x04\n" +
 	"\x1aCredential library service\x12\xe3\x02The credential library service acts as a centralized repository for managing credentials used during sessions. It offers a secure and efficient way to store, rotate, and manage various the various types of credentials that are required for infrastructure access. The credential library service provides endpoints for interacting with credential libraries.\x1a\x98\x01\n" +
 	"<Read about credential libraries in the Boundary domain model\x12Xhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-librariesB[\xa2\xe3)\n" +
 	"credentialZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"

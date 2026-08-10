@@ -307,11 +307,9 @@
         "summary": "Deletes an account.",
         "operationId": "AccountService_DeleteAccount",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -580,11 +578,9 @@
         "summary": "Deletes an Alias.",
         "operationId": "AliasService_DeleteAlias",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAliasResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -813,11 +809,9 @@
         "summary": "Deletes an AuthMethod",
         "operationId": "AuthMethodService_DeleteAuthMethod",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -1015,11 +1009,9 @@
         "summary": "Deletes an Auth Token.",
         "operationId": "AuthTokenService_DeleteAuthToken",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -1201,11 +1193,9 @@
         "summary": "Deletes a Credential Library",
         "operationId": "CredentialLibraryService_DeleteCredentialLibrary",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialLibraryResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -1393,11 +1383,9 @@
         "summary": "Deletes a CredentialStore",
         "operationId": "CredentialStoreService_DeleteCredentialStore",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialStoreResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -1578,11 +1566,9 @@
         "summary": "Deletes a Credential",
         "operationId": "CredentialService_DeleteCredential",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -1770,11 +1756,9 @@
         "summary": "Deletes a Group.",
         "operationId": "GroupService_DeleteGroup",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -2089,11 +2073,9 @@
         "summary": "Deletes a Host Catalog",
         "operationId": "HostCatalogService_DeleteHostCatalog",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -2274,11 +2256,9 @@
         "summary": "Delete a Host Set.",
         "operationId": "HostSetService_DeleteHostSet",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -2579,11 +2559,9 @@
         "summary": "Delete a Host.",
         "operationId": "HostService_DeleteHost",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -2764,11 +2742,9 @@
         "summary": "Deletes a ManagedGroup.",
         "operationId": "ManagedGroupService_DeleteManagedGroup",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteManagedGroupResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -2956,11 +2932,9 @@
         "summary": "Deletes an existing policy.",
         "operationId": "PolicyService_DeletePolicy",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -3148,11 +3122,9 @@
         "summary": "Deletes a Role.",
         "operationId": "RoleService_DeleteRole",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -3714,11 +3686,9 @@
         "summary": "Deletes a Scope.",
         "operationId": "ScopeService_DeleteScope",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteScopeResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -4198,11 +4168,9 @@
         "summary": "Deletes a Session Recording when provided a Session Recording ID, or deletes a Video recording when provided a Video ID. If the ID is malformed or not provided an error is returned.",
         "operationId": "SessionRecordingService_DeleteSessionRecording",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteSessionRecordingResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -4691,11 +4659,9 @@
         "summary": "Deletes a Storage Bucket",
         "operationId": "StorageBucketService_DeleteStorageBucket",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -4883,11 +4849,9 @@
         "summary": "Deletes a Target.",
         "operationId": "TargetService_DeleteTarget",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -5356,11 +5320,9 @@
         "summary": "Deletes a User.",
         "operationId": "UserService_DeleteUser",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",
@@ -5669,11 +5631,9 @@
         "summary": "Deletes a Worker.",
         "operationId": "WorkerService_DeleteWorker",
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteWorkerResponse"
-            }
+          "204": {
+            "description": "Deleted",
+            "schema": {}
           },
           "default": {
             "description": "Returned when there is an error processing the request.",

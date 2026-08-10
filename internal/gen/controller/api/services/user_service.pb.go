@@ -1149,16 +1149,18 @@ const file_controller_api_services_v1_user_service_proto_rawDesc = "" +
 	"\asort_by\x18\x04 \x01(\tR\asort_by\x12\x1a\n" +
 	"\bsort_dir\x18\x05 \x01(\tR\bsort_dir\x12 \n" +
 	"\vremoved_ids\x18\x06 \x03(\tR\vremoved_ids\x12&\n" +
-	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count2\xfe\x10\n" +
+	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count2\x90\x11\n" +
 	"\vUserService\x12\x98\x01\n" +
 	"\aGetUser\x12*.controller.api.services.v1.GetUserRequest\x1a+.controller.api.services.v1.GetUserResponse\"4\x92A\x15\x12\x13Gets a single User.\x82\xd3\xe4\x93\x02\x16b\x04item\x12\x0e/v1/users/{id}\x12\x90\x01\n" +
 	"\tListUsers\x12,.controller.api.services.v1.ListUsersRequest\x1a-.controller.api.services.v1.ListUsersResponse\"&\x92A\x12\x12\x10Lists all Users.\x82\xd3\xe4\x93\x02\v\x12\t/v1/users\x12\xa5\x01\n" +
 	"\n" +
 	"CreateUser\x12-.controller.api.services.v1.CreateUserRequest\x1a..controller.api.services.v1.CreateUserResponse\"8\x92A\x18\x12\x16Creates a single User.\x82\xd3\xe4\x93\x02\x17:\x04itemb\x04item\"\t/v1/users\x12\xa3\x01\n" +
 	"\n" +
-	"UpdateUser\x12-.controller.api.services.v1.UpdateUserRequest\x1a..controller.api.services.v1.UpdateUserResponse\"6\x92A\x11\x12\x0fUpdates a User.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/users/{id}\x12\x97\x01\n" +
+	"UpdateUser\x12-.controller.api.services.v1.UpdateUserRequest\x1a..controller.api.services.v1.UpdateUserResponse\"6\x92A\x11\x12\x0fUpdates a User.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/users/{id}\x12\xa9\x01\n" +
 	"\n" +
-	"DeleteUser\x12-.controller.api.services.v1.DeleteUserRequest\x1a..controller.api.services.v1.DeleteUserResponse\"*\x92A\x11\x12\x0fDeletes a User.\x82\xd3\xe4\x93\x02\x10*\x0e/v1/users/{id}\x12\xcd\x01\n" +
+	"DeleteUser\x12-.controller.api.services.v1.DeleteUserRequest\x1a..controller.api.services.v1.DeleteUserResponse\"<\x92A#\x12\x0fDeletes a User.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x10*\x0e/v1/users/{id}\x12\xcd\x01\n" +
 	"\x0fAddUserAccounts\x122.controller.api.services.v1.AddUserAccountsRequest\x1a3.controller.api.services.v1.AddUserAccountsResponse\"Q\x92A\"\x12 Associates an Account to a User.\x82\xd3\xe4\x93\x02&:\x01*b\x04item\"\x1b/v1/users/{id}:add-accounts\x12\xb5\x02\n" +
 	"\x0fSetUserAccounts\x122.controller.api.services.v1.SetUserAccountsRequest\x1a3.controller.api.services.v1.SetUserAccountsResponse\"\xb8\x01\x92A\x88\x01\x12\x85\x01Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified.\x82\xd3\xe4\x93\x02&:\x01*b\x04item\"\x1b/v1/users/{id}:set-accounts\x12\x86\x02\n" +
 	"\x12RemoveUserAccounts\x125.controller.api.services.v1.RemoveUserAccountsRequest\x1a6.controller.api.services.v1.RemoveUserAccountsResponse\"\x80\x01\x92AN\x12LRemoves the specified Accounts from being associated with the provided User.\x82\xd3\xe4\x93\x02):\x01*b\x04item\"\x1e/v1/users/{id}:remove-accounts\x12\x9a\x02\n" +

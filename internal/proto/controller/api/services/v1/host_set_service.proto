@@ -81,7 +81,13 @@ service HostSetService {
   // Host Set id is malformed or not provided an error is returned.
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {delete: "/v1/host-sets/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Delete a Host Set."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Delete a Host Set."
+      responses: {
+        key: "204"
+        value: {description: "Deleted"}
+      }
+    };
   }
 
   // AddHostSetHosts adds a Host to a Host Set. The provided request must

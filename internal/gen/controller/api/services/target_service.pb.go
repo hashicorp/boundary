@@ -1482,13 +1482,15 @@ const file_controller_api_services_v1_target_service_proto_rawDesc = "" +
 	"scope_name\x18\x05 \x01(\tR\tscopeName\x12\x18\n" +
 	"\ahost_id\x18\x02 \x01(\tR\ahost_id\"i\n" +
 	"\x18AuthorizeSessionResponse\x12M\n" +
-	"\x04item\x18\x01 \x01(\v29.controller.api.resources.targets.v1.SessionAuthorizationR\x04item2\xdd\x17\n" +
+	"\x04item\x18\x01 \x01(\v29.controller.api.resources.targets.v1.SessionAuthorizationR\x04item2\xef\x17\n" +
 	"\rTargetService\x12\xa2\x01\n" +
 	"\tGetTarget\x12,.controller.api.services.v1.GetTargetRequest\x1a-.controller.api.services.v1.GetTargetResponse\"8\x92A\x17\x12\x15Gets a single Target.\x82\xd3\xe4\x93\x02\x18b\x04item\x12\x10/v1/targets/{id}\x12\x9a\x01\n" +
 	"\vListTargets\x12..controller.api.services.v1.ListTargetsRequest\x1a/.controller.api.services.v1.ListTargetsResponse\"*\x92A\x14\x12\x12Lists all Targets.\x82\xd3\xe4\x93\x02\r\x12\v/v1/targets\x12\xaf\x01\n" +
 	"\fCreateTarget\x12/.controller.api.services.v1.CreateTargetRequest\x1a0.controller.api.services.v1.CreateTargetResponse\"<\x92A\x1a\x12\x18Creates a single Target.\x82\xd3\xe4\x93\x02\x19:\x04itemb\x04item\"\v/v1/targets\x12\xad\x01\n" +
-	"\fUpdateTarget\x12/.controller.api.services.v1.UpdateTargetRequest\x1a0.controller.api.services.v1.UpdateTargetResponse\":\x92A\x13\x12\x11Updates a Target.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/targets/{id}\x12\xa1\x01\n" +
-	"\fDeleteTarget\x12/.controller.api.services.v1.DeleteTargetRequest\x1a0.controller.api.services.v1.DeleteTargetResponse\".\x92A\x13\x12\x11Deletes a Target.\x82\xd3\xe4\x93\x02\x12*\x10/v1/targets/{id}\x12\xcf\x01\n" +
+	"\fUpdateTarget\x12/.controller.api.services.v1.UpdateTargetRequest\x1a0.controller.api.services.v1.UpdateTargetResponse\":\x92A\x13\x12\x11Updates a Target.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/targets/{id}\x12\xb3\x01\n" +
+	"\fDeleteTarget\x12/.controller.api.services.v1.DeleteTargetRequest\x1a0.controller.api.services.v1.DeleteTargetResponse\"@\x92A%\x12\x11Deletes a Target.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x12*\x10/v1/targets/{id}\x12\xcf\x01\n" +
 	"\x10AuthorizeSession\x123.controller.api.services.v1.AuthorizeSessionRequest\x1a4.controller.api.services.v1.AuthorizeSessionResponse\"P\x92A\x17\x12\x15Authorizes a Session.\x82\xd3\xe4\x93\x020:\x01*b\x04item\"%/v1/targets/{id=**}:authorize-session\x12\xa7\x02\n" +
 	"\x14AddTargetHostSources\x127.controller.api.services.v1.AddTargetHostSourcesRequest\x1a8.controller.api.services.v1.AddTargetHostSourcesResponse\"\x9b\x01\x92Af\x12dAdds existing Host Sources to a Target. Cannot be used on targets that have their address field set.\x82\xd3\xe4\x93\x02,:\x01*b\x04item\"!/v1/targets/{id}:add-host-sources\x12\xa7\x02\n" +
 	"\x14SetTargetHostSources\x127.controller.api.services.v1.SetTargetHostSourcesRequest\x1a8.controller.api.services.v1.SetTargetHostSourcesResponse\"\x9b\x01\x92Af\x12dSources the Host Sources on the Target. Cannot be used on targets that have their address field set.\x82\xd3\xe4\x93\x02,:\x01*b\x04item\"!/v1/targets/{id}:set-host-sources\x12\xf3\x01\n" +

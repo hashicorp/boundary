@@ -416,11 +416,13 @@ const file_controller_api_services_v1_authtokens_service_proto_rawDesc = "" +
 	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count\"(\n" +
 	"\x16DeleteAuthTokenRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x19\n" +
-	"\x17DeleteAuthTokenResponse2\xd5\x06\n" +
+	"\x17DeleteAuthTokenResponse2\xe7\x06\n" +
 	"\x10AuthTokenService\x12\xb3\x01\n" +
 	"\fGetAuthToken\x12/.controller.api.services.v1.GetAuthTokenRequest\x1a0.controller.api.services.v1.GetAuthTokenResponse\"@\x92A\x1b\x12\x19Gets a single Auth Token.\x82\xd3\xe4\x93\x02\x1cb\x04item\x12\x14/v1/auth-tokens/{id}\x12\xab\x01\n" +
-	"\x0eListAuthTokens\x121.controller.api.services.v1.ListAuthTokensRequest\x1a2.controller.api.services.v1.ListAuthTokensResponse\"2\x92A\x18\x12\x16Lists all Auth Tokens.\x82\xd3\xe4\x93\x02\x11\x12\x0f/v1/auth-tokens\x12\xb3\x01\n" +
-	"\x0fDeleteAuthToken\x122.controller.api.services.v1.DeleteAuthTokenRequest\x1a3.controller.api.services.v1.DeleteAuthTokenResponse\"7\x92A\x18\x12\x16Deletes an Auth Token.\x82\xd3\xe4\x93\x02\x16*\x14/v1/auth-tokens/{id}\x1a\xa6\x02\x92A\xa2\x02\n" +
+	"\x0eListAuthTokens\x121.controller.api.services.v1.ListAuthTokensRequest\x1a2.controller.api.services.v1.ListAuthTokensResponse\"2\x92A\x18\x12\x16Lists all Auth Tokens.\x82\xd3\xe4\x93\x02\x11\x12\x0f/v1/auth-tokens\x12\xc5\x01\n" +
+	"\x0fDeleteAuthToken\x122.controller.api.services.v1.DeleteAuthTokenRequest\x1a3.controller.api.services.v1.DeleteAuthTokenResponse\"I\x92A*\x12\x16Deletes an Auth Token.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x16*\x14/v1/auth-tokens/{id}\x1a\xa6\x02\x92A\xa2\x02\n" +
 	"\x12Auth token service\x12\x8b\x02The auth token service provides the ability to manage and retrieve auth tokens. An auth token serves as a temporary credential issued to a user after successful authentication. It grants the user access to Boundary's resources and capabilities for a limited duration.BMZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 
 var (

@@ -959,14 +959,16 @@ const file_controller_api_services_v1_host_set_service_proto_rawDesc = "" +
 	"\aversion\x18\x02 \x01(\rR\aversion\x12\x1a\n" +
 	"\bhost_ids\x18\x03 \x03(\tR\bhost_ids\"_\n" +
 	"\x1aRemoveHostSetHostsResponse\x12A\n" +
-	"\x04item\x18\x01 \x01(\v2-.controller.api.resources.hostsets.v1.HostSetR\x04item2\xf8\x0e\n" +
+	"\x04item\x18\x01 \x01(\v2-.controller.api.resources.hostsets.v1.HostSetR\x04item2\x8a\x0f\n" +
 	"\x0eHostSetService\x12\xa8\x01\n" +
 	"\n" +
 	"GetHostSet\x12-.controller.api.services.v1.GetHostSetRequest\x1a..controller.api.services.v1.GetHostSetResponse\";\x92A\x18\x12\x16Get a single Host Set.\x82\xd3\xe4\x93\x02\x1ab\x04item\x12\x12/v1/host-sets/{id}\x12\xbb\x01\n" +
 	"\fListHostSets\x12/.controller.api.services.v1.ListHostSetsRequest\x1a0.controller.api.services.v1.ListHostSetsResponse\"H\x92A0\x12.List all Host Sets under the specific Catalog.\x82\xd3\xe4\x93\x02\x0f\x12\r/v1/host-sets\x12\xae\x01\n" +
 	"\rCreateHostSet\x120.controller.api.services.v1.CreateHostSetRequest\x1a1.controller.api.services.v1.CreateHostSetResponse\"8\x92A\x14\x12\x12Create a Host Set.\x82\xd3\xe4\x93\x02\x1b:\x04itemb\x04item\"\r/v1/host-sets\x12\xb3\x01\n" +
-	"\rUpdateHostSet\x120.controller.api.services.v1.UpdateHostSetRequest\x1a1.controller.api.services.v1.UpdateHostSetResponse\"=\x92A\x14\x12\x12Update a Host Set.\x82\xd3\xe4\x93\x02 :\x04itemb\x04item2\x12/v1/host-sets/{id}\x12\xa7\x01\n" +
-	"\rDeleteHostSet\x120.controller.api.services.v1.DeleteHostSetRequest\x1a1.controller.api.services.v1.DeleteHostSetResponse\"1\x92A\x14\x12\x12Delete a Host Set.\x82\xd3\xe4\x93\x02\x14*\x12/v1/host-sets/{id}\x12\xd0\x01\n" +
+	"\rUpdateHostSet\x120.controller.api.services.v1.UpdateHostSetRequest\x1a1.controller.api.services.v1.UpdateHostSetResponse\"=\x92A\x14\x12\x12Update a Host Set.\x82\xd3\xe4\x93\x02 :\x04itemb\x04item2\x12/v1/host-sets/{id}\x12\xb9\x01\n" +
+	"\rDeleteHostSet\x120.controller.api.services.v1.DeleteHostSetRequest\x1a1.controller.api.services.v1.DeleteHostSetResponse\"C\x92A&\x12\x12Delete a Host Set.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x14*\x12/v1/host-sets/{id}\x12\xd0\x01\n" +
 	"\x0fAddHostSetHosts\x122.controller.api.services.v1.AddHostSetHostsRequest\x1a3.controller.api.services.v1.AddHostSetHostsResponse\"T\x92A$\x12\"Adds existing Hosts to a Host Set.\x82\xd3\xe4\x93\x02':\x01*b\x04item\"\x1c/v1/host-sets/{id}:add-hosts\x12\xcd\x01\n" +
 	"\x0fSetHostSetHosts\x122.controller.api.services.v1.SetHostSetHostsRequest\x1a3.controller.api.services.v1.SetHostSetHostsResponse\"Q\x92A!\x12\x1fSets the Hosts on the Host Set.\x82\xd3\xe4\x93\x02':\x01*b\x04item\"\x1c/v1/host-sets/{id}:set-hosts\x12\xda\x01\n" +
 	"\x12RemoveHostSetHosts\x125.controller.api.services.v1.RemoveHostSetHostsRequest\x1a6.controller.api.services.v1.RemoveHostSetHostsResponse\"U\x92A\"\x12 Removes Hosts from the Host Set.\x82\xd3\xe4\x93\x02*:\x01*b\x04item\"\x1f/v1/host-sets/{id}:remove-hosts\x1a\xeb\x02\x92A\xe7\x02\n" +

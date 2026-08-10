@@ -1482,13 +1482,15 @@ const file_controller_api_services_v1_auth_method_service_proto_rawDesc = "" +
 	"\x12\bINTERNALH\x00R\x11authTokenResponse\x12\x18\n" +
 	"\acommand\x18\x05 \x01(\tR\acommandB\a\n" +
 	"\x05attrsJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x04itemR\n" +
-	"token_type2\xd2\x0e\n" +
+	"token_type2\xe4\x0e\n" +
 	"\x11AuthMethodService\x12\xb8\x01\n" +
 	"\rGetAuthMethod\x120.controller.api.services.v1.GetAuthMethodRequest\x1a1.controller.api.services.v1.GetAuthMethodResponse\"B\x92A\x1c\x12\x1aGets a single auth method.\x82\xd3\xe4\x93\x02\x1db\x04item\x12\x15/v1/auth-methods/{id}\x12\xb0\x01\n" +
 	"\x0fListAuthMethods\x122.controller.api.services.v1.ListAuthMethodsRequest\x1a3.controller.api.services.v1.ListAuthMethodsResponse\"4\x92A\x19\x12\x17Lists all auth methods.\x82\xd3\xe4\x93\x02\x12\x12\x10/v1/auth-methods\x12\xc5\x01\n" +
 	"\x10CreateAuthMethod\x123.controller.api.services.v1.CreateAuthMethodRequest\x1a4.controller.api.services.v1.CreateAuthMethodResponse\"F\x92A\x1f\x12\x1dCreates a single auth method.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item\"\x10/v1/auth-methods\x12\xc4\x01\n" +
-	"\x10UpdateAuthMethod\x123.controller.api.services.v1.UpdateAuthMethodRequest\x1a4.controller.api.services.v1.UpdateAuthMethodResponse\"E\x92A\x19\x12\x17Updates an auth method.\x82\xd3\xe4\x93\x02#:\x04itemb\x04item2\x15/v1/auth-methods/{id}\x12\xb6\x01\n" +
-	"\x10DeleteAuthMethod\x123.controller.api.services.v1.DeleteAuthMethodRequest\x1a4.controller.api.services.v1.DeleteAuthMethodResponse\"7\x92A\x17\x12\x15Deletes an AuthMethod\x82\xd3\xe4\x93\x02\x17*\x15/v1/auth-methods/{id}\x12\xcf\x01\n" +
+	"\x10UpdateAuthMethod\x123.controller.api.services.v1.UpdateAuthMethodRequest\x1a4.controller.api.services.v1.UpdateAuthMethodResponse\"E\x92A\x19\x12\x17Updates an auth method.\x82\xd3\xe4\x93\x02#:\x04itemb\x04item2\x15/v1/auth-methods/{id}\x12\xc8\x01\n" +
+	"\x10DeleteAuthMethod\x123.controller.api.services.v1.DeleteAuthMethodRequest\x1a4.controller.api.services.v1.DeleteAuthMethodResponse\"I\x92A)\x12\x15Deletes an AuthMethodJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x17*\x15/v1/auth-methods/{id}\x12\xcf\x01\n" +
 	"\vChangeState\x12..controller.api.services.v1.ChangeStateRequest\x1a/.controller.api.services.v1.ChangeStateResponse\"_\x92A)\x12'Changes the state of an OIDC AuthMethod\x82\xd3\xe4\x93\x02-:\x01*b\x04item\"\"/v1/auth-methods/{id}:change-state\x12\xf7\x01\n" +
 	"\fAuthenticate\x12/.controller.api.services.v1.AuthenticateRequest\x1a0.controller.api.services.v1.AuthenticateResponse\"\x83\x01\x92AG\x12EAuthenticate a user to an scope and retrieve an authentication token.\x82\xd3\xe4\x93\x023:\x01*\"./v1/auth-methods/{auth_method_id}:authenticate\x1a\xba\x03\x92A\xb6\x03\n" +
 	"\x13Auth method service\x12\x93\x02The auth method service exposes endpoints for interacting with auth methods in Boundary. An auth method defines how users can authenticate themselves within the system. It acts as a bridge between Boundary and various external identity providers or authentication mechanisms.\x1a\x88\x01\n" +

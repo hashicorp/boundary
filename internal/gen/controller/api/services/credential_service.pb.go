@@ -621,14 +621,16 @@ const file_controller_api_services_v1_credential_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v23.controller.api.resources.credentials.v1.CredentialR\x04item\")\n" +
 	"\x17DeleteCredentialRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1a\n" +
-	"\x18DeleteCredentialResponse2\xcf\n" +
+	"\x18DeleteCredentialResponse2\xe1\n" +
 	"\n" +
 	"\x11CredentialService\x12\xb6\x01\n" +
 	"\rGetCredential\x120.controller.api.services.v1.GetCredentialRequest\x1a1.controller.api.services.v1.GetCredentialResponse\"@\x92A\x1b\x12\x19Gets a single Credential.\x82\xd3\xe4\x93\x02\x1cb\x04item\x12\x14/v1/credentials/{id}\x12\xae\x01\n" +
 	"\x0fListCredentials\x122.controller.api.services.v1.ListCredentialsRequest\x1a3.controller.api.services.v1.ListCredentialsResponse\"2\x92A\x18\x12\x16Lists all Credentials.\x82\xd3\xe4\x93\x02\x11\x12\x0f/v1/credentials\x12\xc3\x01\n" +
 	"\x10CreateCredential\x123.controller.api.services.v1.CreateCredentialRequest\x1a4.controller.api.services.v1.CreateCredentialResponse\"D\x92A\x1e\x12\x1cCreates a single Credential.\x82\xd3\xe4\x93\x02\x1d:\x04itemb\x04item\"\x0f/v1/credentials\x12\xc1\x01\n" +
-	"\x10UpdateCredential\x123.controller.api.services.v1.UpdateCredentialRequest\x1a4.controller.api.services.v1.UpdateCredentialResponse\"B\x92A\x17\x12\x15Updates a Credential.\x82\xd3\xe4\x93\x02\":\x04itemb\x04item2\x14/v1/credentials/{id}\x12\xb4\x01\n" +
-	"\x10DeleteCredential\x123.controller.api.services.v1.DeleteCredentialRequest\x1a4.controller.api.services.v1.DeleteCredentialResponse\"5\x92A\x16\x12\x14Deletes a Credential\x82\xd3\xe4\x93\x02\x16*\x14/v1/credentials/{id}\x1a\x8e\x03\x92A\x8a\x03\n" +
+	"\x10UpdateCredential\x123.controller.api.services.v1.UpdateCredentialRequest\x1a4.controller.api.services.v1.UpdateCredentialResponse\"B\x92A\x17\x12\x15Updates a Credential.\x82\xd3\xe4\x93\x02\":\x04itemb\x04item2\x14/v1/credentials/{id}\x12\xc6\x01\n" +
+	"\x10DeleteCredential\x123.controller.api.services.v1.DeleteCredentialRequest\x1a4.controller.api.services.v1.DeleteCredentialResponse\"G\x92A(\x12\x14Deletes a CredentialJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x16*\x14/v1/credentials/{id}\x1a\x8e\x03\x92A\x8a\x03\n" +
 	"\x12Credential service\x12\xea\x01A credential is a data structure that contains one or more secrets that bind an identity to a set of permissions or capabilities on a host for a session. The credential service provides endpoints for managing credentials in Boundary. \x1a\x86\x01\n" +
 	"3Read about credentials in the Boundary domain model\x12Ohttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/credentialsB[\xa2\xe3)\n" +
 	"credentialZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"

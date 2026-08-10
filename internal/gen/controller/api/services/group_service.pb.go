@@ -970,7 +970,7 @@ const file_controller_api_services_v1_group_service_proto_rawDesc = "" +
 	"member_ids\x18\x03 \x03(\tR\n" +
 	"member_ids\"[\n" +
 	"\x1aRemoveGroupMembersResponse\x12=\n" +
-	"\x04item\x18\x01 \x01(\v2).controller.api.resources.groups.v1.GroupR\x04item2\xe8\x0e\n" +
+	"\x04item\x18\x01 \x01(\v2).controller.api.resources.groups.v1.GroupR\x04item2\xfa\x0e\n" +
 	"\fGroupService\x12\x9d\x01\n" +
 	"\bGetGroup\x12+.controller.api.services.v1.GetGroupRequest\x1a,.controller.api.services.v1.GetGroupResponse\"6\x92A\x16\x12\x14Gets a single Group.\x82\xd3\xe4\x93\x02\x17b\x04item\x12\x0f/v1/groups/{id}\x12\x95\x01\n" +
 	"\n" +
@@ -978,8 +978,10 @@ const file_controller_api_services_v1_group_service_proto_rawDesc = "" +
 	"/v1/groups\x12\xaa\x01\n" +
 	"\vCreateGroup\x12..controller.api.services.v1.CreateGroupRequest\x1a/.controller.api.services.v1.CreateGroupResponse\":\x92A\x19\x12\x17Creates a single Group.\x82\xd3\xe4\x93\x02\x18:\x04itemb\x04item\"\n" +
 	"/v1/groups\x12\xa8\x01\n" +
-	"\vUpdateGroup\x12..controller.api.services.v1.UpdateGroupRequest\x1a/.controller.api.services.v1.UpdateGroupResponse\"8\x92A\x12\x12\x10Updates a Group.\x82\xd3\xe4\x93\x02\x1d:\x04itemb\x04item2\x0f/v1/groups/{id}\x12\x9c\x01\n" +
-	"\vDeleteGroup\x12..controller.api.services.v1.DeleteGroupRequest\x1a/.controller.api.services.v1.DeleteGroupResponse\",\x92A\x12\x12\x10Deletes a Group.\x82\xd3\xe4\x93\x02\x11*\x0f/v1/groups/{id}\x12\xc5\x01\n" +
+	"\vUpdateGroup\x12..controller.api.services.v1.UpdateGroupRequest\x1a/.controller.api.services.v1.UpdateGroupResponse\"8\x92A\x12\x12\x10Updates a Group.\x82\xd3\xe4\x93\x02\x1d:\x04itemb\x04item2\x0f/v1/groups/{id}\x12\xae\x01\n" +
+	"\vDeleteGroup\x12..controller.api.services.v1.DeleteGroupRequest\x1a/.controller.api.services.v1.DeleteGroupResponse\">\x92A$\x12\x10Deletes a Group.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x11*\x0f/v1/groups/{id}\x12\xc5\x01\n" +
 	"\x0fAddGroupMembers\x122.controller.api.services.v1.AddGroupMembersRequest\x1a3.controller.api.services.v1.AddGroupMembersResponse\"I\x92A\x1a\x12\x18Adds members to a Group.\x82\xd3\xe4\x93\x02&:\x01*b\x04item\"\x1b/v1/groups/{id}:add-members\x12\xa0\x02\n" +
 	"\x0fSetGroupMembers\x122.controller.api.services.v1.SetGroupMembersRequest\x1a3.controller.api.services.v1.SetGroupMembersResponse\"\xa3\x01\x92At\x12rSet a Group's members to exactly the list of provided in the request, removing any members that are not specified.\x82\xd3\xe4\x93\x02&:\x01*b\x04item\"\x1b/v1/groups/{id}:set-members\x12\xe4\x01\n" +
 	"\x12RemoveGroupMembers\x125.controller.api.services.v1.RemoveGroupMembersRequest\x1a6.controller.api.services.v1.RemoveGroupMembersResponse\"_\x92A-\x12+Removes the specified members from a Group.\x82\xd3\xe4\x93\x02):\x01*b\x04item\"\x1e/v1/groups/{id}:remove-members\x1a\xd6\x02\x92A\xd2\x02\n" +

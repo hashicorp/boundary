@@ -620,13 +620,15 @@ const file_controller_api_services_v1_managed_group_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v27.controller.api.resources.managedgroups.v1.ManagedGroupR\x04item\"+\n" +
 	"\x19DeleteManagedGroupRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1c\n" +
-	"\x1aDeleteManagedGroupResponse2\x9c\v\n" +
+	"\x1aDeleteManagedGroupResponse2\xae\v\n" +
 	"\x13ManagedGroupService\x12\xc1\x01\n" +
 	"\x0fGetManagedGroup\x122.controller.api.services.v1.GetManagedGroupRequest\x1a3.controller.api.services.v1.GetManagedGroupResponse\"E\x92A\x1d\x12\x1bGets a single ManagedGroup.\x82\xd3\xe4\x93\x02\x1fb\x04item\x12\x17/v1/managed-groups/{id}\x12\xd3\x01\n" +
 	"\x11ListManagedGroups\x124.controller.api.services.v1.ListManagedGroupsRequest\x1a5.controller.api.services.v1.ListManagedGroupsResponse\"Q\x92A4\x122Lists all ManagedGroups in a specific Auth Method.\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/managed-groups\x12\xea\x01\n" +
 	"\x12CreateManagedGroup\x125.controller.api.services.v1.CreateManagedGroupRequest\x1a6.controller.api.services.v1.CreateManagedGroupResponse\"e\x92A<\x12:Creates a single ManagedGroup in the provided Auth Method.\x82\xd3\xe4\x93\x02 :\x04itemb\x04item\"\x12/v1/managed-groups\x12\xcc\x01\n" +
-	"\x12UpdateManagedGroup\x125.controller.api.services.v1.UpdateManagedGroupRequest\x1a6.controller.api.services.v1.UpdateManagedGroupResponse\"G\x92A\x19\x12\x17Updates a ManagedGroup.\x82\xd3\xe4\x93\x02%:\x04itemb\x04item2\x17/v1/managed-groups/{id}\x12\xc0\x01\n" +
-	"\x12DeleteManagedGroup\x125.controller.api.services.v1.DeleteManagedGroupRequest\x1a6.controller.api.services.v1.DeleteManagedGroupResponse\";\x92A\x19\x12\x17Deletes a ManagedGroup.\x82\xd3\xe4\x93\x02\x19*\x17/v1/managed-groups/{id}\x1a\xeb\x02\x92A\xe7\x02\n" +
+	"\x12UpdateManagedGroup\x125.controller.api.services.v1.UpdateManagedGroupRequest\x1a6.controller.api.services.v1.UpdateManagedGroupResponse\"G\x92A\x19\x12\x17Updates a ManagedGroup.\x82\xd3\xe4\x93\x02%:\x04itemb\x04item2\x17/v1/managed-groups/{id}\x12\xd2\x01\n" +
+	"\x12DeleteManagedGroup\x125.controller.api.services.v1.DeleteManagedGroupRequest\x1a6.controller.api.services.v1.DeleteManagedGroupResponse\"M\x92A+\x12\x17Deletes a ManagedGroup.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x19*\x17/v1/managed-groups/{id}\x1a\xeb\x02\x92A\xe7\x02\n" +
 	"\x15Managed group service\x12\xbe\x01A managed group is a resource that represents a collection of accounts. The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary.\x1a\x8c\x01\n" +
 	"6Read about managed groups in the Boundary domain model\x12Rhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groupsBU\xa2\xe3)\x04authZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 

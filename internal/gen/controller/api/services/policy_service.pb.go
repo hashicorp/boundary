@@ -627,13 +627,15 @@ const file_controller_api_services_v1_policy_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v2,.controller.api.resources.policies.v1.PolicyR\x04item\"%\n" +
 	"\x13DeletePolicyRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x16\n" +
-	"\x14DeletePolicyResponse2\xc3\t\n" +
+	"\x14DeletePolicyResponse2\xd5\t\n" +
 	"\rPolicyService\x12\xb5\x01\n" +
 	"\tGetPolicy\x12,.controller.api.services.v1.GetPolicyRequest\x1a-.controller.api.services.v1.GetPolicyResponse\"K\x92A)\x12'Gets a single policy with the given id.\x82\xd3\xe4\x93\x02\x19b\x04item\x12\x11/v1/policies/{id}\x12\x9f\x01\n" +
 	"\fListPolicies\x12/.controller.api.services.v1.ListPoliciesRequest\x1a0.controller.api.services.v1.ListPoliciesResponse\",\x92A\x15\x12\x13Lists all policies.\x82\xd3\xe4\x93\x02\x0e\x12\f/v1/policies\x12\xb0\x01\n" +
 	"\fCreatePolicy\x12/.controller.api.services.v1.CreatePolicyRequest\x1a0.controller.api.services.v1.CreatePolicyResponse\"=\x92A\x1a\x12\x18Creates a single policy.\x82\xd3\xe4\x93\x02\x1a:\x04itemb\x04item\"\f/v1/policies\x12\xb8\x01\n" +
-	"\fUpdatePolicy\x12/.controller.api.services.v1.UpdatePolicyRequest\x1a0.controller.api.services.v1.UpdatePolicyResponse\"E\x92A\x1d\x12\x1bUpdates an existing policy.\x82\xd3\xe4\x93\x02\x1f:\x04itemb\x04item2\x11/v1/policies/{id}\x12\xac\x01\n" +
-	"\fDeletePolicy\x12/.controller.api.services.v1.DeletePolicyRequest\x1a0.controller.api.services.v1.DeletePolicyResponse\"9\x92A\x1d\x12\x1bDeletes an existing policy.\x82\xd3\xe4\x93\x02\x13*\x11/v1/policies/{id}\x1a\xba\x02\x92A\xb6\x02\n" +
+	"\fUpdatePolicy\x12/.controller.api.services.v1.UpdatePolicyRequest\x1a0.controller.api.services.v1.UpdatePolicyResponse\"E\x92A\x1d\x12\x1bUpdates an existing policy.\x82\xd3\xe4\x93\x02\x1f:\x04itemb\x04item2\x11/v1/policies/{id}\x12\xbe\x01\n" +
+	"\fDeletePolicy\x12/.controller.api.services.v1.DeletePolicyRequest\x1a0.controller.api.services.v1.DeletePolicyResponse\"K\x92A/\x12\x1bDeletes an existing policy.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x13*\x11/v1/policies/{id}\x1a\xba\x02\x92A\xb6\x02\n" +
 	"\x0ePolicy service\x12\x9a\x01The policy service provides endpoints that let you manage policies in Boundary. Policies are used to define rules for the lifecycle of session recordings.\x1a\x86\x01\n" +
 	"0Read about policies in the Boundary domain model\x12Rhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-policyBW\xa2\xe3)\x06policyZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 

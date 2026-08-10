@@ -1456,7 +1456,7 @@ const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\rR\aversion\"Z\n" +
 	"\x19RemoveAliasSuffixResponse\x12=\n" +
-	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item2\xe5\x19\n" +
+	"\x04item\x18\x01 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item2\xf7\x19\n" +
 	"\fScopeService\x12\x9d\x01\n" +
 	"\bGetScope\x12+.controller.api.services.v1.GetScopeRequest\x1a,.controller.api.services.v1.GetScopeResponse\"6\x92A\x16\x12\x14Gets a single Scope.\x82\xd3\xe4\x93\x02\x17b\x04item\x12\x0f/v1/scopes/{id}\x12\xbe\x01\n" +
 	"\n" +
@@ -1464,8 +1464,10 @@ const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
 	"/v1/scopes\x12\xaa\x01\n" +
 	"\vCreateScope\x12..controller.api.services.v1.CreateScopeRequest\x1a/.controller.api.services.v1.CreateScopeResponse\":\x92A\x19\x12\x17Creates a single Scope.\x82\xd3\xe4\x93\x02\x18:\x04itemb\x04item\"\n" +
 	"/v1/scopes\x12\xa8\x01\n" +
-	"\vUpdateScope\x12..controller.api.services.v1.UpdateScopeRequest\x1a/.controller.api.services.v1.UpdateScopeResponse\"8\x92A\x12\x12\x10Updates a Scope.\x82\xd3\xe4\x93\x02\x1d:\x04itemb\x04item2\x0f/v1/scopes/{id}\x12\x9c\x01\n" +
-	"\vDeleteScope\x12..controller.api.services.v1.DeleteScopeRequest\x1a/.controller.api.services.v1.DeleteScopeResponse\",\x92A\x12\x12\x10Deletes a Scope.\x82\xd3\xe4\x93\x02\x11*\x0f/v1/scopes/{id}\x12\xa6\x01\n" +
+	"\vUpdateScope\x12..controller.api.services.v1.UpdateScopeRequest\x1a/.controller.api.services.v1.UpdateScopeResponse\"8\x92A\x12\x12\x10Updates a Scope.\x82\xd3\xe4\x93\x02\x1d:\x04itemb\x04item2\x0f/v1/scopes/{id}\x12\xae\x01\n" +
+	"\vDeleteScope\x12..controller.api.services.v1.DeleteScopeRequest\x1a/.controller.api.services.v1.DeleteScopeResponse\">\x92A$\x12\x10Deletes a Scope.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x11*\x0f/v1/scopes/{id}\x12\xa6\x01\n" +
 	"\bListKeys\x12+.controller.api.services.v1.ListKeysRequest\x1a,.controller.api.services.v1.ListKeysResponse\"?\x92A\x1b\x12\x19List all keys in a Scope.\x82\xd3\xe4\x93\x02\x1b\x12\x19/v1/scopes/{id}:list-keys\x12\xae\x01\n" +
 	"\n" +
 	"RotateKeys\x12-.controller.api.services.v1.RotateKeysRequest\x1a..controller.api.services.v1.RotateKeysResponse\"A\x92A\x1d\x12\x1bRotate all keys in a Scope.\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/scopes:rotate-keys\x12\xa4\x02\n" +

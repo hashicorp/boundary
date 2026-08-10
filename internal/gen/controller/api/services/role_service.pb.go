@@ -1636,16 +1636,18 @@ const file_controller_api_services_v1_role_service_proto_rawDesc = "" +
 	"\aversion\x18\x02 \x01(\rR\aversion\x12(\n" +
 	"\x0fgrant_scope_ids\x18\x03 \x03(\tR\x0fgrant_scope_ids\"\\\n" +
 	"\x1dRemoveRoleGrantScopesResponse\x12;\n" +
-	"\x04item\x18\x01 \x01(\v2'.controller.api.resources.roles.v1.RoleR\x04item2\xd3\x19\n" +
+	"\x04item\x18\x01 \x01(\v2'.controller.api.resources.roles.v1.RoleR\x04item2\xe5\x19\n" +
 	"\vRoleService\x12\x98\x01\n" +
 	"\aGetRole\x12*.controller.api.services.v1.GetRoleRequest\x1a+.controller.api.services.v1.GetRoleResponse\"4\x92A\x15\x12\x13Gets a single Role.\x82\xd3\xe4\x93\x02\x16b\x04item\x12\x0e/v1/roles/{id}\x12\x90\x01\n" +
 	"\tListRoles\x12,.controller.api.services.v1.ListRolesRequest\x1a-.controller.api.services.v1.ListRolesResponse\"&\x92A\x12\x12\x10Lists all Roles.\x82\xd3\xe4\x93\x02\v\x12\t/v1/roles\x12\xa5\x01\n" +
 	"\n" +
 	"CreateRole\x12-.controller.api.services.v1.CreateRoleRequest\x1a..controller.api.services.v1.CreateRoleResponse\"8\x92A\x18\x12\x16Creates a single Role.\x82\xd3\xe4\x93\x02\x17:\x04itemb\x04item\"\t/v1/roles\x12\xa3\x01\n" +
 	"\n" +
-	"UpdateRole\x12-.controller.api.services.v1.UpdateRoleRequest\x1a..controller.api.services.v1.UpdateRoleResponse\"6\x92A\x11\x12\x0fUpdates a Role.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/roles/{id}\x12\x97\x01\n" +
+	"UpdateRole\x12-.controller.api.services.v1.UpdateRoleRequest\x1a..controller.api.services.v1.UpdateRoleResponse\"6\x92A\x11\x12\x0fUpdates a Role.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/roles/{id}\x12\xa9\x01\n" +
 	"\n" +
-	"DeleteRole\x12-.controller.api.services.v1.DeleteRoleRequest\x1a..controller.api.services.v1.DeleteRoleResponse\"*\x92A\x11\x12\x0fDeletes a Role.\x82\xd3\xe4\x93\x02\x10*\x0e/v1/roles/{id}\x12\xd8\x01\n" +
+	"DeleteRole\x12-.controller.api.services.v1.DeleteRoleRequest\x1a..controller.api.services.v1.DeleteRoleResponse\"<\x92A#\x12\x0fDeletes a Role.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x10*\x0e/v1/roles/{id}\x12\xd8\x01\n" +
 	"\x11AddRolePrincipals\x124.controller.api.services.v1.AddRolePrincipalsRequest\x1a5.controller.api.services.v1.AddRolePrincipalsResponse\"V\x92A%\x12#Adds Users and/or Groups to a Role.\x82\xd3\xe4\x93\x02(:\x01*b\x04item\"\x1d/v1/roles/{id}:add-principals\x12\x97\x02\n" +
 	"\x11SetRolePrincipals\x124.controller.api.services.v1.SetRolePrincipalsRequest\x1a5.controller.api.services.v1.SetRolePrincipalsResponse\"\x94\x01\x92Ac\x12aSet Users and/or Groups to a Role, removing any principals that are not specified in the request.\x82\xd3\xe4\x93\x02(:\x01*b\x04item\"\x1d/v1/roles/{id}:set-principals\x12\xf7\x01\n" +
 	"\x14RemoveRolePrincipals\x127.controller.api.services.v1.RemoveRolePrincipalsRequest\x1a8.controller.api.services.v1.RemoveRolePrincipalsResponse\"l\x92A8\x126Removes the specified Users and/or Groups from a Role.\x82\xd3\xe4\x93\x02+:\x01*b\x04item\" /v1/roles/{id}:remove-principals\x12\xba\x01\n" +

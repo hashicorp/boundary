@@ -636,13 +636,15 @@ const file_controller_api_services_v1_alias_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v2*.controller.api.resources.aliases.v1.AliasR\x04item\"$\n" +
 	"\x12DeleteAliasRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
-	"\x13DeleteAliasResponse2\xc1\t\n" +
+	"\x13DeleteAliasResponse2\xd3\t\n" +
 	"\fAliasService\x12\x9e\x01\n" +
 	"\bGetAlias\x12+.controller.api.services.v1.GetAliasRequest\x1a,.controller.api.services.v1.GetAliasResponse\"7\x92A\x16\x12\x14Gets a single Alias.\x82\xd3\xe4\x93\x02\x18b\x04item\x12\x10/v1/aliases/{id}\x12\xae\x01\n" +
 	"\vListAliases\x12..controller.api.services.v1.ListAliasesRequest\x1a/.controller.api.services.v1.ListAliasesResponse\">\x92A(\x12&Lists all Aliases in a specific Scope.\x82\xd3\xe4\x93\x02\r\x12\v/v1/aliases\x12\xc1\x01\n" +
 	"\vCreateAlias\x12..controller.api.services.v1.CreateAliasRequest\x1a/.controller.api.services.v1.CreateAliasResponse\"Q\x92A/\x12-Creates a single Alias in the provided scope.\x82\xd3\xe4\x93\x02\x19:\x04itemb\x04item\"\v/v1/aliases\x12\xaa\x01\n" +
-	"\vUpdateAlias\x12..controller.api.services.v1.UpdateAliasRequest\x1a/.controller.api.services.v1.UpdateAliasResponse\":\x92A\x13\x12\x11Updates an Alias.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/aliases/{id}\x12\x9e\x01\n" +
-	"\vDeleteAlias\x12..controller.api.services.v1.DeleteAliasRequest\x1a/.controller.api.services.v1.DeleteAliasResponse\".\x92A\x13\x12\x11Deletes an Alias.\x82\xd3\xe4\x93\x02\x12*\x10/v1/aliases/{id}\x1a\xcc\x02\x92A\xc8\x02\n" +
+	"\vUpdateAlias\x12..controller.api.services.v1.UpdateAliasRequest\x1a/.controller.api.services.v1.UpdateAliasResponse\":\x92A\x13\x12\x11Updates an Alias.\x82\xd3\xe4\x93\x02\x1e:\x04itemb\x04item2\x10/v1/aliases/{id}\x12\xb0\x01\n" +
+	"\vDeleteAlias\x12..controller.api.services.v1.DeleteAliasRequest\x1a/.controller.api.services.v1.DeleteAliasResponse\"@\x92A%\x12\x11Deletes an Alias.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x12*\x10/v1/aliases/{id}\x1a\xcc\x02\x92A\xc8\x02\n" +
 	"\rAlias service\x12\xb6\x02The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate ID for an existing entity within the Boundary access control system. It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity.BU\xa2\xe3)\x04authZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 
 var (

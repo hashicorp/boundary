@@ -620,16 +620,18 @@ const file_controller_api_services_v1_host_service_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\v2'.controller.api.resources.hosts.v1.HostR\x04item\"#\n" +
 	"\x11DeleteHostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x14\n" +
-	"\x12DeleteHostResponse2\x8a\t\n" +
+	"\x12DeleteHostResponse2\x9c\t\n" +
 	"\vHostService\x12\x98\x01\n" +
 	"\aGetHost\x12*.controller.api.services.v1.GetHostRequest\x1a+.controller.api.services.v1.GetHostResponse\"4\x92A\x15\x12\x13Gets a single Host.\x82\xd3\xe4\x93\x02\x16b\x04item\x12\x0e/v1/hosts/{id}\x12\xa9\x01\n" +
 	"\tListHosts\x12,.controller.api.services.v1.ListHostsRequest\x1a-.controller.api.services.v1.ListHostsResponse\"?\x92A+\x12)List all Hosts for the specified Catalog.\x82\xd3\xe4\x93\x02\v\x12\t/v1/hosts\x12\xa4\x01\n" +
 	"\n" +
 	"CreateHost\x12-.controller.api.services.v1.CreateHostRequest\x1a..controller.api.services.v1.CreateHostResponse\"7\x92A\x17\x12\x15Create a single Host.\x82\xd3\xe4\x93\x02\x17:\x04itemb\x04item\"\t/v1/hosts\x12\xa2\x01\n" +
 	"\n" +
-	"UpdateHost\x12-.controller.api.services.v1.UpdateHostRequest\x1a..controller.api.services.v1.UpdateHostResponse\"5\x92A\x10\x12\x0eUpdate a Host.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/hosts/{id}\x12\x96\x01\n" +
+	"UpdateHost\x12-.controller.api.services.v1.UpdateHostRequest\x1a..controller.api.services.v1.UpdateHostResponse\"5\x92A\x10\x12\x0eUpdate a Host.\x82\xd3\xe4\x93\x02\x1c:\x04itemb\x04item2\x0e/v1/hosts/{id}\x12\xa8\x01\n" +
 	"\n" +
-	"DeleteHost\x12-.controller.api.services.v1.DeleteHostRequest\x1a..controller.api.services.v1.DeleteHostResponse\")\x92A\x10\x12\x0eDelete a Host.\x82\xd3\xe4\x93\x02\x10*\x0e/v1/hosts/{id}\x1a\xce\x02\x92A\xca\x02\n" +
+	"DeleteHost\x12-.controller.api.services.v1.DeleteHostRequest\x1a..controller.api.services.v1.DeleteHostResponse\";\x92A\"\x12\x0eDelete a Host.J\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x10*\x0e/v1/hosts/{id}\x1a\xce\x02\x92A\xca\x02\n" +
 	"\fHost service\x12\xbd\x01A host is a resource that represents a computing element with a network address that is reachable from a Boundary worker. The host service provides endpoints for managing hosts in Boundary.\x1az\n" +
 	"-Read about hosts in the Boundary domain model\x12Ihttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/hostsBU\xa2\xe3)\x04hostZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
 

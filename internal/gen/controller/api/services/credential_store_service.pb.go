@@ -630,13 +630,15 @@ const file_controller_api_services_v1_credential_store_service_proto_rawDesc = "
 	"\x04item\x18\x01 \x01(\v2=.controller.api.resources.credentialstores.v1.CredentialStoreR\x04item\".\n" +
 	"\x1cDeleteCredentialStoreRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1f\n" +
-	"\x1dDeleteCredentialStoreResponse2\xee\v\n" +
+	"\x1dDeleteCredentialStoreResponse2\x80\f\n" +
 	"\x16CredentialStoreService\x12\xd1\x01\n" +
 	"\x12GetCredentialStore\x125.controller.api.services.v1.GetCredentialStoreRequest\x1a6.controller.api.services.v1.GetCredentialStoreResponse\"L\x92A!\x12\x1fGets a single Credential Store.\x82\xd3\xe4\x93\x02\"b\x04item\x12\x1a/v1/credential-stores/{id}\x12\xc9\x01\n" +
 	"\x14ListCredentialStores\x127.controller.api.services.v1.ListCredentialStoresRequest\x1a8.controller.api.services.v1.ListCredentialStoresResponse\">\x92A\x1e\x12\x1cLists all Credential Stores.\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/credential-stores\x12\xde\x01\n" +
 	"\x15CreateCredentialStore\x128.controller.api.services.v1.CreateCredentialStoreRequest\x1a9.controller.api.services.v1.CreateCredentialStoreResponse\"P\x92A$\x12\"Creates a single Credential Store.\x82\xd3\xe4\x93\x02#:\x04itemb\x04item\"\x15/v1/credential-stores\x12\xdc\x01\n" +
-	"\x15UpdateCredentialStore\x128.controller.api.services.v1.UpdateCredentialStoreRequest\x1a9.controller.api.services.v1.UpdateCredentialStoreResponse\"N\x92A\x1d\x12\x1bUpdates a Credential Store.\x82\xd3\xe4\x93\x02(:\x04itemb\x04item2\x1a/v1/credential-stores/{id}\x12\xce\x01\n" +
-	"\x15DeleteCredentialStore\x128.controller.api.services.v1.DeleteCredentialStoreRequest\x1a9.controller.api.services.v1.DeleteCredentialStoreResponse\"@\x92A\x1b\x12\x19Deletes a CredentialStore\x82\xd3\xe4\x93\x02\x1c*\x1a/v1/credential-stores/{id}\x1a\xa2\x03\x92A\x9e\x03\n" +
+	"\x15UpdateCredentialStore\x128.controller.api.services.v1.UpdateCredentialStoreRequest\x1a9.controller.api.services.v1.UpdateCredentialStoreResponse\"N\x92A\x1d\x12\x1bUpdates a Credential Store.\x82\xd3\xe4\x93\x02(:\x04itemb\x04item2\x1a/v1/credential-stores/{id}\x12\xe0\x01\n" +
+	"\x15DeleteCredentialStore\x128.controller.api.services.v1.DeleteCredentialStoreRequest\x1a9.controller.api.services.v1.DeleteCredentialStoreResponse\"R\x92A-\x12\x19Deletes a CredentialStoreJ\x10\n" +
+	"\x03204\x12\t\n" +
+	"\aDeleted\x82\xd3\xe4\x93\x02\x1c*\x1a/v1/credential-stores/{id}\x1a\xa2\x03\x92A\x9e\x03\n" +
 	"\x18Credential store service\x12\xec\x01A credential store is a resource that can retrieve, store, and potentially generate credentials of differing types and differing access levels. The credential store service provides endpoints for managing credential stores in Boundary. \x1a\x92\x01\n" +
 	"9Read about credential stores in the Boundary domain model\x12Uhttps://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-storesB[\xa2\xe3)\n" +
 	"credentialZKgithub.com/hashicorp/boundary/internal/gen/controller/api/services;servicesb\x06proto3"
