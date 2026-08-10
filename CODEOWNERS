@@ -11,6 +11,7 @@
 
 # education and engineering get notified of, and can approve changes to web content.
 
-/website/data/		    @hashicorp/boundary-education-approvers @hashicorp/boundary
-/website/public/		@hashicorp/boundary-education-approvers @hashicorp/boundary
-/website/content/	    @hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/data/          @hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/public/        @hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/content/       @hashicorp/boundary-education-approvers @hashicorp/boundary
+/website/redirects.js   @hashicorp/boundary-education-approvers @hashicorp/boundary
