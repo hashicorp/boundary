@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/posener/complete"
 )
@@ -56,17 +57,29 @@ func (f *kubeFlags) defaultExec() string {
 	return strings.ToLower(f.flagKubeStyle)
 }
 
-func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, error) {
+func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string, creds proxy.Credentials) ([]string, proxy.Credentials, error) {
 	var args []string
+	var saToken string
+
 	host := f.flagKubeHost
 	if host == "" && c.sessInfo.Endpoint != "" {
 		hostUrl := c.sessInfo.Endpoint
 		u, err := url.Parse(hostUrl)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
+			return nil, creds, fmt.Errorf("error parsing endpoint URL: %w", err)
 		}
 		host = u.Hostname()
 	}
+
+	retCreds := creds
+	if len(retCreds.Password) > 0 {
+		// Mark credential as consumed so that it is not printed to user
+		retCreds.Password[0].Consumed = true
+
+		// Grab the first username password credential brokered
+		saToken = retCreds.Password[0].Password
+	}
+
 	switch f.flagKubeStyle {
 	case "kubectl":
 		if host != "" && f.flagKubeScheme == "https" {
@@ -74,6 +87,10 @@ func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 			args = append(args, "--tls-server-name", host)
 		}
 		args = append(args, "--server", fmt.Sprintf("%s://%s", f.flagKubeScheme, addr))
+
+		if saToken != "" {
+			args = append(args, "--token", saToken)
+		}
 	}
-	return args, nil
+	return args, retCreds, nil
 }
