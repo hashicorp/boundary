@@ -28,6 +28,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type IssueType int32
+
+const (
+	// Default value for when no issue type is set.
+	IssueType_ISSUE_TYPE_UNSPECIFIED IssueType = 0
+	// A fatal issue that prohibits the operation from executing.
+	IssueType_ISSUE_TYPE_ERROR IssueType = 1
+	// A nonfatal issue that prohibits only part of the operation from executing.
+	IssueType_ISSUE_TYPE_WARNING IssueType = 2
+)
+
+// Enum value maps for IssueType.
+var (
+	IssueType_name = map[int32]string{
+		0: "ISSUE_TYPE_UNSPECIFIED",
+		1: "ISSUE_TYPE_ERROR",
+		2: "ISSUE_TYPE_WARNING",
+	}
+	IssueType_value = map[string]int32{
+		"ISSUE_TYPE_UNSPECIFIED": 0,
+		"ISSUE_TYPE_ERROR":       1,
+		"ISSUE_TYPE_WARNING":     2,
+	}
+)
+
+func (x IssueType) Enum() *IssueType {
+	p := new(IssueType)
+	*p = x
+	return p
+}
+
+func (x IssueType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (IssueType) Descriptor() protoreflect.EnumDescriptor {
+	return file_plugin_v1_host_plugin_service_proto_enumTypes[0].Descriptor()
+}
+
+func (IssueType) Type() protoreflect.EnumType {
+	return &file_plugin_v1_host_plugin_service_proto_enumTypes[0]
+}
+
+func (x IssueType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use IssueType.Descriptor instead.
+func (IssueType) EnumDescriptor() ([]byte, []int) {
+	return file_plugin_v1_host_plugin_service_proto_rawDescGZIP(), []int{0}
+}
+
 type NormalizeCatalogDataRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The incoming attributes in the create or update request.
@@ -181,9 +233,11 @@ type OnCreateCatalogResponse struct {
 	// store authentication data and other necessary configuration to be used in
 	// later hooks and calls. Returning an error from the call will cause this
 	// data to not be persisted. If this is nil, nothing is written.
-	Persisted     *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Persisted *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
+	// Any nonfatal issues to be included with the catalog payload
+	HostPluginIssues []*HostPluginIssue `protobuf:"bytes,20,rep,name=host_plugin_issues,json=hostPluginIssues,proto3" json:"host_plugin_issues,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *OnCreateCatalogResponse) Reset() {
@@ -219,6 +273,13 @@ func (*OnCreateCatalogResponse) Descriptor() ([]byte, []int) {
 func (x *OnCreateCatalogResponse) GetPersisted() *HostCatalogPersisted {
 	if x != nil {
 		return x.Persisted
+	}
+	return nil
+}
+
+func (x *OnCreateCatalogResponse) GetHostPluginIssues() []*HostPluginIssue {
+	if x != nil {
+		return x.HostPluginIssues
 	}
 	return nil
 }
@@ -294,9 +355,11 @@ type OnUpdateCatalogResponse struct {
 	// is returned, the update of the persisted data is aborted. If this is nil,
 	// no changes are written. To remove all values, simply return an allocated
 	// but empty map.
-	Persisted     *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Persisted *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
+	// Any nonfatal issues to be included with the catalog payload
+	HostPluginIssues []*HostPluginIssue `protobuf:"bytes,20,rep,name=host_plugin_issues,json=hostPluginIssues,proto3" json:"host_plugin_issues,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *OnUpdateCatalogResponse) Reset() {
@@ -332,6 +395,13 @@ func (*OnUpdateCatalogResponse) Descriptor() ([]byte, []int) {
 func (x *OnUpdateCatalogResponse) GetPersisted() *HostCatalogPersisted {
 	if x != nil {
 		return x.Persisted
+	}
+	return nil
+}
+
+func (x *OnUpdateCatalogResponse) GetHostPluginIssues() []*HostPluginIssue {
+	if x != nil {
+		return x.HostPluginIssues
 	}
 	return nil
 }
@@ -599,9 +669,11 @@ func (x *OnCreateSetRequest) GetPersisted() *HostCatalogPersisted {
 }
 
 type OnCreateSetResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Any nonfatal issues to be included with the catalog payload
+	HostPluginIssues []*HostPluginIssue `protobuf:"bytes,10,rep,name=host_plugin_issues,json=hostPluginIssues,proto3" json:"host_plugin_issues,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *OnCreateSetResponse) Reset() {
@@ -632,6 +704,13 @@ func (x *OnCreateSetResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use OnCreateSetResponse.ProtoReflect.Descriptor instead.
 func (*OnCreateSetResponse) Descriptor() ([]byte, []int) {
 	return file_plugin_v1_host_plugin_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *OnCreateSetResponse) GetHostPluginIssues() []*HostPluginIssue {
+	if x != nil {
+		return x.HostPluginIssues
+	}
+	return nil
 }
 
 type OnUpdateSetRequest struct {
@@ -707,9 +786,11 @@ func (x *OnUpdateSetRequest) GetPersisted() *HostCatalogPersisted {
 }
 
 type OnUpdateSetResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Any nonfatal issues to be included with the catalog payload
+	HostPluginIssues []*HostPluginIssue `protobuf:"bytes,10,rep,name=host_plugin_issues,json=hostPluginIssues,proto3" json:"host_plugin_issues,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *OnUpdateSetResponse) Reset() {
@@ -740,6 +821,13 @@ func (x *OnUpdateSetResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use OnUpdateSetResponse.ProtoReflect.Descriptor instead.
 func (*OnUpdateSetResponse) Descriptor() ([]byte, []int) {
 	return file_plugin_v1_host_plugin_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *OnUpdateSetResponse) GetHostPluginIssues() []*HostPluginIssue {
+	if x != nil {
+		return x.HostPluginIssues
+	}
+	return nil
 }
 
 type OnDeleteSetRequest struct {
@@ -908,9 +996,11 @@ func (x *ListHostsRequest) GetPersisted() *HostCatalogPersisted {
 type ListHostsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The hosts to return.
-	Hosts         []*ListHostsResponseHost `protobuf:"bytes,10,rep,name=hosts,proto3" json:"hosts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Hosts []*ListHostsResponseHost `protobuf:"bytes,10,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	// Any nonfatal issues to be included with the catalog payload
+	HostPluginIssues []*HostPluginIssue `protobuf:"bytes,20,rep,name=host_plugin_issues,json=hostPluginIssues,proto3" json:"host_plugin_issues,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ListHostsResponse) Reset() {
@@ -950,6 +1040,13 @@ func (x *ListHostsResponse) GetHosts() []*ListHostsResponseHost {
 	return nil
 }
 
+func (x *ListHostsResponse) GetHostPluginIssues() []*HostPluginIssue {
+	if x != nil {
+		return x.HostPluginIssues
+	}
+	return nil
+}
+
 type ListHostsResponseHost struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. A stable identifier for this host. This field is used
@@ -971,6 +1068,8 @@ type ListHostsResponseHost struct {
 	// Required. The host set IDs that match this host, out of the host sets
 	// sent in the request.
 	SetIds []string `protobuf:"bytes,60,rep,name=set_ids,json=setIds,proto3" json:"set_ids,omitempty"`
+	// Optional. The AWS role ARN that was used to discover the host.
+	RoleArn string `protobuf:"bytes,80,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
 	// Optional. Provider-specific metadata that is applicable to this
 	// host. Example: host descriptions, tags, alternate network
 	// addresses, etc.
@@ -1058,6 +1157,13 @@ func (x *ListHostsResponseHost) GetSetIds() []string {
 	return nil
 }
 
+func (x *ListHostsResponseHost) GetRoleArn() string {
+	if x != nil {
+		return x.RoleArn
+	}
+	return ""
+}
+
 func (x *ListHostsResponseHost) GetAttributes() *structpb.Struct {
 	if x != nil {
 		return x.Attributes
@@ -1118,6 +1224,78 @@ func (x *HostCatalogPersisted) GetSecrets() *structpb.Struct {
 	return nil
 }
 
+type HostPluginIssue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. The set ID associated with the issue.
+	SetId string `protobuf:"bytes,10,opt,name=set_id,json=setId,proto3" json:"set_id,omitempty"`
+	// Optional. The AWS role_arn associated with the issue.
+	RoleArn string `protobuf:"bytes,20,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	// Required. The message describing the issue.
+	Message string `protobuf:"bytes,30,opt,name=message,proto3" json:"message,omitempty"`
+	// Required. Classification of the issue as a warning or error.
+	IssueType     IssueType `protobuf:"varint,40,opt,name=issue_type,json=issueType,proto3,enum=plugin.v1.IssueType" json:"issue_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HostPluginIssue) Reset() {
+	*x = HostPluginIssue{}
+	mi := &file_plugin_v1_host_plugin_service_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HostPluginIssue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HostPluginIssue) ProtoMessage() {}
+
+func (x *HostPluginIssue) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_host_plugin_service_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HostPluginIssue.ProtoReflect.Descriptor instead.
+func (*HostPluginIssue) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_host_plugin_service_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *HostPluginIssue) GetSetId() string {
+	if x != nil {
+		return x.SetId
+	}
+	return ""
+}
+
+func (x *HostPluginIssue) GetRoleArn() string {
+	if x != nil {
+		return x.RoleArn
+	}
+	return ""
+}
+
+func (x *HostPluginIssue) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *HostPluginIssue) GetIssueType() IssueType {
+	if x != nil {
+		return x.IssueType
+	}
+	return IssueType_ISSUE_TYPE_UNSPECIFIED
+}
+
 var File_plugin_v1_host_plugin_service_proto protoreflect.FileDescriptor
 
 const file_plugin_v1_host_plugin_service_proto_rawDesc = "" +
@@ -1134,19 +1312,21 @@ const file_plugin_v1_host_plugin_service_proto_rawDesc = "" +
 	"attributes\"i\n" +
 	"\x16OnCreateCatalogRequest\x12O\n" +
 	"\acatalog\x18\n" +
-	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\"X\n" +
+	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\"\xa2\x01\n" +
 	"\x17OnCreateCatalogResponse\x12=\n" +
 	"\tpersisted\x18\n" +
-	" \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\x8f\x02\n" +
+	" \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\x12H\n" +
+	"\x12host_plugin_issues\x18\x14 \x03(\v2\x1a.plugin.v1.HostPluginIssueR\x10hostPluginIssues\"\x8f\x02\n" +
 	"\x16OnUpdateCatalogRequest\x12^\n" +
 	"\x0fcurrent_catalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\x0ecurrentCatalog\x12V\n" +
 	"\vnew_catalog\x18\x14 \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\n" +
 	"newCatalog\x12=\n" +
-	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"X\n" +
+	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\xa2\x01\n" +
 	"\x17OnUpdateCatalogResponse\x12=\n" +
 	"\tpersisted\x18\n" +
-	" \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\xeb\x01\n" +
+	" \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\x12H\n" +
+	"\x12host_plugin_issues\x18\x14 \x03(\v2\x1a.plugin.v1.HostPluginIssueR\x10hostPluginIssues\"\xeb\x01\n" +
 	"\x16OnDeleteCatalogRequest\x12O\n" +
 	"\acatalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\x12A\n" +
@@ -1166,16 +1346,20 @@ const file_plugin_v1_host_plugin_service_proto_rawDesc = "" +
 	"\acatalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\x12?\n" +
 	"\x03set\x18\x14 \x01(\v2-.controller.api.resources.hostsets.v1.HostSetR\x03set\x12=\n" +
-	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\x15\n" +
-	"\x13OnCreateSetResponse\"\xbc\x02\n" +
+	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"_\n" +
+	"\x13OnCreateSetResponse\x12H\n" +
+	"\x12host_plugin_issues\x18\n" +
+	" \x03(\v2\x1a.plugin.v1.HostPluginIssueR\x10hostPluginIssues\"\xbc\x02\n" +
 	"\x12OnUpdateSetRequest\x12O\n" +
 	"\acatalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\x12N\n" +
 	"\vcurrent_set\x18\x14 \x01(\v2-.controller.api.resources.hostsets.v1.HostSetR\n" +
 	"currentSet\x12F\n" +
 	"\anew_set\x18\x1e \x01(\v2-.controller.api.resources.hostsets.v1.HostSetR\x06newSet\x12=\n" +
-	"\tpersisted\x18( \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\x15\n" +
-	"\x13OnUpdateSetResponse\"\xe5\x01\n" +
+	"\tpersisted\x18( \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"_\n" +
+	"\x13OnUpdateSetResponse\x12H\n" +
+	"\x12host_plugin_issues\x18\n" +
+	" \x03(\v2\x1a.plugin.v1.HostPluginIssueR\x10hostPluginIssues\"\xe5\x01\n" +
 	"\x12OnDeleteSetRequest\x12O\n" +
 	"\acatalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\x12?\n" +
@@ -1186,10 +1370,11 @@ const file_plugin_v1_host_plugin_service_proto_rawDesc = "" +
 	"\acatalog\x18\n" +
 	" \x01(\v25.controller.api.resources.hostcatalogs.v1.HostCatalogR\acatalog\x12A\n" +
 	"\x04sets\x18\x14 \x03(\v2-.controller.api.resources.hostsets.v1.HostSetR\x04sets\x12=\n" +
-	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"K\n" +
+	"\tpersisted\x18\x1e \x01(\v2\x1f.plugin.v1.HostCatalogPersistedR\tpersisted\"\x95\x01\n" +
 	"\x11ListHostsResponse\x126\n" +
 	"\x05hosts\x18\n" +
-	" \x03(\v2 .plugin.v1.ListHostsResponseHostR\x05hosts\"\xa5\x02\n" +
+	" \x03(\v2 .plugin.v1.ListHostsResponseHostR\x05hosts\x12H\n" +
+	"\x12host_plugin_issues\x18\x14 \x03(\v2\x1a.plugin.v1.HostPluginIssueR\x10hostPluginIssues\"\xc0\x02\n" +
 	"\x15ListHostsResponseHost\x12\x1f\n" +
 	"\vexternal_id\x18\n" +
 	" \x01(\tR\n" +
@@ -1199,12 +1384,24 @@ const file_plugin_v1_host_plugin_service_proto_rawDesc = "" +
 	"\vdescription\x18\x1e \x01(\tR\vdescription\x12!\n" +
 	"\fip_addresses\x18( \x03(\tR\vipAddresses\x12\x1b\n" +
 	"\tdns_names\x182 \x03(\tR\bdnsNames\x12\x17\n" +
-	"\aset_ids\x18< \x03(\tR\x06setIds\x127\n" +
+	"\aset_ids\x18< \x03(\tR\x06setIds\x12\x19\n" +
+	"\brole_arn\x18P \x01(\tR\aroleArn\x127\n" +
 	"\n" +
 	"attributes\x18d \x01(\v2\x17.google.protobuf.StructR\n" +
 	"attributes\"I\n" +
 	"\x14HostCatalogPersisted\x121\n" +
-	"\asecrets\x18d \x01(\v2\x17.google.protobuf.StructR\asecrets2\x99\x06\n" +
+	"\asecrets\x18d \x01(\v2\x17.google.protobuf.StructR\asecrets\"\x92\x01\n" +
+	"\x0fHostPluginIssue\x12\x15\n" +
+	"\x06set_id\x18\n" +
+	" \x01(\tR\x05setId\x12\x19\n" +
+	"\brole_arn\x18\x14 \x01(\tR\aroleArn\x12\x18\n" +
+	"\amessage\x18\x1e \x01(\tR\amessage\x123\n" +
+	"\n" +
+	"issue_type\x18( \x01(\x0e2\x14.plugin.v1.IssueTypeR\tissueType*U\n" +
+	"\tIssueType\x12\x1a\n" +
+	"\x16ISSUE_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10ISSUE_TYPE_ERROR\x10\x01\x12\x16\n" +
+	"\x12ISSUE_TYPE_WARNING\x10\x022\x99\x06\n" +
 	"\x11HostPluginService\x12g\n" +
 	"\x14NormalizeCatalogData\x12&.plugin.v1.NormalizeCatalogDataRequest\x1a'.plugin.v1.NormalizeCatalogDataResponse\x12X\n" +
 	"\x0fOnCreateCatalog\x12!.plugin.v1.OnCreateCatalogRequest\x1a\".plugin.v1.OnCreateCatalogResponse\x12X\n" +
@@ -1228,88 +1425,97 @@ func file_plugin_v1_host_plugin_service_proto_rawDescGZIP() []byte {
 	return file_plugin_v1_host_plugin_service_proto_rawDescData
 }
 
-var file_plugin_v1_host_plugin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_plugin_v1_host_plugin_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_plugin_v1_host_plugin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_plugin_v1_host_plugin_service_proto_goTypes = []any{
-	(*NormalizeCatalogDataRequest)(nil),  // 0: plugin.v1.NormalizeCatalogDataRequest
-	(*NormalizeCatalogDataResponse)(nil), // 1: plugin.v1.NormalizeCatalogDataResponse
-	(*OnCreateCatalogRequest)(nil),       // 2: plugin.v1.OnCreateCatalogRequest
-	(*OnCreateCatalogResponse)(nil),      // 3: plugin.v1.OnCreateCatalogResponse
-	(*OnUpdateCatalogRequest)(nil),       // 4: plugin.v1.OnUpdateCatalogRequest
-	(*OnUpdateCatalogResponse)(nil),      // 5: plugin.v1.OnUpdateCatalogResponse
-	(*OnDeleteCatalogRequest)(nil),       // 6: plugin.v1.OnDeleteCatalogRequest
-	(*OnDeleteCatalogResponse)(nil),      // 7: plugin.v1.OnDeleteCatalogResponse
-	(*NormalizeSetDataRequest)(nil),      // 8: plugin.v1.NormalizeSetDataRequest
-	(*NormalizeSetDataResponse)(nil),     // 9: plugin.v1.NormalizeSetDataResponse
-	(*OnCreateSetRequest)(nil),           // 10: plugin.v1.OnCreateSetRequest
-	(*OnCreateSetResponse)(nil),          // 11: plugin.v1.OnCreateSetResponse
-	(*OnUpdateSetRequest)(nil),           // 12: plugin.v1.OnUpdateSetRequest
-	(*OnUpdateSetResponse)(nil),          // 13: plugin.v1.OnUpdateSetResponse
-	(*OnDeleteSetRequest)(nil),           // 14: plugin.v1.OnDeleteSetRequest
-	(*OnDeleteSetResponse)(nil),          // 15: plugin.v1.OnDeleteSetResponse
-	(*ListHostsRequest)(nil),             // 16: plugin.v1.ListHostsRequest
-	(*ListHostsResponse)(nil),            // 17: plugin.v1.ListHostsResponse
-	(*ListHostsResponseHost)(nil),        // 18: plugin.v1.ListHostsResponseHost
-	(*HostCatalogPersisted)(nil),         // 19: plugin.v1.HostCatalogPersisted
-	(*structpb.Struct)(nil),              // 20: google.protobuf.Struct
-	(*plugins.PluginInfo)(nil),           // 21: controller.api.resources.plugins.v1.PluginInfo
-	(*hostcatalogs.HostCatalog)(nil),     // 22: controller.api.resources.hostcatalogs.v1.HostCatalog
-	(*hostsets.HostSet)(nil),             // 23: controller.api.resources.hostsets.v1.HostSet
+	(IssueType)(0),                       // 0: plugin.v1.IssueType
+	(*NormalizeCatalogDataRequest)(nil),  // 1: plugin.v1.NormalizeCatalogDataRequest
+	(*NormalizeCatalogDataResponse)(nil), // 2: plugin.v1.NormalizeCatalogDataResponse
+	(*OnCreateCatalogRequest)(nil),       // 3: plugin.v1.OnCreateCatalogRequest
+	(*OnCreateCatalogResponse)(nil),      // 4: plugin.v1.OnCreateCatalogResponse
+	(*OnUpdateCatalogRequest)(nil),       // 5: plugin.v1.OnUpdateCatalogRequest
+	(*OnUpdateCatalogResponse)(nil),      // 6: plugin.v1.OnUpdateCatalogResponse
+	(*OnDeleteCatalogRequest)(nil),       // 7: plugin.v1.OnDeleteCatalogRequest
+	(*OnDeleteCatalogResponse)(nil),      // 8: plugin.v1.OnDeleteCatalogResponse
+	(*NormalizeSetDataRequest)(nil),      // 9: plugin.v1.NormalizeSetDataRequest
+	(*NormalizeSetDataResponse)(nil),     // 10: plugin.v1.NormalizeSetDataResponse
+	(*OnCreateSetRequest)(nil),           // 11: plugin.v1.OnCreateSetRequest
+	(*OnCreateSetResponse)(nil),          // 12: plugin.v1.OnCreateSetResponse
+	(*OnUpdateSetRequest)(nil),           // 13: plugin.v1.OnUpdateSetRequest
+	(*OnUpdateSetResponse)(nil),          // 14: plugin.v1.OnUpdateSetResponse
+	(*OnDeleteSetRequest)(nil),           // 15: plugin.v1.OnDeleteSetRequest
+	(*OnDeleteSetResponse)(nil),          // 16: plugin.v1.OnDeleteSetResponse
+	(*ListHostsRequest)(nil),             // 17: plugin.v1.ListHostsRequest
+	(*ListHostsResponse)(nil),            // 18: plugin.v1.ListHostsResponse
+	(*ListHostsResponseHost)(nil),        // 19: plugin.v1.ListHostsResponseHost
+	(*HostCatalogPersisted)(nil),         // 20: plugin.v1.HostCatalogPersisted
+	(*HostPluginIssue)(nil),              // 21: plugin.v1.HostPluginIssue
+	(*structpb.Struct)(nil),              // 22: google.protobuf.Struct
+	(*plugins.PluginInfo)(nil),           // 23: controller.api.resources.plugins.v1.PluginInfo
+	(*hostcatalogs.HostCatalog)(nil),     // 24: controller.api.resources.hostcatalogs.v1.HostCatalog
+	(*hostsets.HostSet)(nil),             // 25: controller.api.resources.hostsets.v1.HostSet
 }
 var file_plugin_v1_host_plugin_service_proto_depIdxs = []int32{
-	20, // 0: plugin.v1.NormalizeCatalogDataRequest.attributes:type_name -> google.protobuf.Struct
-	21, // 1: plugin.v1.NormalizeCatalogDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
-	20, // 2: plugin.v1.NormalizeCatalogDataResponse.attributes:type_name -> google.protobuf.Struct
-	22, // 3: plugin.v1.OnCreateCatalogRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	19, // 4: plugin.v1.OnCreateCatalogResponse.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	22, // 5: plugin.v1.OnUpdateCatalogRequest.current_catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	22, // 6: plugin.v1.OnUpdateCatalogRequest.new_catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	19, // 7: plugin.v1.OnUpdateCatalogRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	19, // 8: plugin.v1.OnUpdateCatalogResponse.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	22, // 9: plugin.v1.OnDeleteCatalogRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	23, // 10: plugin.v1.OnDeleteCatalogRequest.sets:type_name -> controller.api.resources.hostsets.v1.HostSet
-	19, // 11: plugin.v1.OnDeleteCatalogRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	20, // 12: plugin.v1.NormalizeSetDataRequest.attributes:type_name -> google.protobuf.Struct
-	21, // 13: plugin.v1.NormalizeSetDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
-	20, // 14: plugin.v1.NormalizeSetDataResponse.attributes:type_name -> google.protobuf.Struct
-	22, // 15: plugin.v1.OnCreateSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	23, // 16: plugin.v1.OnCreateSetRequest.set:type_name -> controller.api.resources.hostsets.v1.HostSet
-	19, // 17: plugin.v1.OnCreateSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	22, // 18: plugin.v1.OnUpdateSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	23, // 19: plugin.v1.OnUpdateSetRequest.current_set:type_name -> controller.api.resources.hostsets.v1.HostSet
-	23, // 20: plugin.v1.OnUpdateSetRequest.new_set:type_name -> controller.api.resources.hostsets.v1.HostSet
-	19, // 21: plugin.v1.OnUpdateSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	22, // 22: plugin.v1.OnDeleteSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	23, // 23: plugin.v1.OnDeleteSetRequest.set:type_name -> controller.api.resources.hostsets.v1.HostSet
-	19, // 24: plugin.v1.OnDeleteSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	22, // 25: plugin.v1.ListHostsRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
-	23, // 26: plugin.v1.ListHostsRequest.sets:type_name -> controller.api.resources.hostsets.v1.HostSet
-	19, // 27: plugin.v1.ListHostsRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
-	18, // 28: plugin.v1.ListHostsResponse.hosts:type_name -> plugin.v1.ListHostsResponseHost
-	20, // 29: plugin.v1.ListHostsResponseHost.attributes:type_name -> google.protobuf.Struct
-	20, // 30: plugin.v1.HostCatalogPersisted.secrets:type_name -> google.protobuf.Struct
-	0,  // 31: plugin.v1.HostPluginService.NormalizeCatalogData:input_type -> plugin.v1.NormalizeCatalogDataRequest
-	2,  // 32: plugin.v1.HostPluginService.OnCreateCatalog:input_type -> plugin.v1.OnCreateCatalogRequest
-	4,  // 33: plugin.v1.HostPluginService.OnUpdateCatalog:input_type -> plugin.v1.OnUpdateCatalogRequest
-	6,  // 34: plugin.v1.HostPluginService.OnDeleteCatalog:input_type -> plugin.v1.OnDeleteCatalogRequest
-	8,  // 35: plugin.v1.HostPluginService.NormalizeSetData:input_type -> plugin.v1.NormalizeSetDataRequest
-	10, // 36: plugin.v1.HostPluginService.OnCreateSet:input_type -> plugin.v1.OnCreateSetRequest
-	12, // 37: plugin.v1.HostPluginService.OnUpdateSet:input_type -> plugin.v1.OnUpdateSetRequest
-	14, // 38: plugin.v1.HostPluginService.OnDeleteSet:input_type -> plugin.v1.OnDeleteSetRequest
-	16, // 39: plugin.v1.HostPluginService.ListHosts:input_type -> plugin.v1.ListHostsRequest
-	1,  // 40: plugin.v1.HostPluginService.NormalizeCatalogData:output_type -> plugin.v1.NormalizeCatalogDataResponse
-	3,  // 41: plugin.v1.HostPluginService.OnCreateCatalog:output_type -> plugin.v1.OnCreateCatalogResponse
-	5,  // 42: plugin.v1.HostPluginService.OnUpdateCatalog:output_type -> plugin.v1.OnUpdateCatalogResponse
-	7,  // 43: plugin.v1.HostPluginService.OnDeleteCatalog:output_type -> plugin.v1.OnDeleteCatalogResponse
-	9,  // 44: plugin.v1.HostPluginService.NormalizeSetData:output_type -> plugin.v1.NormalizeSetDataResponse
-	11, // 45: plugin.v1.HostPluginService.OnCreateSet:output_type -> plugin.v1.OnCreateSetResponse
-	13, // 46: plugin.v1.HostPluginService.OnUpdateSet:output_type -> plugin.v1.OnUpdateSetResponse
-	15, // 47: plugin.v1.HostPluginService.OnDeleteSet:output_type -> plugin.v1.OnDeleteSetResponse
-	17, // 48: plugin.v1.HostPluginService.ListHosts:output_type -> plugin.v1.ListHostsResponse
-	40, // [40:49] is the sub-list for method output_type
-	31, // [31:40] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	22, // 0: plugin.v1.NormalizeCatalogDataRequest.attributes:type_name -> google.protobuf.Struct
+	23, // 1: plugin.v1.NormalizeCatalogDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
+	22, // 2: plugin.v1.NormalizeCatalogDataResponse.attributes:type_name -> google.protobuf.Struct
+	24, // 3: plugin.v1.OnCreateCatalogRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	20, // 4: plugin.v1.OnCreateCatalogResponse.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	21, // 5: plugin.v1.OnCreateCatalogResponse.host_plugin_issues:type_name -> plugin.v1.HostPluginIssue
+	24, // 6: plugin.v1.OnUpdateCatalogRequest.current_catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	24, // 7: plugin.v1.OnUpdateCatalogRequest.new_catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	20, // 8: plugin.v1.OnUpdateCatalogRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	20, // 9: plugin.v1.OnUpdateCatalogResponse.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	21, // 10: plugin.v1.OnUpdateCatalogResponse.host_plugin_issues:type_name -> plugin.v1.HostPluginIssue
+	24, // 11: plugin.v1.OnDeleteCatalogRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	25, // 12: plugin.v1.OnDeleteCatalogRequest.sets:type_name -> controller.api.resources.hostsets.v1.HostSet
+	20, // 13: plugin.v1.OnDeleteCatalogRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	22, // 14: plugin.v1.NormalizeSetDataRequest.attributes:type_name -> google.protobuf.Struct
+	23, // 15: plugin.v1.NormalizeSetDataRequest.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
+	22, // 16: plugin.v1.NormalizeSetDataResponse.attributes:type_name -> google.protobuf.Struct
+	24, // 17: plugin.v1.OnCreateSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	25, // 18: plugin.v1.OnCreateSetRequest.set:type_name -> controller.api.resources.hostsets.v1.HostSet
+	20, // 19: plugin.v1.OnCreateSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	21, // 20: plugin.v1.OnCreateSetResponse.host_plugin_issues:type_name -> plugin.v1.HostPluginIssue
+	24, // 21: plugin.v1.OnUpdateSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	25, // 22: plugin.v1.OnUpdateSetRequest.current_set:type_name -> controller.api.resources.hostsets.v1.HostSet
+	25, // 23: plugin.v1.OnUpdateSetRequest.new_set:type_name -> controller.api.resources.hostsets.v1.HostSet
+	20, // 24: plugin.v1.OnUpdateSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	21, // 25: plugin.v1.OnUpdateSetResponse.host_plugin_issues:type_name -> plugin.v1.HostPluginIssue
+	24, // 26: plugin.v1.OnDeleteSetRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	25, // 27: plugin.v1.OnDeleteSetRequest.set:type_name -> controller.api.resources.hostsets.v1.HostSet
+	20, // 28: plugin.v1.OnDeleteSetRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	24, // 29: plugin.v1.ListHostsRequest.catalog:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
+	25, // 30: plugin.v1.ListHostsRequest.sets:type_name -> controller.api.resources.hostsets.v1.HostSet
+	20, // 31: plugin.v1.ListHostsRequest.persisted:type_name -> plugin.v1.HostCatalogPersisted
+	19, // 32: plugin.v1.ListHostsResponse.hosts:type_name -> plugin.v1.ListHostsResponseHost
+	21, // 33: plugin.v1.ListHostsResponse.host_plugin_issues:type_name -> plugin.v1.HostPluginIssue
+	22, // 34: plugin.v1.ListHostsResponseHost.attributes:type_name -> google.protobuf.Struct
+	22, // 35: plugin.v1.HostCatalogPersisted.secrets:type_name -> google.protobuf.Struct
+	0,  // 36: plugin.v1.HostPluginIssue.issue_type:type_name -> plugin.v1.IssueType
+	1,  // 37: plugin.v1.HostPluginService.NormalizeCatalogData:input_type -> plugin.v1.NormalizeCatalogDataRequest
+	3,  // 38: plugin.v1.HostPluginService.OnCreateCatalog:input_type -> plugin.v1.OnCreateCatalogRequest
+	5,  // 39: plugin.v1.HostPluginService.OnUpdateCatalog:input_type -> plugin.v1.OnUpdateCatalogRequest
+	7,  // 40: plugin.v1.HostPluginService.OnDeleteCatalog:input_type -> plugin.v1.OnDeleteCatalogRequest
+	9,  // 41: plugin.v1.HostPluginService.NormalizeSetData:input_type -> plugin.v1.NormalizeSetDataRequest
+	11, // 42: plugin.v1.HostPluginService.OnCreateSet:input_type -> plugin.v1.OnCreateSetRequest
+	13, // 43: plugin.v1.HostPluginService.OnUpdateSet:input_type -> plugin.v1.OnUpdateSetRequest
+	15, // 44: plugin.v1.HostPluginService.OnDeleteSet:input_type -> plugin.v1.OnDeleteSetRequest
+	17, // 45: plugin.v1.HostPluginService.ListHosts:input_type -> plugin.v1.ListHostsRequest
+	2,  // 46: plugin.v1.HostPluginService.NormalizeCatalogData:output_type -> plugin.v1.NormalizeCatalogDataResponse
+	4,  // 47: plugin.v1.HostPluginService.OnCreateCatalog:output_type -> plugin.v1.OnCreateCatalogResponse
+	6,  // 48: plugin.v1.HostPluginService.OnUpdateCatalog:output_type -> plugin.v1.OnUpdateCatalogResponse
+	8,  // 49: plugin.v1.HostPluginService.OnDeleteCatalog:output_type -> plugin.v1.OnDeleteCatalogResponse
+	10, // 50: plugin.v1.HostPluginService.NormalizeSetData:output_type -> plugin.v1.NormalizeSetDataResponse
+	12, // 51: plugin.v1.HostPluginService.OnCreateSet:output_type -> plugin.v1.OnCreateSetResponse
+	14, // 52: plugin.v1.HostPluginService.OnUpdateSet:output_type -> plugin.v1.OnUpdateSetResponse
+	16, // 53: plugin.v1.HostPluginService.OnDeleteSet:output_type -> plugin.v1.OnDeleteSetResponse
+	18, // 54: plugin.v1.HostPluginService.ListHosts:output_type -> plugin.v1.ListHostsResponse
+	46, // [46:55] is the sub-list for method output_type
+	37, // [37:46] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_host_plugin_service_proto_init() }
@@ -1322,13 +1528,14 @@ func file_plugin_v1_host_plugin_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_host_plugin_service_proto_rawDesc), len(file_plugin_v1_host_plugin_service_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   20,
+			NumEnums:      1,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_plugin_v1_host_plugin_service_proto_goTypes,
 		DependencyIndexes: file_plugin_v1_host_plugin_service_proto_depIdxs,
+		EnumInfos:         file_plugin_v1_host_plugin_service_proto_enumTypes,
 		MessageInfos:      file_plugin_v1_host_plugin_service_proto_msgTypes,
 	}.Build()
 	File_plugin_v1_host_plugin_service_proto = out.File

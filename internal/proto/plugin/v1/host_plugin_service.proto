@@ -112,6 +112,9 @@ message OnCreateCatalogResponse {
   // later hooks and calls. Returning an error from the call will cause this
   // data to not be persisted. If this is nil, nothing is written.
   HostCatalogPersisted persisted = 10;
+
+  // Any nonfatal issues to be included with the catalog payload
+  repeated HostPluginIssue host_plugin_issues = 20;
 }
 
 message OnUpdateCatalogRequest {
@@ -133,6 +136,9 @@ message OnUpdateCatalogResponse {
   // no changes are written. To remove all values, simply return an allocated
   // but empty map.
   HostCatalogPersisted persisted = 10;
+
+  // Any nonfatal issues to be included with the catalog payload
+  repeated HostPluginIssue host_plugin_issues = 20;
 }
 
 message OnDeleteCatalogRequest {
@@ -173,7 +179,10 @@ message OnCreateSetRequest {
   HostCatalogPersisted persisted = 30;
 }
 
-message OnCreateSetResponse {}
+message OnCreateSetResponse {
+  // Any nonfatal issues to be included with the catalog payload
+  repeated HostPluginIssue host_plugin_issues = 10;
+}
 
 message OnUpdateSetRequest {
   // The host catalog that the set belongs to.
@@ -189,7 +198,10 @@ message OnUpdateSetRequest {
   HostCatalogPersisted persisted = 40;
 }
 
-message OnUpdateSetResponse {}
+message OnUpdateSetResponse {
+  // Any nonfatal issues to be included with the catalog payload
+  repeated HostPluginIssue host_plugin_issues = 10;
+}
 
 message OnDeleteSetRequest {
   // The host catalog that the set belongs to.
@@ -219,6 +231,9 @@ message ListHostsRequest {
 message ListHostsResponse {
   // The hosts to return.
   repeated ListHostsResponseHost hosts = 10;
+
+  // Any nonfatal issues to be included with the catalog payload
+  repeated HostPluginIssue host_plugin_issues = 20;
 }
 
 message ListHostsResponseHost {
@@ -248,6 +263,9 @@ message ListHostsResponseHost {
   // sent in the request.
   repeated string set_ids = 60;
 
+  // Optional. The AWS role ARN that was used to discover the host.
+  string role_arn = 80;
+
   // Optional. Provider-specific metadata that is applicable to this
   // host. Example: host descriptions, tags, alternate network
   // addresses, etc.
@@ -265,4 +283,29 @@ message ListHostsResponseHost {
 message HostCatalogPersisted {
   // The persisted secrets.
   google.protobuf.Struct secrets = 100;
+}
+
+message HostPluginIssue {
+  // Optional. The set ID associated with the issue.
+  string set_id = 10;
+
+  // Optional. The AWS role_arn associated with the issue.
+  string role_arn = 20;
+
+  // Required. The message describing the issue.
+  string message = 30;
+
+  // Required. Classification of the issue as a warning or error.
+  IssueType issue_type = 40;
+}
+
+enum IssueType {
+  // Default value for when no issue type is set.
+  ISSUE_TYPE_UNSPECIFIED = 0;
+
+  // A fatal issue that prohibits the operation from executing.
+  ISSUE_TYPE_ERROR = 1;
+
+  // A nonfatal issue that prohibits only part of the operation from executing.
+  ISSUE_TYPE_WARNING = 2;
 }
