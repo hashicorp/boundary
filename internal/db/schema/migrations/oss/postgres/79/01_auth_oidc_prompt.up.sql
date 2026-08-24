@@ -67,6 +67,7 @@ drop view oidc_auth_method_with_value_obj;
 -- will make things like recursive listing of oidc auth methods fairly 
 -- straightforward to implement for the oidc repo. The view also includes an 
 -- is_primary_auth_method bool 
+-- Replaced in 112/01_auth_oidc_provider_type.up.sql
 create view oidc_auth_method_with_value_obj as 
 select
   case when s.primary_auth_method_id is not null then
