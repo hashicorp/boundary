@@ -27,6 +27,7 @@ type OidcAuthMethodAttributes struct {
 	DisableDiscoveredConfigValidation bool     `json:"disable_discovered_config_validation,omitempty"`
 	DryRun                            bool     `json:"dry_run,omitempty"`
 	Prompts                           []string `json:"prompts,omitempty"`
+	ProviderType                      string   `json:"provider_type,omitempty"`
 }
 
 func AttributesMapToOidcAuthMethodAttributes(in map[string]any) (*OidcAuthMethodAttributes, error) {

@@ -863,6 +863,30 @@ func DefaultOidcAuthMethodPrompts() Option {
 	}
 }
 
+func WithOidcAuthMethodProviderType(inProviderType string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["provider_type"] = inProviderType
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodProviderType() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = any(map[string]any{})
+		}
+		val := raw.(map[string]any)
+		val["provider_type"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodSigningAlgorithms(inSigningAlgorithms []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

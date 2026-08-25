@@ -376,7 +376,11 @@ type OidcAuthMethodAttributes struct {
 	// a result of the update request.
 	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The prompts allowed for the auth method.
-	Prompts       []string `protobuf:"bytes,140,rep,name=prompts,proto3" json:"prompts,omitempty" class:"public"` // @gotags: `class:"public"`
+	Prompts []string `protobuf:"bytes,140,rep,name=prompts,proto3" json:"prompts,omitempty" class:"public"` // @gotags: `class:"public"`
+	// provider_type optionally identifies the OIDC provider.
+	// When set, it enables provider specific behavior during authentication.
+	// When unset, no provider specific behavior is applied.
+	ProviderType  *wrapperspb.StringValue `protobuf:"bytes,150,opt,name=provider_type,proto3" json:"provider_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -519,6 +523,13 @@ func (x *OidcAuthMethodAttributes) GetDryRun() bool {
 func (x *OidcAuthMethodAttributes) GetPrompts() []string {
 	if x != nil {
 		return x.Prompts
+	}
+	return nil
+}
+
+func (x *OidcAuthMethodAttributes) GetProviderType() *wrapperspb.StringValue {
+	if x != nil {
+		return x.ProviderType
 	}
 	return nil
 }
@@ -1205,8 +1216,7 @@ const file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = "
 	" \x01(\rB>\xa0\xda)\x01\xc2\xdd)6\n" +
 	" attributes.min_login_name_length\x12\x12MinLoginNameLengthR\x15min_login_name_length\x12m\n" +
 	"\x13min_password_length\x18\x14 \x01(\rB;\xa0\xda)\x01\xc2\xdd)3\n" +
-	"\x1eattributes.min_password_length\x12\x11MinPasswordLengthR\x13min_password_length\"\xbe\n" +
-	"\n" +
+	"\x1eattributes.min_password_length\x12\x11MinPasswordLengthR\x13min_password_length\"\xb5\v\n" +
 	"\x18OidcAuthMethodAttributes\x12\x1a\n" +
 	"\x05state\x18\n" +
 	" \x01(\tB\x04\xe2A\x01\x03R\x05state\x12Y\n" +
@@ -1235,7 +1245,9 @@ const file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = "
 	"$disable_discovered_config_validation\x18x \x01(\bB\x04\xa0\xda)\x01R$disable_discovered_config_validation\x12\x1f\n" +
 	"\adry_run\x18\x82\x01 \x01(\bB\x04\xa0\xda)\x01R\adry_run\x12@\n" +
 	"\aprompts\x18\x8c\x01 \x03(\tB%\xa0\xda)\x01\xc2\xdd)\x1d\n" +
-	"\x12attributes.prompts\x12\aPromptsR\aprompts\"a\n" +
+	"\x12attributes.prompts\x12\aPromptsR\aprompts\x12u\n" +
+	"\rprovider_type\x18\x96\x01 \x01(\v2\x1c.google.protobuf.StringValueB0\xa0\xda)\x01\xc2\xdd)(\n" +
+	"\x18attributes.provider_type\x12\fProviderTypeR\rprovider_type\"a\n" +
 	"'OidcAuthMethodAuthenticateStartResponse\x12\x1a\n" +
 	"\bauth_url\x18\n" +
 	" \x01(\tR\bauth_url\x12\x1a\n" +
@@ -1360,24 +1372,25 @@ var file_controller_api_resources_authmethods_v1_auth_method_proto_depIdxs = []i
 	11, // 12: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_secret:type_name -> google.protobuf.StringValue
 	14, // 13: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.max_age:type_name -> google.protobuf.UInt32Value
 	11, // 14: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.api_url_prefix:type_name -> google.protobuf.StringValue
-	11, // 15: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.upn_domain:type_name -> google.protobuf.StringValue
-	11, // 16: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_dn:type_name -> google.protobuf.StringValue
-	11, // 17: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_attr:type_name -> google.protobuf.StringValue
-	11, // 18: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_filter:type_name -> google.protobuf.StringValue
-	11, // 19: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_dn:type_name -> google.protobuf.StringValue
-	11, // 20: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_attr:type_name -> google.protobuf.StringValue
-	11, // 21: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_filter:type_name -> google.protobuf.StringValue
-	11, // 22: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.client_certificate:type_name -> google.protobuf.StringValue
-	11, // 23: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.client_certificate_key:type_name -> google.protobuf.StringValue
-	11, // 24: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.bind_dn:type_name -> google.protobuf.StringValue
-	11, // 25: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.bind_password:type_name -> google.protobuf.StringValue
-	11, // 26: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.dereference_aliases:type_name -> google.protobuf.StringValue
-	15, // 27: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	11, // 15: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.provider_type:type_name -> google.protobuf.StringValue
+	11, // 16: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.upn_domain:type_name -> google.protobuf.StringValue
+	11, // 17: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_dn:type_name -> google.protobuf.StringValue
+	11, // 18: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_attr:type_name -> google.protobuf.StringValue
+	11, // 19: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.user_filter:type_name -> google.protobuf.StringValue
+	11, // 20: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_dn:type_name -> google.protobuf.StringValue
+	11, // 21: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_attr:type_name -> google.protobuf.StringValue
+	11, // 22: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.group_filter:type_name -> google.protobuf.StringValue
+	11, // 23: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.client_certificate:type_name -> google.protobuf.StringValue
+	11, // 24: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.client_certificate_key:type_name -> google.protobuf.StringValue
+	11, // 25: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.bind_dn:type_name -> google.protobuf.StringValue
+	11, // 26: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.bind_password:type_name -> google.protobuf.StringValue
+	11, // 27: controller.api.resources.authmethods.v1.LdapAuthMethodAttributes.dereference_aliases:type_name -> google.protobuf.StringValue
+	15, // 28: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_authmethods_v1_auth_method_proto_init() }
