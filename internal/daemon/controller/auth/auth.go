@@ -287,7 +287,6 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 	resourcesToFetchGrants := append([]resource.Type{resourceType}, opts.withFetchAdditionalResourceGrants...)
 
 	var authResults perms.ACLResults
-	var userData template.Data
 	var err error
 	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourcesToFetchGrants, opts.withRecursive)
 	if err != nil {
@@ -345,17 +344,17 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 	ea.UserInfo = &event.UserInfo{
 		UserId: ret.UserId,
 	}
-	if userData.Account.Id != nil {
-		ea.UserInfo.AuthAccountId = *userData.Account.Id
+	if ret.UserData.Account.Id != nil {
+		ea.UserInfo.AuthAccountId = *ret.UserData.Account.Id
 	}
 	ea.GrantsInfo = &event.GrantsInfo{
 		Grants: grants,
 	}
-	if userData.User.FullName != nil {
-		ea.UserName = *userData.User.FullName
+	if ret.UserData.User.FullName != nil {
+		ea.UserName = *ret.UserData.User.FullName
 	}
-	if userData.User.Email != nil {
-		ea.UserEmail = *userData.User.Email
+	if ret.UserData.User.Email != nil {
+		ea.UserEmail = *ret.UserData.User.Email
 	}
 
 	if reqInfo != nil {

@@ -5,6 +5,7 @@ begin;
 
 -- fix ordering of fields in iam_acct_info for auth_password_account select
 -- portion of union.  requires recreating both views because of deps.
+-- replaced by 104/01_iam_acct_info_ldap.up.sql
 
 drop view iam_user_acct_info;
 drop view iam_acct_info;

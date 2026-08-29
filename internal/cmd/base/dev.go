@@ -290,7 +290,7 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 
 	createUserFn := func(userName, passwd string, withMembersOf []string) *gldap.Entry {
 		entryAttrs := map[string][]string{
-			"name":     {userName},
+			"fullName": {userName},
 			"email":    {fmt.Sprintf("%s@localhost", userName)},
 			"password": {passwd},
 		}
