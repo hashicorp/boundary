@@ -155,7 +155,6 @@ func testVaultCred(t *testing.T,
 }
 
 func TestNewTokenRenewalJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -239,7 +238,6 @@ func TestNewTokenRenewalJob(t *testing.T) {
 }
 
 func TestTokenRenewalJob_RunLimits(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -325,7 +323,6 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 }
 
 func TestTokenRenewalJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -435,7 +432,6 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 }
 
 func TestTokenRenewalJob_RunExpired(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -500,9 +496,119 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	require.Nil(cs)
 }
 
-func TestTokenRenewalJob_NextRunIn(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
+// TestTokenRenewalJob_Run_VaultUnreachableTemporarily tests that tokens are not marked
+// as expired when Vault is unreachable temporarily.
+func TestTokenRenewalJob_Run_VaultUnreachableTemporarily(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
 
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper, scheduler.WithRunJobsInterval(time.Second))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	v := NewTestVaultServer(t)
+
+	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second*300))
+	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
+	assert.NoError(err)
+	require.NotNil(in)
+
+	r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	err = sche.RegisterJob(ctx, r)
+	require.NoError(err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(ctx, in)
+	require.NoError(err)
+	tokenBeforeRenew := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &tokenBeforeRenew, "store_id = ?", []any{cs.GetPublicId()}))
+	assert.True(time.Now().Before(tokenBeforeRenew.ExpirationTime.AsTime()))
+	assert.Equal(string(CurrentToken), tokenBeforeRenew.Status)
+	// Shutdown Vault server to make vault unreachable
+	v.Shutdown(t)
+
+	// Renewal will fail because Vault is unreachable but job does not return an error
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+
+	// Verify token was not expired in repo
+	tokenAfterFailedRenew := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &tokenAfterFailedRenew, "store_id = ?", []any{cs.GetPublicId()}))
+	// expiration time is still in the future and token should still be 'current'
+	assert.True(time.Now().Before(tokenAfterFailedRenew.ExpirationTime.AsTime()))
+	// expiration time should remain the same since renewal failed
+	assert.Equal(tokenBeforeRenew.ExpirationTime, tokenAfterFailedRenew.ExpirationTime)
+	assert.Equal(string(CurrentToken), tokenAfterFailedRenew.Status)
+}
+
+// TestTokenRenewalJob_RunExpired_VaultUnreachable tests token renewal logic when the Vault server becomes unreachable.
+// The job should stop attempting to renew the token once the token is expired since the renewal will never
+// be successful and there is no guarantee that Vault server will ever be reachable again.
+func TestTokenRenewalJob_RunExpired_VaultUnreachablePermanently(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper, scheduler.WithRunJobsInterval(time.Second))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	v := NewTestVaultServer(t)
+
+	// Create 2s token so it expires in vault before we can renew it
+	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second*2))
+
+	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
+	assert.NoError(err)
+	require.NotNil(in)
+
+	r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	err = sche.RegisterJob(ctx, r)
+	require.NoError(err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(ctx, in)
+	require.NoError(err)
+
+	tokenBeforeRenew := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &tokenBeforeRenew, "store_id = ?", []any{cs.GetPublicId()}))
+	// expiration time is in the future
+	assert.True(tokenBeforeRenew.ExpirationTime.AsTime().After(time.Now()))
+	assert.Equal(string(CurrentToken), tokenBeforeRenew.Status)
+
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+	tokenAfterSuccessfulRenew := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &tokenAfterSuccessfulRenew, "store_id = ?", []any{cs.GetPublicId()}))
+	// successful renewal should have updated expiration time
+	assert.True(tokenAfterSuccessfulRenew.ExpirationTime.AsTime().After(tokenBeforeRenew.ExpirationTime.AsTime()))
+	assert.Equal(string(CurrentToken), tokenAfterSuccessfulRenew.Status)
+
+	// Shutdown Vault server to make vault unreachable
+	v.Shutdown(t)
+	// Sleep to move clock and expire token
+	time.Sleep(time.Second * 2)
+
+	// Renewal should fail, job does not return an error when renewal fails (emits error event)
+	err = r.Run(ctx, 0)
+	require.NoError(err)
+
+	// token should be marked as expired in the repo since the expiration time has passed
+	tokenAfterFailedRenew := allocToken()
+	require.NoError(rw.LookupWhere(ctx, &tokenAfterFailedRenew, "store_id = ?", []any{cs.GetPublicId()}))
+	assert.Equal(string(ExpiredToken), tokenAfterFailedRenew.Status)
+}
+
+func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -629,7 +735,6 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 }
 
 func TestNewTokenRevocationJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -713,8 +818,6 @@ func TestNewTokenRevocationJob(t *testing.T) {
 }
 
 func TestTokenRevocationJob_RunLimits(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
-
 	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -803,7 +906,6 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 }
 
 func TestTokenRevocationJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -942,7 +1044,6 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 }
 
 func TestNewCredentialRenewalJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1026,7 +1127,6 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_RunLimits(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1142,7 +1242,6 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1253,7 +1352,6 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_RunExpired(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1333,7 +1431,6 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1491,7 +1588,6 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 }
 
 func TestNewCredentialRevocationJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1575,7 +1671,6 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_RunLimits(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1691,7 +1786,6 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1786,7 +1880,6 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1896,7 +1989,6 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 }
 
 func TestNewCredentialStoreCleanupJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1980,7 +2072,6 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 }
 
 func TestCredentialStoreCleanupJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -2133,7 +2224,6 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 }
 
 func TestNewCredentialCleanupJob(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
@@ -2220,7 +2310,6 @@ func TestVaultJobsCorrelationId(t *testing.T) {
 }
 
 func TestCredentialCleanupJob_Run(t *testing.T) {
-	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
