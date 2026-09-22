@@ -360,6 +360,18 @@ message OidcAuthMethodAttributes {
       that: "Prompts"
     }
   ]; // @gotags: `class:"public"`
+
+  // provider_type optionally identifies the OIDC provider.
+  // When set, it enables provider specific behavior during authentication.
+  // When unset, no provider specific behavior is applied.
+  google.protobuf.StringValue provider_type = 150 [
+    json_name = "provider_type",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.provider_type"
+      that: "ProviderType"
+    }
+  ]; // @gotags: `class:"public"`
 }
 
 // The structure of the OIDC authenticate start response, in the JSON object

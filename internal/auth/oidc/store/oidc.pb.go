@@ -129,7 +129,12 @@ type AuthMethod struct {
 	// These are Value Objects that will be stored as Prompt messages,
 	// and are operatated on as a complete set.
 	// @inject_tag: `gorm:"-"`
-	Prompts       []string `protobuf:"bytes,220,rep,name=prompts,proto3" json:"prompts,omitempty" gorm:"-"`
+	Prompts []string `protobuf:"bytes,220,rep,name=prompts,proto3" json:"prompts,omitempty" gorm:"-"`
+	// provider_type optionally identifies the OIDC provider.
+	// When set, it enables provider specific behavior during authentication.
+	// When unset, no provider specific behavior is applied.
+	// @inject_tag: `gorm:"default:null"`
+	ProviderType  string `protobuf:"bytes,230,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty" gorm:"default:null"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -330,6 +335,13 @@ func (x *AuthMethod) GetPrompts() []string {
 		return x.Prompts
 	}
 	return nil
+}
+
+func (x *AuthMethod) GetProviderType() string {
+	if x != nil {
+		return x.ProviderType
+	}
+	return ""
 }
 
 // Account represents an OIDC account
@@ -1099,7 +1111,7 @@ var File_controller_storage_auth_oidc_store_v1_oidc_proto protoreflect.FileDescr
 
 const file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = "" +
 	"\n" +
-	"0controller/storage/auth/oidc/store/v1/oidc.proto\x12%controller.storage.auth.oidc.store.v1\x1a*controller/custom_options/v1/options.proto\x1a/controller/storage/timestamp/v1/timestamp.proto\"\xc1\v\n" +
+	"0controller/storage/auth/oidc/store/v1/oidc.proto\x12%controller.storage.auth.oidc.store.v1\x1a*controller/custom_options/v1/options.proto\x1a/controller/storage/timestamp/v1/timestamp.proto\"\x95\f\n" +
 	"\n" +
 	"AuthMethod\x12\x1b\n" +
 	"\tpublic_id\x18\n" +
@@ -1142,7 +1154,9 @@ const file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = "" +
 	"\x12account_claim_maps\x18\xd2\x01 \x03(\tB5\xc2\xdd)1\n" +
 	"\x10AccountClaimMaps\x12\x1dattributes.account_claim_mapsR\x10accountClaimMaps\x12<\n" +
 	"\aprompts\x18\xdc\x01 \x03(\tB!\xc2\xdd)\x1d\n" +
-	"\aPrompts\x12\x12attributes.promptsR\aprompts\"\x9a\x04\n" +
+	"\aPrompts\x12\x12attributes.promptsR\aprompts\x12R\n" +
+	"\rprovider_type\x18\xe6\x01 \x01(\tB,\xc2\xdd)(\n" +
+	"\fProviderType\x12\x18attributes.provider_typeR\fproviderType\"\x9a\x04\n" +
 	"\aAccount\x12\x1b\n" +
 	"\tpublic_id\x18\n" +
 	" \x01(\tR\bpublicId\x12K\n" +
