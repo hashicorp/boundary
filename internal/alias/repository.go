@@ -9,33 +9,30 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // A Repository stores and retrieves the persistent types in the alias
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	txm db.TransactionManager
+	kms *kms.Kms
 }
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
+func NewRepository(ctx context.Context, txm db.TransactionManager, kms *kms.Kms) (*Repository, error) {
 	const op = "alias.NewRepository"
 	switch {
-	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Reader")
-	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Writer")
+	case util.IsNil(txm):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing transaction manager")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 
 	return &Repository{
-		reader: r,
-		writer: w,
-		kms:    kms,
+		txm: txm,
+		kms: kms,
 	}, nil
 }

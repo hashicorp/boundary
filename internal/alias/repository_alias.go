@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -18,11 +19,13 @@ func (r *Repository) lookupAliasByValue(ctx context.Context, value string) (*Ali
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "value is empty")
 	}
 	a := allocAlias()
-	if err := r.reader.LookupWhere(ctx, a, "value = $1", []any{value}); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
+	if _, err := r.txm.DoRoTx(ctx, func(reader db.Reader) error {
+		if err := reader.LookupWhere(ctx, a, "value = $1", []any{value}); err != nil && !errors.IsNotFoundError(err) {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %q", value)))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %q", value)))
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	return a, nil
 }
