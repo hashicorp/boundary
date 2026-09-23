@@ -793,13 +793,14 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		creds = sshCreds
 
 	case "kube":
-		kubeArgs, err := c.kubeFlags.buildArgs(c, port, host, addr)
+		kubeArgs, kubeCreds, err := c.kubeFlags.buildArgs(c, port, host, addr, creds)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
 			return
 		}
 		args = append(args, kubeArgs...)
+		creds = kubeCreds
 	}
 
 	if argsErr != nil {
