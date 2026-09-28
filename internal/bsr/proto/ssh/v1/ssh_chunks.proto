@@ -268,8 +268,8 @@ message SignalRequest {
   bool want_reply = 2;
 
   // Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
-  //            ABRT   ALRM   FPE   HUP   ILL   INT   KILL
-  //            PIPE   QUIT   SEGV  TERM  USR1  USR2
+  //	ABRT   ALRM   FPE   HUP   ILL   INT   KILL
+  //	PIPE   QUIT   SEGV  TERM  USR1  USR2
   string signal_name = 3;
 }
 
@@ -297,8 +297,8 @@ message ExitSignalRequest {
   bool want_reply = 2;
 
   // Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
-  //            ABRT   ALRM   FPE   HUP   ILL   INT   KILL
-  //            PIPE   QUIT   SEGV  TERM  USR1  USR2
+  //	ABRT   ALRM   FPE   HUP   ILL   INT   KILL
+  //	PIPE   QUIT   SEGV  TERM  USR1  USR2
   string signal_name = 3;
 
   // Core dumped
