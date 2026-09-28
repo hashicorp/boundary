@@ -1801,7 +1801,7 @@ type CredentialLibrary struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The credential store of which this library is a part.
 	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty"`
-	//  Optional name of this Credential Library.
+	// Optional name of this Credential Library.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
 	// Optional user-set description of this Credential Library.
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
