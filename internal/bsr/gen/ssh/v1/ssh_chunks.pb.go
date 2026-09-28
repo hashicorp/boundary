@@ -1106,6 +1106,7 @@ type SignalRequest struct {
 	// The want_reply field on the SSH request. This should always be false
 	WantReply bool `protobuf:"varint,2,opt,name=want_reply,json=wantReply,proto3" json:"want_reply,omitempty"`
 	// Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
+	//
 	//	ABRT   ALRM   FPE   HUP   ILL   INT   KILL
 	//	PIPE   QUIT   SEGV  TERM  USR1  USR2
 	SignalName    string `protobuf:"bytes,3,opt,name=signal_name,json=signalName,proto3" json:"signal_name,omitempty"`
@@ -1240,6 +1241,7 @@ type ExitSignalRequest struct {
 	// The want_reply field on the SSH request. This should always be false.
 	WantReply bool `protobuf:"varint,2,opt,name=want_reply,json=wantReply,proto3" json:"want_reply,omitempty"`
 	// Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
+	//
 	//	ABRT   ALRM   FPE   HUP   ILL   INT   KILL
 	//	PIPE   QUIT   SEGV  TERM  USR1  USR2
 	SignalName string `protobuf:"bytes,3,opt,name=signal_name,json=signalName,proto3" json:"signal_name,omitempty"`

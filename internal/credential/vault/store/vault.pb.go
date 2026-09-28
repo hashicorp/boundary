@@ -247,7 +247,7 @@ type Token struct {
 	//
 	// The calculation is:
 	//
-	//      expiration_time := time.Now().Add(LeaseDuration * time.Second)
+	//	expiration_time := time.Now().Add(LeaseDuration * time.Second)
 	//
 	// LeaseDuration is a value returned by Vault when the token is renewed.
 	//
@@ -868,7 +868,7 @@ type Credential struct {
 	//
 	// The calculation is:
 	//
-	//      expiration_time := time.Now().Add(LeaseDuration * time.Second)
+	//	expiration_time := time.Now().Add(LeaseDuration * time.Second)
 	//
 	// LeaseDuration is a value returned by Vault when the credential is
 	// retrieved or the lease for the credential is renewed.
