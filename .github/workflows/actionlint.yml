@@ -11,7 +11,7 @@ jobs:
   actionlint:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check workflow files
         uses: docker://docker.mirror.hashicorp.services/rhysd/actionlint@sha256:5acca218639222e4afbc82fc6e9ef56cbe646ade3b07f3f5ec364b638258a244
         with:
