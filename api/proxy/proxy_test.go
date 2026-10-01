@@ -8,15 +8,22 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"io"
 	"math/big"
 	mathrand "math/rand"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
+	"github.com/hashicorp/boundary/api/consts"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
+	pb "github.com/hashicorp/boundary/sdk/pbs/proxy"
+	"github.com/hashicorp/boundary/sdk/wspb"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,6 +154,79 @@ func TestListenerAddr(t *testing.T) {
 	})
 	assert.Equal(expAddr, p.ListenerAddress(context.Background()))
 	assert.WithinDuration(start.Add(3*time.Second), time.Now(), 500*time.Millisecond)
+}
+
+func TestStartAuthorizationFailureKeepsExistingConnections(t *testing.T) {
+	var connectionCount atomic.Int32
+	active := make(chan struct{})
+	rejected := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{consts.WebsocketProtocolTcpProxyV1}})
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+
+		var handshake pb.ClientHandshake
+		if !assert.NoError(t, wspb.Read(r.Context(), conn, &handshake)) {
+			return
+		}
+		if connectionCount.Add(1) == 1 {
+			if !assert.NoError(t, wspb.Write(r.Context(), conn, &pb.HandshakeResult{ConnectionsLeft: -1})) {
+				return
+			}
+			close(active)
+			netConn := websocket.NetConn(r.Context(), conn, websocket.MessageBinary)
+			defer netConn.Close()
+			_, _ = io.Copy(io.Discard, netConn)
+			return
+		}
+
+		close(rejected)
+		_ = conn.Close(websocket.StatusInternalError, "unable to authorize connection")
+	}))
+	defer server.Close()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	proxy, err := New(context.Background(), "", WithSessionAuthorizationData(testSessionAuth(t)), WithListener(listener))
+	require.NoError(t, err)
+	proxy.workerAddr = server.Listener.Addr().String()
+	proxy.transport = http.DefaultTransport.(*http.Transport).Clone()
+
+	startErr := make(chan error, 1)
+	go func() { startErr <- proxy.Start() }()
+
+	first, err := net.Dial("tcp", listener.Addr().String())
+	require.NoError(t, err)
+	defer first.Close()
+	require.Eventually(t, func() bool {
+		select {
+		case <-active:
+			return true
+		default:
+			return false
+		}
+	}, time.Second, 10*time.Millisecond)
+
+	second, err := net.Dial("tcp", listener.Addr().String())
+	require.NoError(t, err)
+	defer second.Close()
+	require.Eventually(t, func() bool {
+		select {
+		case <-rejected:
+			return true
+		default:
+			return false
+		}
+	}, time.Second, 10*time.Millisecond)
+	require.NoError(t, second.SetReadDeadline(time.Now().Add(time.Second)))
+	_, err = second.Read(make([]byte, 1))
+	require.Error(t, err)
+	assert.NoError(t, proxy.ctx.Err())
+
+	require.NoError(t, first.Close())
+	require.ErrorContains(t, <-startErr, "unable to authorize connection")
 }
 
 func testSessionAuth(t *testing.T) *targets.SessionAuthorizationData {

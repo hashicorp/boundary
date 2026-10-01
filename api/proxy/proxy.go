@@ -280,10 +280,12 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 				}
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
 					fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
-					// No reason to think we can successfully handle the next
-					// connection that comes our way, so cancel the proxy
+					// Close the listener because future connections cannot succeed.
+					// Preserve active connections after an authorization rejection.
 					listenerCloseFunc()
-					p.cancel()
+					if !errors.Is(err, errUnableToAuthorizeConnection) {
+						p.cancel()
+					}
 					return
 				}
 
