@@ -883,3 +883,105 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeKmsInfoEntriesIntoInfoMap(t *testing.T) {
+	t.Parallel()
+	t.Run("duplicate labels are qualified by purpose", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{}
+		info := map[string]string{}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{key: "Azure Environment", value: "AzurePublicCloud", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+			{key: "Azure Key Name", value: "boundary-root", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+			{key: "Azure Environment", value: "AzurePublicCloud", purpose: globals.KmsPurposeWorkerAuth, purposeOrdinal: 1},
+			{key: "Azure Key Name", value: "boundary-worker", purpose: globals.KmsPurposeWorkerAuth, purposeOrdinal: 1},
+			{key: "Azure Environment", value: "AzurePublicCloud", purpose: globals.KmsPurposeRecovery, purposeOrdinal: 1},
+			{key: "Azure Key Name", value: "boundary-recovery", purpose: globals.KmsPurposeRecovery, purposeOrdinal: 1},
+		}, map[string]uint{
+			globals.KmsPurposeRoot:       1,
+			globals.KmsPurposeWorkerAuth: 1,
+			globals.KmsPurposeRecovery:   1,
+		})
+
+		assert.ElementsMatch([]string{
+			"[root] Azure Environment",
+			"[root] Azure Key Name",
+			"[worker-auth] Azure Environment",
+			"[worker-auth] Azure Key Name",
+			"[recovery] Azure Environment",
+			"[recovery] Azure Key Name",
+		}, infoKeys)
+		assert.Equal("boundary-root", info["[root] Azure Key Name"])
+		assert.Equal("boundary-worker", info["[worker-auth] Azure Key Name"])
+		assert.Equal("boundary-recovery", info["[recovery] Azure Key Name"])
+	})
+
+	t.Run("multiple purpose includes in single block", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{}
+		info := map[string]string{}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{key: "AWS KMS Region", value: "us-east-1", purpose: globals.KmsPurposeDownstreamWorkerAuth, purposeOrdinal: 1},
+			{key: "AWS KMS Region", value: "us-west-2", purpose: globals.KmsPurposeDownstreamWorkerAuth, purposeOrdinal: 2},
+		}, map[string]uint{
+			globals.KmsPurposeDownstreamWorkerAuth: 2,
+		})
+
+		assert.ElementsMatch([]string{
+			"[downstream-worker-auth 1] AWS KMS Region",
+			"[downstream-worker-auth 2] AWS KMS Region",
+		}, infoKeys)
+		assert.Equal("us-east-1", info["[downstream-worker-auth 1] AWS KMS Region"])
+		assert.Equal("us-west-2", info["[downstream-worker-auth 2] AWS KMS Region"])
+	})
+
+	t.Run("skipping for KMS AEAD type", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{}
+		info := map[string]string{}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{kmsType: wrapping.WrapperTypeAead.String(), key: "[root] Aead Type", value: "aes-gcm", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+			{kmsType: wrapping.WrapperTypeAead.String(), key: "[worker-auth] Aead Type", value: "aes-gcm", purpose: globals.KmsPurposeRecovery, purposeOrdinal: 1},
+		}, map[string]uint{
+			globals.KmsPurposeRoot:     1,
+			globals.KmsPurposeRecovery: 1,
+		})
+
+		assert.ElementsMatch([]string{
+			"[root] Aead Type",
+			"[worker-auth] Aead Type",
+		}, infoKeys)
+		assert.Equal("aes-gcm", info["[root] Aead Type"])
+		assert.Equal("aes-gcm", info["[worker-auth] Aead Type"])
+	})
+
+	t.Run("preserve all existing info keys", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		infoKeys := []string{
+			"log level",
+		}
+		info := map[string]string{
+			"log level": "debug",
+		}
+		mergeKmsInfoEntries(&infoKeys, info, []kmsInfoEntry{
+			{key: "Azure Key Name", value: "boundary-root", purpose: globals.KmsPurposeRoot, purposeOrdinal: 1},
+		}, map[string]uint{
+			globals.KmsPurposeRoot: 1,
+		})
+
+		assert.ElementsMatch([]string{
+			"[root] Azure Key Name",
+			"log level",
+		}, infoKeys)
+		assert.Equal("boundary-root", info["[root] Azure Key Name"])
+		assert.Equal("debug", info["log level"])
+	})
+}
