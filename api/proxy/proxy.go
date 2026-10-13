@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -283,7 +284,9 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// No reason to think we can successfully handle the next
 					// connection that comes our way, so cancel the proxy
 					listenerCloseFunc()
-					p.cancel()
+					if !strings.Contains(err.Error(), "unable to authorize connection") {
+						p.cancel()
+					}
 					return
 				}
 
