@@ -2,6 +2,12 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## vNext
+
+### Bug Fixes
+
+* api/proxy: Preserve active session connections when a new connection fails authorization.
+
 ## 0.21.3 (2026/04/28)
 
 ### New and Improved
